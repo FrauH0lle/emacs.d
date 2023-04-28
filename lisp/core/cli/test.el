@@ -7,8 +7,20 @@
         runemacs-binary-path
       emacs-binary-path)))
 
-  ;; (dolist (cache-file )
-  ;;   (load (file-name-concat zenit-local-dir (car (mapcar #'car zenit-cache-generators))) nil (not init-file-debug)))
+(defun zenit-cli--tests-cleanup ()
+  "Cleanup artifacts from tests."
+  (let ((artifact-files
+         (list
+          (zenit-glob zenit-emacs-dir "projectile-bookmarks.eld")))
+        (artifact-dirs
+         (list
+          (concat zenit-emacs-dir "eln-cache"))))
+    (dolist (f artifact-files)
+      (when (file-exists-p f)
+        (delete-file f)))
+    (dolist (d artifact-dirs)
+      (when (file-exists-p d)
+        (delete-directory d t)))))
 
 (defun zenit-cli-test ()
   (require 'ansi-color)
@@ -63,6 +75,7 @@
               (cl-incf total-failed failed)
               (cl-incf i))))
          (terpri)
+         (zenit-cli--tests-cleanup)
          (if (= total-failed 0)
              (print! (success "Ran %d tests successfully." total))
            (print! (error "Ran %d tests, %d failed") total total-failed)

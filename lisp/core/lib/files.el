@@ -145,8 +145,9 @@ the first 256 bytes of FILE, return NULL-VALUE."
     (insert-file-contents file nil 0 256)
     (if (re-search-forward (format "^;;;###%s " (regexp-quote (or cookie "if")))
                            nil t)
-        (let ((load-file-name file))
-          (eval (sexp-at-point) t))
+        (zenit-module-context-with (zenit-module-from-path file)
+          (let ((load-file-name file))
+            (eval (sexp-at-point) t)))
       null-value)))
 
 ;;;###autoload

@@ -285,11 +285,10 @@ functions."
 ;;; Convenience
 
 (defmacro file! ()
-  "Return the file of the file this macro was called."
+  "Return the filename of the file this macro was called."
   (or
    (bound-and-true-p zenit--embed-current-file)
-   (let ((file (macroexp-file-name)))
-     (if (stringp file) file))
+   (macroexp-file-name)
    (bound-and-true-p byte-compile-current-file)
    load-file-name
    buffer-file-name   ; for `eval'

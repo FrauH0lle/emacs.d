@@ -4,6 +4,7 @@
 (describe "core/lib/files"
 
   (load! "lib/files" zenit-core-dir)
+  (require 'zenit-modules)
 
   (describe "zenit--resolve-path-forms"
     ;; This is a bit complicated but works

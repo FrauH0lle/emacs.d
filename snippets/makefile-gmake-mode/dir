@@ -1,0 +1,5 @@
+# -*- mode: snippet; require-final-newline: nil -*-
+# name: dir
+# contributor: gbalats
+# --
+\$(dir ${1:\$(${2:paths})})$0

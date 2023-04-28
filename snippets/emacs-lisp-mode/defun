@@ -1,0 +1,4 @@
+# -*- mode: snippet -*-
+# name: defun
+# --
+(defun ${1:name} ($2)`(and % (concat " " (+emacs-snippets-format "%n%s")))`$0)`(+emacs-snippets-newline-or-eol)`

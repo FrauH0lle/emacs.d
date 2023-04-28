@@ -1,0 +1,37 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  setup-emacs:
+    env:
+      TERM: xterm-256color
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Emacs (release snapshot)
+        uses: purcell/setup-emacs@master
+        with:
+          version: release-snapshot
+
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Cache packages
+        uses: actions/cache@v3
+        env:
+          cache-name: cache-emacs-packages
+        with:
+          path: straight
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('straight/versions/*') }}
+
+      - name: Deploy Emacs configuration
+        run: bin/emacs-config deploy --yes
+
+      - name: Test Emacs configuration
+        run: bin/emacs-config test

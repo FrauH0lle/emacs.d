@@ -1,0 +1,199 @@
+#!/usr/bin/env sh
+:; # -*- mode: emacs-lisp; lexical-binding: t -*-
+:; case "$EMACS" in *term*) EMACS=emacs ;; *) EMACS="${EMACS:-emacs}" ;; esac
+:; emacs="$EMACS ${DEBUG:+--debug-init} -q --no-site-file --batch"
+:; tmpdir=`$emacs --eval '(princ (temporary-file-directory))' 2>/dev/null`
+:; [ -z "$tmpdir" ] && { >&2 echo "Error: failed to run Emacs with command '$EMACS'"; >&2 echo; >&2 echo "Are you sure Emacs is installed and in your \$PATH?"; exit 1; }
+:; $emacs --load "$0" -- "$@" || exit=$?
+:; exit $exit
+
+;; The above shebang does the following magic:
+
+;; 1) #!/usr/bin/env sh
+;;
+;;    This shebang line tells the system to execute this script using the sh
+;;    shell found in the system's PATH.
+
+;; 2) :; # -*- mode: emacs-lisp; lexical-binding: t -*-
+;;
+;;    This line sets the Emacs Lisp mode and enables lexical binding. The :;
+;;    part is a shell and Emacs Lisp compatibility trick. In shell, : is a no-op
+;;    command, and ; separates commands. In Emacs Lisp, : is a keyword symbol
+;;    literal, and ; starts a comment.
+
+;; 3) :; case "$EMACS" in *term*) EMACS=emacs ;; *) EMACS="${EMACS:-emacs}" ;; esac
+;;
+;;    This line checks if the EMACS environment variable is set and contains
+;;    "term". If so, it sets EMACS to "emacs". Otherwise, it sets EMACS to its
+;;    current value or "emacs" if not set.
+
+;; 4) :; emacs="$EMACS ${DEBUG:+--debug-init} -q --no-site-file --batch"
+;;
+;;    This line sets up the emacs variable to contain the Emacs command with
+;;    appropriate flags. If the DEBUG environment variable is set, the
+;;    --debug-init flag is added. The -q flag means no initialization file is
+;;    loaded, --no-site-file skips loading site files, and --batch runs Emacs in
+;;    non-interactive mode.
+
+;; 5) :; tmpdir=$emacs --eval '(princ (temporary-file-directory))' 2>/dev/null``
+;;
+;;    This line runs Emacs to get the temporary-file-directory and stores it in
+;;    the tmpdir variable. Errors are redirected to /dev/null.
+
+;; 6) :; [ -z "$tmpdir" ] && { >&2 echo "Error: failed to run Emacs with command '$EMACS'"; >&2 echo; >&2 echo "Are you sure Emacs is installed and in your \$PATH?"; exit 1; }
+;;
+;;    If tmpdir is empty, it prints an error message and exits with status code
+;;    1. Together with the above tmpdir variable, this checks if Emacs is
+;;    installed.
+
+;; 7) :; $emacs --load "$0" -- "$@" || exit=$?
+;;
+;;    This line runs Emacs, loading the script itself ($0) and passing any
+;;    command-line arguments ("$@"). If the command fails, it stores the exit
+;;    status in the exit variable.
+
+;; 8) :; exit $exit
+;;
+;;    Finally, this line exits the script with the exit status stored in the
+;;    exit variable.
+
+
+;; In CLI sessions, prefer correctness over performance.
+(setq load-prefer-newer t)
+
+;; Process command line arguments early
+(defvar zenit-cli--show-help nil
+  "Switches passed to the script.")
+(defvar zenit-cli--cmd-options nil
+  "Options passed to the script.")
+
+;; Remove the -- separator
+(pop argv)
+(when (null argv)
+  (setq zenit-cli--show-help t))
+(while argv
+  (let ((arg (pop argv)))
+    (cond
+     ((or (string= arg "--force")
+          (string= arg "-F"))
+      (setenv "FORCE" "1"))
+     ((or (string= arg "--debug")
+          (string= arg "-D"))
+      (setenv "DEBUG" "1"))
+     ((or (string= arg "--yes")
+          (string= arg "-y"))
+      (setenv "YES" "1"))
+     ((string= arg "deploy")
+      (push arg zenit-cli--cmd-options))
+     ((string= arg "env")
+      (push arg zenit-cli--cmd-options))
+     ((string= arg "sync")
+      (push arg zenit-cli--cmd-options))
+     ((string= arg "refresh")
+      (push arg zenit-cli--cmd-options))
+     ((string= arg "freeze")
+      (push arg zenit-cli--cmd-options))
+     ((string= arg "clean")
+      (push arg zenit-cli--cmd-options))
+     ((string= arg "clean-straight")
+      (push arg zenit-cli--cmd-options))
+     ((string= arg "validate")
+      (push arg zenit-cli--cmd-options))
+     ((string= arg "test")
+      (push arg zenit-cli--cmd-options))
+     ((string= arg "help")
+      (setq zenit-cli--show-help t))
+     (t (message "Unknown argument: %s" arg)
+        (message "Run emacs-config help to show the documentation.")
+        (kill-emacs 1)))))
+
+
+
+;; The core file sets up everything we need
+(condition-case e
+    (let* ((bin-dir (file-name-directory (file-truename load-file-name)))
+           (init-file (expand-file-name "../early-init.el" bin-dir)))
+      (or (and (load init-file nil 'nomessage 'nosuffix)
+               (featurep 'zenit-core))
+          (user-error "Failed to load Emacs from %s" init-file)))
+  ;; Prevent ugly backtraces for trivial errors
+  (user-error (message "Error: %s" (cadr e))
+              (kill-emacs 1)))
+
+;; Abort if the user is using this script as root, unless ~/.emacs.d is owned by
+;; root
+(when (equal 0 (user-real-uid))
+  (unless (equal 0 (file-attribute-user-id (file-attributes zenit-emacs-dir)))
+    (message
+     (concat
+      "Error: this script was executed as root, which is likely not what you want.\n"
+      "If this really *is* what you want, then change the owner of your Emacs\n"
+      "config to root:\n\n"
+      "  chown root:root -R " (abbreviate-file-name zenit-emacs-dir) "\n\n"
+      "Aborting..."))
+    (kill-emacs 1)))
+
+(when zenit-cli--show-help
+  (print-group!
+   (print! "Usage: emacs-config [--SWITCHES] [OPTIONS]\n")
+   (print! (bold "OPTIONS"))
+   (print! "%s\t%s" (bold "deploy") "\tDeploy Emacs configuration")
+   (print! "%s\t%s" (bold "env") "\t\tGenerate an env file")
+   (print! "%s\t%s" (bold "refresh") (concat "\tRefresh configuration:\n"
+                                             "\t\t\t(Re)build packages if necessary and (re)generate autoloads.\n"
+                                             "\t\t\tWith FORCE, rebuild all packages"))
+   (print! "%s\t%s" (bold "sync") (concat "\t\tDeploy Emacs configuration\n"
+                                          "\t\t\tWith FORCE, re-clone and rebuild all packages"))
+   (print! "%s\t%s" (bold "freeze") "\tFreeze package versions")
+   (print! "%s\t%s" (bold "clean") "\t\tClean .elc files")
+   (print! "%s\t%s" (bold "clean-straight") "Delete straight repo and build directories")
+   (print! "%s\t%s" (bold "validate") "\tValidate el-patches")
+   (print! "%s\t%s" (bold "test") "\t\tTest Emacs configuration")
+   (print! "%s\t%s" (bold "help") "\t\tShow this help message")
+   (print! (bold "\nSWITCHES"))
+   (print! "%s\t%s" (bold "--debug/-D") "Switch on DEBUG mode")
+   (print! "%s\t%s" (bold "--force/-D") "Switch on FORCE")
+   (print! "%s\t%s" (bold "--yes/-y") "Answer YES to all prompts"))
+  (kill-emacs 0))
+
+;; Sort and process options
+(let ((option-order '("clean-straight" "clean" "deploy" "env" "sync"
+                      "refresh" "freeze" "validate" "test")))
+  (setq zenit-cli--cmd-options
+        (cl-delete-duplicates
+         (sort zenit-cli--cmd-options
+               (lambda (a b)
+                 (< (cl-position a option-order :test #'equal)
+                    (cl-position b option-order :test #'equal))))
+         :test #'equal))
+
+  (while zenit-cli--cmd-options
+    (let ((option (pop zenit-cli--cmd-options)))
+      (cond
+
+       ((string= option "deploy")
+        (zenit-cli-deploy))
+       ((string= option "env")
+        (zenit-cli-reload-env-file t))
+       ((string= option "sync")
+        (zenit-cli-sync))
+       ((string= option "refresh")
+        (zenit-cli-refresh))
+       ((string= option "freeze")
+        (zenit-cli-freeze-packages))
+       ((string= option "clean")
+        (zenit-cli-clean-compiled-files))
+       ((string= option "clean-straight")
+        (delete-directory (file-truename (expand-file-name (concat zenit-emacs-dir "straight/repos/straight.el"))) t)
+        (delete-directory (file-truename (expand-file-name (concat zenit-emacs-dir "straight/build/straight"))) t)
+        (print! (warn "Now run 'emacs-config refresh' or 'emacs-config sync'")))
+       ((string= option "validate")
+        ;; FIXME 2023-04-28: This needs some work
+        ;; (setq noninteractive nil)
+        ;; (zenit-initialize 'force)
+        ;; (el-patch-validate-all)
+        (print! (warn "Validation currently not working")))
+       ((string= option "test")
+        (zenit-cli-test))))))
+
+(kill-emacs 0)

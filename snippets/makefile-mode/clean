@@ -1,0 +1,8 @@
+# -*- mode: snippet -*-
+# name: clean
+# contributor: gbalats
+# expand-env: ((yas-indent-line 'fixed))
+# --
+clean:
+	${1:rm -r ${2:\$(${3:OUTDIR})}}
+$0

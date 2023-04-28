@@ -1,0 +1,6 @@
+# -*- mode: snippet -*-
+# name: tufte-text-fullwidth
+# --
+#+begin_fullwidth
+$0
+#+end_fullwidth

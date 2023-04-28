@@ -1,0 +1,12 @@
+(("evil" . "00bd29715028b06384435f053a36b6e994f1d1d7")
+ ("evil-args" . "2671071a4a57eaee7cc8c27b9e4b6fc60fd2ccd3")
+ ("evil-collection" . "85743099972bfcc4d7788db70dfe33e864eba090")
+ ("evil-lion" . "a55eb647422342f6b1cf867f797b060b3645d9d8")
+ ("evil-nerd-commenter" . "8c0f23d46a3927b9f83c1c2c4590be53d0b740db")
+ ("evil-numbers" . "7a1b62afc12da2b582bf84d722e7b10ca8b97065")
+ ("evil-snipe" . "c07788c35cf8cd8e652a494322fdc0643e30a89f")
+ ("evil-surround" . "f273821f575ace519066fb106ee45a5b8577475f")
+ ("evil-textobj-anyblock" . "29280cd71a05429364cdceef2ff595ae8afade4d")
+ ("evil-traces" . "290b5323542c46af364ec485c8ec9000040acf90")
+ ("evil-visualstar" . "06c053d8f7381f91c53311b1234872ca96ced752"))
+:gamma

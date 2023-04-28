@@ -1,0 +1,7 @@
+# -*- mode: snippet -*-
+# name: else if
+# key: elif_
+# --
+else if ($1) {
+`yas/selected-text`$0
+}

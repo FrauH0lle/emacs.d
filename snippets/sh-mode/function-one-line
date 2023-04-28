@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: one-line function
+# uuid: f;
+# --
+${1:name}() { `(+emacs-snippets-format "%n%s%n")`$0; }

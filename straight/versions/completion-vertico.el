@@ -1,0 +1,10 @@
+(("Emacs-wgrep" . "edf768732a56840db6879706b64c5773c316d619")
+ ("compat" . "7775c3185764337b8a78c3005aab4a11aa80dfe8")
+ ("consult" . "052399ed05372464b8ed6261b3196de143a8a834")
+ ("consult-dir" . "ed8f0874d26f10f5c5b181ab9f2cf4107df8a0eb")
+ ("consult-flycheck" . "51b1b48e8dad314f9c9d963376f2ea8de94b97f2")
+ ("embark" . "3ffb27a833d326ccf7e375bb9d94ebf4dc37fa77")
+ ("marginalia" . "2633b2dee22261531f960e49106771e679102a98")
+ ("orderless" . "e6784026717a8a6a7dcd0bf31fd3414f148c542e")
+ ("vertico" . "b6b8420d2943e42b88e2a143da29edf76bc223b5"))
+:gamma

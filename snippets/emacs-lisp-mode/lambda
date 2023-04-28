@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: lambda
+# uuid: lambda
+# --
+(lambda ($1) (interactive) `(+emacs-snippets-format "%n%s")`$0)

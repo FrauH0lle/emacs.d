@@ -1,0 +1,4 @@
+# -*- mode: snippet -*-
+# name: references
+# --
+references #${1:100}

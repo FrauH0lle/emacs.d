@@ -1,0 +1,8 @@
+# -*- mode: snippet -*-
+# name: rblock
+# key: rblock
+# condition: t
+# --
+\`\`\`{r}
+$0
+\`\`\`

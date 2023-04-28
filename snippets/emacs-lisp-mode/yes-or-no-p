@@ -1,0 +1,4 @@
+# -*- mode: snippet -*-
+# name: y-or-n-p
+# --
+(yes-or-no-p "$1")

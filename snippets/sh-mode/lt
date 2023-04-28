@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: Less than
+# uuid: <
+# --
+"$1" -lt "$2"

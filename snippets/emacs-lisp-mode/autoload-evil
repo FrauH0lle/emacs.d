@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: autoload evil
+# condition: (+emacs-snippets-without-trigger (bolp))
+# --
+;;;###autoload`(%emacs-lisp-evil-autoload)`$0

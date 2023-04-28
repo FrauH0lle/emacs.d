@@ -1,0 +1,6 @@
+# -*- mode: snippet -*-
+# name: def function
+# group: definitions
+# --
+def ${1:func_name}($2):
+    ${3:`(or % "pass")`}

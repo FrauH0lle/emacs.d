@@ -1,0 +1,34 @@
+# KDE Dolphin
+.directory
+
+# local variables
+/.local/
+
+# eshell
+/eshell/
+
+# local custom file
+/custom.el
+
+# Local config init
+/init.el
+
+# compiled files
+*.elc
+*.lib
+*.fas
+*.dat
+*.eld
+*.yas-compiled-snippets.el
+
+# emacs tempfiles
+auto-save-list
+
+# straight.el package manager
+!/straight
+straight/*
+!straight/versions
+
+# Do not sync local and interactively registered package versions
+straight/versions/local.el
+straight/versions/default.el

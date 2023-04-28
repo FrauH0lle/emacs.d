@@ -1,0 +1,16 @@
+# -*- mode: snippet -*-
+# name: tufte-handout
+# --
+#+title: ${1:Title}
+#+author: ${2:Author}
+#+fullname: ${3:Full name}
+#+publisher: ${4:Publisher}
+#+print-date: ${5:Month Year}
+#+copyright-date: ${6:Year}
+#+web-site: ${7:Website}
+#+margin-note-font: \itshape\footnotesize
+#+latex_class: tufte-handout
+$0
+`(with-temp-buffer
+ (insert-file-contents "~/.emacs.d/snippets/file-templates/org-tufte-handout-template")
+ (buffer-string))`

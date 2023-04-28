@@ -1,0 +1,418 @@
+* Handout                                                            :ignore:
+:PROPERTIES:
+:EXPORT_FILE_NAME: tufte-org-mode-handout
+:MARGIN-NOTE-FONT: \itshape\footnotesize
+:END:
+
+#+name: tl-handout-settings
+#+header: :var marginnote-font=(jk-org-kwd "MARGIN-NOTE-FONT")
+#+header: :results raw :exports results
+#+begin_src emacs-lisp
+(format "\\setmarginnotefont{%s}" marginnote-font)
+#+end_src
+
+\maketitle
+* Section
+** Subsection
+* Footnotes
+* Setup                                                            :noexport:
+** Document source code
+The source code blocks defined below are loaded into the user's
+session using the Emacs =#+eval:= method.  You should look at the code
+closely to convince yourself that none of it is malicious.
+
+*** General purpose LaTeX links
+
+**** Link for command with no options
+The latex link creates a LaTeX command with the path and passes desc
+to it.
+
+It can be used for the =newthought= command, which introduces the
+first few words of the first paragraph in a section,
+e.g.
+#+begin_example
+ [[latex:newthought][First few words]]
+#+end_example
+
+There is also a newthought macro that accomplishes the same thing.
+
+#+name: latex-link
+#+begin_src emacs-lisp
+(org-add-link-type
+"latex" nil
+(lambda (path desc format)
+  (when(eq format 'latex)
+    (format "\\%s{%s}" path desc))))
+#+end_src
+
+**** Link for a command with one option
+The option is placed after a ; in the link description.
+#+name: latex-opt-link
+#+begin_src emacs-lisp
+(org-add-link-type
+ "latex-opt" nil
+ (lambda (path desc format)
+   (when (eq format 'latex)
+     (let* ((desc-list (split-string desc ";"))
+            (opt (nth 1 desc-list))
+            (arg (nth 0 desc-list)))
+       (format "\\%s%s{%s}" path
+               (if (equal "" opt) opt (format "[%s]" opt))
+               arg)))))
+#+end_src
+
+#+results: latex-opt-link
+| lambda | (path desc format) | (when (eq format (quote latex)) (let* ((desc-list (split-string desc ;)) (opt (nth 1 desc-list)) (arg (nth 0 desc-list))) (format \%s%s{%s} path (if (equal  opt) opt (format [%s] opt)) arg))) |
+
+*** Citation links
+:PROPERTIES:
+:ID:       D86EC2AF-4659-4C32-9B7D-B93F46D5FF78
+:END:
+There are many ways to manage citations in Org mode. My preference is
+to manage the bibliography database with [[http://joostkremers.github.io/ebib/][Ebib: a BibTeX database
+manager for Emacs]] and insert citations using a custom Org mode link. I
+find the work flow convenient and the look of the Org mode buffer
+"good enough."
+
+The source code block named =tufte-ebib-setup= defines a cite commands
+that [[http://joostkremers.github.io/ebib/][Ebib]] will use to insert citations in an Org mode buffer. It
+inserts the BibTeX key as the path part of the link and then offers
+the user three or four prompts. The first prompt holds the post-note
+text, typically a page number for a quotation.  I put this first
+because it is the one I use most often.  The second prompt holds the
+pre-note text, which is usually something like "see" or "c.f.".  The
+third prompt is usually a description of the citation, e.g., "Tufte
+1983", that is the part of the link that shows up in the Org mode
+buffer when links are displayed as descriptive links.  In the case of
+=sidecite=, the third prompt takes a LaTeX length that shifts the
+citation up in the margin if the length is negative and down in the
+margin if the length is positive.
+
+
+#+name: tufte-ebib-setup
+#+begin_src emacs-lisp :results silent
+(setq ebib-citation-commands
+      (quote ((org-mode (("footcite" "[[footcite:%K][%A;%A;%D]]")
+                         ("multicite" "[[multicite:%K][%A;%A;%D]]")
+                         ("parencite" "[[parencite:%K][%A;%A;%D]]")
+                         ("textcite" "[[textcite:%K][%A;%A;%D]]")
+                         ("cite" "[[cite:%K][%A;%A;%D]]")
+                         ("sidecite" "[[sidecite:%K][%A;%A;%A;%D]]"))))))
+#+end_src
+
+#+name: tufte-cite-link
+#+begin_src emacs-lisp :results silent
+(org-add-link-type
+ "cite-tufte" 'ebib-open-org-link
+ (lambda (path desc format)
+   (when (eq format 'latex)
+     (format "\\cite[%s\\baselineskip]{%s}"
+             (nth 0 (split-string desc ";"))
+             path))))
+#+end_src
+
+#+name: biblatex-cite-link
+#+begin_src emacs-lisp :results silent :exports none
+(org-add-link-type
+ "cite" 'ebib-open-org-link
+ (lambda (path desc format)
+   (when (eq format 'latex)
+     (let* ((desc-list (split-string desc ";"))
+            (pre (nth 1 desc-list))
+            (post (nth 0 desc-list)))
+       (format "\\cite%s%s{%s}"
+               (if (equal "" pre) pre (format "[%s]" pre))
+               (if (equal "" post) post (format "[%s]" post))
+               path)))))
+#+end_src
+
+#+name: biblatex-parencite-link
+#+begin_src emacs-lisp :results silent :exports none
+(org-add-link-type
+ "parencite" 'ebib-open-org-link
+ (lambda (path desc format)
+   (when (eq format 'latex)
+     (let* ((desc-list (split-string desc ";"))
+            (pre (nth 1 desc-list))
+            (post (nth 0 desc-list)))
+       (format "\\parencite%s%s{%s}"
+               (if (equal "" pre) pre (format "[%s]" pre))
+               (if (equal "" post) post (format "[%s]" post))
+               path)))))
+#+end_src
+
+#+name: biblatex-textcite-link
+#+begin_src emacs-lisp :results silent :exports none
+(org-add-link-type
+ "textcite" 'ebib-open-org-link
+ (lambda (path desc format)
+   (when (eq format 'latex)
+     (let* ((desc-list (split-string desc ";"))
+            (pre (nth 1 desc-list))
+            (post (nth 0 desc-list)))
+       (format "\\textcite%s%s{%s}"
+               (if (equal "" pre) pre (format "[%s]" pre))
+               (if (and (equal "" pre) (equal "" post)) post
+                   (format "[%s]" post))
+               path)))))
+#+end_src
+
+#+name: biblatex-footcite-link
+#+begin_src emacs-lisp :results silent :exports none
+(org-add-link-type
+ "footcite" 'ebib-open-org-link
+ (lambda (path desc format)
+   (when (eq format 'latex)
+     (let* ((desc-list (split-string desc ";"))
+            (pre (nth 1 desc-list))
+            (post (nth 0 desc-list)))
+       (format "\\footcite%s%s{%s}"
+               (if (equal "" pre) pre (format "[%s]" pre))
+               (if (and (equal "" pre) (equal "" post)) post
+                   (format "[%s]" post))
+               path)))))
+#+end_src
+
+#+name: biblatex-multicite-link
+#+begin_src emacs-lisp :results silent :exports none
+(org-add-link-type
+ "multicite" 'ebib-open-org-link
+ (lambda (path desc format)
+   (when (eq format 'latex)
+     (let* ((desc-list (split-string desc ";"))
+            (pre (nth 1 desc-list))
+            (post (nth 0 desc-list)))
+       (format "%s%s{%s}"
+               (if (equal "" pre) pre (format "[%s]" pre))
+               (if (and (equal "" pre) (equal "" post)) post
+                   (format "[%s]" post))
+               path)))))
+#+end_src
+
+#+name: biblatex-sidecite-link
+#+begin_src emacs-lisp :results silent :exports none
+(org-add-link-type
+ "sidecite" 'ebib-open-org-link
+ (lambda (path desc format)
+   (when (eq format 'latex)
+     (let* ((desc-list (split-string desc ";"))
+            (post (nth 0 desc-list))
+            (pre (nth 1 desc-list))
+            (offset (nth 2 desc-list)))
+       (format "\\sidecite%s%s%s{%s}"
+               (if (equal "" offset) offset (format "<%s>" offset))
+               (if (equal "" pre) pre (format "[%s]" pre))
+               (if (and (equal "" pre) (equal "" post)) post (format "[%s]" post))
+               path)))))
+#+end_src
+
+<<latex-filter-footcites>>
+
+#+name: latex-filter-footcites
+#+begin_src emacs-lisp :results silent
+  (defun tsd-latex-filter-footcites (text backend info)
+    "Replace footcites placeholders in Beamer/LaTeX export."
+    (when (org-export-derived-backend-p backend 'latex)
+      (replace-regexp-in-string "ƒ" "\\footcites" text nil t)))
+  (add-to-list 'org-export-filter-plain-text-functions
+               'tsd-latex-filter-footcites)
+  (add-to-list 'org-export-filter-headline-functions
+               'tsd-latex-filter-footcites)
+#+end_src
+
+*** Tufte handout class
+:PROPERTIES:
+:ID:       9F2201A7-4622-4611-AACC-5010B06BBD53
+:END:
+#+name: tufte-handout
+#+begin_src emacs-lisp :results silent
+;; tufte-handout class for writing classy handouts and papers
+(add-to-list 'org-latex-classes
+'("tufte-handout"
+"\\documentclass[a4paper,twoside,nobib]{tufte-handout}
+   [NO-DEFAULT-PACKAGES]"
+("\\section{%s}" . "\\section*{%s}")
+("\\subsection{%s}" . "\\subsection*{%s}")))
+#+end_src
+
+
+*** Tufte book class
+:PROPERTIES:
+:ID:       F50B84E7-0E99-4867-A4E7-0AD4AEA3312C
+:END:
+#+name: tufte-book
+#+begin_src emacs-lisp :results silent
+(add-to-list 'org-latex-classes
+'("tufte-book"
+"\\documentclass[a4paper,twoside,nobib]{tufte-book}
+  [NO-DEFAULT-PACKAGES]"
+("\\part{%s}" . "\\part*{%s}")
+("\\chapter{%s}" . "\\chapter*{%s}")
+("\\section{%s}" . "\\section*{%s}")
+("\\subsection{%s}" . "\\subsection*{%s}")
+("\\paragraph{%s}" . "\\paragraph*{%s}")))
+#+end_src
+
+*** Nicolas Goaziou's filter for non-breaking spaces
+
+You may add _ to "pre" part of `org-emphasis-regexp-components' in
+order to typeset constructs such as /Genus/ cf. /species/.
+
+This filter looks for " ", which is replaced by "~", the character for
+non-breaking space.
+
+Make the non-breaking space with =alt-space=.
+
+#+name: ngz-nbsp
+#+begin_src emacs-lisp :results silent
+(defun ngz-latex-filter-nobreaks (text backend info)
+  "Ensure \"_\" are properly handled in Beamer/LaTeX export."
+  (when (org-export-derived-backend-p backend 'latex)
+    (replace-regexp-in-string " " "~" text)))
+(add-to-list 'org-export-filter-plain-text-functions
+             'ngz-latex-filter-nobreaks)
+#+end_src
+
+*** User Entities
+The following source code block sets up user entities that are used
+frequently in my work. I use the various =.*macron= commands to typeset
+Hawaiian language words with what is known in Hawaiian as a
+/kahak\omacron{}/.
+
+#+name: user-entities
+#+begin_src emacs-lisp
+  (add-to-list 'org-entities-user '("amacron" "\\={a}" nil "&#0257" "a" "a" "ā"))
+  (add-to-list 'org-entities-user '("emacron" "\\={e}" nil "&#0275" "e" "e" "ē"))
+  (add-to-list 'org-entities-user '("imacron" "\\={\\i}" nil "&#0299" "i" "i" "ī"))
+  (add-to-list 'org-entities-user '("omacron" "\\={o}" nil "&#0333" "o" "o" "ō"))
+  (add-to-list 'org-entities-user '("umacron" "\\={u}" nil "&#0363" "u" "u" "ū"))
+  (add-to-list 'org-entities-user '("Amacron" "\\={A}" nil "&#0256" "A" "A" "Ā"))
+  (add-to-list 'org-entities-user '("Emacron" "\\={E}" nil "&#0274" "E" "E" "Ē"))
+  (add-to-list 'org-entities-user '("Imacron" "\\={I}" nil "&#0298" "I" "I" "Ī"))
+  (add-to-list 'org-entities-user '("Omacron" "\\={O}" nil "&#0332" "O" "O" "Ō"))
+  (add-to-list 'org-entities-user '("Umacron" "\\={U}" nil "&#0362" "U" "U" "Ū"))
+#+end_src
+
+*** PDF process
+
+#+name: pdf-process-bibtex
+#+header: :results silent
+#+begin_src emacs-lisp
+  (setq org-latex-pdf-process
+        '("pdflatex -interaction nonstopmode -output-directory %o %f"
+          "bibtex %b"
+          "pdflatex -interaction nonstopmode -output-directory %o %f"
+          "pdflatex -interaction nonstopmode -output-directory %o %f"))
+#+end_src
+
+#+name: pdf-process-biber
+#+header: :results silent
+#+begin_src emacs-lisp
+  (setq org-latex-pdf-process
+        '("pdflatex -interaction nonstopmode -output-directory %o %f"
+          "biber %b"
+          "pdflatex -interaction nonstopmode -output-directory %o %f"
+          "pdflatex -interaction nonstopmode -output-directory %o %f"))
+#+end_src
+
+*** Access keyword values
+
+This is taken from [[http://jkitchin.github.io/blog/2013/05/05/Getting-keyword-options-in-org-files/][John Kitchin's blog]].  It has been modified so
+=org-element-map= returns node properties in addition to keywords. 
+
+#+name: jk-keywords
+#+header: :results silent
+#+begin_src emacs-lisp
+(defun jk-org-kwds ()
+  "parse the buffer and return a cons list of (property . value)
+from lines like: #+PROPERTY: value"
+  (org-element-map (org-element-parse-buffer 'element) '(keyword node-property)
+                   (lambda (keyword) (cons (org-element-property :key keyword)
+                                           (org-element-property :value keyword)))))
+
+(defun jk-org-kwd (KEYWORD)
+  "get the value of a KEYWORD in the form of #+KEYWORD: value"
+  (or (cdr (assoc KEYWORD (jk-org-kwds))) ""))
+#+end_src
+
+** Configuration
+#+OPTIONS: ':nil *:t -:t ::t <:t H:5 \n:nil ^:{} arch:headline
+#+OPTIONS: author:t c:nil creator:nil d:(not "LOGBOOK") date:t e:t
+#+OPTIONS: email:nil f:t inline:t num:t p:nil pri:nil prop:nil stat:nil
+#+OPTIONS: tags:t tasks:nil tex:t timestamp:nil title:t toc:nil todo:t |:t
+#+LANGUAGE: en
+#+SELECT_TAGS: export
+#+EXCLUDE_TAGS: noexport
+#+STARTUP: noinlineimages
+#+STARTUP: entitiespretty
+#+MACRO: newthought \newthought{$1}
+#+MACRO: sidenote \sidenote[$2][$3]{$1}
+#+MACRO: marginnote \marginnote[$2]{$1}
+#+MACRO: tl Tufte-LaTeX
+#+LATEX_HEADER: \usepackage{etex}
+#+LATEX_HEADER: \reserveinserts{36}
+#+LATEX_HEADER: \usepackage[maxfloats=48]{morefloats}
+#+LATEX_HEADER: \usepackage[style=verbose-trad1, backend=bibtex]{biblatex}
+#+LATEX_HEADER: \addbibresource{local.bib}
+#+LATEX_HEADER: \usepackage{booktabs,graphicx,microtype,hyphenat,marginfix,amsmath}
+#+LATEX_HEADER: \titleformat{\part}[display]{\relax\itshape\huge}{}{0pt}{\huge\rmfamily\itshape}[]
+#+LATEX_HEADER: \usepackage{xparse}
+#+LATEX_HEADER: \usepackage{xpatch}
+#+LATEX_HEADER: \makeatletter
+#+LATEX_HEADER: \xpatchcmd{\@footnotetext}%
+#+LATEX_HEADER:       {\color@begingroup}
+#+LATEX_HEADER:       {\color@begingroup\toggletrue{blx@footnote}}
+#+LATEX_HEADER:       {}
+#+LATEX_HEADER:       {}
+#+LATEX_HEADER: \makeatother
+#+LATEX_HEADER: 
+#+LATEX_HEADER: \DeclareCiteCommand{\sidecitehelper}
+#+LATEX_HEADER:   {\usebibmacro{prenote}}
+#+LATEX_HEADER:   {\usebibmacro{citeindex}%
+#+LATEX_HEADER:    \usebibmacro{cite}}
+#+LATEX_HEADER:   {\multicitedelim}
+#+LATEX_HEADER:   {\usebibmacro{cite:postnote}}
+#+LATEX_HEADER: 
+#+LATEX_HEADER: \ExplSyntaxOn
+#+LATEX_HEADER: \NewDocumentCommand\sidecite{D<>{}O{}om}{%
+#+LATEX_HEADER:   \iftoggle{blx@footnote}
+#+LATEX_HEADER:     {\cs_set_protected_nopar:Npn \__sct_wrapper:nn ##1 ##2 {\mkbibparens{##2}}}
+#+LATEX_HEADER:     {\cs_set_protected_nopar:Npn \__sct_wrapper:nn ##1 ##2 {\sidenote[][##1]{##2}}}
+#+LATEX_HEADER:     {\IfNoValueTF{#3}
+#+LATEX_HEADER:       {\__sct_wrapper:nn{#1}{\sidecitehelper[#2]{#4}}}
+#+LATEX_HEADER:       {\__sct_wrapper:nn{#1}{\sidecitehelper[#2][#3]{#4}}}}
+#+LATEX_HEADER: }
+#+LATEX_HEADER: \ExplSyntaxOff
+
+
+** Local variables
+
+# Local Variables: 
+# eval: (require 'ox-tufte-latex)
+# eval: (require 'ox-extra)
+# eval: (require 'ox-gfm)
+# eval: (ox-extras-activate '(ignore-headlines))
+# eval: (org-sbe "user-entities")
+# eval: (org-sbe "tufte-book")
+# eval: (org-sbe "tufte-handout")
+# eval: (org-sbe "tufte-ebib-setup")
+# eval: (org-sbe "biblatex-footcite-link") 
+# eval: (org-sbe "biblatex-multicite-link") 
+# eval: (org-sbe "biblatex-sidecite-link")
+# eval: (org-sbe "biblatex-parencite-link")
+# eval: (org-sbe "biblatex-textcite-link")
+# eval: (org-sbe "biblatex-cite-link")
+# eval: (org-sbe "latex-filter-footcites")
+# eval: (org-sbe "ngz-nbsp")
+# eval: (org-sbe "pdf-process-bibtex")
+# eval: (org-sbe "jk-keywords")
+# eval: (org-sbe "latex-opt-link")
+# eval: (org-sbe "latex-link")
+# org-fontify-quote-and-verse-blocks: t
+# org-hide-macro-markers: t
+# org-hide-emphasis-markers: t 
+# org-latex-title-command: ""
+# org-latex-caption-above: nil
+# org-inline-image-overlays: nil
+# End:
+

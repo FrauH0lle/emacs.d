@@ -1,0 +1,11 @@
+# -*- mode: snippet -*-
+# name: Snippet header
+# key:#
+# uuid: #
+# --
+# -*- mode: snippet -*-
+${1:# contributor: `(user-full-name)`
+}# name: $2
+# condition: t}
+# --
+$0

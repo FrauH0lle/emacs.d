@@ -1,0 +1,7 @@
+# -*- mode: snippet -*-
+# name: export
+# uuid: export
+# --
+#+begin_export ${1:type}
+`%`$0
+#+end_export

@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: autoload cookie
+# condition: (+emacs-snippets-without-trigger (bolp))
+# --
+;;;###autoload$0

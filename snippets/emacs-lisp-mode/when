@@ -1,0 +1,4 @@
+# -*- mode: snippet -*-
+# name: when
+# --
+(when ${1:t} `(+emacs-snippets-format "%n%s")`$0)`(+emacs-snippets-newline-or-eol)`

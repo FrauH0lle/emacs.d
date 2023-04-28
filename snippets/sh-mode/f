@@ -1,0 +1,7 @@
+# -*- mode: snippet -*-
+# name: short function
+# uuid: f
+# --
+${1:name}() {
+    `%`$0
+}

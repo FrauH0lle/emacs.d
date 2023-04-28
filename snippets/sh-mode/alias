@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: alias
+# uuid: alias
+# --
+alias ${1:cmd}=$0

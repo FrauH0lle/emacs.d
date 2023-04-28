@@ -1,0 +1,5 @@
+# -*- mode: snippet; require-final-newline: nil -*-
+# name: abspath
+# contributor: gbalats
+# --
+\$(abspath ${1:\$(${2:paths})})$0

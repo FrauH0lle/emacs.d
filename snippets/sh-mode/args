@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: args
+# uuid: args
+# --
+[ $# -lt ${1:2} ]

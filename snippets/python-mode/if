@@ -1,0 +1,6 @@
+# -*- mode: snippet -*-
+# name: if
+# group: control structure
+# --
+if ${1:cond}:
+    ${2:`(or % "pass")`}

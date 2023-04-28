@@ -1,0 +1,5 @@
+# -*- mode: snippet -*-
+# name: inline function
+# key: afunc_
+# --
+function(${1:x}) ${3:`"{"`$0`"}"`}

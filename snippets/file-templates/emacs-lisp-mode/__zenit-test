@@ -1,0 +1,4 @@
+;; -*- lexical-binding: t; no-byte-compile: t; -*-
+;; `(+file-templates-get-short-path)`
+
+$0

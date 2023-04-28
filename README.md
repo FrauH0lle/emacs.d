@@ -31,3 +31,12 @@ and Doom Emacs.
 * [ripgrep](https://github.com/BurntSushi/ripgrep)
 * [fd (optional)](https://github.com/sharkdp/fd)
 
+## Install
+
+``` sh
+# Clone Emacs configuration
+git clone https://github.com/FrauH0lle/emacs.d.git ~/.emacs.d
+
+# Deploy Emacs configuration
+~/.emacs.d/bin/emacs-config deploy
+```

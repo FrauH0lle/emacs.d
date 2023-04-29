@@ -14,21 +14,20 @@
           (zenit-glob zenit-emacs-dir "projectile-bookmarks.eld")))
         (artifact-dirs
          (list
-          (concat zenit-emacs-dir "eln-cache"))))
+          (zenit-glob zenit-emacs-dir "eln-cache"))))
     (dolist (f artifact-files)
-      (when (file-exists-p f)
+      (when (and f (file-exists-p f))
         (delete-file f)))
     (dolist (d artifact-dirs)
-      (when (file-exists-p d)
+      (when (and d (file-exists-p d))
         (delete-directory d t)))))
 
-(defun zenit-cli-test ()
+(defun zenit-cli-test (&optional files)
   (require 'ansi-color)
   (print! (start "Running unit tests..."))
   (print-group!
-   (print! (start "Running core tests..."))
    (with-temp-buffer
-     (let ((files (zenit-glob zenit-core-dir "test/test-*.el"))
+     (let ((files (or files (zenit-glob zenit-core-dir "test/test-*.el")))
            read-files)
        (dolist (file files)
          (cl-destructuring-bind (_status . output)

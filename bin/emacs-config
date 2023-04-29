@@ -63,9 +63,11 @@
 
 ;; Process command line arguments early
 (defvar zenit-cli--show-help nil
-  "Switches passed to the script.")
+  "If t, show help.")
 (defvar zenit-cli--cmd-options nil
   "Options passed to the script.")
+(defvar zenit-cli--files nil
+  "Which files to pass to the CLI.")
 
 ;; Remove the -- separator
 (pop argv)
@@ -83,6 +85,11 @@
      ((or (string= arg "--yes")
           (string= arg "-y"))
       (setenv "YES" "1"))
+     ((or (string= arg "--files")
+          (string= arg "-f"))
+      (when argv
+        (let ((files (pop argv)))
+          (setq zenit-cli--files (split-string files ",")))))
      ((string= arg "deploy")
       (push arg zenit-cli--cmd-options))
      ((string= arg "env")
@@ -106,7 +113,6 @@
      (t (message "Unknown argument: %s" arg)
         (message "Run emacs-config help to show the documentation.")
         (kill-emacs 1)))))
-
 
 
 ;; The core file sets up everything we need
@@ -148,9 +154,11 @@
    (print! "%s\t%s" (bold "clean") "\t\tClean .elc files")
    (print! "%s\t%s" (bold "clean-straight") "Delete straight repo and build directories")
    (print! "%s\t%s" (bold "validate") "\tValidate el-patches")
-   (print! "%s\t%s" (bold "test") "\t\tTest Emacs configuration")
+   (print! "%s\t%s" (bold "test") (concat "\t\tTest Emacs configuration\n"
+                                          "\t\t\tYou can specify the unit test files with --files"))
    (print! "%s\t%s" (bold "help") "\t\tShow this help message")
    (print! (bold "\nSWITCHES"))
+   (print! "%s\t%s" (bold "--files/-f") "Use these files")
    (print! "%s\t%s" (bold "--debug/-D") "Switch on DEBUG mode")
    (print! "%s\t%s" (bold "--force/-D") "Switch on FORCE")
    (print! "%s\t%s" (bold "--yes/-y") "Answer YES to all prompts"))
@@ -170,7 +178,6 @@
   (while zenit-cli--cmd-options
     (let ((option (pop zenit-cli--cmd-options)))
       (cond
-
        ((string= option "deploy")
         (zenit-cli-deploy))
        ((string= option "env")
@@ -194,6 +201,6 @@
         ;; (el-patch-validate-all)
         (print! (warn "Validation currently not working")))
        ((string= option "test")
-        (zenit-cli-test))))))
+        (zenit-cli-test zenit-cli--files))))))
 
 (kill-emacs 0)

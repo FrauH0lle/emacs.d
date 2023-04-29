@@ -22,6 +22,18 @@
   "If non-nil, suppress `zenit-log' output.")
 
 (defun zenit--log (text &rest args)
+  "Log a message with the given TEXT and ARGS.
+
+The message will be formatted with a timestamp, and optionally
+`zenit-module-context'. The message will be logged only if
+`init-file-debug' is non-nil.
+
+If the TEXT starts with a colon, it is considered an absolute
+context and the current `zenit-module-context' will not be used.
+In this case, the colon will be removed from the logged message.
+
+Any additional arguments to be used for formatting the message
+text can be passed via ARGS."
   (let ((inhibit-message (not init-file-debug))
         (absolute? (string-prefix-p ":" text)))
     (apply #'message
@@ -64,6 +76,22 @@ is quoted, the list is returned as-is."
                else collect (intern (format "%s-hook" (symbol-name hook)))))))
 
 (defun zenit--setq-hook-fns (hooks rest &optional singles)
+  "Generate a list of hook setting functions for the given HOOKS and
+REST.
+
+HOOKS can be a list of hooks or a single hook symbol. REST is a
+list of variable-value pairs or a list of variables if SINGLES is
+non-nil. SINGLES indicates whether REST contains only variable
+names. If non-nil, the generated functions will set the variables
+to nil when the hooks are run. If nil, the generated functions
+will set the variables to the corresponding values provided in
+REST.
+
+This function creates a list of functions that set the specified
+variables to their corresponding values when the hooks are run.
+The generated functions have the format
+'zenit--setq-VAR-for-MODE-h' where VAR is the variable name and
+MODE is derived from the hook name."
   (unless (or singles (= 0 (% (length rest) 2)))
     (signal 'wrong-number-of-arguments (list #'evenp (length rest))))
   (cl-loop with vars = (let ((args rest)

@@ -133,9 +133,7 @@
     (it "loads an existing file without errors"
       (spy-on 'load)
       (with-temp-buffer
-        (write-file "temp-test.el")
-        (zenit-load "temp-test")
-        (delete-file "temp-test.el"))
+        (zenit-load (make-temp-file "test")))
       (expect 'load :to-have-been-called))
 
     ;; NOTE 2023-04-30: `debug-on-error' needs to be nil for

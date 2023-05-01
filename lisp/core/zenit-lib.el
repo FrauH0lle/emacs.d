@@ -8,6 +8,7 @@
 
 (define-error 'zenit-error "Error in Emacs")
 (define-error 'zenit-nosync-error "Config could not be initialized; did you remember to run 'make refresh' in the shell?" 'zenit-error)
+(define-error 'zenit-core-error "Unexpected error in core directory" 'zenit-error)
 (define-error 'zenit-hook-error "Error in a startup hook" 'zenit-error)
 (define-error 'zenit-autoload-error "Error in an autoloads file" 'zenit-error)
 (define-error 'zenit-module-error "Error in a module" 'zenit-error)
@@ -177,7 +178,7 @@ If NOERROR, don't throw an error if PATH doesn't exist."
      (signal (car e) (cdr e)))
     (error
      (setq path (locate-file path load-path (get-load-suffixes)))
-     (signal (cond ((not (and path (featurep 'zenit)))
+     (signal (cond ((not (and path (featurep 'zenit-core)))
                     'error)
                    ((file-in-directory-p path (expand-file-name "cli" zenit-core-dir))
                     'zenit-cli-error)
@@ -190,7 +191,8 @@ If NOERROR, don't throw an error if PATH doesn't exist."
                    ('zenit-error))
              (list path e)))))
 
-(defvar zenit--embed-current-file nil)
+(defvar zenit--embed-current-file nil
+  "Stores the filename of the file to be embedded.")
 (defmacro zenit-embed (path &optional noerror)
   "Embed file contents from PATH when byte-compiling.
 
@@ -252,8 +254,8 @@ Meant to be used with `run-hook-wrapped'."
   nil)
 
 (defun zenit-run-hooks (&rest hooks)
-  "Run HOOKS (a list of hook variable symbols) with better error handling.
-Is used as advice to replace `run-hooks'."
+  "Run HOOKS (a list of hook variable symbols) with better error
+handling. Is used as advice to replace `run-hooks'."
   (dolist (hook hooks)
     (condition-case-unless-debug e
         (let ((zenit--hook hook))
@@ -619,7 +621,8 @@ function/macro definitions."
             (`(after! (:and ,@package) ,@body))))))
 
 (defmacro load! (filename &optional path noerror)
-  "Load a file relative to the current executing file (`load-file-name').
+  "Load a file relative to the current executing
+file (`load-file-name').
 
 FILENAME is either a file path string or a form that should
 evaluate to such a string at run time. PATH is where to look for
@@ -628,7 +631,8 @@ the lookup is relative to either `load-file-name',
 `byte-compile-current-file' or `buffer-file-name' (checked in
 that order).
 
-If NOERROR is non-nil, don't throw an error if the file doesn't exist."
+If NOERROR is non-nil, don't throw an error if the file doesn't
+exist."
   `(zenit-load
     (file-name-concat ,(or path `(dir!)) ,filename)
     ,noerror))
@@ -688,7 +692,8 @@ See also `use-package!'."
                '(,@hooks-or-functions)))))))
 
 (defmacro defer-feature! (feature &rest fns)
-  "Pretend FEATURE hasn't been loaded yet, until FEATURE-hook or FN runs.
+  "Pretend FEATURE hasn't been loaded yet, until FEATURE-hook or FN
+runs.
 
 Some packages (like `elisp-mode' and `lisp-mode') are loaded
 immediately at startup, which will prematurely trigger

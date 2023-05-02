@@ -604,4 +604,39 @@
         (add-load-path! temp-dir)
         (add-load-path! temp-dir)
         (expect (length (cl-remove-if-not (lambda (path) (equal path temp-dir)) load-path))
-                :to-be 1)))))
+                :to-be 1))))
+
+
+  (describe "after!"
+    (it "expands to an `eval-after-load' form for a single package"
+      (expect '(after! test-package (test-fn))
+              :to-expand-into
+              '(progn (with-eval-after-load 'test-package (test-fn)))))
+
+    (it "expands to multiple `eval-after-load' forms for an :or/:any package list"
+      (expect '(after! (:or test-package-1 test-package-2) (test-fn))
+              :to-expand-all-into
+              '(progn
+                 (progn (eval-after-load 'test-package-1 #'(lambda nil (test-fn))))
+                 (progn (eval-after-load 'test-package-2 #'(lambda nil (test-fn)))))))
+
+    (it "expands to a nested `eval-after-load' form for an :and/:all package list"
+      (expect '(after! (:and test-package-1 test-package-2) (test-fn))
+              :to-expand-all-into
+              '(progn
+                 (eval-after-load 'test-package-1
+                   #'(lambda nil (progn (eval-after-load 'test-package-2 #'(lambda nil (test-fn)))))))))
+
+    (it "expands to a nested `eval-after-load' form for a complex package list"
+      (expect '(after! (:and test-package-1 (:or test-package-2 test-package-3)) (test-fn))
+              :to-expand-all-into
+              '(progn
+                 (eval-after-load 'test-package-1
+                   #'(lambda nil (progn
+                                   (progn (eval-after-load 'test-package-2 #'(lambda nil (test-fn))))
+                                   (progn (eval-after-load 'test-package-3 #'(lambda nil (test-fn))))))))))
+
+    (it "expands to nil if package is in zenit-disabled-packages"
+      (defvar zenit-disabled-packages ())
+      (cl-pushnew 'test-package zenit-disabled-packages)
+      (expect '(after! test-package (test-fn)) :to-expand-into nil))))

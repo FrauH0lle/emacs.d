@@ -23,6 +23,16 @@
         (cons nil (format "Expected `%S' to not expand to `%S', but got `%S' instead"
                           form expected expanded))))))
 
+(buttercup-define-matcher :to-expand-all-into (form expected)
+  (cl-destructuring-bind (form expected)
+      (mapcar #'funcall (list form expected))
+    (let ((expanded (macroexpand-all form)))
+      (if (equal expanded expected)
+          (cons t (format "Expected `%S' to not expand to `%S'"
+                          form expected))
+        (cons nil (format "Expected `%S' to not expand to `%S', but got `%S' instead"
+                          form expected expanded))))))
+
 (buttercup-define-matcher :to-output (form &optional expected-output)
   (let ((expected-output (and (functionp expected-output)
                               (funcall expected-output)))

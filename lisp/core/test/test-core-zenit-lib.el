@@ -321,4 +321,287 @@
                :around #'test-letf-advice-func
                (eval "advised"))
         (expect (test-letf-advice-func) :to-equal "advised"))
-      (expect (test-letf-advice-func) :to-equal "original"))))
+      (expect (test-letf-advice-func) :to-equal "original")))
+
+
+  (describe "quiet! macro"
+    (it "silences message output"
+      (spy-on 'message :and-call-through)
+      (quiet! (message "This message should be silenced"))
+      (expect 'message :not :to-have-been-called-with "This message should be silenced"))
+
+    (it "silences load output"
+      (spy-on 'load :and-call-through)
+      (let ((test-file (make-temp-file "test-load")))
+        (quiet! (load test-file 'noerror))
+        (expect 'load :to-have-been-called-with test-file 'noerror t nil nil)))
+
+    (it "silences write-region output"
+      (spy-on 'write-region :and-call-through)
+      (let ((test-file (make-temp-file "test-write-region")))
+        (quiet! (write-region "This text should be written" nil test-file))
+        (expect 'write-region :to-have-been-called-with
+                "This text should be written" nil test-file nil 'no-message nil nil)))
+
+    (it "does not silence output when init-file-debug is non-nil"
+      (let ((init-file-debug t))
+        (spy-on 'message :and-call-through)
+        (quiet! (message "This message should not be silenced"))
+        (expect 'message :to-have-been-called-with "This message should not be silenced"))))
+
+
+  (describe "lambda! macro"
+    (it "creates a lambda function with a simple argument list"
+      (let ((simple-fn (lambda! (a b) (+ a b))))
+        (expect (funcall simple-fn 1 2) :to-equal 3)))
+
+    (it "creates a lambda function with &optional arguments"
+      (let ((optional-fn (lambda! (a &optional b) (list a b))))
+        (expect (funcall optional-fn 1) :to-equal '(1 nil))
+        (expect (funcall optional-fn 1 2) :to-equal '(1 2))))
+
+    (it "creates a lambda function with &rest arguments"
+      (let ((rest-fn (lambda! (a &rest b) (append (list a) b))))
+        (expect (funcall rest-fn 1 2 3 4) :to-equal '(1 2 3 4))))
+
+    (it "creates a lambda function with &key arguments and adds &allow-other-keys implicitly"
+      (let ((key-fn (lambda! (a &key b) (list a b))))
+        (expect (funcall key-fn 1 :b 2) :to-equal '(1 2))
+        (expect (funcall key-fn 1 :b 2 :c 3) :to-equal '(1 2)))))
+
+
+  (describe "zenit--fn-crawl"
+    (it "populates ARGS array with special symbols found in DATA"
+      (let ((data '(a b %* c (% d) e (f %)))
+            (args (make-vector 2 nil)))
+        (zenit--fn-crawl data args)
+        (expect (aref args 0) :to-be '%*)
+        (expect (aref args 1) :to-be '%)))
+
+    (it "handles nested structures"
+      (let ((data '((a b) %* (c (% d)) (e (f %))))
+            (args (make-vector 2 nil)))
+        (zenit--fn-crawl data args)
+        (expect (aref args 0) :to-be '%*)
+        (expect (aref args 1) :to-be '%)))
+
+    (it "handles vector structures"
+      (let ((data ['a 'b '%* '(c '%) 'e '(f '%)])
+            (args (make-vector 2 nil)))
+        (zenit--fn-crawl data args)
+        (expect (aref args 0) :to-be '%*)
+        (expect (aref args 1) :to-be '%)))
+
+    (it "raises an error when both %% and %%1 are found in DATA"
+      (let ((data '(a b %* c (% d) e %1 (f %) g %%))
+            (args (make-vector 2 nil)))
+        (expect (zenit--fn-crawl data args) :to-throw))))
+
+
+  (describe "fn!"
+    (it "creates a lambda with implicit, positional arguments"
+      (let ((f (fn! (+ %1 %2))))
+        (expect (funcall f 3 4) :to-equal 7)))
+
+    (it "handles missing arguments with placeholder symbols"
+      (let ((f (fn! (if %1 %3))))
+        (expect (funcall f 1 nil 2) :to-equal 2)))
+
+    (it "supports shorthand '%' for the first positional argument"
+      (let ((f (fn! (+ % %2))))
+        (expect (funcall f 5 6) :to-equal 11)))
+
+    (it "supports '&rest' arguments with '%*'"
+      (let ((f (fn! (car (cdr %*)))))
+        (expect (funcall f 1 2 3 4 5) :to-equal 2)))
+
+    (it "handles nested structures in macro arguments"
+      (let ((f (fn! (if %1 (list %2 %3) (list %3 %2)))))
+        (expect (funcall f t 2 3) :to-equal '(2 3))
+        (expect (funcall f nil 2 3) :to-equal '(3 2))))
+
+    (it "works with higher-order functions"
+      (let ((f (fn! (* %1 %2)))
+            (g (fn! (+ %1 (funcall %2 3 4)))))
+        (expect (funcall g 1 f) :to-equal 13))))
+
+
+  (describe "cmd!"
+    (it "creates a command with no arguments"
+      (let ((command (cmd! (message "Hello, world!"))))
+        (expect (commandp command) :to-be t)))
+
+    (it "executes the command body when called interactively"
+      (spy-on 'message)
+      (let ((command (cmd! (message "Hello, world!"))))
+        (call-interactively command))
+      (expect 'message :to-have-been-called-with "Hello, world!"))
+
+    (it "ignores extra arguments when called with apply"
+      (spy-on 'message)
+      (let ((command (cmd! (message "Hello, world!"))))
+        (apply command '(1 2 3)))
+      (expect 'message :to-have-been-called-with "Hello, world!")))
+
+
+  (describe "cmd!!"
+    (it "creates a command that calls another command interactively"
+      (spy-on 'message)
+      (let ((command (cmd!! #'message nil "Hello, world!")))
+        (expect (commandp command) :to-be t)
+        (call-interactively command))
+      (expect 'message :to-have-been-called-with "Hello, world!"))
+
+    (it "creates a command that calls another command with arguments"
+      (spy-on 'message)
+      (let ((command (cmd!! #'message nil "Hello, %s!" "world")))
+        (call-interactively command))
+      (expect 'message :to-have-been-called-with "Hello, %s!" "world"))
+
+    (it "creates a command that overrides current-prefix-arg"
+      (spy-on 'message)
+      (let ((command (cmd!! #'message 4 "Hello, world!")))
+        (with-temp-buffer
+          (funcall-interactively command t)))
+      (expect 'message :to-have-been-called-with "Hello, world!")))
+
+
+  (describe "appendq!"
+    (it "appends lists to a symbol"
+      (let ((my-list '(1 2 3)))
+        (appendq! my-list '(4 5) '(6 7 8))
+        (expect my-list :to-equal '(1 2 3 4 5 6 7 8))))
+
+    (it "appends an empty list without changes"
+      (let ((my-list '(1 2 3)))
+        (appendq! my-list)
+        (expect my-list :to-equal '(1 2 3))))
+
+    (it "appends lists with different types of elements"
+      (let ((my-list '(1 "two" :three)))
+        (appendq! my-list '(:four "five" 6) '(t nil))
+        (expect my-list :to-equal '(1 "two" :three :four "five" 6 t nil))))
+
+    (it "works with an empty initial list"
+      (let ((my-list '()))
+        (appendq! my-list '(1 2 3) '(4 5 6))
+        (expect my-list :to-equal '(1 2 3 4 5 6)))))
+
+
+  (describe "setq!"
+    (it "sets a variable's value"
+      (setq! my-test-var 42)
+      (expect my-test-var :to-equal 42))
+
+    (it "sets multiple variables at once"
+      (setq! my-test-var-1 "hello" my-test-var-2 "world")
+      (expect my-test-var-1 :to-equal "hello")
+      (expect my-test-var-2 :to-equal "world"))
+
+    (it "calls custom setter when available"
+      (let ((custom-setter-called nil))
+        (defcustom my-custom-var nil
+          "Test custom variable"
+          :type 'integer
+          :set (lambda (sym val)
+                 (setq custom-setter-called t)
+                 (set-default sym val)))
+        (setq! my-custom-var 5)
+        (expect custom-setter-called :to-be-truthy))))
+
+
+  (describe "delq!"
+    (it "removes an element from a list in-place"
+      (let ((my-list '(1 2 3 4)))
+        (delq! 3 my-list)
+        (expect my-list :to-equal '(1 2 4))))
+
+    (it "removes an element from a list with duplicates"
+      (let ((my-list '(1 2 3 2 4)))
+        (delq! 2 my-list)
+        (expect my-list :to-equal '(1 3 4))))
+
+    (it "removes an element from an alist in-place using a custom fetcher"
+      (let ((my-alist '((a . 1) (b . 2) (c . 3) (d . 4))))
+        (delq! 'b my-alist #'assq)
+        (expect my-alist :to-equal '((a . 1) (c . 3) (d . 4)))))
+
+    (it "doesn't modify the list when the element is not found"
+      (let ((my-list '(1 2 3 4)))
+        (delq! 5 my-list)
+        (expect my-list :to-equal '(1 2 3 4)))))
+
+
+  (describe "pushnew!"
+    (it "pushes unique values to a list in-place"
+      (let ((my-list '(1 2 3)))
+        (pushnew! my-list 4 5)
+        (expect my-list :to-equal '(5 4 1 2 3))))
+
+    (it "does not push duplicate values to a list"
+      (let ((my-list '(1 2 3)))
+        (pushnew! my-list 2 3)
+        (expect my-list :to-equal '(1 2 3))))
+
+    (it "handles a mix of unique and duplicate values"
+      (let ((my-list '(1 2 3)))
+        (pushnew! my-list 2 4 3 5)
+        (expect my-list :to-equal '(5 4 1 2 3))))
+
+    (it "works with an empty list"
+      (let ((my-list '()))
+        (pushnew! my-list 1 2 3)
+        (expect my-list :to-equal '(3 2 1))))
+
+    (it "works with an empty values list"
+      (let ((my-list '(1 2 3)))
+        (pushnew! my-list)
+        (expect my-list :to-equal '(1 2 3)))))
+
+
+  (describe "prependq!"
+    (it "prepends values to a list in-place"
+      (let ((my-list '(3 4 5)))
+        (prependq! my-list '(1 2))
+        (expect my-list :to-equal '(1 2 3 4 5))))
+
+    (it "prepends multiple lists to a list in-place"
+      (let ((my-list '(4 5 6)))
+        (prependq! my-list '(1 2) '(2 3))
+        (expect my-list :to-equal '(1 2 2 3 4 5 6))))
+
+    (it "prepends values to an empty list"
+      (let ((my-list '()))
+        (prependq! my-list '(1 2 3))
+        (expect my-list :to-equal '(1 2 3))))
+
+    (it "prepends empty lists to a list"
+      (let ((my-list '(1 2 3)))
+        (prependq! my-list '() '())
+        (expect my-list :to-equal '(1 2 3))))
+
+    (it "prepends empty lists to an empty list"
+      (let ((my-list '()))
+        (prependq! my-list '() '())
+        (expect my-list :to-equal '()))))
+
+
+  (describe "add-load-path!"
+    (it "adds a single directory to the load-path"
+      (let ((temp-dir (make-temp-file "add-load-path-test" t)))
+        (add-load-path! temp-dir)
+        (expect (member temp-dir load-path) :not :to-be nil)))
+
+    (it "adds multiple directories to the load-path"
+      (let ((temp-dir-1 (make-temp-file "add-load-path-test-1" t))
+            (temp-dir-2 (make-temp-file "add-load-path-test-2" t)))
+        (add-load-path! temp-dir-1 temp-dir-2)
+        (expect (member temp-dir-1 load-path) :not :to-be nil)
+        (expect (member temp-dir-2 load-path) :not :to-be nil)))
+
+    (it "does not add the same directory twice"
+      (let ((temp-dir (make-temp-file "add-load-path-test" t)))
+        (add-load-path! temp-dir)
+        (add-load-path! temp-dir)
+        (expect (length (cl-remove-if-not (lambda (path) (equal path temp-dir)) load-path))
+                :to-be 1)))))

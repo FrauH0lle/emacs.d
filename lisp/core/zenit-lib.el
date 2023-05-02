@@ -435,6 +435,19 @@ accept anything `cl-defun' will. Implicitly adds
 
 (setplist 'zenit--fn-crawl '(%2 2 %3 3 %4 4 %5 5 %6 6 %7 7 %8 8 %9 9))
 (defun zenit--fn-crawl (data args)
+  "Recursively crawl DATA and populate ARGS array based on special
+symbols found in DATA.
+
+DATA is a nested list or vector structure containing symbols,
+where special symbols such as '%*', '%%', '%%1' are of interest.
+
+ARGS is an array used to store the special symbols found in DATA
+at their respective positions:
+
+- '%*' at position 0,
+- '%%' or '%%1' at position 1.
+
+If both '%*' and '%1' are found in DATA, an error is raised."
   (cond ((symbolp data)
          (when-let
              (pos (cond ((eq data '%*) 0)

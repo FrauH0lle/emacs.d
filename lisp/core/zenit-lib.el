@@ -91,7 +91,7 @@ REST.
 This function creates a list of functions that set the specified
 variables to their corresponding values when the hooks are run.
 The generated functions have the format
-'zenit--setq-VAR-for-MODE-h' where VAR is the variable name and
+`zenit--setq-VAR-for-MODE-h' where VAR is the variable name and
 MODE is derived from the hook name."
   (unless (or singles (= 0 (% (length rest) 2)))
     (signal 'wrong-number-of-arguments (list #'evenp (length rest))))

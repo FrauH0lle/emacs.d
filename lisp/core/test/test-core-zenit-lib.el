@@ -639,4 +639,341 @@
     (it "expands to nil if package is in zenit-disabled-packages"
       (defvar zenit-disabled-packages ())
       (cl-pushnew 'test-package zenit-disabled-packages)
-      (expect '(after! test-package (test-fn)) :to-expand-into nil))))
+      (expect '(after! test-package (test-fn)) :to-expand-into nil)))
+
+
+  (describe "defer-until!"
+    (it "executes body immediately when condition is true"
+      (let ((x 0))
+        (defer-until! t (setq x 1))
+        (expect x :to-equal 1)))
+
+    (it "does not execute body immediately when condition is false"
+      (let ((x 0))
+        (defer-until! nil (setq x 1))
+        (expect x :to-equal 0)))
+
+    (it "executes body after condition becomes true"
+      (let ((x 0))
+        (defer-until! (eq x 1) (setq x 2))
+        (setq x 1)
+        (run-hooks 'after-load-functions)
+        (expect x :to-equal 2))))
+
+
+  (describe "after-call!"
+    :var (zenit--deferred-packages-alist)
+
+    (it "loads feature after function call"
+      (spy-on 'require :and-return-value t)
+      (spy-on 'my-function :and-return-value t)
+      (after-call! my-feature my-function)
+      (expect 'require :not :to-have-been-called)
+      (my-function)
+      (expect 'require :to-have-been-called-with 'my-feature))
+
+    (it "loads feature after hook execution"
+      (spy-on 'require :and-return-value t)
+      (after-call! my-feature my-hook)
+      (expect 'require :not :to-have-been-called)
+      (run-hooks 'my-hook)
+      (expect 'require :to-have-been-called-with 'my-feature))
+
+    (it "removes itself from hooks and advices after execution"
+      (spy-on 'require :and-return-value t)
+      (spy-on 'my-function :and-return-value t)
+
+      (after-call! my-feature my-function my-hook)
+      (my-function)
+      (run-hooks 'my-hook)
+      (expect 'require :to-have-been-called-times 1)))
+
+
+  (describe "defer-feature!"
+    (it "removes feature from features list initially"
+      (add-to-list 'features 'my-feature)
+      (defer-feature! my-feature my-function)
+      (expect (memq 'my-feature features) :not :to-be-truthy))
+
+    (it "adds feature back to features list after function call"
+      (spy-on 'provide :and-return-value t)
+      (spy-on 'my-function :and-return-value t)
+      (defer-feature! my-feature my-function)
+      (my-function)
+      (expect 'provide :to-have-been-called-with 'my-feature))
+
+    (it "does not add feature back to features list if delay-mode-hooks is non-nil"
+      (spy-on 'provide :and-return-value t)
+      (spy-on 'my-function :and-return-value t)
+      (defer-feature! my-feature my-function)
+      (let ((delay-mode-hooks t))
+        (my-function))
+      (expect 'provide :not :to-have-been-called)))
+
+
+  (describe "add-transient-hook!"
+    (it "executes forms once when hook is run"
+      (let ((x 0))
+        (add-transient-hook! 'my-hook (setq x (+ x 1)))
+        (run-hooks 'my-hook)
+        (run-hooks 'my-hook)
+        (expect x :to-equal 1)))
+
+    (it "executes forms once when function is called"
+      (spy-on 'my-function :and-return-value t)
+      (let ((x 0))
+        (add-transient-hook! #'my-function (setq x (+ x 1)))
+        (my-function)
+        (my-function)
+        (expect x :to-equal 1)))
+
+    (it "removes itself from hook after execution"
+      (let ((x 0))
+
+        (add-transient-hook! 'my-hook (setq x (+ x 1)))
+        (run-hooks 'my-hook)
+        (expect (memq 'my-hook (symbol-value 'my-hook)) :not :to-be-truthy)))
+
+    (it "removes itself from function advice after execution"
+      (spy-on 'my-function :and-return-value t)
+      (let ((x 0))
+
+        (add-transient-hook! #'my-function (setq x (+ x 1)))
+        (my-function)
+        (expect (advice-member-p 'my-function #'my-function) :not :to-be-truthy))))
+
+
+  (describe "add-hook!"
+    (it "adds function to hook"
+      (spy-on 'add-hook)
+      (add-hook! 'my-hook #'my-function)
+      (expect 'add-hook :to-have-been-called-with 'my-hook #'my-function nil nil))
+
+    (it "adds multiple functions to hook"
+      (spy-on 'add-hook)
+      (add-hook! 'my-hook #'my-function1 #'my-function2)
+      (expect 'add-hook :to-have-been-called-with 'my-hook #'my-function1 nil nil)
+      (expect 'add-hook :to-have-been-called-with 'my-hook #'my-function2 nil nil))
+
+    (it "adds function to multiple hooks"
+      (spy-on 'add-hook)
+      (add-hook! '(my-hook1 my-hook2) #'my-function)
+      (expect 'add-hook :to-have-been-called-with 'my-hook1 #'my-function nil nil)
+      (expect 'add-hook :to-have-been-called-with 'my-hook2 #'my-function nil nil))
+
+    (it "adds function to hook with :append"
+      (spy-on 'add-hook)
+      (add-hook! 'my-hook :append #'my-function)
+      (expect 'add-hook :to-have-been-called-with 'my-hook #'my-function t nil))
+
+    (it "adds function to hook with :local"
+      (spy-on 'add-hook)
+      (add-hook! 'my-hook :local #'my-function)
+      (expect 'add-hook :to-have-been-called-with 'my-hook #'my-function nil t))
+
+    (it "removes function from hook with :remove"
+      (spy-on 'remove-hook)
+      (add-hook! 'my-hook :remove #'my-function)
+      (expect 'remove-hook :to-have-been-called-with 'my-hook #'my-function nil)))
+
+
+  (describe "remove-hook!"
+    (it "removes function from hook"
+      (spy-on 'remove-hook)
+      (remove-hook! 'my-hook #'my-function)
+      (expect 'remove-hook :to-have-been-called-with 'my-hook #'my-function nil))
+
+    (it "removes multiple functions from hook"
+      (spy-on 'remove-hook)
+      (remove-hook! 'my-hook #'my-function1 #'my-function2)
+      (expect 'remove-hook :to-have-been-called-with 'my-hook #'my-function1 nil)
+      (expect 'remove-hook :to-have-been-called-with 'my-hook #'my-function2 nil))
+
+    (it "removes function from multiple hooks"
+      (spy-on 'remove-hook)
+      (remove-hook! '(my-hook1 my-hook2) #'my-function)
+      (expect 'remove-hook :to-have-been-called-with 'my-hook1 #'my-function nil)
+      (expect 'remove-hook :to-have-been-called-with 'my-hook2 #'my-function nil))
+
+    (it "removes function from hook with :local"
+      (spy-on 'remove-hook)
+      (remove-hook! 'my-hook :local #'my-function)
+      (expect 'remove-hook :to-have-been-called-with 'my-hook #'my-function t)))
+
+
+  (describe "setq-hook!"
+    (it "sets buffer-local variable on hook"
+      (setq-hook! 'my-hook my-variable 1)
+      (with-temp-buffer
+        (run-hooks 'my-hook)
+        (expect (buffer-local-value 'my-variable (current-buffer)) :to-equal 1)))
+
+    (it "sets multiple buffer-local variables on hook"
+      (setq-hook! 'my-hook my-variable1 1 my-variable2 2)
+      (with-temp-buffer
+        (run-hooks 'my-hook)
+        (expect (buffer-local-value 'my-variable1 (current-buffer)) :to-equal 1)
+        (expect (buffer-local-value 'my-variable2 (current-buffer)) :to-equal 2)))
+
+    (it "sets buffer-local variable on multiple hooks"
+      (setq-hook! '(my-hook1 my-hook2) my-variable 1)
+      (with-temp-buffer
+        (run-hooks 'my-hook1)
+        (expect (buffer-local-value 'my-variable (current-buffer)) :to-equal 1)
+        (kill-local-variable 'my-variable)
+        (run-hooks 'my-hook2)
+        (expect (buffer-local-value 'my-variable (current-buffer)) :to-equal 1))))
+
+
+  (describe "unsetq-hook!"
+    (it "removes setq hook for variable"
+      (setq-hook! 'my-hook my-variable 1)
+      (unsetq-hook! 'my-hook my-variable)
+      (with-temp-buffer
+        (run-hooks 'my-hook)
+        (expect (local-variable-p 'my-variable) :not :to-be-truthy)))
+
+    (it "removes setq hooks for multiple variables"
+      (setq-hook! 'my-hook my-variable1 1 my-variable2 2)
+      (unsetq-hook! 'my-hook my-variable1 my-variable2)
+      (with-temp-buffer
+        (run-hooks 'my-hook)
+        (expect (local-variable-p 'my-variable1) :not :to-be-truthy)
+        (expect (local-variable-p 'my-variable2) :not :to-be-truthy)))
+
+    (it "removes setq hook for variable from multiple hooks"
+      (setq-hook! '(my-hook1 my-hook2) my-variable 1)
+      (unsetq-hook! '(my-hook1 my-hook2) my-variable)
+      (with-temp-buffer
+        (run-hooks 'my-hook1)
+        (expect (local-variable-p 'my-variable) :not :to-be-truthy)
+        (run-hooks 'my-hook2)
+        (expect (local-variable-p 'my-variable) :not :to-be-truthy))))
+
+
+  (describe "defadvice!"
+    (it "expands into an `advice-add' form"
+      (expect '(defadvice! test-advice ()
+                 "Teststring"
+                 :before #'test-function
+                 (message "Hello World!"))
+              :to-expand-into
+              '(progn
+                 (defun test-advice nil "Teststring"
+                        (message "Hello World!"))
+                 (eval-when-compile
+                   (declare-function test-advice nil))
+                 (dolist
+                     (targets
+                      (list (cons :before (ensure-list (function test-function)))))
+                   (dolist (target (cdr targets))
+                     (advice-add target (car targets)
+                                 (function test-advice))))))))
+
+
+  (describe "undefadvice!"
+    (it "expands into an `advice-remove' form"
+      (expect '(undefadvice! test-advice ()
+                 "Teststring"
+                 :before #'test-function
+                 (message "Hello World!"))
+              :to-expand-into
+              '(dolist (targets (list (cons :before (ensure-list (function test-function)))))
+                 (dolist (target (cdr targets))
+                   (advice-remove target (function test-advice)))))))
+
+
+  (describe "defhook!"
+    (it "expands into an `add-hook!' form"
+      (expect '(defhook! test-hook ()
+                 "Teststring"
+                 'test-hook
+                 (message "Hello World!"))
+              :to-expand-into
+              '(progn
+                 (defun test-hook nil "Teststring"
+                        (message "Hello World!"))
+                 (add-hook! 'test-hook 'test-hook)))))
+
+
+  (describe "protect-macros!"
+    (it "expands correctly"
+      (expect '(protect-macros!
+                 (message "Hello World!"))
+              :to-expand-into
+              '(eval
+                '(progn
+                   (message "Hello World!"))
+                lexical-binding))))
+
+
+  (describe "protect-macros-maybe!"
+    (it "expands correctly if feature is not available"
+      (expect '(protect-macros-maybe! my-feature
+                 (message "Hello World!"))
+              :to-expand-into
+              '(protect-macros!
+                 (progn
+                   (message "Hello World!")))))
+
+    (it "expands correctly if feature is available"
+      (spy-on 'featurep :and-return-value t)
+      (expect '(protect-macros-maybe! my-feature
+                 (message "Hello World!"))
+              :to-expand-into
+              '(progn
+                 (message "Hello World!")))))
+
+
+  (describe "eval-if!"
+    (it "evaluates then branch at compile time if condition is true"
+      (let ((x (eval-if! t 1 2)))
+        (expect x :to-equal 1)))
+
+    (it "evaluates else branch at compile time if condition is false"
+      (let ((x (eval-if! nil 1 2)))
+        (expect x :to-equal 2)))
+
+    (it "does not compile unused branch"
+      (spy-on 'my-unused-function :and-throw-error 'error)
+      (let ((x (eval-if! t 1 (my-unused-function))))
+        (expect 'my-unused-function :not :to-have-been-called)
+        (expect x :to-equal 1))))
+
+
+  (describe "eval-when!"
+    (it "compiles body at compile time if condition is true"
+      (let ((x 0))
+        (eval-when! t (setq x 1))
+        (expect x :to-equal 1)))
+
+    (it "does not compile body at compile time if condition is false"
+      (let ((x 0))
+        (eval-when! nil (setq x 1))
+        (expect x :to-equal 0)))
+
+    (it "does not compile unused body"
+      (spy-on 'my-unused-function :and-throw-error 'error)
+      (eval-when! nil (my-unused-function))
+      (expect 'my-unused-function :not :to-have-been-called)))
+
+
+  (describe "eval-unless!"
+    (it "compiles body at compile time if condition is false"
+      (let ((x 0))
+        (eval-unless! nil (setq x 1))
+        (expect x :to-equal 1)))
+
+    (it "does not compile body at compile time if condition is true"
+      (let ((x 0))
+        (eval-unless! t (setq x 1))
+        (expect x :to-equal 0)))
+
+    (it "does not compile unused body"
+      (spy-on 'my-unused-function :and-throw-error 'error)
+      (eval-unless! t (my-unused-function))
+      (expect 'my-unused-function :not :to-have-been-called)))
+
+
+  (describe "zenit-compile-functions"
+    (xit "is difficult to test because it relies on idle timers")))

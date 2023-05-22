@@ -960,11 +960,7 @@ never happen, but you'd be wrong, unfortunately. In such a
 situation, you must wrap at least the outer macro in this form,
 but can wrap at any higher level up to the top-level form."
   (declare (indent 0))
-  `(eval '(progn ,@body) lexical-binding)
-  ;; (if (bound-and-true-p byte-compile-current-file)
-  ;;     `(progn ,@body)
-  ;; `(eval '(progn ,@body) lexical-binding))
-  )
+  `(eval '(progn ,@body) lexical-binding))
 
 (defmacro protect-macros-maybe! (feature &rest body)
   "Same as `protect-macros!', but only if FEATURE is unavailable.

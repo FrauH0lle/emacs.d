@@ -235,7 +235,7 @@ handling encrypted or compressed files, among other things."
       (set-default-toplevel-value 'load-suffixes '(".elc" ".el"))
       (set-default-toplevel-value 'load-file-rep-suffixes '(""))
 
-      (defhook! zenit--reset-load-suffixe-hs ()
+      (defhook! zenit--reset-load-suffixes-h ()
           "Undo any problematic startup optimizations."
           'zenit-before-init-hook
           (setq load-suffixes (get 'load-suffixes 'initial-value)

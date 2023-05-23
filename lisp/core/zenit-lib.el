@@ -9,6 +9,7 @@
 (define-error 'zenit-error "Error in Emacs")
 (define-error 'zenit-nosync-error "Config could not be initialized; did you remember to run 'make refresh' in the shell?" 'zenit-error)
 (define-error 'zenit-core-error "Unexpected error in core directory" 'zenit-error)
+(define-error 'zenit-context-error "Invalid context" 'zenit-error)
 (define-error 'zenit-hook-error "Error in a startup hook" 'zenit-error)
 (define-error 'zenit-autoload-error "Error in an autoloads file" 'zenit-error)
 (define-error 'zenit-module-error "Error in a module" 'zenit-error)

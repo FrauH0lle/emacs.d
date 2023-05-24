@@ -316,6 +316,12 @@ All valid contexts:
 (put 'zenit-context 'risky-local-variable t)
 
 (defun zenit-context--check (context)
+  "Check if the given CONTEXT is valid.
+
+CONTEXT is a symbol representing the context to be checked.
+
+If CONTEXT is not recognized as a valid context, a
+`zenit-context-error' signal is raised."
   (let ((valid (get 'zenit-context 'valid-values)))
     (unless (memq context valid)
       (signal 'zenit-context-error

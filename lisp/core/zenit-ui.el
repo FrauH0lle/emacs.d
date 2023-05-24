@@ -196,9 +196,10 @@ file-visiting."
 (defadvice! zenit--switch-to-fallback-buffer-maybe-a (&rest _)
   "Switch to `zenit-fallback-buffer' if on last real buffer.
 
-Advice for `kill-current-buffer'. If in a dedicated window, delete it. If there
-are no real buffers left OR if all remaining buffers are visible in other
-windows, switch to `zenit-fallback-buffer'. Otherwise, delegate to original
+Advice for `kill-current-buffer'. If in a dedicated window,
+delete it. If there are no real buffers left OR if all remaining
+buffers are visible in other windows, switch to
+`zenit-fallback-buffer'. Otherwise, delegate to original
 `kill-current-buffer'."
   :before-until #'kill-current-buffer
   (let ((buf (current-buffer)))

@@ -59,8 +59,6 @@ the local one)."
   :group 'zenit
   :type 'hook)
 
-(defvar zenit--current-module nil)
-
 
 ;;
 ;;; Module API

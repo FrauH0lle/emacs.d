@@ -200,4 +200,88 @@
       (let ((zenit-modules (make-hash-table :test 'equal))
             (zenit-modules-dirs '("/tmp")))
         (expect (zenit-module-locate-paths '((:category1 . module1) (:category2 . module2)) "file1")
-                :to-equal (list tmp-file1 tmp-file2))))))
+                :to-equal (list tmp-file1 tmp-file2)))))
+
+
+  (describe "zenit-module-from-path"
+    (it "returns a cons cell for a path to a module"
+      (spy-on 'zenit-module-p :and-return-value t)
+      (spy-on 'file-in-directory-p :and-return-value nil)
+      (expect (zenit-module-from-path "/modules/lang/python")
+              :to-equal '(:lang . python)))
+
+    (it "returns a cons cell for a path to a core module"
+      (spy-on 'file-in-directory-p :and-call-fake
+              (lambda (path _dir)
+                (equal path "/path/to/core.el")))
+      (expect (zenit-module-from-path "/path/to/core.el")
+              :to-equal '(:core . nil)))
+
+    (it "returns a cons cell for a path to a local config module"
+      (spy-on 'file-in-directory-p :and-call-fake
+              (lambda (path dir)
+                (and (equal path "/path/to/local-conf.el")
+                     (equal dir "/path/to/local-conf.el"))))
+      (let ((zenit-local-conf-dir "/path/to/local-conf.el"))
+        (expect (zenit-module-from-path "/path/to/local-conf.el")
+                :to-equal '(:local-conf . nil))))
+
+    (it "returns nil if module is not enabled and ENABLED-ONLY is non-nil"
+      (spy-on 'zenit-module-p :and-return-value nil)
+      (expect (zenit-module-from-path "/modules/lang/python" t)
+              :to-equal nil)))
+
+
+  (describe "zenit-module-load-path"
+    (before-each
+      (setq zenit-modules (make-hash-table :test #'equal)))
+
+    (it "returns an empty list if no modules are set"
+      (expect (zenit-module-load-path) :to-be nil))
+
+    (it "returns the list of file paths to activated modules"
+      (spy-on 'zenit-module-list :and-return-value '((:lang . emacs-lisp) (:lang . python)))
+      (spy-on 'zenit-module-locate-path :and-call-fake
+              (lambda (cat mod)
+                (cond ((and (eq cat :lang) (eq mod 'emacs-lisp)) "/path/to/emacs-lisp")
+                      ((and (eq cat :lang) (eq mod 'python)) "/path/to/python"))))
+      (expect (zenit-module-load-path)
+              :to-equal '("/path/to/emacs-lisp" "/path/to/python")))
+
+    (it "includes all modules if MODULE-DIRS is non-nil"
+      (spy-on 'zenit-module-list :and-call-fake
+              (lambda (&optional module-dirs)
+                (if module-dirs
+                    '((:lang . emacs-lisp) (:lang . python) (:lang . rust))
+                  '((:lang . emacs-lisp) (:lang . python)))))
+      (spy-on 'zenit-module-locate-path :and-call-fake
+              (lambda (cat mod)
+                (cond ((and (eq cat :lang) (eq mod 'emacs-lisp)) "/path/to/emacs-lisp")
+                      ((and (eq cat :lang) (eq mod 'python)) "/path/to/python")
+                      ((and (eq cat :lang) (eq mod 'rust)) "/path/to/rust"))))
+      (expect (zenit-module-load-path '("/some/module/dir"))
+              :to-equal '("/path/to/emacs-lisp" "/path/to/python" "/path/to/rust"))))
+
+
+  (describe "zenit-module-mplist-map"
+    (it "applies the function to each module in the mplist"
+      (let ((test-mplist '(:category module1 module2 :category2 module3 module4))
+            (test-fn (lambda (cat mod &rest _)
+                       (cons cat mod))))
+        (expect (zenit-module-mplist-map test-fn test-mplist)
+                :to-equal '((:category . module1) (:category . module2) (:category2 . module3) (:category2 . module4)))))
+
+    (it "handles :cond, :if, and :unless keyword arguments"
+      (let ((test-mplist '(:category module1
+                           (:cond (t module2))
+                           (:if (when t t) module4)
+                           (:unless (unless nil nil) module5)))
+            (test-fn (lambda (cat mod &rest _)
+                       (cons cat mod))))
+        (expect (zenit-module-mplist-map test-fn test-mplist)
+                :to-equal '((:category . module1) (:category . module2) (:category . module4) (:category . module5)))))
+
+    (it "throws an error when a module doesn't have a category"
+      (let ((test-mplist '(module1))
+            (test-fn (lambda (_cat _mod &rest _))))
+        (expect (zenit-module-mplist-map test-fn test-mplist) :to-throw 'error)))))

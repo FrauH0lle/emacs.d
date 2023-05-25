@@ -3,8 +3,9 @@
 ;;
 ;;; Variables
 
-(defvar zenit-modules (make-hash-table :test 'equal)
-  "A hash table of enabled modules. Set by `zenit-initialize-modules'.")
+(defvar zenit-modules (make-hash-table :test #'equal)
+  "A hash table of enabled modules. Set by
+`zenit-initialize-modules'.")
 
 (defvar zenit-modules-dirs
   (list (expand-file-name "modules/" zenit-local-conf-dir)

@@ -333,7 +333,10 @@ Order defines precedence (from most to least)."
 ;;
 ;;; Module context
 
-(defvar zenit--empty-module-context [nil nil nil nil nil nil nil])
+(defvar zenit--empty-module-context [nil nil nil nil nil nil nil]
+  "Empty module context.
+This vector is used as a placeholder and represents a context
+where no module specifics have been defined.")
 
 (eval-and-compile
   (setplist 'zenit-module-context '(index 0 initdepth 1 configdepth 2
@@ -344,7 +347,13 @@ Contains the following: [INDEX INITDEPTH CONFIGDEPTH :GROUP
 MODULE FLAGS FEATURES] Do not directly set this variable, only
 let-bind it.")
 
-(defmacro zenit-module--context-field (field) (get 'zenit-module-context field))
+(defmacro zenit-module--context-field (field)
+  "Retrieve the value of FIELD from the `zenit-module-context'.
+
+Note that FIELD is evaluated at macro-expansion time, and it
+should be a valid symbol that matches a key within the
+`zenit-module-context' property list."
+  (get 'zenit-module-context field))
 
 (defun zenit-module-context-get (field &optional context)
   "Return the FIELD of CONTEXT.

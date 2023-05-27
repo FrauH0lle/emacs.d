@@ -284,4 +284,140 @@
     (it "throws an error when a module doesn't have a category"
       (let ((test-mplist '(module1))
             (test-fn (lambda (_cat _mod &rest _))))
-        (expect (zenit-module-mplist-map test-fn test-mplist) :to-throw 'error)))))
+        (expect (zenit-module-mplist-map test-fn test-mplist) :to-throw 'error))))
+
+
+  (describe "modules!"
+    (it "creates modules and sets path for each one"
+      (let ((zenit-modules (make-hash-table :test #'equal)))
+        (spy-on 'zenit-module-locate-path :and-return-value "/test/path")
+        (modules! :test mod1 mod2 mod3)
+        (dolist (key (hash-table-keys zenit-modules))
+          (expect (gethash key zenit-modules) :to-equal '(:path "/test/path" :flags nil)))))
+
+    (it "prints a warning if a module can't be located"
+      (let ((zenit-modules (make-hash-table :test #'equal)))
+        (spy-on 'zenit-module-locate-path :and-return-value nil)
+        (expect (modules! :test mod1) :to-throw))))
+
+
+  (describe "zenit-module--context-field"
+    (before-each
+      ;; Set up a temporary property list for testing
+      (put 'zenit-module-context :test-field-1 "value-1")
+      (put 'zenit-module-context :test-field-2 "value-2"))
+
+    (after-each
+      ;; Clean up after each test to ensure isolation
+      (put 'zenit-module-context :test-field-1 nil)
+      (put 'zenit-module-context :test-field-2 nil))
+
+    (it "retrieves the correct value for a given field"
+      (expect (zenit-module--context-field :test-field-1) :to-equal "value-1")
+      (expect (zenit-module--context-field :test-field-2) :to-equal "value-2"))
+
+    (it "returns nil when the field does not exist"
+      (expect (zenit-module--context-field :non-existent-field) :to-be nil)))
+
+
+  (describe "zenit-module-context-get"
+    (let ((temp-context [0 1 2 :group :name :flags :features]))
+      (it "returns the correct value for a given field"
+        (expect (zenit-module-context-get 'index temp-context) :to-equal 0)
+        (expect (zenit-module-context-get 'initdepth temp-context) :to-equal 1)
+        (expect (zenit-module-context-get 'configdepth temp-context) :to-equal 2)
+        (expect (zenit-module-context-get 'group temp-context) :to-equal :group)
+        (expect (zenit-module-context-get 'name temp-context) :to-equal :name)
+        (expect (zenit-module-context-get 'flags temp-context) :to-equal :flags)
+        (expect (zenit-module-context-get 'features temp-context) :to-equal :features))
+
+      (it "throws error when the field does not exist"
+        (expect (zenit-module-context-get 'non-existent-field temp-context) :to-throw))
+
+      (it "uses `zenit-module-context' when no context is provided"
+        (spy-on 'aref :and-return-value :dummy-value)
+        (zenit-module-context-get 'index)
+        (expect 'aref :to-have-been-called-with zenit-module-context 0))))
+
+
+  (describe "zenit-module-context"
+    (let ((dummy-context [0 1 2 :group :name :flags :features]))
+      (before-each
+        ;; Mock some modules
+        (put :group :name dummy-context))
+
+      (it "returns the correct context for a module identified by group and name"
+        (expect (zenit-module-context :group :name) :to-equal dummy-context))
+
+      (it "returns the correct context for a module identified by a cons cell"
+        (expect (zenit-module-context '(:group . :name)) :to-equal dummy-context))
+
+      (it "returns an empty context for a non-existent module"
+        (expect (zenit-module-context :non-existent-group :non-existent-name)
+                :to-equal zenit--empty-module-context))))
+
+
+  (describe "zenit-module-context-key"
+    (let ((dummy-context [0 1 2 :group :name :flags :features]))
+      (it "returns the correct module key for a given context"
+        ;; Set the zenit-module-context to our dummy context
+        (let ((zenit-module-context dummy-context))
+          (expect (zenit-module-context-key) :to-equal '(:group . :name))))
+
+      (it "returns the correct module key for an explicitly provided context"
+        (expect (zenit-module-context-key dummy-context) :to-equal '(:group . :name)))))
+
+
+  (describe "zenit-module-context-with"
+    (it "evaluates body with zenit-module-context set to the provided module-key"
+      (let* ((module-key '(:mock-group . :mock-name))
+             (dummy-context (zenit-module-context module-key))
+             (mock-fn (lambda () zenit-module-context)))
+        ;; Spy on `zenit-log' so we don't get actual logging during the test
+        (spy-on 'zenit-log)
+
+        ;; Use our mock function within the macro
+        (let ((result (zenit-module-context-with module-key (funcall mock-fn))))
+          ;; Check that the context during execution matches our expectation
+          (expect result :to-equal dummy-context))
+        ;; Also make sure zenit-log was called with the right arguments
+        (expect 'zenit-log :to-have-been-called-with ":context:module: =%s" dummy-context)))
+
+    (it "restores zenit-module-context after execution"
+      (let ((original-context zenit-module-context))
+        ;; Again, spy on `zenit-log' to avoid actual logging
+        (spy-on 'zenit-log)
+
+        ;; Run some code within the macro
+        (zenit-module-context-with '(:mock-group . :mock-name) (ignore))
+
+        ;; Check that the original context has been restored
+        (expect zenit-module-context :to-be original-context))))
+
+
+  (describe "modulep!"
+    (before-all
+      (zenit-module-set :category1 'module1 :path (file!))
+      (zenit-module-set :category1 'module2 :flags '(+flag1) :path (file!)))
+
+    (it "returns t if a module is enabled"
+      (expect (modulep! :category1 module1) :to-be t))
+
+    (it "returns t if a module has a certain flag enabled"
+      (expect (modulep! :category1 module2 +flag1) :to-be t))
+
+    (it "returns nil if a module is not enabled"
+      (expect (modulep! :module3 name) :to-be nil))
+
+    (it "returns nil if a module does not have a certain flag enabled"
+      (expect (modulep! :category1 module1 +flag1) :to-be nil))
+
+    (it "returns t if the current module has a certain flag enabled"
+      (expect (zenit-module-context-with '(:category1 . module2)
+                (modulep! +flag1))
+              :to-be t))
+
+    (it "returns nil if the current module does not have a certain flag enabled"
+      (expect (zenit-module-context-with '(:category1 . module1)
+                (modulep! +flag1))
+              :to-be nil))))

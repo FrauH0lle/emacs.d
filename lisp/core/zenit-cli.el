@@ -14,13 +14,6 @@ during batch commands.")
 
 (when noninteractive
   (zenit-context-push 'cli)
-  ;; Native compilation support
-  ;; (when (boundp 'native-comp-eln-load-path)
-  ;;   ;; Don't store eln files in ~/.emacs.d/eln-cache. We need to set this very
-  ;;   ;; early so more or less all files are caught. We also set this again in
-  ;;   ;; zenit-core.el.
-  ;;   ;; REVIEW Use `startup-redirect-eln-cache' when 28 support is dropped
-  ;;   (add-to-list 'native-comp-eln-load-path (expand-file-name ".local/cache/eln/" user-emacs-directory)))
 
   (setq gc-cons-threshold 134217728  ; 128mb
         gc-cons-percentage 1.0)

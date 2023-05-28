@@ -6,7 +6,7 @@
   (load! "lib/buffers" zenit-core-dir)
   (load! "lib/projects" zenit-core-dir)
 
-  (require 'zenit-setup)
+  (require 'zenit-use-package)
   (require 'zenit-projects)
 
   (before-each

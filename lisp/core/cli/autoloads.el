@@ -179,7 +179,7 @@ autoloads.")
   (require 'zenit-start)
   ;; If we are embedding the configuration, we need to load a bit more,
   (when (modulep! :config compile)
-    (require 'zenit-setup)
+    (require 'zenit-use-package)
     (require 'use-package)
     (require 'zenit-el-patch)
     (require 'zenit-keybinds)

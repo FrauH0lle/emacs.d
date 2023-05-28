@@ -6,7 +6,7 @@
     (load (file-name-concat zenit-local-dir cache-file) nil (not init-file-debug)))
   ;; Setup environment for compilation
   (require 'zenit-start)
-  (require 'zenit-setup)
+  (require 'zenit-use-package)
   (require 'use-package)
   (require 'zenit-el-patch)
   (require 'zenit-keybinds)

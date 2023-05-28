@@ -1,4 +1,4 @@
-;; lisp/core/zenit-setup.el -*- lexical-binding: t; -*-
+;; lisp/core/zenit-use-package.el -*- lexical-binding: t; -*-
 
 (defvar zenit--deferred-packages-alist '(t))
 (autoload 'use-package "use-package-core" nil nil t)
@@ -148,4 +148,4 @@ support for two extra properties:
                    (not (locate-library (symbol-name name)))))
     `(use-package ,name ,@plist)))
 
-(provide 'zenit-setup)
+(provide 'zenit-use-package)

@@ -1,6 +1,6 @@
 ;; lisp/core/init.el -*- lexical-binding: t; -*-
 
-(require 'zenit-setup)
+(require 'zenit-use-package)
 (require 'zenit-el-patch)
 (require 'zenit-keybinds)
 (require 'zenit-ui)

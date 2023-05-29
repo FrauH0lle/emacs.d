@@ -1,6 +1,5 @@
 ;; lisp/core/zenit-start.el -*- lexical-binding: t; -*-
 
-
 ;;
 ;;; Custom hooks
 
@@ -122,7 +121,10 @@ buffer."
 ;; File+dir local variables are initialized after the major mode and its hooks
 ;; have run. If you want hook functions to be aware of these customizations, add
 ;; them to MODE-local-vars-hook instead.
-(defvar zenit-inhibit-local-var-hooks nil)
+(defvar zenit-inhibit-local-var-hooks nil
+"If `zenit-inhibit-local-var-hooks` is
+non-nil,`zenit-run-local-var-hooks-h' will not run these hooks.
+Default value is nil, allowing the hooks to run.")
 
 (defun zenit-run-local-var-hooks-h ()
   "Run MODE-local-vars-hook after local variables are initialized."

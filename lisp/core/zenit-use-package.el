@@ -1,6 +1,10 @@
 ;; lisp/core/zenit-use-package.el -*- lexical-binding: t; -*-
 
-(defvar zenit--deferred-packages-alist '(t))
+(defvar zenit--deferred-packages-alist '(t)
+  "Alist of packages that are deferred for loading at a later
+ point in time. Packages are added by `after-call!' or the
+:after-call `use-package' keyword.")
+
 (autoload 'use-package "use-package-core" nil nil t)
 
 

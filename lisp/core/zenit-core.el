@@ -13,7 +13,7 @@
 ;;       > ~/.emacs.d/site-lisp/init.el
 ;;   X hook: `before-init-hook'
 ;;   > ~/.emacs.d/init.el
-;;     > ~/.emacs.d/zenit-{keybinds,ui,projects,editor}.el
+;;     > ~/.emacs.d/zenit-{use-package,el-patch,keybinds,ui,projects,editor}.el
 ;;     X hook: `zenit-before-modules-init-hook'
 ;;     - {~/.emacs.d/site-lisp/, ~/.emacs.d/lisp}/modules/*/*/init.el
 ;;     X hook: `zenit-after-modules-init-hook'

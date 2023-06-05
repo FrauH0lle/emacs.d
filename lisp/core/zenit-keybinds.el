@@ -33,33 +33,35 @@ Used for Insert and Emacs states, and for non-evil users.")
         w32-rwindow-modifier 'super)))
 
 ;; HACK: Emacs cannot distinguish between C-i from TAB. This is largely a
-;;   byproduct of its history in the terminal, which can't distinguish them
-;;   either, however, when GUIs came about Emacs created separate input events
-;;   for more contentious keys like TAB and RET. Therefore [return] != RET,
-;;   [tab] != TAB, and [backspace] != DEL.
+;;       byproduct of its history in the terminal, which can't distinguish them
+;;       either, however, when GUIs came about Emacs created separate input
+;;       events for more contentious keys like TAB and RET. Therefore [return]
+;;       != RET, [tab] != TAB, and [backspace] != DEL.
 ;;
-;;   In the same vein, this keybind adds a [C-i] event, so users can bind to it.
-;;   Otherwise, it falls back to regular C-i keybinds.
+;;       In the same vein, this keybind adds a [C-i] event, so users can bind to
+;;       it. Otherwise, it falls back to regular C-i keybinds.
 (define-key key-translation-map [?\C-i]
-  (cmd! (if (let ((keys (this-single-command-raw-keys)))
-              (and keys
-                   (not (cl-position 'tab    keys))
-                   (not (cl-position 'kp-tab keys))
-                   (display-graphic-p)
-                   ;; Fall back if no <C-i> keybind can be found, otherwise
-                   ;; we've broken all pre-existing C-i keybinds.
-                   (let ((key
-                          (zenit-lookup-key
-                           (vconcat (cl-subseq keys 0 -1) [C-i]))))
-                     (not (or (numberp key) (null key))))))
-            [C-i] [?\C-i])))
+            (cmd!
+             (if (let ((keys (this-single-command-raw-keys)))
+                   (and keys
+                        (not (cl-position 'tab    keys))
+                        (not (cl-position 'kp-tab keys))
+                        (display-graphic-p)
+                        ;; Fall back if no <C-i> keybind can be found, otherwise
+                        ;; we've broken all pre-existing C-i keybinds.
+                        (let ((key
+                               (zenit-lookup-key
+                                (vconcat (cl-subseq keys 0 -1) [C-i]))))
+                          (not (or (numberp key) (null key))))))
+                 [C-i] [?\C-i])))
 
 
 ;;
 ;;; Universal, non-nuclear escape
 
 (defvar zenit-escape-hook nil
-  "A hook run when C-g is pressed (or ESC in normal mode, for evil users).
+  "A hook run when C-g is pressed (or ESC in normal mode, for evil
+users).
 
 More specifically, when `zenit/escape' is pressed. If any hook
 returns non-nil, all hooks after it are ignored.")
@@ -100,6 +102,15 @@ returns non-nil, all hooks after it are ignored.")
 ;; HACK: `map!' uses this instead of `define-leader-key!' because it consumes
 ;;   20-30% more startup time, so we reimplement it ourselves.
 (defmacro zenit--define-leader-key (&rest keys)
+  "Macro to define keybindings under the leader key.
+
+KEYS is a list of key-description-command triples. A keyword
+argument :prefix can be used to specify a prefix key sequence for
+a group of commands. :infix works like :prefix but doesn't
+consume the following argument.
+
+:which-key can be used to provide a description for the
+`which-key' package."
   (let (prefix forms wkforms)
     (while keys
       (let ((key (pop keys))
@@ -115,7 +126,7 @@ returns non-nil, all hooks after it are ignored.")
                          def)))
             (unless (eq bdef :ignore)
               (push `(define-key zenit-leader-map (general--kbd ,key)
-                       ,bdef)
+                      ,bdef)
                     forms))
             (when-let (desc (cadr (memq :which-key udef)))
               (prependq!
@@ -153,7 +164,7 @@ for a more convenient interface.
 
 See `zenit-localleader-key' and `zenit-localleader-alt-key' to
 change the localleader prefix."
-  (if (modulep! :editor evil)
+  (eval-if! (modulep! :editor evil)
       ;; :non-normal-prefix doesn't apply to non-evil sessions (only evil's
       ;; emacs state)
       `(general-define-key
@@ -175,34 +186,34 @@ change the localleader prefix."
     (fallback-def &rest defs
                   &key docstring
                   &allow-other-keys)
-  (el-patch-let ((doc "Create a menu item that will run FALLBACK-DEF or a definition from DEFS.
+    (el-patch-let ((doc "Create a menu item that will run FALLBACK-DEF or a definition from DEFS.
 DEFS consists of <predicate> <definition> pairs. Binding this menu-item to a key
 will cause that key to act as the corresponding definition (a command, keymap,
 etc) for the first matched predicate. If no predicate is matched FALLBACK-DEF
 will be run. When FALLBACK-DEF is nil and no predicates are matched, the keymap
 with the next highest precedence for the pressed key will be checked. DOCSTRING
 can be specified as a description for the menu item.")
-                 (dec (declare (indent 1))))
-    (el-patch-remove dec doc)
-    (el-patch-add doc dec))
-  ;; remove keyword arguments from defs and sort defs into pairs
-  (let ((defs (cl-loop for (key value) on defs by 'cddr
-                       unless (keywordp key)
-                       collect (list key value))))
-    `'(menu-item
-       ,(or docstring "") nil
-       :filter (lambda (&optional _)
-                 (el-patch-swap
-                   (cond ,@(mapcar (lambda (pred-def)
-                                     `(,(car pred-def) ,(cadr pred-def)))
-                                   defs)
-                         (t ,fallback-def))
-                   (let (it)
+                   (dec (declare (indent 1))))
+      (el-patch-remove dec doc)
+      (el-patch-add doc dec))
+    ;; remove keyword arguments from defs and sort defs into pairs
+    (let ((defs (cl-loop for (key value) on defs by 'cddr
+                         unless (keywordp key)
+                         collect (list key value))))
+      `'(menu-item
+         ,(or docstring "") nil
+         :filter (lambda (&optional _)
+                   (el-patch-swap
                      (cond ,@(mapcar (lambda (pred-def)
-                                       `((setq it ,(car pred-def))
-                                         ,(cadr pred-def)))
+                                       `(,(car pred-def) ,(cadr pred-def)))
                                      defs)
-                           (t ,fallback-def)))))))))
+                           (t ,fallback-def))
+                     (let (it)
+                       (cond ,@(mapcar (lambda (pred-def)
+                                         `((setq it ,(car pred-def))
+                                           ,(cadr pred-def)))
+                                       defs)
+                             (t ,fallback-def)))))))))
 
 ;; We use a prefix commands instead of general's :prefix/:non-normal-prefix
 ;; properties because general is incredibly slow binding keys en mass with them
@@ -278,15 +289,27 @@ For example, :nvi will map to (list \\='normal \\='visual \\='insert). See
 
 
 ;; specials
-(defvar zenit--map-forms nil)
-(defvar zenit--map-fn nil)
-(defvar zenit--map-batch-forms nil)
-(defvar zenit--map-state '(:dummy t))
-(defvar zenit--map-parent-state nil)
-(defvar zenit--map-evil-p nil)
+(defvar zenit--map-forms nil
+  "List of forms generated during the processing of a
+`map!'block.")
+(defvar zenit--map-fn nil
+  "Function used to define keys within a `map!' block. Set by
+:leader, :localleader, etc.")
+(defvar zenit--map-batch-forms nil
+  "Batch of key-definition forms grouped by state. Used in
+`zenit--map-commit'.")
+(defvar zenit--map-state '(:dummy t)
+  "Current state of the keymap being defined by `map!'.")
+(defvar zenit--map-parent-state nil
+  "Parent state inherited by nested `:prefix' blocks within a
+`map!' block.")
+(defvar zenit--map-evil-p nil
+  "Non-nil if the :editor evil module is active.")
 (when (modulep! :editor evil) (setq zenit--map-evil-p t))
 
 (defun zenit--map-process (rest)
+  "Process the rest of a `map!' block. REST is the forms to be
+processed."
   (let ((zenit--map-fn zenit--map-fn)
         zenit--map-state
         zenit--map-forms
@@ -316,6 +339,7 @@ For example, :nvi will map to (list \\='normal \\='visual \\='insert). See
                                  collect (intern (concat (symbol-name m) "-map")))
                         rest)
                   (push :map rest))
+                 ;; REVIEW 2023-06-05: Maybe replace with `eval-when!'/`eval-unless!'
                  ((or :when :unless)
                   (zenit--map-nested (list (intern (zenit-keyword-name key)) (pop rest)) rest)
                   (setq rest nil))
@@ -335,7 +359,7 @@ For example, :nvi will map to (list \\='normal \\='visual \\='insert). See
                       (let ((arg (pop rest)))
                         (if (consp arg) arg (list arg)))
                     (zenit--map-set (if zenit--map-fn :infix :prefix)
-                                   prefix)
+                                    prefix)
                     (when (stringp desc)
                       (setq rest (append (list :desc desc "" nil) rest)))))
                  (:textobj
@@ -348,8 +372,8 @@ For example, :nvi will map to (list \\='normal \\='visual \\='insert). See
                  (_
                   (condition-case _
                       (zenit--map-def (pop rest) (pop rest)
-                                     (zenit--map-keyword-to-states key)
-                                     desc)
+                                      (zenit--map-keyword-to-states key)
+                                      desc)
                     (error
                      (error "Not a valid `map!' property: %s" key)))
                   (setq desc nil))))
@@ -361,6 +385,8 @@ For example, :nvi will map to (list \\='normal \\='visual \\='insert). See
     (macroexp-progn (nreverse (delq nil zenit--map-forms)))))
 
 (defun zenit--map-append-keys (prop)
+  "Append the value of PROP from parent and current state, if they
+both exist."
   (let ((a (plist-get zenit--map-parent-state prop))
         (b (plist-get zenit--map-state prop)))
     (if (and a b)
@@ -368,6 +394,9 @@ For example, :nvi will map to (list \\='normal \\='visual \\='insert). See
       (or a b))))
 
 (defun zenit--map-nested (wrapper rest)
+  "Process a nested `map!' block. WRAPPER is the forms to wrap
+around the block and REST are the forms to be processed within
+the block."
   (zenit--map-commit)
   (let ((zenit--map-parent-state (zenit--map-state)))
     (push (if wrapper
@@ -376,11 +405,17 @@ For example, :nvi will map to (list \\='normal \\='visual \\='insert). See
           zenit--map-forms)))
 
 (defun zenit--map-set (prop &optional value)
+  "Update PROP in `zenit--map-state' to VALUE, and commit any
+pending definitions in `zenit--map-batch-forms'."
   (unless (equal (plist-get zenit--map-state prop) value)
     (zenit--map-commit))
   (setq zenit--map-state (plist-put zenit--map-state prop value)))
 
 (defun zenit--map-def (key def &optional states desc)
+  "Add a key-definition to `zenit--map-batch-forms'. KEY is the
+key-chord, DEF is the command to be bound to KEY, STATES are the
+evil states to bind under, and DESC is a description for
+which-key."
   (when (or (memq 'global states)
             (null states))
     (setq states (cons 'nil (delq 'global states))))
@@ -401,6 +436,8 @@ For example, :nvi will map to (list \\='normal \\='visual \\='insert). See
   t)
 
 (defun zenit--map-commit ()
+  "Commit the batch of key-defs in `zenit--map-batch-forms' to
+`zenit--map-forms'."
   (when zenit--map-batch-forms
     (cl-loop with attrs = (zenit--map-state)
              for (state . defs) in zenit--map-batch-forms
@@ -413,6 +450,9 @@ For example, :nvi will map to (list \\='normal \\='visual \\='insert). See
     (setq zenit--map-batch-forms nil)))
 
 (defun zenit--map-state ()
+  "Merge `zenit--map-parent-state' with `zenit--map-state',giving
+priority to the latter. Does not modify either; the merged result
+is a new plist."
   (let ((plist
          (append (list :prefix (zenit--map-append-keys :prefix)
                        :infix  (zenit--map-append-keys :infix)
@@ -431,11 +471,6 @@ For example, :nvi will map to (list \\='normal \\='visual \\='insert). See
     newplist))
 
 ;;
-(defmacro zenit-map! (&rest rest)
-  (when (or (bound-and-true-p byte-compile-current-file)
-            (not noninteractive))
-     (zenit--map-process rest)))
-
 (defmacro map! (&rest rest)
   "A convenience macro for defining keybinds, powered by `general'.
 

@@ -115,7 +115,7 @@ additional pairs of PROPERTY and VALUEs.
 (defun zenit-module-set (category module &rest plist)
   "Enables a module by adding it to `zenit-modules'.
 
-CATEGORY is a keyword, module is a symbol, PLIST is a plist that
+CATEGORY is a keyword, MODULE is a symbol, PLIST is a plist that
 accepts the following properties:
 
   :path STRING

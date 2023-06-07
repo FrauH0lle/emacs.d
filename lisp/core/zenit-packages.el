@@ -9,7 +9,8 @@ initialized.")
 auto-installed if missing) and shouldn't be deleted.")
 
 (defvar zenit-disabled-packages ()
-  "A list of packages that should be ignored by `use-package!' and `after!'.")
+  "A list of packages that should be ignored by `use-package!'
+ and `after!'.")
 
 (defvar zenit-packages-file "packages"
   "The basename of packages file for modules.")
@@ -137,6 +138,19 @@ Emacs) with simple prompts."
         (y-or-n-p (format! "%s" (or prompt ""))))))
 
 (defun +straight--recommended-option-p (prompt option)
+  "Check if a given OPTION is recommended for a given PROMPT.
+
+This function goes through `+straight--auto-options`, a list of
+cons cells, where each cell is a pair of regular expressions: one
+for the prompt and one for the option.
+
+The function checks if the PROMPT matches any prompt regular
+expressions in `+straight--auto-options`. If it finds a match, it
+then checks if the OPTION matches the corresponding option
+regular expression in the same cons cell.
+
+The function returns t if both the PROMPT and OPTION match their
+respective regular expressions; otherwise, it returns nil."
   (cl-loop for (prompt-re . opt-re) in +straight--auto-options
            if (string-match-p prompt-re prompt)
            return (string-match-p opt-re option)))
@@ -293,10 +307,10 @@ version of Emacs."
         (bootstrap-version 5)
         ;; Get commit which is stored in the lockfile
         (commit (let ((lockfile (zenit-path user-emacs-directory
-                                             "straight/versions/"
-                                             (concat
-                                              (symbol-name straight-current-profile)
-                                              ".el"))))
+                                            "straight/versions/"
+                                            (concat
+                                             (symbol-name straight-current-profile)
+                                             ".el"))))
                   (if (file-exists-p lockfile)
                       (cdr (assoc
                             "straight.el"
@@ -344,7 +358,7 @@ version of Emacs."
   "A wrapper around `straight-register-package' which allows to
 specifiy a lockfile and profile. NAME is the package name.
 
- :built-in BOOL|'prefer
+ :built-in BOOL | \\='prefer
    Same as :ignore if the package is a built-in Emacs package. If
    set to 'prefer, the package will not be installed if it is
    already provided by Emacs.
@@ -359,12 +373,16 @@ specifiy a lockfile and profile. NAME is the package name.
    Do not install or update this package AND disable all of its
    `use-package!' and `after!' blocks.
 
- :lockfile LOCKFILE|BOOL|'ignore
+ :lockfile LOCKFILE | BOOL | \\='ignore | \\='pinned
    Which profile and lockfile to use. Will create LOCKFILE entry
    in `straight-profiles' and let bind
    `straight-current-profile'to LOCKFILE. If nil or t, default
-   profile will be used. If set to 'ignore, no profile will be
-   used and the package will not be tracked."
+   profile will be used. If set to \\='ignore, no profile will be
+   used and the package will not be tracked.
+   If :pin is defined, lockfile will be set to \\='pinned.
+
+ :pin STR
+   Pin this package to commit hash STR."
   (declare (indent defun))
   (when built-in
     ;; :built-in t is basically an alias for :ignore (locate-library NAME)
@@ -379,42 +397,41 @@ specifiy a lockfile and profile. NAME is the package name.
     ;; Remove the package from the recipe cache, if it exists.
     (remhash (symbol-name name) straight--recipe-cache)
     (setq ignore t))
+  (when pin
+    ;; set lockfile if to 'pinned if :pin is non-nil
+    (setq lockfile 'pinned))
   (unless ignore
-    `(progn
-       (unless (or (equal ',lockfile '(quote ignore))
-                   (equal ',lockfile '(quote pinned))
-                   (booleanp ',lockfile))
-         (pushnew! straight-profiles (cons ',lockfile (format "%s.el" ',lockfile))))
-       (let ((straight-current-profile ',(cond ((not lockfile) nil)
-                                               ((equal lockfile '(quote ignore)) 'ignore)
-                                               ((equal lockfile '(quote pinned)) 'pinned)
-                                               ((not (booleanp lockfile)) lockfile)
-                                               (t nil))))
+    ;; Add profile to `straight-profiles' if lockfile should not be ignored
+    (unless (memq lockfile '(ignore nil t))
+      (pushnew! straight-profiles `(,(zenit-unquote lockfile) . ,(format "%s.el" (zenit-unquote lockfile)))))
+    ;; Set `straight-current-profile' according to lockfile
+    (let* ((lockfile-profile (cond ((not lockfile) nil)
+                                   ((eq lockfile 'ignore) 'ignore)
+                                   ((eq lockfile 'pinned) 'pinned)
+                                   ((not (booleanp lockfile)) lockfile)
+                                   (t nil)))
+           ;; Collect all package dependencies (and their dependencies!)
+           (all-deps (cons (symbol-name name)
+                           (cl-remove-duplicates
+                            (cl-loop for dep in (straight--get-dependencies (symbol-name name))
+                                     collect dep into deps
+                                     finally return (append deps (apply 'append (mapcar 'straight--get-dependencies deps))))
+                            :test #'equal))))
+      `(let ((straight-current-profile ',(zenit-unquote lockfile-profile)))
          ,(if recipe
               `(straight-register-package '(,name ,@recipe))
             `(straight-register-package ',name))
-         ;; Explicitly register dependencies (and their dependencies!) so they
-         ;; don't get purged and add them to the load-path. Use a virtual
-         ;; straight profile so later on, a lockfile will not be written for it.
-         (let (all-deps
-               (deps (straight--get-dependencies (symbol-name ',name))))
-           (while deps
-             (let ((newdeps (straight--get-dependencies (car deps))))
-               (pushnew! all-deps (car deps))
-               (delq! (car deps) deps)
-               (when newdeps
-                 (dolist (nd newdeps)
-                   (pushnew! deps nd)))))
-           (dolist (pkg-name (cons (symbol-name ',name) (cl-remove-duplicates all-deps :test #'equal)))
-             (unless (equal pkg-name (symbol-name ',name))
-               (let ((straight-current-profile 'dep))
-                 (straight-register-package (intern pkg-name))))
-             (add-to-list 'load-path (directory-file-name (straight--build-dir pkg-name)))
-             (straight--load-package-autoloads pkg-name)))
-
-         ,(when (and (equal lockfile '(quote pinned))
-                     pin)
+         ;; Explicitly register dependencies so they don't get purged and add
+         ;; them to the load-path. Use a virtual straight profile so later on,
+         ;; a lockfile will not be written for it.
+         (dolist (pkg-name ',all-deps)
+           (unless (equal pkg-name (symbol-name ',name))
+             (let ((straight-current-profile 'dep))
+               (straight-register-package (intern pkg-name))))
+           (add-to-list 'load-path (directory-file-name (straight--build-dir pkg-name)))
+           (straight--load-package-autoloads pkg-name))
+         ,(when (and (eq lockfile 'pinned) pin)
             `(add-to-list 'straight-x-pinned-packages
-                          '(,(zenit-package-recipe-repo name) . ,pin)))))))
+              '(,(zenit-package-recipe-repo name) . ,pin)))))))
 
 (provide 'zenit-packages)

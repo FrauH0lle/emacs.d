@@ -80,12 +80,27 @@ with `zenit/reload-theme'.")
   "A list of hooks run after changing the focused frame.")
 
 (defun zenit-run-switch-buffer-hooks-h (&optional _)
+  "Runs hooks associated with buffer switching.
+
+This function runs all hooks registered with
+`zenit-switch-buffer-hook'.
+
+The function takes an optional argument, which is ignored. This
+allows it to be used in contexts where a function with one
+argument is expected, such as in `add-hook'."
   (let ((gc-cons-threshold most-positive-fixnum)
         (inhibit-redisplay t))
     (run-hooks 'zenit-switch-buffer-hook)))
 
-(defvar zenit--last-frame nil)
 (defun zenit-run-switch-window-or-frame-hooks-h (&optional _)
+  "Runs hooks associated with window or frame switching.
+
+This function runs all hooks registered with
+`zenit-switch-window-hook' and `zenit-switch-frame-hook'.
+
+The function takes an optional argument, which is ignored. This
+allows it to be used in contexts where a function with one
+argument is expected, such as in `add-hook'."
   (let ((gc-cons-threshold most-positive-fixnum)
         (inhibit-redisplay t))
     (unless (equal (old-selected-frame) (selected-frame))
@@ -522,6 +537,10 @@ multiple fonts."
             (delq 'custom-theme-directory custom-theme-load-path)))
 
 (defun zenit--make-font-specs (face font)
+  "Create font specifications for a given FACE and FONT.
+
+The function will generate new specifications for FACE, taking
+into account the display conditions for the current frame."
   (let* ((base-specs (cadr (assq 'user (get face 'theme-face))))
          (base-specs (or base-specs '((t nil))))
          (attrs '(:family :foundry :slant :weight :height :width))
@@ -596,10 +615,11 @@ multiple fonts."
 ;;; Bootstrap
 
 (defun zenit-init-ui-h (&optional _)
-  "Initialize Emacs' user interface by applying all its advice and hooks.
+  "Initialize Emacs' user interface by applying all its advice and
+hooks.
 
-These should be done as late as possible, as to avoid/minimize prematurely
-triggering hooks during startup."
+These should be done as late as possible, as to avoid/minimize
+prematurely triggering hooks during startup."
   (zenit-run-hooks 'zenit-init-ui-hook)
 
   (add-hook 'kill-buffer-query-functions #'zenit-protect-fallback-buffer-h)
@@ -612,7 +632,8 @@ triggering hooks during startup."
   (add-hook 'window-selection-change-functions #'zenit-run-switch-window-or-frame-hooks-h)
   ;; Initialize `zenit-switch-buffer-hook'
   (add-hook 'window-buffer-change-functions #'zenit-run-switch-buffer-hooks-h)
-  ;; `window-buffer-change-functions' doesn't trigger for files visited via the server.
+  ;; `window-buffer-change-functions' doesn't trigger for files visited via the
+  ;; server.
   (add-hook 'server-visit-hook #'zenit-run-switch-buffer-hooks-h))
 
 ;; Apply fonts and theme
@@ -622,14 +643,15 @@ triggering hooks during startup."
   (add-hook hook #'zenit-init-fonts-h -100)
   (add-hook hook #'zenit-init-theme-h -90))
 
-;; PERF: Init UI late, but not too late. Its impact on startup time seems to
-;;   vary wildly depending on exact placement. `window-setup-hook' appears to be
-;;   the sweet spot.
+;; Init UI late, but not too late. Its impact on startup time seems to vary
+;; wildly depending on exact placement. `window-setup-hook' appears to be the
+;; sweet spot.
 (add-hook 'window-setup-hook #'zenit-init-ui-h -100)
 
 
 ;;
 ;;; Fixes/hacks
+
 ;; At the time of writing, the `customize' interface is not really supported. It
 ;; is better to configure via setting variables in ~/.emacs.d/site-lisp.
 (dolist (sym '(customize-option customize-browse customize-group customize-face

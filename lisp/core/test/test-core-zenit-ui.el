@@ -309,5 +309,4 @@
       (expect (fboundp 'zenit-init-ui-h) :to-be-truthy))
 
     (it "is attached to correct hook"
-      (expect (member 'zenit-init-ui-h window-setup-hook) :to-be-truthy)))
-  )
+      (expect (member 'zenit-init-ui-h window-setup-hook) :to-be-truthy))))

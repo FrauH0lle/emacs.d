@@ -76,7 +76,7 @@ themselves) to ensure the buffer is as fast as possible."
 ;; When we do that, we record where we are coming from, so we can still toggle
 ;; between the link and the source.
 (defvar-local zenit--symlink-origin nil)
-(defadvice! zenit--record-symlink-origin (orig-fn)
+(defadvice! zenit--record-symlink-origin-a (orig-fn)
   "Save the origin after following a symlink."
   :around #'vc-follow-link
   (let ((origin (buffer-file-name)))
@@ -297,12 +297,12 @@ system."
         ;; Only prompts for confirmation when buffer is unsaved.
         revert-without-query (list "."))
 
-  ;; `auto-revert-mode' and `global-auto-revert-mode' would, normally, abuse
-  ;; the heck out of file watchers _or_ aggressively poll your buffer list
-  ;; every X seconds. Too many watchers can grind Emacs to a halt if you
-  ;; preform expensive or batch processes on files outside of Emacs (e.g. their
-  ;; mtime changes), and polling your buffer list is terribly inefficient as
-  ;; your buffer list grows into the hundreds.
+  ;; `auto-revert-mode' and `global-auto-revert-mode' would, normally, abuse the
+  ;; heck out of file watchers _or_ aggressively poll your buffer list every X
+  ;; seconds. Too many watchers can grind Emacs to a halt if you preform
+  ;; expensive or batch processes on files outside of Emacs (e.g. their mtime
+  ;; changes), and polling your buffer list is terribly inefficient as your
+  ;; buffer list grows into the hundreds.
   ;;
   ;; We do this lazily instead. i.e. All visible buffers are reverted
   ;; immediately when a) a file is saved or b) Emacs is refocused (after using
@@ -338,14 +338,13 @@ system."
         recentf-max-saved-items 200) ; default is 20
 
   (defun zenit--recentf-file-truename-fn (file)
+    "Return the true name of FILE if it is a local or sudo remote
+ file; otherwise, return FILE as it is. For the true name,
+ abbreviations for the home directory are used."
     (if (or (not (file-remote-p file))
             (equal "sudo" (file-remote-p file 'method)))
         (abbreviate-file-name (file-truename (tramp-file-name-localname file)))
       file))
-
-  ;; REVIEW: Use this in lieu of `zenit--recentf-file-truename-fn' when we drop
-  ;;   28 support. See emacs-mirror/emacs@32906819addd.
-  ;; (setq recentf-show-abbreviated t)
 
   ;; Anything in runtime folders
   (add-to-list 'recentf-exclude
@@ -412,9 +411,10 @@ size."
                    else collect (cons reg item))))
 
   (defhook! zenit-savehist-remove-unprintable-registers-h ()
-    "Remove unwriteable registers (e.g. containing window configurations).
-Otherwise, `savehist' would discard `register-alist' entirely if
-we don't omit the unwritable tidbits."
+    "Remove unwriteable registers (e.g. containing window
+configurations). Otherwise, `savehist' would discard
+`register-alist' entirely if we don't omit the unwritable
+tidbits."
     'savehist-save-hook
     ;; Save new value in the temp buffer savehist is running
     ;; `savehist-save-hook' in. We don't want to actually remove the
@@ -535,6 +535,8 @@ short-circuiting hooks."
   :hook ((change-major-mode-after-body read-only-mode) . zenit-detect-indentation-h)
   :config
   (defun zenit-detect-indentation-h ()
+    "Detect and set the appropriate indentation style for the
+current buffer. "
     (unless (or (not after-init-time)
                 zenit-inhibit-indent-detection
                 zenit-large-file-p
@@ -604,14 +606,14 @@ Emacs in a broken state."
          (helpful-variable (button-get button 'apropos-symbol))))))
 
   ;; Standard location for the Emacs source code
-  (setq source-directory (concat zenit-data-dir "src/"))
+  (setq source-directory (file-name-concat zenit-data-dir "src/"))
 
   ;; This is initialized to nil by `find-func' if the source is not cloned when
   ;; the library is loaded
   (setq find-function-C-source-directory
         (expand-file-name "src" source-directory))
 
-  (defun zenit-clone-emacs-source-maybe ()
+  (defun zenit--clone-emacs-source-maybe ()
     "Prompt user to clone Emacs source repository if needed."
     (when (and (not (file-directory-p source-directory))
                (not (get-buffer "*clone-emacs-src*"))
@@ -632,7 +634,7 @@ Emacs in a broken state."
     (defadvice! +find-func--clone-emacs-source-a (&rest _)
       "Clone Emacs source if needed to view definition."
       :before #'find-function-C-source
-      (zenit-clone-emacs-source-maybe)))
+      (zenit--clone-emacs-source-maybe)))
 
   :config
   (defadvice! +helpful--clone-emacs-source-a (library-name)
@@ -641,7 +643,7 @@ Otherwise, it only happens when looking up variables, for some
 bizarre reason."
     :before #'helpful--library-path
     (when (member (file-name-extension library-name) '("c" "rs"))
-      (zenit-clone-emacs-source-maybe))))
+      (zenit--clone-emacs-source-maybe))))
 
 
 ;;;###package imenu
@@ -713,7 +715,9 @@ on."
   (sp-local-pair '(minibuffer-mode minibuffer-inactive-mode) "`" nil :actions nil)
 
   ;; Smartparens breaks evil-mode's replace state
-  (defvar zenit-buffer-smartparens-mode nil)
+  (defvar zenit-buffer-smartparens-mode nil
+    "Variable indicating whether smartparens mode is active in the
+current buffer.")
   (defhook! zenit-enable-smartparens-mode-maybe-h ()
     'evil-replace-state-exit-hook
     (when zenit-buffer-smartparens-mode
@@ -729,25 +733,6 @@ on."
 (use-package! so-long
   :hook (zenit-first-file . global-so-long-mode)
   :config
-  ;; Emacs 29 introduced faster long-line detection, so they can afford a much
-  ;; larger `so-long-threshold' and its default `so-long-predicate'.
-  (if (fboundp 'buffer-line-statistics)
-      (unless (featurep 'native-compile)
-        (setq so-long-threshold 5000))
-    ;; reduce false positives w/ larger threshold
-    (setq so-long-threshold 400)
-
-    (defun zenit-buffer-has-long-lines-p ()
-      (unless (bound-and-true-p visual-line-mode)
-        (let ((so-long-skip-leading-comments
-               ;; HACK Fix #2183: `so-long-detected-long-line-p' calls
-               ;;   `comment-forward' which tries to use comment syntax, which
-               ;;   throws an error if comment state isn't initialized, leading
-               ;;   to a wrong-type-argument: stringp error.
-               ;; DEPRECATED Fixed in Emacs 28.
-               (bound-and-true-p comment-use-syntax)))
-          (so-long-detected-long-line-p))))
-    (setq so-long-predicate #'zenit-buffer-has-long-lines-p))
   ;; Don't disable syntax highlighting and line numbers, or make the buffer
   ;; read-only, in `so-long-minor-mode', so we can have a basic editing
   ;; experience in them, at least. It will remain off in `so-long-mode',

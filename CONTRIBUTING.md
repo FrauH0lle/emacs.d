@@ -6,6 +6,7 @@
   - docs: Documentation only changes.
   - feat: A new feature.
   - fix: A bug fix.
+  - pkg: Addition of package or version change.
   - perf: A code change that improves performance.
   - refactor: A code change that neither fixes a bug nor adds a feature.
   - revert: Undoes a previous change. Must be followed by the full subject of

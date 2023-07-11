@@ -3,7 +3,7 @@
  ("consult" . "052399ed05372464b8ed6261b3196de143a8a834")
  ("consult-dir" . "ed8f0874d26f10f5c5b181ab9f2cf4107df8a0eb")
  ("consult-flycheck" . "51b1b48e8dad314f9c9d963376f2ea8de94b97f2")
- ("embark" . "3ffb27a833d326ccf7e375bb9d94ebf4dc37fa77")
+ ("embark" . "9b17d9a63b6960e026ad3c09a7871e0a3364e926")
  ("marginalia" . "2633b2dee22261531f960e49106771e679102a98")
  ("orderless" . "e6784026717a8a6a7dcd0bf31fd3414f148c542e")
  ("vertico" . "b6b8420d2943e42b88e2a143da29edf76bc223b5"))

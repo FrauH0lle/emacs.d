@@ -83,7 +83,8 @@ nil        Never create a new workspace on project switch.")
       (when-let (warnings (get-buffer "*Warnings*"))
         (save-excursion
           (display-buffer-in-side-window
-           warnings '((window-height . shrink-window-if-larger-than-buffer)))))))
+           warnings '((window-height . shrink-window-if-larger-than-buffer)))))
+      (persp-add-buffer (buffer-list) (get-current-persp) nil nil)))
   (defhook! +workspaces-init-persp-mode-h ()
     'persp-mode-hook
     (cond (persp-mode
@@ -138,8 +139,8 @@ nil        Never create a new workspace on project switch.")
            persp-add-buffer-on-after-change-major-mode-filter-functions)
           (persp-add-buffer (current-buffer) (get-current-persp) nil nil))))
 
-  (add-hook 'persp-add-buffer-on-after-change-major-mode-filter-functions
-            #'zenit-unreal-buffer-p)
+  ;; (add-hook 'persp-add-buffer-on-after-change-major-mode-filter-functions
+  ;;           #'zenit-unreal-buffer-p)
 
   (defadvice! +workspaces--evil-alternate-buffer-a (&optional window)
     "Make `evil-alternate-buffer' ignore buffers outside the current workspace."
@@ -177,32 +178,9 @@ nil        Never create a new workspace on project switch.")
   (add-hook 'delete-frame-functions #'+workspaces-delete-associated-workspace-h)
   (add-hook 'server-done-hook #'+workspaces-delete-associated-workspace-h)
 
-  ;; per-project workspaces, but reuse current workspace if empty
-  ;; HACK?? needs review
-  (setq projectile-switch-project-action (lambda () (+workspaces-set-project-action-fn) (+workspaces-switch-to-project-h))
-        counsel-projectile-switch-project-action
-        '(1 ("o" +workspaces-switch-to-project-h "open project in new workspace")
-          ("O" counsel-projectile-switch-project-action "jump to a project buffer or file")
-          ("f" counsel-projectile-switch-project-action-find-file "jump to a project file")
-          ("d" counsel-projectile-switch-project-action-find-dir "jump to a project directory")
-          ("D" counsel-projectile-switch-project-action-dired "open project in dired")
-          ("b" counsel-projectile-switch-project-action-switch-to-buffer "jump to a project buffer")
-          ("m" counsel-projectile-switch-project-action-find-file-manually "find file manually from project root")
-          ("w" counsel-projectile-switch-project-action-save-all-buffers "save all project buffers")
-          ("k" counsel-projectile-switch-project-action-kill-buffers "kill all project buffers")
-          ("r" counsel-projectile-switch-project-action-remove-known-project "remove project from known projects")
-          ("c" counsel-projectile-switch-project-action-compile "run project compilation command")
-          ("C" counsel-projectile-switch-project-action-configure "run project configure command")
-          ("e" counsel-projectile-switch-project-action-edit-dir-locals "edit project dir-locals")
-          ("v" counsel-projectile-switch-project-action-vc "open project in vc-dir / magit / monky")
-          ("s" (lambda (project)
-                 (let ((projectile-switch-project-action
-                        (lambda () (call-interactively #'+ivy/project-search))))
-                   (counsel-projectile-switch-project-by-name project))) "search project")
-          ("xs" counsel-projectile-switch-project-action-run-shell "invoke shell from project root")
-          ("xe" counsel-projectile-switch-project-action-run-eshell "invoke eshell from project root")
-          ("xt" counsel-projectile-switch-project-action-run-term "invoke term from project root")
-          ("X" counsel-projectile-switch-project-action-org-capture "org-capture into project")))
+  ;; per-project workspaces, but reuse current workspace if empty HACK?? needs
+  ;; review
+  (setq projectile-switch-project-action (lambda () (+workspaces-set-project-action-fn) (+workspaces-switch-to-project-h)))
 
 
   ;; Don't bother auto-saving the session if no real buffers are open.
@@ -276,4 +254,7 @@ nil        Never create a new workspace on project switch.")
   (add-hook! 'tab-bar-mode-hook
     (defun +workspaces-set-up-tab-bar-integration-h ()
       (add-hook 'persp-before-deactivate-functions #'+workspaces-save-tab-bar-data-h)
-      (add-hook 'persp-activated-functions #'+workspaces-load-tab-bar-data-h))))
+      (add-hook 'persp-activated-functions #'+workspaces-load-tab-bar-data-h)
+      ;; Load and save configurations for tab-bar.
+      (add-hook 'persp-before-save-state-to-file-functions #'+workspaces-save-tab-bar-data-to-file-h)
+      (+workspaces-load-tab-bar-data-from-file-h))))

@@ -615,8 +615,8 @@ into account the display conditions for the current frame."
 ;;; Bootstrap
 
 (defun zenit-init-ui-h (&optional _)
-  "Initialize Emacs' user interface by applying all its advice and
-hooks.
+  "Initialize Emacs' user interface by applying all its advice
+and hooks.
 
 These should be done as late as possible, as to avoid/minimize
 prematurely triggering hooks during startup."

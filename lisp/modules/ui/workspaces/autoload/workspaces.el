@@ -40,7 +40,8 @@
 
 ;;;###autoload
 (defalias #'+workspace-contains-buffer-p #'persp-contain-buffer-p
-  "Return non-nil if BUFFER is in WORKSPACE (defaults to current workspace).")
+  "Return non-nil if BUFFER is in WORKSPACE (defaults to current
+workspace).")
 
 
 ;;; Getters
@@ -50,8 +51,8 @@
 
 ;;;###autoload
 (defun +workspace-get (name &optional noerror)
-  "Return a workspace named NAME. Unless NOERROR is non-nil, this throws an
-error if NAME doesn't exist."
+  "Return a workspace named NAME. Unless NOERROR is non-nil, this
+throws an error if NAME doesn't exist."
   (cl-check-type name string)
   (when-let (persp (persp-get-by-name name))
     (cond ((+workspace-p persp) persp)
@@ -81,8 +82,9 @@ error if NAME doesn't exist."
 (defun +workspace-buffer-list (&optional persp)
   "Return a list of buffers in PERSP.
 
-PERSP can be a string (name of a workspace) or a workspace (satisfies
-`+workspace-p'). If nil or omitted, it defaults to the current workspace."
+PERSP can be a string (name of a workspace) or a
+workspace (satisfies `+workspace-p'). If nil or omitted, it
+defaults to the current workspace."
   (let ((persp (or persp (+workspace-current))))
     (unless (+workspace-p persp)
       (user-error "Not in a valid workspace (%s)" persp))
@@ -90,15 +92,17 @@ PERSP can be a string (name of a workspace) or a workspace (satisfies
 
 ;;;###autoload
 (defun +workspace-orphaned-buffer-list ()
-  "Return a list of buffers that aren't associated with any perspective."
+  "Return a list of buffers that aren't associated with any
+perspective."
   (cl-remove-if #'persp--buffer-in-persps (buffer-list)))
 
 
 ;;; Actions
 ;;;###autoload
 (defun +workspace-load (name)
-  "Loads a single workspace (named NAME) into the current session. Can only
-retrieve perspectives that were explicitly saved with `+workspace-save'.
+  "Loads a single workspace (named NAME) into the current session.
+Can only retrieve perspectives that were explicitly saved with
+`+workspace-save'.
 
 Returns t if successful, nil otherwise."
   (when (+workspace-exists-p name)
@@ -110,9 +114,9 @@ Returns t if successful, nil otherwise."
 
 ;;;###autoload
 (defun +workspace-save (name)
-  "Saves a single workspace (NAME) from the current session. Can be loaded again
-with `+workspace-load'. NAME can be the string name of a workspace or its
-perspective hash table.
+  "Saves a single workspace (NAME) from the current session. Can be
+loaded again with `+workspace-load'. NAME can be the string name
+of a workspace or its perspective hash table.
 
 Returns t on success, nil otherwise."
   (unless (+workspace-exists-p name)
@@ -124,8 +128,8 @@ Returns t on success, nil otherwise."
 
 ;;;###autoload
 (defun +workspace-new (name)
-  "Create a new workspace named NAME. If one already exists, return nil.
-Otherwise return t on success, nil otherwise."
+  "Create a new workspace named NAME. If one already exists, return
+nil. Otherwise return t on success, nil otherwise."
   (when (+workspace--protected-p name)
     (error "Can't create a new '%s' workspace" name))
   (when (+workspace-exists-p name)
@@ -143,17 +147,17 @@ Otherwise return t on success, nil otherwise."
 
 ;;;###autoload
 (defun +workspace-rename (name new-name)
-  "Rename the current workspace named NAME to NEW-NAME. Returns old name on
-success, nil otherwise."
+  "Rename the current workspace named NAME to NEW-NAME. Returns old
+name on success, nil otherwise."
   (when (+workspace--protected-p name)
     (error "Can't rename '%s' workspace" name))
   (persp-rename new-name (+workspace-get name)))
 
 ;;;###autoload
 (defun +workspace-delete (workspace &optional inhibit-kill-p)
-  "Delete the workspace denoted by WORKSPACE, which can be the name of a perspective
-or its hash table. If INHIBIT-KILL-P is non-nil, don't kill this workspace's
-buffers."
+  "Delete the workspace denoted by WORKSPACE, which can be the name
+of a perspective or its hash table. If INHIBIT-KILL-P is non-nil,
+don't kill this workspace's buffers."
   (unless (stringp workspace)
     (setq workspace (persp-name workspace)))
   (when (+workspace--protected-p workspace)
@@ -166,8 +170,8 @@ buffers."
 (defun +workspace-switch (name &optional auto-create-p)
   "Switch to another workspace named NAME (a string).
 
-If AUTO-CREATE-P is non-nil, create the workspace if it doesn't exist, otherwise
-throws an error."
+If AUTO-CREATE-P is non-nil, create the workspace if it doesn't
+exist, otherwise throws an error."
   (unless (+workspace-exists-p name)
     (if auto-create-p
         (+workspace-new name)
@@ -190,8 +194,8 @@ throws an error."
 
 ;;;###autoload
 (defun +workspace/load (name)
-  "Load a workspace and switch to it. If called with C-u, try to reload the
-current workspace (by name) from session files."
+  "Load a workspace and switch to it. If called with C-u, try to
+reload the current workspace (by name) from session files."
   (interactive
    (list
     (if current-prefix-arg
@@ -207,8 +211,8 @@ current workspace (by name) from session files."
 
 ;;;###autoload
 (defun +workspace/save (name)
-  "Save the current workspace. If called with C-u, autosave the current
-workspace."
+  "Save the current workspace. If called with C-u, autosave the
+current workspace."
   (interactive
    (list
     (if current-prefix-arg
@@ -232,8 +236,8 @@ workspace."
 
 ;;;###autoload
 (defun +workspace/delete (name)
-  "Delete this workspace. If called with C-u, prompts you for the name of the
-workspace to delete."
+  "Delete this workspace. If called with C-u, prompts you for the
+name of the workspace to delete."
   (interactive
    (let ((current-name (+workspace-current-name)))
      (list
@@ -269,7 +273,8 @@ workspace to delete."
 
 ;;;###autoload
 (defun +workspace/kill-session (&optional interactive)
-  "Delete the current session, all workspaces, windows and their buffers."
+  "Delete the current session, all workspaces, windows and their
+buffers."
   (interactive (list t))
   (let ((windows (length (window-list)))
         (persps (length (+workspace-list-names)))
@@ -292,8 +297,8 @@ workspace to delete."
 
 ;;;###autoload
 (defun +workspace/new (&optional name clone-p)
-  "Create a new workspace named NAME. If CLONE-P is non-nil, clone the current
-workspace, otherwise the new workspace is blank."
+  "Create a new workspace named NAME. If CLONE-P is non-nil, clone
+the current workspace, otherwise the new workspace is blank."
   (interactive (list nil current-prefix-arg))
   (unless name
     (setq name (format "#%s" (+workspace--generate-id))))
@@ -390,9 +395,9 @@ end of the workspace list."
 
 ;;;###autoload
 (defun +workspace/close-window-or-workspace ()
-  "Close the selected window. If it's the last window in the workspace, either
-close the workspace (as well as its associated frame, if one exists) and move to
-the next."
+  "Close the selected window. If it's the last window in the
+workspace, either close the workspace (as well as its associated
+frame, if one exists) and move to the next."
   (interactive)
   (let ((delete-window-fn (if (featurep 'evil) #'evil-window-delete #'delete-window)))
     (if (window-dedicated-p)
@@ -412,7 +417,8 @@ the next."
 
 ;;;###autoload
 (defun +workspace/swap-left (&optional count)
-  "Swap the current workspace with the COUNTth workspace on its left."
+  "Swap the current workspace with the COUNTth workspace on its
+left."
   (interactive "p")
   (let* ((current-name (+workspace-current-name))
          (count (or count 1))
@@ -465,12 +471,14 @@ the next."
 
 ;;;###autoload
 (defun +workspace-message (message &optional type)
-  "Show an 'elegant' message in the echo area next to a listing of workspaces."
+  "Show an 'elegant' message in the echo area next to a listing of
+workspaces."
   (message "%s" (+workspace--message-body message type)))
 
 ;;;###autoload
 (defun +workspace-error (message &optional noerror)
-  "Show an 'elegant' error in the echo area next to a listing of workspaces."
+  "Show an 'elegant' error in the echo area next to a listing of
+workspaces."
   (funcall (if noerror #'message #'error)
            "%s" (+workspace--message-body message 'error)))
 
@@ -488,8 +496,8 @@ the next."
 ;;;###autoload
 (defun +workspaces-delete-associated-workspace-h (&optional frame)
   "Delete workspace associated with current frame.
-A workspace gets associated with a frame when a new frame is interactively
-created."
+A workspace gets associated with a frame when a new frame is
+interactively created."
   (when (and persp-mode (not (bound-and-true-p with-editor-mode)))
     (unless frame
       (setq frame (selected-frame)))
@@ -515,18 +523,18 @@ created."
 (defvar +workspaces--project-dir nil)
 ;;;###autoload
 (defun +workspaces-set-project-action-fn ()
-  "A `projectile-switch-project-action' that sets the project directory for
-`+workspaces-switch-to-project-h'."
+  "A `projectile-switch-project-action' that sets the project
+directory for `+workspaces-switch-to-project-h'."
   (setq +workspaces--project-dir default-directory))
 
 ;;;###autoload
 (defun +workspaces-switch-to-project-h (&optional dir)
-  "Creates a workspace dedicated to a new project. If one already exists, switch
-to it. If in the main workspace and it's empty, recycle that workspace, without
-renaming it.
+  "Creates a workspace dedicated to a new project. If one already
+exists, switch to it. If in the main workspace and it's empty,
+recycle that workspace, without renaming it.
 
-Afterwords, runs `+workspaces-switch-project-function'. By default, this prompts
-the user to open a file in the new project.
+Afterwords, runs `+workspaces-switch-project-function'. By
+default, this prompts the user to open a file in the new project.
 
 This be hooked to `projectile-after-switch-project-hook'."
   (when dir
@@ -581,10 +589,25 @@ This be hooked to `projectile-after-switch-project-hook'."
     (set-persp-parameter 'tab-bar-closed-tabs tab-bar-closed-tabs)))
 
 ;;;###autoload
+(defun +workspaces-save-tab-bar-data-to-file-h (&rest _)
+  "Save the current workspace's tab bar data to file."
+  (when (get-current-persp)
+    ;; HACK: Remove fields (for window-configuration) that cannot be serialized.
+    (set-persp-parameter 'tab-bar-tabs
+                         (frameset-filter-tabs (tab-bar-tabs) nil nil t))))
+
+;;;###autoload
 (defun +workspaces-load-tab-bar-data-h (_)
-  "Restores the tab bar data of the workspace we have just switched to."
+  "Restores the tab bar data of the workspace we have just switched
+to."
   (tab-bar-tabs-set (persp-parameter 'tab-bar-tabs))
   (setq tab-bar-closed-tabs (persp-parameter 'tab-bar-closed-tabs))
+  (tab-bar--update-tab-bar-lines t))
+
+;;;###autoload
+(defun +workspaces-load-tab-bar-data-from-file-h (&rest _)
+  "Restores the tab bar data from file."
+  (tab-bar-tabs-set (persp-parameter 'tab-bar-tabs))
   (tab-bar--update-tab-bar-lines t))
 
 ;;

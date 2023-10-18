@@ -98,6 +98,7 @@
   (describe "zenit/quickload-session"
     (it "calls zenit-load-session with no file argument"
       (spy-on 'message)
+      (spy-on 'yes-or-no-p :and-return-value t)
       (spy-on 'zenit-load-session)
       (zenit/quickload-session)
       (expect 'zenit-load-session :to-have-been-called)))

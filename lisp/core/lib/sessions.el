@@ -108,17 +108,17 @@ signals an error."
 ;;; Commands
 
 ;;;###autoload
-(defun zenit/quickload-session ()
-  "Quickly load the default session state using the available
-session backend.
-
-This command calls `zenit-load-session' without a FILE argument,
-so the default session file for the available session backend is
-used."
-  (interactive)
-  (message "Restoring session...")
-  (zenit-load-session)
-  (message "Session restored. Welcome back."))
+(defun zenit/quickload-session (&optional force)
+  "Load the last session saved.
+If the FORCE \\[universal-argument] is provided
+then no confirmation is asked."
+  (interactive "P")
+  (if (or force
+          (yes-or-no-p "This will wipe your current session, do you want to continue? "))
+      (progn (message "Restoring session...")
+             (zenit-load-session)
+             (message "Session restored. Welcome back."))
+    (message "Session not restored.")))
 
 ;;;###autoload
 (defun zenit/quicksave-session ()

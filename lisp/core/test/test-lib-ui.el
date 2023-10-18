@@ -172,7 +172,7 @@
   (describe "zenit/set-frame-opacity"
     (it "sets the frame opacity"
       (zenit/set-frame-opacity 75)
-      (expect (frame-parameter nil 'alpha) :to-be 75)))
+      (expect (frame-parameter nil 'alpha-background) :to-be 75)))
 
 
   (describe "zenit/narrow-buffer-indirectly"

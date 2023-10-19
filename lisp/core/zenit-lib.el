@@ -95,7 +95,7 @@ The generated functions have the format
 `zenit--setq-VAR-for-MODE-h' where VAR is the variable name and
 MODE is derived from the hook name."
   (unless (or singles (= 0 (% (length rest) 2)))
-    (signal 'wrong-number-of-arguments (list #'evenp (length rest))))
+    (signal 'wrong-number-of-arguments (list #'cl-evenp (length rest))))
   (cl-loop with vars = (let ((args rest)
                              vars)
                          (while args

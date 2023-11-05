@@ -128,7 +128,7 @@
     (add-hook 'anaconda-mode-hook #'evil-normalize-keymaps))
   (map! :localleader
         :map anaconda-mode-map
-        :prefix "g"
+        :prefix ("g" . "goto")
         "d" #'anaconda-mode-find-definitions
         "h" #'anaconda-mode-show-doc
         "a" #'anaconda-mode-find-assignments
@@ -214,7 +214,7 @@
   ;;     (:description . "Run Python script")))
   (map! :map python-mode-map
         :localleader
-        :prefix "e"
+        :prefix ("e" . "environments")
         :desc "activate"    "a" #'pipenv-activate
         :desc "deactivate"  "d" #'pipenv-deactivate
         :desc "install"     "i" #'pipenv-install

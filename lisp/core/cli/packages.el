@@ -680,6 +680,7 @@ If ELPA-P, include packages installed with package.el (M-x package-install)."
   (zenit-initialize-packages)
   ;; (zenit--barf-if-incomplete-packages)
   (print! (start "Purging orphaned packages (for the emperor)..."))
+  (quiet! (straight-prune-build-cache))
   (cl-destructuring-bind (&optional builds-to-purge repos-to-purge repos-to-regraft)
       (let ((rdirs
              (and (or repos-p regraft-repos-p)
@@ -700,8 +701,7 @@ If ELPA-P, include packages installed with package.el (M-x package-install)."
       nil (list
            (if (not builds-p)
                (ignore (print! (info "Skipping builds")))
-             (and (/= 0 (zenit--packages-purge-builds builds-to-purge))
-                  (straight-prune-build-cache)))
+             (/= 0 (zenit--packages-purge-builds builds-to-purge)))
            (if (not elpa-p)
                (ignore (print! (info "Skipping elpa packages")))
              (/= 0 (zenit--packages-purge-elpa)))

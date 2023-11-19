@@ -35,8 +35,8 @@ XLFD string. See `zenit-font' for examples.
 
 An omitted font size means to inherit `zenit-font''s size.")
 
-(defvar zenit-unicode-font nil
-  "Fallback font for Unicode glyphs.
+(defvar zenit-symbol-font nil
+  "Fallback font for symbols.
 Must be a `font-spec', a font object, an XFT font string, or an
 XLFD string. See `zenit-font' for examples.
 
@@ -47,17 +47,30 @@ WARNING: if you specify a size for this font it will hard-lock
 any usage of this font to that size. It's rarely a good idea to
 do so!")
 
-(defvar zenit-emoji-fallback-font-families
+(defvar zenit-emoji-font nil
+  "Fallback font for emoji.
+Must be a `font-spec', a font object, an XFT font string, or an
+XLFD string. See `zenit-font' for examples.
+
+WARNING: if you specify a size for this font it will hard-lock
+any usage of this font to that size. It's rarely a good idea to
+do so!")
+
+(defconst zenit-emoji-fallback-font-families
   '("Apple Color Emoji"
     "Segoe UI Emoji"
     "Noto Color Emoji"
     "Noto Emoji")
-  "A list of fallback font families to use for emojis.")
+  "A list of fallback font families to use for emojis.
+These are platform-specific fallbacks for internal use. If you
+want to change your emoji font, use `zenit-emoji-font'.")
 
-(defvar zenit-symbol-fallback-font-families
+(defconst zenit-symbol-fallback-font-families
   '("Segoe UI Symbol"
     "Apple Symbols")
-  "A list of fallback font families for general symbol glyphs.")
+  "A list of fallback font families for general symbol glyphs.
+These are platform-specific fallbacks for internal use. If you
+want to change your symbol font, use `zenit-symbol-font'.")
 
 
 ;;
@@ -551,13 +564,22 @@ into account the display conditions for the current frame."
         (custom-push-theme 'theme-face face 'user 'set new-specs)
         (put face 'face-modified nil))))
   (when (fboundp 'set-fontset-font)
-    (let ((fn (zenit-rpartial #'member (font-family-list))))
-      (when-let (font (cl-find-if fn zenit-symbol-fallback-font-families))
-        (set-fontset-font t 'symbol font))
-      (when-let (font (cl-find-if fn zenit-emoji-fallback-font-families))
-        (set-fontset-font t 'unicode font))
-      (when zenit-unicode-font
-        (set-fontset-font t 'unicode zenit-unicode-font))))
+    (let* ((fn (zenit-rpartial #'member (font-family-list)))
+           (symbol-font (or zenit-symbol-font
+                            (cl-find-if fn zenit-symbol-fallback-font-families)))
+           (emoji-font (or zenit-emoji-font
+                           (cl-find-if fn zenit-emoji-fallback-font-families))))
+      (when symbol-font
+        (dolist (script '(symbol mathematical))
+          (set-fontset-font t script symbol-font)))
+      (when emoji-font
+        (set-fontset-font t 'emoji emoji-font)
+        ;; some characters in the Emacs symbol script are often covered by emoji
+        ;; fonts
+        (set-fontset-font t 'symbol emoji-font nil 'append)))
+    ;; Nerd Fonts use these Private Use Areas
+    (dolist (range '((#xe000 . #xf8ff) (#xf0000 . #xfffff)))
+      (set-fontset-font t range "Symbols Nerd Font Mono")))
   ;; Users should inject their own font logic in `after-setting-font-hook'
   (run-hooks 'after-setting-font-hook))
 

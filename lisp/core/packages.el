@@ -6,7 +6,7 @@
 (package! gcmh :lockfile core)
 
 ;; zenit-ui.el
-(package! all-the-icons :lockfile core)
+(package! nerd-icons :lockfile core)
 (package! hide-mode-line :lockfile core)
 (package! highlight-numbers :lockfile core)
 (package! rainbow-delimiters :lockfile core)

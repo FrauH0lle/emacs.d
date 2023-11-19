@@ -22,21 +22,7 @@
         (cond (IS-WINDOWS 1)
               (0)))
 
-  ;; Fix modeline icons in daemon-spawned graphical frames. We have our own
-  ;; mechanism for disabling all-the-icons, so we don't need doom-modeline to do
-  ;; it for us. However, this may cause unwanted padding in the modeline in
-  ;; daemon-spawned terminal frames. If it bothers you, you may prefer
-  ;; `doom-modeline-icon' set to `nil'.
-  (when (daemonp)
-    (setq doom-modeline-icon t))
   :config
-  ;; HACK Fix #4102 due to empty all-the-icons return value (caused by
-  ;;      `zenit--disable-all-the-icons-in-tty-a' advice) in tty daemon frames.
-  (defadvice! +modeline-disable-icon-in-daemon-a (fn &rest args)
-    :around #'doom-modeline-propertize-icon
-    (when (display-graphic-p)
-      (apply fn args)))
-
   ;; Fix an issue where these two variables aren't defined in TTY Emacs on MacOS
   (defvar mouse-wheel-down-event nil)
   (defvar mouse-wheel-up-event nil)
@@ -117,9 +103,9 @@ a symlink. It respects `doom-modeline-icon'."
 the current working directory, the file name, and its
 state (modified, read-only or non-existent)."
       (concat
-       doom-modeline-spc
+       (doom-modeline-spc)
        (doom-modeline--buffer-mode-icon)
        (doom-modeline--buffer-state-icon)
        (doom-modeline--buffer-name)
-       doom-modeline-spc
+       (doom-modeline-spc)
        (+doom-modeline--buffer-symlink-icon)))))

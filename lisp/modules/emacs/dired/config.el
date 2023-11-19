@@ -1,5 +1,8 @@
 ;; tools/dired/config.el -*- lexical-binding: t; -*-
 
+(defvar +dired-dirvish-icon-provider 'nerd-icons
+  "Icon provider to use for dirvish when the module is enabled.")
+
 (use-package! dired
   :commands dired-jump
   :init
@@ -85,7 +88,7 @@ Fixes #3939: unsortable dired entries on Windows."
   (defer-until! (bound-and-true-p dired-omit-mode)
     (setq dired-omit-files (concat dired-omit-files "\\|^\\..*$")))
   (when (modulep! +icons)
-    (push 'all-the-icons dirvish-attributes))
+    (push +dired-dirvish-icon-provider dirvish-attributes))
   (map! :map dirvish-mode-map
         :n "b" #'dirvish-goto-bookmark
         :n "z" #'dirvish-show-history

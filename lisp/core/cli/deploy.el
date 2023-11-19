@@ -22,13 +22,13 @@
   (when (modulep! :config compile)
     (zenit-cli-compile))
 
-  ;; Install `all-the-icons' fonts
+  ;; Install `nerd-icons' fonts
   (when (or zenit-auto-accept
-            (y-or-n-p "Download and install all-the-icon's fonts?"))
-    (require 'all-the-icons)
+            (y-or-n-p "Download and install nerd-icon's fonts?"))
+    (require 'nerd-icons)
     (let ((window-system (cond (IS-MAC 'ns)
                                (IS-LINUX 'x))))
-      (all-the-icons-install-fonts 'yes)))
+      (nerd-icons-install-fonts 'yes)))
 
   (when (file-exists-p "~/.emacs")
     (print! (warn "A ~/.emacs file was detected. This should be deleted!")))

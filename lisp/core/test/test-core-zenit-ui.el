@@ -209,14 +209,6 @@
       (expect (member 'zenit-enable-hl-line-maybe-h deactivate-mark-hook) :to-be-truthy)))
 
 
-  (describe "zenit-init-all-the-icons-fonts-h"
-    (it "is defined"
-      (expect (fboundp 'zenit-init-all-the-icons-fonts-h) :to-be-truthy))
-
-    (it "is attached to correct hook"
-      (expect (member 'zenit-init-all-the-icons-fonts-h after-setting-font-hook) :to-be-truthy)))
-
-
   (describe "zenit--make-font-specs"
     (it "returns '((t nil)) for a face with no specs"
       (let* ((face 'my-empty-face)

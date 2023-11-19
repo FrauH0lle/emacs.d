@@ -261,7 +261,7 @@
         ;; Check if the spies were called with the expected arguments
         (expect 'zenit--make-font-specs :to-have-been-called-times 4)
         (expect 'custom-push-theme :to-have-been-called-times 4)
-        (expect 'set-fontset-font :to-have-been-called-times 1)
+        (expect 'set-fontset-font :to-have-been-called-times 2)
         (expect 'run-hooks :to-have-been-called-with 'after-setting-font-hook)
         (expect 'set-face-attribute :to-have-been-called-times 4)
         (expect 'frame-list :to-have-been-called-times 4)

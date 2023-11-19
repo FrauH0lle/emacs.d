@@ -1,23 +1,14 @@
 ;; -*- no-byte-compile: t; -*-
 ;; completion/corfu/packages.el
 
-(package! corfu
-  :recipe (:files (:defaults "extensions/*.el")))
-
+(package! corfu :recipe (:files ("*.el" "extensions/*.el")) :lockfile completion-corfu)
+(package! cape :lockfile completion-corfu)
 (when (modulep! +icons)
-  (package! kind-icon))
-
+  (package! nerd-icons-completion :lockfile completion-corfu)
+  (package! nerd-icons-corfu :lockfile completion-corfu))
 (when (modulep! +orderless)
-  (package! orderless))
-
-(package! cape)
-
-(package! popon
-  :recipe (:type git :repo "https://codeberg.org/akib/emacs-popon"))
-(package! corfu-terminal
-  :recipe (:type git :repo "https://codeberg.org/akib/emacs-corfu-terminal.git"))
-(package! corfu-doc-terminal
-  :recipe (:type git :repo "https://codeberg.org/akib/emacs-corfu-doc-terminal.git"))
-
-(package! cape-yasnippet
-  :recipe (:host github :repo "elken/cape-yasnippet"))
+  (package! orderless :lockfile completion-corfu))
+(when (modulep! :os tty)
+  (package! corfu-terminal :lockfile completion-corfu))
+(when (modulep! :editor snippets)
+  (package! yasnippet-capf :lockfile completion-corfu))

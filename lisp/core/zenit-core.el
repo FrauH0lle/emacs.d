@@ -423,7 +423,7 @@ them otherwise."
 (setq ad-redefinition-action 'accept)
 
 ;; Ignore warnings about "existing variables being aliased".
-(setq warning-suppress-types '((defvaralias)))
+(setq warning-suppress-types '(defvaralias))
 
 ;; Reduce debug output unless we've asked for it.
 (setq debug-on-error init-file-debug

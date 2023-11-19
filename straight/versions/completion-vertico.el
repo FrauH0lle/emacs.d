@@ -1,5 +1,5 @@
 (("Emacs-wgrep" . "edf768732a56840db6879706b64c5773c316d619")
- ("compat" . "7775c3185764337b8a78c3005aab4a11aa80dfe8")
+ ("compat" . "a20862e377a137961dd82706a7654a090210f7f7")
  ("consult" . "052399ed05372464b8ed6261b3196de143a8a834")
  ("consult-dir" . "ed8f0874d26f10f5c5b181ab9f2cf4107df8a0eb")
  ("consult-flycheck" . "51b1b48e8dad314f9c9d963376f2ea8de94b97f2")

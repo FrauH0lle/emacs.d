@@ -8,7 +8,8 @@
 
 Set to `nil' to load no theme at all. This variable is changed by
 `load-theme'."
-  :group 'zenit)
+  :group 'zenit
+  :type 'symbol)
 
 (defcustom zenit-font nil
   "The default font to use.
@@ -21,7 +22,8 @@ Examples:
   (setq zenit-font (font-spec :family \"Fira Mono\" :size 12))
   (setq zenit-font \"Terminus (TTF):pixelsize=12:antialias=off\")
   (setq zenit-font \"Fira Code-14\")"
-  :group 'zenit)
+  :group 'zenit
+  :type 'string)
 
 (defcustom zenit-variable-pitch-font nil
   "The default font to use for variable-pitch text.
@@ -29,7 +31,8 @@ Must be a `font-spec', a font object, an XFT font string, or an
 XLFD string. See `zenit-font' for examples.
 
 An omitted font size means to inherit `zenit-font''s size."
-  :group 'zenit)
+  :group 'zenit
+  :type 'string)
 
 (defcustom zenit-serif-font nil
   "The default font to use for the `fixed-pitch-serif' face.
@@ -37,7 +40,8 @@ Must be a `font-spec', a font object, an XFT font string, or an
 XLFD string. See `zenit-font' for examples.
 
 An omitted font size means to inherit `zenit-font''s size."
-  :group 'zenit)
+  :group 'zenit
+  :type 'string)
 
 (defcustom zenit-symbol-font nil
   "Fallback font for symbols.
@@ -50,7 +54,8 @@ Symbola, respectively.
 WARNING: if you specify a size for this font it will hard-lock
 any usage of this font to that size. It's rarely a good idea to
 do so!"
-  :group 'zenit)
+  :group 'zenit
+  :type 'string)
 
 (defcustom zenit-emoji-font nil
   "Fallback font for emoji.
@@ -60,7 +65,8 @@ XLFD string. See `zenit-font' for examples.
 WARNING: if you specify a size for this font it will hard-lock
 any usage of this font to that size. It's rarely a good idea to
 do so!"
-  :group 'zenit)
+  :group 'zenit
+  :type 'string)
 
 (defconst zenit-emoji-fallback-font-families
   '("Apple Color Emoji"
@@ -84,24 +90,29 @@ want to change your symbol font, use `zenit-symbol-font'.")
 
 (defcustom zenit-init-ui-hook nil
   "List of hooks to run when the UI has been initialized."
-  :group 'zenit)
+  :group 'zenit
+  :type 'hook)
 
 (defcustom zenit-load-theme-hook nil
   "Hook run after the theme is loaded with `load-theme' or reloaded
 with `zenit/reload-theme'."
-  :group 'zenit)
+  :group 'zenit
+  :type 'hook)
 
 (defcustom zenit-switch-buffer-hook nil
   "A list of hooks run after changing the current buffer."
-  :group 'zenit)
+  :group 'zenit
+  :type 'hook)
 
 (defcustom zenit-switch-window-hook nil
   "A list of hooks run after changing the focused windows."
-  :group 'zenit)
+  :group 'zenit
+  :type 'hook)
 
 (defcustom zenit-switch-frame-hook nil
   "A list of hooks run after changing the focused frame."
-  :group 'zenit)
+  :group 'zenit
+  :type 'hook)
 
 (defun zenit-run-switch-buffer-hooks-h (&optional _)
   "Runs hooks associated with buffer switching.

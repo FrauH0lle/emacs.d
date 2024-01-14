@@ -670,6 +670,11 @@ already been."
                    (filename path)
                    e)))))))
 
+(defun zenit--packages-purge-eln ()
+  (dolist (dir (zenit-files-in zenit--eln-output-path :type 'dirs))
+    (print! (info "Purging ELN cache %s" dir))
+    (delete-directory dir t)))
+
 (defun zenit-packages-purge (&optional elpa-p builds-p repos-p regraft-repos-p)
   "Auto-removes orphaned packages and repos.
 An orphaned package is a package that isn't a primary package (i.e. doesn't have
@@ -699,6 +704,8 @@ If ELPA-P, include packages installed with package.el (M-x package-install)."
     (print-group!
      (delq
       nil (list
+           (when NATIVECOMP
+             (zenit--packages-purge-eln))
            (if (not builds-p)
                (ignore (print! (info "Skipping builds")))
              (/= 0 (zenit--packages-purge-builds builds-to-purge)))

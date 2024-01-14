@@ -75,10 +75,11 @@ a symlink. It respects `doom-modeline-icon'."
                  (cond ((or (file-symlink-p (buffer-file-name))
                             zenit--symlink-origin)
                         (let ((icon (doom-modeline-buffer-file-state-icon
-                                     "link" "🔗" "%1*" `(:inherit doom-modeline-warning
-                                                         :weight ,(if doom-modeline-icon
-                                                                      'normal
-                                                                    'bold)))))
+                                     "nf-md-file_link" "󱅷" "%1*"
+                                     `(:inherit doom-modeline-warning
+                                       :weight ,(if doom-modeline-icon
+                                                    'normal
+                                                  'bold)))))
                           (propertize icon
                                       'help-echo "mouse-1: Toggle symlink"
                                       'mouse-face 'mode-line-highlight
@@ -96,7 +97,7 @@ a symlink. It respects `doom-modeline-icon'."
             (unless (string-empty-p icon)
               (concat
                (doom-modeline-display-icon icon)
-               doom-modeline-vspc))))))
+               (doom-modeline-vspc)))))))
 
     (doom-modeline-def-segment buffer-info
       "Combined information about the current buffer, including

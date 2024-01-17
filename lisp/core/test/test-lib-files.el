@@ -460,7 +460,7 @@
         (zenit/toggle-symlink)
         (expect 'kill-buffer :to-have-been-called)
         (expect 'switch-to-buffer :to-have-been-called-with (find-file-noselect file1))
-        (expect (buffer-local-value 'zenit--symlink-origin (current-buffer)) :to-be ln)))
+        (expect (buffer-local-value 'zenit--symlink-origin (current-buffer)) :to-equal ln)))
 
     (it "toggles back to the symlink when the buffer is visiting the true file"
       (setq buf (find-file file1))

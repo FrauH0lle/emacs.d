@@ -44,9 +44,10 @@
   (when (modulep! +tree-sitter)
     (add-hook 'sh-mode-local-vars-hook #'tree-sitter! 'append))
 
-  (setq sh-indentation 2
-        sh-basic-offset 2
-        sh-indent-after-continuation 'always)
+  (setq-hook! 'sh-mode-hook
+    sh-indentation 2
+    sh-basic-offset 2)
+  (setq sh-indent-after-continuation 'always)
 
   ;; [pedantry intensifies]
   ;; (setq-hook! 'sh-mode-hook mode-name "sh")

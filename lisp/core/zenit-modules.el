@@ -225,8 +225,7 @@ absolute path."
 
 MODULE-LIST is a list of cons cells (GROUP . NAME). See
 `zenit-module-list' for an example."
-  (cl-loop with file = (file-name-sans-extension file)
-           for (group . name) in module-list
+  (cl-loop for (group . name) in (or module-list (zenit-module-list))
            if (zenit-module-locate-path group name file)
            collect it))
 

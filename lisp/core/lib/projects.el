@@ -135,8 +135,8 @@ If DIR is not a project, it will be indexed (but not cached)."
           ((and (bound-and-true-p vertico-mode)
                 (fboundp '+vertico/find-file-in))
            (+vertico/find-file-in default-directory))
-          ((project-current nil dir)
-           (project-find-file-in nil nil dir))
+          ((when-let ((pr (project-current nil dir)))
+             (project-find-file-in nil nil pr)))
           ((call-interactively #'find-file)))))
 
 ;;;###autoload

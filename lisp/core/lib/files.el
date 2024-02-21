@@ -301,7 +301,7 @@ allowing the file to be modified with root privileges."
 (defun zenit/sudo-find-file (file)
   "Open FILE as root."
   (interactive "FOpen file as root: ")
-  (find-file (zenit--sudo-file-path file)))
+  (find-file (zenit--sudo-file-path (expand-file-name file))))
 
 ;;;###autoload
 (defun zenit/sudo-this-file ()

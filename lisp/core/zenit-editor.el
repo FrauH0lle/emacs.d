@@ -1,10 +1,9 @@
 ;; lisp/core/zenit-editor.el -*- lexical-binding: t; -*-
 
 
-(defvar zenit-detect-indentation-excluded-modes
-  '(fundamental-mode pascal-mode so-long-mode)
-  "A list of major modes in which indentation should be automatically
-detected.")
+(defvar zenit-detect-indentation-excluded-modes '(pascal-mode so-long-mode)
+  "A list of major modes in which indentation should be
+automatically detected.")
 
 (defvar-local zenit-inhibit-indent-detection nil
   "A buffer-local flag that indicates whether `dtrt-indent' should
@@ -539,8 +538,9 @@ current buffer. "
     (unless (or (not after-init-time)
                 zenit-inhibit-indent-detection
                 zenit-large-file-p
-                (memq major-mode zenit-detect-indentation-excluded-modes)
-                (member (substring (buffer-name) 0 1) '(" " "*")))
+                (eq major-mode 'fundamental-mode)
+                (member (substring (buffer-name) 0 1) '(" " "*"))
+                (apply #'derived-mode-p zenit-detect-indentation-excluded-modes))
       ;; Don't display messages in the echo area, but still log them
       (let ((inhibit-message (not init-file-debug)))
         (dtrt-indent-mode +1))))

@@ -58,8 +58,8 @@ autoloads.")
 (defun zenit--generate-package-autoloads ()
   (zenit-autoloads--scan
    (mapcar #'straight--autoloads-file
-           (seq-difference (hash-table-keys straight--build-cache)
-                           zenit-autoloads-excluded-packages))
+           (nreverse (seq-difference (hash-table-keys straight--build-cache)
+                                     zenit-autoloads-excluded-packages)))
    zenit-autoloads-excluded-files 'literal))
 
 (defun zenit--generate-load-modules ()

@@ -648,7 +648,9 @@
        :desc "Search buffer for thing at point" "S"
        (cond ((modulep! :completion vertico)   #'+vertico/search-symbol-at-point))
        :desc "Dictionary"                   "t" #'+lookup/dictionary-definition
-       :desc "Thesaurus"                    "T" #'+lookup/synonyms)
+       :desc "Thesaurus"                    "T" #'+lookup/synonyms
+       :desc "Undo history"                 "u"
+       (cond ((modulep! :emacs undo)           #'undo-tree-visualize)))
 
       ;;; <leader> t --- toggle
       (:prefix-map ("t" . "toggle")

@@ -214,6 +214,7 @@
       (it "enables dtrt-indent-mode for regular files"
         (with-temp-buffer
           (rename-buffer (make-temp-file "test"))
+          (prog-mode)
           (zenit-detect-indentation-h)
           (expect 'dtrt-indent-mode :to-have-been-called)))
 

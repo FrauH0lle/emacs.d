@@ -304,7 +304,7 @@ version of Emacs."
   (defvar bootstrap-version)
   (let ((bootstrap-file
          (expand-file-name "straight/repos/straight.el/bootstrap.el" user-emacs-directory))
-        (bootstrap-version 5)
+        (bootstrap-version 7)
         ;; Get commit which is stored in the lockfile
         (commit (let ((lockfile (zenit-path user-emacs-directory
                                             "straight/versions/"

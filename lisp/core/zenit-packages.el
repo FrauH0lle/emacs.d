@@ -270,7 +270,7 @@ also be a list of module keys."
         ;; second time to ensure locally overridden packages are properly
         ;; overwritten.
         (load (zenit-module-expand-path :user nil packages-file) 'noerror 'nomessage 'nosuffix))
-      (cl-loop for (cat . mod) in module-list
+      (cl-loop for (cat . mod) in (nreverse module-list)
                if (zenit-module-locate-path cat mod packages-file)
                do (load it 'noerror 'nomessage 'nosuffix)))))
 

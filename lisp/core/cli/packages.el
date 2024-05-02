@@ -17,16 +17,16 @@
 
 (defun zenit--commit-log-between (start-ref end-ref)
   (straight--process-with-result
-   (straight--process-run
-    "git" "log" "--oneline" "--no-merges"
-    "-n" "26" end-ref start-ref)
-   (if success
-       (let* ((output (string-trim-right (or stdout "")))
-              (lines (split-string output "\n")))
-         (if (> (length lines) 25)
-             (concat (string-join (butlast lines 1) "\n") "\n[...]")
-           output))
-     (format "ERROR: Couldn't collect commit list because: %s" stderr))))
+      (straight--process-run
+       "git" "log" "--oneline" "--no-merges"
+       "-n" "26" end-ref start-ref)
+    (if success
+        (let* ((output (string-trim-right (or stdout "")))
+               (lines (split-string output "\n")))
+          (if (> (length lines) 25)
+              (concat (string-join (butlast lines 1) "\n") "\n[...]")
+            output))
+      (format "ERROR: Couldn't collect commit list because: %s" stderr))))
 
 (defmacro zenit--straight-with (form &rest body)
   (declare (indent 1))
@@ -53,14 +53,13 @@
     `(let* ((,recipes-var ,recipes)
             (built ())
             (straight-use-package-pre-build-functions
-             (cons (lambda (pkg) (cl-pushnew pkg built :test #'equal))
+             (cons (lambda (pkg &rest _) (cl-pushnew pkg built :test #'equal))
                    straight-use-package-pre-build-functions)))
-       (dolist (,recipe-var ,recipes-var)
+       (dolist (,recipe-var ,recipes-var (nreverse built))
          (cl-block nil
            (straight--with-plist (append (list :recipe ,recipe-var) ,recipe-var)
-                                 ,(ensure-list binds)
-                                 ,@body)))
-       (nreverse built))))
+               ,(ensure-list binds)
+             ,@body))))))
 
 (defvar zenit--cli-updated-recipes nil)
 (defun zenit--cli-recipes-update ()
@@ -225,7 +224,7 @@ If ALL is non-nil, simply remove all files in the eln cache."
         (unless (or (null local-repo)
                     (eq type 'built-in))
           (push recipe recipes))))
-    (nreverse recipes)))
+    recipes))
 
 (defun zenit--barf-if-incomplete-packages ()
   (let ((straight-safe-mode t))
@@ -403,7 +402,12 @@ already been."
                     (progn
                       (when NATIVECOMP
                         (zenit--remove-eln-files t 'all))
-                      (straight-rebuild-all))
+                      ;; NOTE 2024-05-02: This is the same as what
+                      ;; `straight-rebuild-all' does but we reverse the order of
+                      ;; the packages such that they are build in the order they
+                      ;; were declared.
+                      (dolist (package (nreverse (hash-table-keys straight--recipe-cache)))
+                        (straight-use-package (intern package))))
                   (when (gethash package straight--packages-to-rebuild)
                     (straight-register-repo-modification local-repo)
                     (straight-use-package (intern package))))))

@@ -26,15 +26,16 @@
       free-keys
       helm
       help
-      indent
       image
+      indent
       kotlin-mode
+      lispy
       outline
       replace
       shortdoc
       simple
       slime
-      lispy)
+      tab-bar)
     "A list of `evil-collection' modules to ignore. See the
 definition of this variable for an explanation of the
 defaults (in comments). See `evil-collection-mode-list' for a
@@ -85,19 +86,22 @@ list of available options.")
       bm
       bookmark
       (buff-menu "buff-menu")
+      bufler
       calc
       calendar
       cider
       cmake-mode
+      color-rg
       comint
       company
       compile
       consult
       corfu
+      crdt
       (custom cus-edit)
       cus-theme
-      daemons
       dashboard
+      daemons
       deadgrep
       debbugs
       debug
@@ -108,6 +112,7 @@ list of available options.")
       dired
       dired-sidebar
       disk-usage
+      distel
       doc-view
       docker
       ebib
@@ -116,9 +121,11 @@ list of available options.")
       edebug
       ediff
       eglot
+      elpaca
+      ement
       explain-pause-mode
-      elfeed
       eldoc
+      elfeed
       elisp-mode
       elisp-refs
       elisp-slime-nav
@@ -140,6 +147,7 @@ list of available options.")
       geiser
       ggtags
       git-timemachine
+      gited
       gnus
       go-mode
       grep
@@ -151,7 +159,7 @@ list of available options.")
       hg-histedit
       hungry-delete
       ibuffer
-      image
+      (image image-mode)
       image-dired
       image+
       imenu
@@ -163,6 +171,7 @@ list of available options.")
       js2-mode
       leetcode
       lispy
+      lms
       log-edit
       log-view
       lsp-ui-imenu
@@ -176,6 +185,7 @@ list of available options.")
       markdown-mode
       monky
       mpc
+      mpdel
       mu4e
       mu4e-conversation
       neotree
@@ -222,6 +232,7 @@ list of available options.")
       snake
       so-long
       speedbar
+      tab-bar
       tablist
       tar-mode
       telega

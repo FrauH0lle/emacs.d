@@ -36,7 +36,7 @@
 (evil-ex-define-cmd "scr[atch]" #'+evil:open-scratch-buffer)
 
 ;; Project navigation
-(evil-ex-define-cmd "a"           #'projectile-find-other-file)
+(evil-ex-define-cmd "a"           #'find-sibling-file)
 (evil-ex-define-cmd "cd"          #'+evil:cd)
 (evil-ex-define-cmd "pwd"         #'+evil:pwd)
 

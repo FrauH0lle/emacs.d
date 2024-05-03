@@ -1,6 +1,6 @@
 (("evil" . "00bd29715028b06384435f053a36b6e994f1d1d7")
  ("evil-args" . "2671071a4a57eaee7cc8c27b9e4b6fc60fd2ccd3")
- ("evil-collection" . "85743099972bfcc4d7788db70dfe33e864eba090")
+ ("evil-collection" . "5886bab852dc9e31959e70384d535473e44504ad")
  ("evil-lion" . "a55eb647422342f6b1cf867f797b060b3645d9d8")
  ("evil-nerd-commenter" . "8c0f23d46a3927b9f83c1c2c4590be53d0b740db")
  ("evil-numbers" . "7a1b62afc12da2b582bf84d722e7b10ca8b97065")

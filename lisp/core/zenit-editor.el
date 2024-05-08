@@ -585,6 +585,18 @@ Emacs in a broken state."
   (global-set-key [remap describe-key]      #'helpful-key)
   (global-set-key [remap describe-symbol]   #'helpful-symbol)
 
+  ;; HACK We embed a the modules' config.el files directly into init.el when we
+  ;;   compile that file. Thus, any function, variable, etc. definition will
+  ;;   point to init.el which is not correct. `zenit-generate-load-history'
+  ;;   generates entries for `load-history' during CLI operations, which we load
+  ;;   here once in order to fix this.
+  (defadvice! +helpfull--add-load-history-a (&rest _)
+    "Load and add generated `load-history' attachmends."
+    :before '(helpful-callable helpful-command helpful-variable helpful-key helpful-symbol)
+    (zenit-load (file-name-concat zenit-cache-dir "zenit-embedded-load-history.el") t)
+    (dolist (fn '(helpful-callable helpful-command helpful-variable helpful-key helpful-symbol))
+      (advice-remove fn #'+helpfull--add-load-history)))
+
   (defun zenit-use-helpful-a (fn &rest args)
     "Force FN to use helpful instead of the old describe-* commands."
     (letf! ((#'describe-function #'helpful-function)
@@ -592,7 +604,7 @@ Emacs in a broken state."
       (apply fn args)))
 
   (after! apropos
-    ;; patch apropos buttons to call helpful instead of help
+    ;; Patch apropos buttons to call helpful instead of help
     (dolist (fun-bt '(apropos-function apropos-macro apropos-command))
       (button-type-put
        fun-bt 'action
@@ -636,6 +648,9 @@ Emacs in a broken state."
       (zenit--clone-emacs-source-maybe)))
 
   :config
+  ;; Function used by `helpful--set' to interactively set variables
+  (setq helpful-set-variable-function #'setq!)
+
   (defadvice! +helpful--clone-emacs-source-a (library-name)
     "Prompt user to clone Emacs source code when looking up functions.
 Otherwise, it only happens when looking up variables, for some

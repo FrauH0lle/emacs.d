@@ -194,6 +194,8 @@ If NOERROR, don't throw an error if PATH doesn't exist."
 
 (defvar zenit--embed-current-file nil
   "Stores the filename of the file to be embedded.")
+(defvar zenit--embedded-files nil
+  "Stores the embedded files.")
 (defmacro zenit-embed (path &optional noerror)
   "Embed file contents from PATH when byte-compiling.
 
@@ -202,6 +204,8 @@ if PATH doesn't exist."
   (if (not (bound-and-true-p byte-compile-current-file))
       `(zenit-load ,path ,noerror)
     (zenit-log "embed: %s %s" (abbreviate-file-name path) noerror)
+    ;; Keep track of embedded files
+    (push path zenit--embedded-files)
     (let ((forms nil))
       (with-temp-buffer
         (ignore-errors
@@ -211,10 +215,44 @@ if PATH doesn't exist."
         (condition-case _
             (while t
               (let ((form (read (current-buffer))))
-                (push form forms)))
+                ;; Recursively expand zenit-embed calls
+                (if (and (listp form)
+                         (eq (car form) 'zenit-embed))
+                    (progn
+                      (setq forms (append forms (macroexpand form))))
+                  (push form forms))))
           (end-of-file)))
       (setq forms (nreverse forms))
       `(progn ,@forms))))
+
+(defun zenit-generate-load-history ()
+  "Iterate over `zenit--embedded-files' and load them, thus
+generating a `load-history' entry.
+
+Extract and store these entries in a file to load them later"
+  (let (forms)
+    (dolist (file zenit--embedded-files forms)
+      (zenit-log "embed: Extracting `load-history' for %s" file)
+      (zenit-load file t)
+      (let ((form
+             ;; Filter out unesscary forms
+             (cl-remove-if
+              (lambda (item)
+                (cond ((symbolp item)
+                       ;; Remove `use-package--warning*' entries
+                       (string-match "use-package--warning" (symbol-name item)))
+                      ;; Remove transient functions which have an ever changing name
+                      ((listp item)
+                       (or
+                        (string-match "zenit-transient-hook" (symbol-name (cdr item)))
+                        (string-match "zenit--customize-themes-h-" (symbol-name (cdr item)))))
+                      (t nil)))
+              (assoc file load-history))))
+        (when (and form (> (length form) 1))
+          (pushnew! forms form))))
+    ;; Store forms in file
+    (with-temp-file (file-name-concat zenit-cache-dir "zenit-embedded-load-history.el")
+      (pp `(dolist (form ',forms) (push form load-history)) (current-buffer)))))
 
 (defun zenit-load-envvars-file (file &optional noerror)
   "Read and set envvars from FILE.

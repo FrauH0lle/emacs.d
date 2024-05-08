@@ -255,7 +255,7 @@ internally)."
 If MODULE-LIST is omitted, read enabled module list in
 configdepth order (see `zenit-module-set'). Otherwise,
 MODULE-LIST may be any symbol (or t) to mean read all modules in
-`zenit-modules-dir', including :core and :user. MODULE-LIST may
+`zenit-modules-dir', including :core and :local-conf. MODULE-LIST may
 also be a list of module keys."
   (let ((module-list (cond ((null module-list) (zenit-module-list))
                            ((symbolp module-list) (zenit-module-list 'all))
@@ -264,17 +264,17 @@ also be a list of module keys."
         zenit-disabled-packages
         zenit-packages)
     (zenit-context-with 'packages
-      (when (assq :user module-list)
+      (when (assq :local-conf module-list)
         ;; We load the local packages file twice to populate
         ;; `zenit-disabled-packages' disabled packages are seen ASAP ...
-        (load (zenit-module-expand-path :user nil packages-file) 'noerror 'nomessage 'nosuffix))
+        (load (zenit-module-expand-path :local-conf nil packages-file) 'noerror 'nomessage 'nosuffix))
       (cl-loop for (cat . mod) in module-list
                if (zenit-module-locate-path cat mod packages-file)
                do (load it 'noerror 'nomessage 'nosuffix))
-      (when (assq :user module-list)
+      (when (assq :local-conf module-list)
         ;; ... and a second time to ensure locally overridden packages are
         ;; properly overwritten.
-        (load (zenit-module-expand-path :user nil packages-file) 'noerror 'nomessage 'nosuffix)))))
+        (load (zenit-module-expand-path :local-conf nil packages-file) 'noerror 'nomessage 'nosuffix)))))
 
 (defun zenit-initialize-packages (&optional force-p)
   "Ensures that the package system and straight.el are initialized.

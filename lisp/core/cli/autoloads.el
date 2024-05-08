@@ -67,7 +67,7 @@ autoloads.")
          (config-modules-list (zenit-module-list))
          (pre-init-modules
           (seq-filter (fn! (<= (zenit-module-depth (car %) (cdr %) t) -100))
-                      (remove '(:user) init-modules-list)))
+                      (remove '(:local-conf) init-modules-list)))
          (init-modules
           (seq-filter (fn! (<= 0 (zenit-module-depth (car %) (cdr %) t) 100))
                       init-modules-list))

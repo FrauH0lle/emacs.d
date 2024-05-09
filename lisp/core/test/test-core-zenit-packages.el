@@ -5,7 +5,7 @@
 (describe "core/zenit-packages"
 
   (load! "zenit-packages" zenit-core-dir)
-
+  (autoload 'straight--with-plist "straight")
   (describe "zenit--package-inhibit-custom-file-a"
     (it "is defined"
       (expect (fboundp 'zenit--package-inhibit-custom-file-a) :to-be-truthy))
@@ -24,7 +24,9 @@
 
   (describe "+straight--normalize-profiles"
     (before-each
-      (setq straight--profile-cache (make-hash-table :test #'equal)))
+      (setq straight--profile-cache (make-hash-table :test #'equal)
+            straight--recipe-cache (make-hash-table :test #'equal)
+            straight-recipe-repositories '(melpa el-get)))
 
     (it "removes nil from packages with multiple profiles"
       (puthash "package1" '(nil t) straight--profile-cache)
@@ -41,7 +43,36 @@
     (it "does not affect packages with one nil profile"
       (puthash "package4" '(nil) straight--profile-cache)
       (+straight--normalize-profiles)
-      (expect (gethash "package4" straight--profile-cache) :to-equal '(nil))))
+      (expect (gethash "package4" straight--profile-cache) :to-equal '(nil)))
+
+    (it "removes 'dep from packages with multiple profiles"
+      (puthash "package1" '(nil t dep) straight--profile-cache)
+      (puthash "package2" '(t nil dep t) straight--profile-cache)
+      (+straight--normalize-profiles)
+      (expect (gethash "package1" straight--profile-cache) :to-equal '(t))
+      (expect (gethash "package2" straight--profile-cache) :to-equal '(t t)))
+
+    (it "ensures recipe repositories are registered under core"
+      (puthash "melpa" '(dep foo) straight--profile-cache)
+      (puthash "el-get" '(t nil dep t) straight--profile-cache)
+      (puthash "package3" '(t) straight--profile-cache)
+      (+straight--normalize-profiles)
+      (expect (gethash "melpa" straight--profile-cache) :to-equal '(core))
+      (expect (gethash "el-get" straight--profile-cache) :to-equal '(core))
+      (expect (gethash "package3" straight--profile-cache) :to-equal '(t)))
+
+    (it "handles multi-package repositories"
+      (puthash "magit" '(foo) straight--profile-cache)
+      (puthash "magit-section" '(dep) straight--profile-cache)
+      (puthash "magit" '(:flavor melpa :package "magit" :local-repo "magit"
+                         :type git :repo "magit/magit" :host github)
+               straight--recipe-cache)
+      (puthash "magit-section" '(:flavor melpa :package "magit-section" :local-repo "magit"
+                                 :type git :repo "magit/magit" :host github)
+               straight--recipe-cache)
+      (+straight--normalize-profiles)
+      (expect (gethash "magit" straight--profile-cache) :to-equal '(foo))
+      (expect (gethash "magit-section" straight--profile-cache) :to-equal '(foo))))
 
 
   (describe "+straight--fallback-to-y-or-n-prompt-a"

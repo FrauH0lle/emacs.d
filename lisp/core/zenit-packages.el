@@ -95,13 +95,62 @@ random string which should never exist as a file name."
      (md5 (format "%s%s%s%s" (system-name) (emacs-pid) (current-time) (random))))))
 
 (defun +straight--normalize-profiles ()
-  "If a package is associated with multiple profiles and one of
-them is nil, remove nil. This ways we make sure that there are no
-interactively registered packages after init."
-  (dolist (package (hash-table-keys straight--profile-cache))
-    (let ((entry (gethash package straight--profile-cache)))
-      (when (and (length> entry 1) (member nil entry))
-        (puthash package (remq nil entry) straight--profile-cache)))))
+  "Normalize packages profiles.
+
+This involves
+
+  1. Ensure that recipe repositories are only registered under
+     the \\='core profile
+
+  2. If a local repository provides multiple packages (like
+     `magit') and one or more is registered as a dependency,
+     ensure that each dependency is assigned to a proper profile.
+
+  3. If a package is associated with multiple profiles and one of
+     them is nil, remove nil. This ways we make sure that there
+     are no interactively registered packages after init.
+
+  4. Remove the \\='dep profile from packages which are also
+     registered to proper profiles."
+  ;; Build a map of repositories to their packages.
+  (let ((repo-package-map (make-hash-table :test #'equal)))
+    (maphash
+     (lambda (package recipe)
+       (straight--with-plist recipe
+           (local-repo)
+         (when local-repo
+           (pushnew! (gethash local-repo repo-package-map) package))))
+     straight--recipe-cache)
+
+    ;; Normalize each package's profiles.
+    (maphash (lambda (package profiles)
+               (let ((new-profiles (copy-sequence profiles)))
+                 ;; Set recipe repositories to 'core' only.
+                 (when (member (intern package) straight-recipe-repositories)
+                   (setq new-profiles '(core)))
+
+                 ;; Assign proper profiles based on the repository package map.
+                 (when (member 'dep profiles)
+                   (dolist (repo-package (hash-table-values repo-package-map))
+                     (when (member package repo-package)
+                       (dolist (pkg repo-package)
+                         (unless (equal pkg package)
+                           (setq new-profiles
+                                 (cl-union new-profiles
+                                           (gethash pkg straight--profile-cache)
+                                           :test #'equal)))))))
+
+                 ;; Remove 'dep' profile if there are other proper profiles.
+                 (when (and (member 'dep new-profiles) (> (length new-profiles) 1))
+                   (setq new-profiles (remove 'dep new-profiles)))
+
+                 ;; Remove nil entries if there are other profiles.
+                 (when (and (remove nil new-profiles) (> (length new-profiles) 1))
+                   (setq new-profiles (remove nil new-profiles)))
+
+                 ;; Update the profile cache.
+                 (puthash package new-profiles straight--profile-cache)))
+             straight--profile-cache)))
 
 (defvar +straight--auto-options
   '(("has diverged from"
@@ -420,9 +469,6 @@ specifiy a lockfile and profile. NAME is the package name.
                                      finally return (append deps (apply 'append (mapcar 'straight--get-dependencies deps))))
                             :test #'equal))))
       `(let ((straight-current-profile ',(zenit-unquote lockfile-profile)))
-         ,(if recipe
-              `(straight-register-package '(,name ,@recipe))
-            `(straight-register-package ',name))
          ;; Explicitly register dependencies so they don't get purged and add
          ;; them to the load-path. Use a virtual straight profile so later on,
          ;; a lockfile will not be written for it.
@@ -432,8 +478,13 @@ specifiy a lockfile and profile. NAME is the package name.
                (straight-register-package (intern pkg-name))))
            (add-to-list 'load-path (directory-file-name (straight--build-dir pkg-name)))
            (straight--load-package-autoloads pkg-name))
+         ,(if recipe
+              `(straight-register-package '(,name ,@recipe))
+            `(straight-register-package ',name))
          ,(when (and (eq lockfile 'pinned) pin)
             `(add-to-list 'straight-x-pinned-packages
-              '(,(zenit-package-recipe-repo name) . ,pin)))))))
+              '(,(zenit-package-recipe-repo name) . ,pin)))))
+    ;; t
+    ))
 
 (provide 'zenit-packages)

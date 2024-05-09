@@ -58,8 +58,6 @@
 (defconst IS-LINUX    (memq system-type '(gnu gnu/linux gnu/kfreebsd berkeley-unix)))
 (defconst IS-WINDOWS  (memq system-type '(cygwin windows-nt ms-dos)))
 (defconst IS-BSD      (memq system-type '(darwin berkeley-unix gnu/kfreebsd)))
-(defconst EMACS28+    (> emacs-major-version 27))
-(defconst EMACS29+    (> emacs-major-version 28))
 (defconst MODULES     (featurep 'dynamic-modules))
 (defconst NATIVECOMP  (featurep 'native-compile))
 

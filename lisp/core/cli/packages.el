@@ -403,9 +403,9 @@ already been."
                       (when NATIVECOMP
                         (zenit--remove-eln-files t 'all))
                       ;; NOTE 2024-05-02: This is the same as what
-                      ;; `straight-rebuild-all' does but we reverse the order of
-                      ;; the packages such that they are build in the order they
-                      ;; were declared.
+                      ;;   `straight-rebuild-all' does but we reverse the order
+                      ;;   of the packages such that they are build in the order
+                      ;;   they were declared.
                       (dolist (package (nreverse (hash-table-keys straight--recipe-cache)))
                         (straight-use-package (intern package))))
                   (when (gethash package straight--packages-to-rebuild)

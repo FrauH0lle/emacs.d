@@ -1,3 +1,4 @@
 (("compat" . "a20862e377a137961dd82706a7654a090210f7f7")
+ ("magit" . "f7cba11588c4a35f91922ef28658aa88a59c895b")
  ("magit-todos" . "c5030cc27c7c1a48db52b0134bf2648a59a43176"))
 :gamma

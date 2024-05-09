@@ -2,15 +2,17 @@
 
 (defun zenit-cli-freeze-packages ()
   "Freeze packages and write lockfiles."
-  (print! (start "Freezing your package versions..."))
-  ;; First we must be sure that configs have been fully loaded. Which usually
-  ;; aren't so in an noninteractive session.
-  (let ((noninteractive nil))
-    (zenit-initialize)
-    (zenit-initialize-packages)
-    (load (concat user-emacs-directory "lisp/init-core-interactive")
-          nil 'nomessage)
-    (load (concat user-emacs-directory "lisp/init-core-modules")
-          nil 'nomessage)
-    (zenit-initialize-modules))
-  (straight-x-freeze-versions))
+  (zenit-initialize-packages)
+  (zenit--cli-recipes-update)
+  (let ((esc (unless init-file-debug "\033[1A")))
+    (zenit--with-package-recipes (zenit-package-recipe-list)
+        (recipe package type local-repo)
+      (when local-repo
+        (print! (start "\033[KNormalize %s...%s") package esc)
+        (let ((straight--default-directory (straight--repos-dir local-repo)))
+          (straight-vc 'normalize type recipe))))
+    (delete-directory (straight--modified-dir) 'recursive)
+    (print! (start "Freezing package versions..."))
+    (require 'straight-x)
+    (straight-freeze-versions t)
+    (straight-x-freeze-pinned-versions)))

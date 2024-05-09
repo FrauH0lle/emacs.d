@@ -258,7 +258,7 @@ it."
 ;; In case we want to use package.el or straight via M-x
 (with-eval-after-load 'package (require 'zenit-packages))
 (with-eval-after-load 'straight (zenit-initialize-packages))
-(with-eval-after-load 'straigh-xt (zenit-initialize-packages))
+(with-eval-after-load 'straight-x (zenit-initialize-packages))
 
 ;; A last ditch opportunity to undo dodgy optimizations or do extra
 ;; configuration before the session is complicated.

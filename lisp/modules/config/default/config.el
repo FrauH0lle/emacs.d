@@ -40,8 +40,8 @@
                           (time-to-seconds))
                     collect (epg-sub-key-fingerprint subkey))))
        user-mail-address))
-   ;; And suppress prompts if epa-file-encrypt-to has a default value (without
-   ;; overwriting file-local values).
+  ;; And suppress prompts if epa-file-encrypt-to has a default value (without
+  ;; overwriting file-local values).
   (defadvice! +default--dont-prompt-for-keys-a (&rest _)
     :before #'epa-file-write-region
     (unless (local-variable-p 'epa-file-encrypt-to)
@@ -85,9 +85,9 @@
     ;; expensive it is. It's also less useful for evil users. This may need to
     ;; be reactivated for non-evil users though. Needs more testing!
     (defhook! zenit--hool-disable-smartparens-navigate-skip-match ()
-        'after-change-major-mode-hook
-        (setq sp-navigate-skip-match nil
-              sp-navigate-consider-sgml-tags nil))
+      'after-change-major-mode-hook
+      (setq sp-navigate-skip-match nil
+            sp-navigate-consider-sgml-tags nil))
 
     ;; Autopair quotes more conservatively; if I'm next to a word/before another
     ;; quote, I don't want to open a new pair or it would unbalance them.
@@ -366,7 +366,7 @@ Continues comments if executed from a commented line. Consults
                 which-key-replacement-alist)))
 
 
-(when (modulep! +bindings)
+(eval-when! (modulep! +bindings)
 
   ;; Make M-x harder to miss
   (define-key! 'override
@@ -414,16 +414,15 @@ Continues comments if executed from a commented line. Consults
         :gn [C-S-return]    #'+default/newline-above
 
         (:when IS-MAC
-         :gn "s-RET"        #'+default/newline-below
-         :gn [s-return]     #'+default/newline-below
-         :gn "S-s-RET"      #'+default/newline-above
-         :gn [S-s-return]   #'+default/newline-above))
-;; )
+          :gn "s-RET"        #'+default/newline-below
+          :gn [s-return]     #'+default/newline-below
+          :gn "S-s-RET"      #'+default/newline-above
+          :gn [S-s-return]   #'+default/newline-above))
+  ;; )
 
 ;;
 ;;; Bootstrap configs
 
-(when (modulep! :editor evil)
-  (after! evil
-    (load! "+evil")))
-)
+  (eval-when! (modulep! :editor evil)
+    (after! evil
+      (include! "+evil"))))

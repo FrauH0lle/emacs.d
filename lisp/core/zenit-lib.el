@@ -192,20 +192,20 @@ If NOERROR, don't throw an error if PATH doesn't exist."
                    ('zenit-error))
              (list path e)))))
 
-(defvar zenit--embed-current-file nil
-  "Stores the filename of the file to be embedded.")
-(defvar zenit--embedded-files nil
-  "Stores the embedded files.")
-(defmacro zenit-embed (path &optional noerror)
-  "Embed file contents from PATH when byte-compiling.
+(defvar zenit-include--current-file nil
+  "Stores the filename of the file to be included.")
+(defvar zenit-include--files nil
+  "Stores the included files.")
+(defmacro zenit-include (path &optional noerror)
+  "Include file contents from PATH when byte-compiling.
 
-Otherwise just use `zenit-load'. If NOERROR, don't throw an error
-if PATH doesn't exist."
+Otherwise it delegates to `zenit-load'. If NOERROR, don't throw
+an error if PATH doesn't exist."
   (if (not (bound-and-true-p byte-compile-current-file))
       `(zenit-load ,path ,noerror)
-    (zenit-log "embed: %s %s" (abbreviate-file-name path) noerror)
+    (zenit-log "include: %s %s" (abbreviate-file-name path) noerror)
     ;; Keep track of embedded files
-    (push path zenit--embedded-files)
+    (push path zenit-include--files)
     (let ((forms nil))
       (with-temp-buffer
         (ignore-errors
@@ -215,24 +215,51 @@ if PATH doesn't exist."
         (condition-case _
             (while t
               (let ((form (read (current-buffer))))
-                ;; Recursively expand zenit-embed calls
-                (if (and (listp form)
-                         (eq (car form) 'zenit-embed))
-                    (progn
-                      (setq forms (append forms (macroexpand form))))
-                  (push form forms))))
+                (push form forms)))
           (end-of-file)))
       (setq forms (nreverse forms))
-      `(progn ,@forms))))
+      (macroexp-progn forms))))
+
+(defvar zenit-include--previous-file nil
+  "Stores the filename of the previously included file.")
+(defmacro include! (filename &optional path noerror)
+  "Include a file relative to the current executing
+file (`load-file-name').
+
+Embeds file contents directly when byte-compiling, otherwise it
+delegates to `zenit-load'.
+
+FILENAME is either a file path string or a form that should
+evaluate to such a string at run time. PATH is where to look for
+the file (a string representing a directory path). See `load!'
+for more information.
+
+If NOERROR is non-nil, don't throw an error if the file doesn't
+exist."
+  (let ((file (file-name-concat
+               (or path (protect-macros! (dir!)))
+               (if (string-suffix-p ".el" filename)
+                   filename
+                 (concat filename ".el")))))
+    (macroexp-progn
+     ;; Set `zenit-include--current-file' during compilation only
+     `((cl-eval-when (compile)
+         (setq zenit-include--previous-file ,zenit-include--current-file
+               zenit-include--current-file ,file))
+       ;; Include the file
+       (zenit-include ,file ,noerror)
+       ;; Reset `zenit-include--current-file' to the previous one
+       (cl-eval-when (compile)
+         (setq zenit-include--current-file zenit-include--previous-file))))))
 
 (defun zenit-generate-load-history ()
-  "Iterate over `zenit--embedded-files' and load them, thus
+  "Iterate over `zenit-include--files' and load them, thus
 generating a `load-history' entry.
 
 Extract and store these entries in a file to load them later"
   (let (forms)
-    (dolist (file zenit--embedded-files forms)
-      (zenit-log "embed: Extracting `load-history' for %s" file)
+    (dolist (file zenit-include--files forms)
+      (zenit-log "include: Extracting `load-history' for %s" file)
       (zenit-load file t)
       (let ((form
              ;; Filter out unesscary forms
@@ -251,7 +278,7 @@ Extract and store these entries in a file to load them later"
         (when (and form (> (length form) 1))
           (pushnew! forms form))))
     ;; Store forms in file
-    (with-temp-file (file-name-concat zenit-cache-dir "zenit-embedded-load-history.el")
+    (with-temp-file (file-name-concat zenit-cache-dir "zenit-includeded-load-history.el")
       (pp `(dolist (form ',forms) (push form load-history)) (current-buffer)))))
 
 (defun zenit-load-envvars-file (file &optional noerror)
@@ -356,7 +383,7 @@ functions."
 (defmacro file! ()
   "Return the filename of the file this macro was called."
   (or
-   (bound-and-true-p zenit--embed-current-file)
+   (bound-and-true-p zenit-include--current-file)
    (macroexp-file-name)
    (bound-and-true-p byte-compile-current-file)
    load-file-name
@@ -1064,21 +1091,6 @@ BODY is only compiled if COND evaluates to non-nil. See
 ;;
 ;;; Backports
 
-;; Introduced in Emacs 29+
-(eval-unless! (> emacs-major-version 28)
-  (defmacro with-memoization (place &rest code)
-    "Return the value of CODE and stash it in PLACE.
-
-If PLACE's value is non-nil, then don't bother evaluating CODE
-and return the value found in PLACE instead."
-    (declare (indent 1) (debug (gv-place body)))
-    (gv-letplace (getter setter) place
-      `(or ,getter
-           ,(macroexp-let2 nil val (macroexp-progn code)
-              `(progn ,(funcall setter val)
-                      ,val)))))
-
-  (defalias 'bol #'line-beginning-position)
-  (defalias 'eol #'line-end-position))
+;; NOTE 2024-05-11: Currently no backports
 
 (provide 'zenit-lib)

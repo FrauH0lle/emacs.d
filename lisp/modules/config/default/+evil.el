@@ -17,5 +17,5 @@
       :prefix zenit-leader-key     "u" #'universal-argument-more
       :prefix zenit-leader-alt-key "u" #'universal-argument-more)
 
-(when (modulep! +bindings)
-  (load! "+evil-bindings"))
+(eval-when! (modulep! +bindings)
+  (include! "+evil-bindings"))

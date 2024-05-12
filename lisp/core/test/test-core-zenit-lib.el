@@ -155,19 +155,29 @@
                 :to-throw 'error))))
 
 
-  (describe "zenit-embed"
+  (describe "zenit-include"
     :var (temp-file-1 temp-file-2)
 
     (before-each
       (setq temp-file-1 (make-temp-file "test-1")
-            temp-file-2 (make-temp-file "test-2"))
+            temp-file-2 (make-temp-file "test-2")
+            zenit-include--current-file nil
+            zenit-include--files nil
+            zenit-include--previous-file nil)
 
       (with-temp-file temp-file-1
-        (insert (concat "(zenit-embed \"" temp-file-2 "\")")))
+        (insert (concat "(cl-eval-when (compile)
+         (setq zenit-include--current-file \"" temp-file-2 "\"))"))
+        (insert (concat "(zenit-include \"" temp-file-2 "\")")))
       (with-temp-file temp-file-2
         (insert (format "%s" '(eval-if! byte-compile-current-file
                                   (setq foo 42)
                                 (setq foo 43))))))
+
+    (after-each
+      (setq zenit-include--current-file nil
+            zenit-include--files nil
+            zenit-include--previous-file nil))
 
     (it "embeds file contents if byte-compiling"
       (let ((comp-file (byte-compile-dest-file temp-file-1))
@@ -179,6 +189,59 @@
     (it "load the file contents if not byte-compiling"
       (load temp-file-1 nil t)
       (expect foo :to-be 43)))
+
+
+    (describe "include!"
+    :var (temp-file-1 temp-file-2 temp-file-3)
+
+    (before-each
+      (setq temp-file-1 (make-temp-file "include-test-1-" nil ".el")
+            temp-file-2 (make-temp-file "include-test-2-" nil ".el")
+            temp-file-3 (make-temp-file "include-test-3-" nil ".el")
+            zenit-include--current-file nil
+            zenit-include--files nil
+            zenit-include--previous-file nil)
+
+      (with-temp-file temp-file-1
+        (insert (concat "(include! \"" (file-name-nondirectory temp-file-2) "\")")))
+      (with-temp-file temp-file-2
+        (insert "(eval-if! byte-compile-current-file
+                     (setq foo 42)
+                   (setq foo 43))\n")
+        (insert "(include! \"" (file-name-nondirectory temp-file-3) "\")"))
+      (with-temp-file temp-file-3
+        (insert "(eval-if! byte-compile-current-file
+                     (setq bar 42)
+                   (setq bar 43))")))
+    (after-each
+      (setq zenit-include--current-file nil
+            zenit-include--files nil
+            zenit-include--previous-file nil))
+
+    (it "embeds file contents if byte-compiling"
+      (let ((comp-file (byte-compile-dest-file temp-file-1))
+            (byte-compile-warnings '(not free-vars)))
+        (byte-compile-file temp-file-1)
+        (load comp-file nil t)
+        (expect foo :to-be 42)
+        (expect bar :to-be 42)))
+
+    (it "load the file contents if not byte-compiling"
+      (load temp-file-1 nil t)
+      (expect foo :to-be 43)
+      (expect bar :to-be 43))
+
+    (it "resets zenit-include--previous-file correctly"
+      (with-temp-file temp-file-1
+        (insert "(setq zenit-include--previous-file \"foo.el\")\n")
+        (insert (concat "(include! \"" (file-name-nondirectory temp-file-2) "\")")))
+      (let ((comp-file (byte-compile-dest-file temp-file-1))
+            (byte-compile-warnings '(not free-vars)))
+        (byte-compile-file temp-file-1)
+        (load comp-file nil t)
+        (expect foo :to-be 42)
+        (expect bar :to-be 42)
+        (expect zenit-include--previous-file :to-match "foo.el"))))
 
 
   (describe "zenit-load-envvars-file"

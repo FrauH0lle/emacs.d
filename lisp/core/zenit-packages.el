@@ -405,13 +405,34 @@ version of Emacs."
       repo
     (symbol-name package)))
 
+
+;;
+;;; Package macros
+
+(defun zenit--process-pkg-dependencies (package)
+  "Collect and register all dependencies for PACKAGE."
+  (let ((dependencies
+         (cons package
+               (cl-remove-duplicates
+                (cl-loop for dep in (straight--get-dependencies package)
+                         collect dep into deps
+                         finally return (append deps (apply 'append (mapcar 'straight--get-dependencies deps))))
+                :test #'equal))))
+
+    (dolist (pkg-name dependencies)
+      (unless (equal pkg-name package)
+        (let ((straight-current-profile 'dep))
+          (straight-register-package (intern pkg-name))))
+      (add-to-list 'load-path (directory-file-name (straight--build-dir pkg-name)))
+      (straight--load-package-autoloads pkg-name))))
+
 (cl-defmacro package! (name &rest args &key built-in recipe ignore disable lockfile pin)
   "A wrapper around `straight-register-package' which allows to
 specifiy a lockfile and profile. NAME is the package name.
 
  :built-in BOOL | \\='prefer
    Same as :ignore if the package is a built-in Emacs package. If
-   set to 'prefer, the package will not be installed if it is
+   set to \\='prefer, the package will not be installed if it is
    already provided by Emacs.
 
  :recipe RECIPE
@@ -435,56 +456,55 @@ specifiy a lockfile and profile. NAME is the package name.
  :pin STR
    Pin this package to commit hash STR."
   (declare (indent defun))
+  ;; :built-in t is basically an alias for :ignore (locate-library NAME)
   (when built-in
-    ;; :built-in t is basically an alias for :ignore (locate-library NAME)
     (when (and (not ignore)
                (equal built-in '(quote prefer)))
       (setq built-in (locate-library (symbol-name name) nil (get 'load-path 'initial-value))))
     (cl-callf map-delete args :built-in)
     (cl-callf plist-put args :ignore built-in)
     (setq ignore built-in))
+
+  ;; Disable package if requested
   (when disable
     (add-to-list 'zenit-disabled-packages name)
     ;; Remove the package from the recipe cache, if it exists.
     (remhash (symbol-name name) straight--recipe-cache)
     (setq ignore t))
+
+  ;; Set lockfile if to 'pinned if :pin is non-nil
   (when pin
-    ;; set lockfile if to 'pinned if :pin is non-nil
     (setq lockfile 'pinned))
   (unless ignore
     ;; Add profile to `straight-profiles' if lockfile should not be ignored
     (unless (memq lockfile '(ignore nil t))
       (pushnew! straight-profiles `(,(zenit-unquote lockfile) . ,(format "%s.el" (zenit-unquote lockfile)))))
     ;; Set `straight-current-profile' according to lockfile
-    (let* ((lockfile-profile (cond ((not lockfile) nil)
-                                   ((eq lockfile 'ignore) 'ignore)
-                                   ((eq lockfile 'pinned) 'pinned)
-                                   ((not (booleanp lockfile)) lockfile)
-                                   (t nil)))
-           ;; Collect all package dependencies (and their dependencies!)
-           (all-deps (cons (symbol-name name)
-                           (cl-remove-duplicates
-                            (cl-loop for dep in (straight--get-dependencies (symbol-name name))
-                                     collect dep into deps
-                                     finally return (append deps (apply 'append (mapcar 'straight--get-dependencies deps))))
-                            :test #'equal))))
+    (let ((lockfile-profile (pcase lockfile
+                              ((or `nil `t) nil)
+                              (`ignore 'ignore)
+                              (`pinned 'pinned)
+                              (_ lockfile))))
       `(let ((straight-current-profile ',(zenit-unquote lockfile-profile)))
          ;; Explicitly register dependencies so they don't get purged and add
-         ;; them to the load-path. Use a virtual straight profile so later on,
-         ;; a lockfile will not be written for it.
-         (dolist (pkg-name ',all-deps)
-           (unless (equal pkg-name (symbol-name ',name))
-             (let ((straight-current-profile 'dep))
-               (straight-register-package (intern pkg-name))))
-           (add-to-list 'load-path (directory-file-name (straight--build-dir pkg-name)))
-           (straight--load-package-autoloads pkg-name))
+         ;; them to the load-path. Use a virtual straight profile so later on, a
+         ;; lockfile will not be written for it.
+         (zenit--process-pkg-dependencies ,(symbol-name name))
          ,(if recipe
               `(straight-register-package '(,name ,@recipe))
             `(straight-register-package ',name))
          ,(when (and (eq lockfile 'pinned) pin)
             `(add-to-list 'straight-x-pinned-packages
-              '(,(zenit-package-recipe-repo name) . ,pin)))))
-    ;; t
-    ))
+              '(,(zenit-package-recipe-repo name) . ,pin)))
+         ;; Return true if we did register packages
+         t))))
+
+(defmacro disable-packages! (&rest packages)
+  "A convenience macro for disabling packages in bulk.
+Only use this macro in a module's or `zenit-local-conf-dir''s packages.el
+file."
+  (macroexp-progn
+   (mapcar (lambda (p) `(package! ,p :disable t))
+           packages)))
 
 (provide 'zenit-packages)

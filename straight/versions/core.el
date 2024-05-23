@@ -3,7 +3,7 @@
  ("dtrt-indent" . "d4fd1b4977eb0d534844fddf01c3c51c70c57205")
  ("el-get" . "f8f651b448f0b5ba478a92bf1c361ff17b10e8d2")
  ("el-patch" . "156c61b72c1c9c61bd886b5931b8a382153f52fa")
- ("emacs-buttercup" . "a1a86b027ffe030e1c78a9f43c50cd20a6fed19a")
+ ("emacs-buttercup" . "07a52c99695845a0089e828d43da154c0ba0c178")
  ("emacs-hide-mode-line" . "bc5d293576c5e08c29e694078b96a5ed85631942")
  ("emacs-which-key" . "8093644032854b1cdf3245ce4e3c7b6673f741bf")
  ("emacsmirror-mirror" . "435fc049e612adc90b56f2700f2a458728c8e43d")

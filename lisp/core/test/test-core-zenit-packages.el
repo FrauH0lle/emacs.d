@@ -185,7 +185,7 @@
 
   (describe "package!"
     (before-each
-      (setq zenit-disabled-packags ()
+      (setq zenit-disabled-packages ()
             straight-profiles ()
             straight--recipe-cache (make-hash-table :test 'equal)
             straight-x-pinned-packages nil)

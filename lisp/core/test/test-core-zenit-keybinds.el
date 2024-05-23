@@ -334,9 +334,9 @@
 
     (it "processes :when/:unless keyword correctly"
       (expect (zenit--map-process '(:when t "x" #'command))
-              :to-equal '(when t (general-define-key "x" #'command)))
+              :to-equal '(eval-when! t (general-define-key "x" #'command)))
       (expect (zenit--map-process '(:unless t "x" #'command))
-              :to-equal '(unless t (general-define-key "x" #'command))))
+              :to-equal '(eval-unless! t (general-define-key "x" #'command))))
 
     (it "processes :prefix-map keyword correctly"
       (expect (zenit--map-process '(:prefix-map ("a" . "foo") "x" #'command))

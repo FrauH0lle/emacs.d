@@ -278,7 +278,7 @@ Extract and store these entries in a file to load them later"
         (when (and form (> (length form) 1))
           (pushnew! forms form))))
     ;; Store forms in file
-    (with-temp-file (file-name-concat zenit-cache-dir "zenit-includeded-load-history.el")
+    (with-temp-file (file-name-concat zenit-cache-dir "zenit-cached-load-history.el")
       (pp `(dolist (form ',forms) (push form load-history)) (current-buffer)))))
 
 (defun zenit-load-envvars-file (file &optional noerror)

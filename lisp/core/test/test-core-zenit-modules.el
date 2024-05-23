@@ -287,10 +287,59 @@
         (expect (zenit-module-mplist-map test-fn test-mplist) :to-throw 'error))))
 
 
+  (describe "zenit-module-resolve"
+    :var ((tmp-file "/tmp/category1/module1/control.el"))
+
+    (before-each
+      (make-directory (file-name-directory tmp-file) t)
+      (with-temp-file tmp-file
+        (erase-buffer)
+        (prin1 '(:depends
+                 ((t :emacs org)
+                  (+lsp :tools lsp +foo))
+                 :conflicts
+                 ((t :emacs org)
+                  (+lsp :tools lsp)))
+               (current-buffer)))
+      (setq zenit--module-dependencies nil
+            zenit--module-conflicts nil))
+
+    (after-each
+      (delete-directory (file-name-directory tmp-file) t)
+      (setq zenit--module-dependencies nil
+            zenit--module-conflicts nil))
+
+    (it "adds defined dependencies"
+      (let ((zenit-modules (make-hash-table :test #'equal)))
+        (zenit-module-set :category1 'module1 :path (file-name-directory tmp-file) :flags '(+lsp))
+        (expect (zenit-module-get :category1 'module1) :to-be-truthy)
+        (zenit-module-resolve '(:category1 . module1))
+        (expect (zenit-module-get :emacs 'org) :to-be-truthy)
+        (expect (zenit-module-get :tools 'lsp :flags) :to-be-truthy)
+        (expect zenit--module-dependencies :to-be-truthy)
+        (expect (length zenit--module-dependencies) :to-be 2)))
+
+    (it "detects conflicts"
+      (let ((zenit-modules (make-hash-table :test #'equal)))
+        (zenit-module-set :category1 'module1 :path (file-name-directory tmp-file) :flags '(+lsp))
+        (zenit-module-set :emacs 'org :path (file-name-directory tmp-file))
+        (zenit-module-set :tools 'lsp :path (file-name-directory tmp-file))
+        (zenit-module-resolve '(:category1 . module1) 'conflicts)
+        (expect zenit--module-conflicts :to-be-truthy)
+        (expect (length zenit--module-conflicts) :to-be 2))))
+
+
   (describe "modules!"
+
     (it "creates modules and sets path for each one"
       (let ((zenit-modules (make-hash-table :test #'equal)))
         (spy-on 'zenit-module-locate-path :and-return-value "/test/path")
+        (spy-on 'print!)
+        (spy-on 'start)
+        (spy-on 'info)
+        (spy-on 'success)
+        (spy-on 'print-group!)
+
         (modules! :test mod1 mod2 mod3)
         (dolist (key (hash-table-keys zenit-modules))
           (expect (gethash key zenit-modules) :to-equal '(:path "/test/path" :flags nil)))))

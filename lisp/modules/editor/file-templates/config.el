@@ -21,6 +21,9 @@ rules that don't have a :trigger property in
     ("/Makefile$"             :mode makefile-gmake-mode)
     ;; elisp
     ("/\\.dir-locals\\.el$")
+    ("/control\\.el$" :when +file-templates-in-emacs-dirs-p
+     :trigger "__zenit-control"
+     :mode emacs-lisp-mode)
     ("/packages\\.el$" :when +file-templates-in-emacs-dirs-p
      :trigger "__zenit-packages"
      :mode emacs-lisp-mode)

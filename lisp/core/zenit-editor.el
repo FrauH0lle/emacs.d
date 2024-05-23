@@ -593,7 +593,7 @@ Emacs in a broken state."
   (defadvice! +helpfull--add-load-history-a (&rest _)
     "Load and add generated `load-history' attachmends."
     :before '(helpful-callable helpful-command helpful-variable helpful-key helpful-symbol)
-    (zenit-load (file-name-concat zenit-cache-dir "zenit-load-history.el") t)
+    (zenit-load (file-name-concat zenit-cache-dir "zenit-cached-load-history.el") t)
     (dolist (fn '(helpful-callable helpful-command helpful-variable helpful-key helpful-symbol))
       (advice-remove fn #'+helpfull--add-load-history)))
 

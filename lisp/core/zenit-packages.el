@@ -315,7 +315,7 @@ also be a list of module keys."
     (zenit-context-with 'packages
       (when (assq :local-conf module-list)
         ;; We load the local packages file twice to populate
-        ;; `zenit-disabled-packages' disabled packages are seen ASAP ...
+        ;; `zenit-disabled-packages' ASAP ...
         (load (zenit-module-expand-path :local-conf nil packages-file) 'noerror 'nomessage 'nosuffix))
       (cl-loop for (cat . mod) in module-list
                if (zenit-module-locate-path cat mod packages-file)
@@ -470,6 +470,10 @@ specifiy a lockfile and profile. NAME is the package name.
     (add-to-list 'zenit-disabled-packages name)
     ;; Remove the package from the recipe cache, if it exists.
     (remhash (symbol-name name) straight--recipe-cache)
+    (setq ignore t))
+
+  ;; Check if package has been disabled
+  (when (memq name zenit-disabled-packages)
     (setq ignore t))
 
   ;; Set lockfile if to 'pinned if :pin is non-nil

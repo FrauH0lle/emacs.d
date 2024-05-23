@@ -341,7 +341,7 @@ processed."
                   (push :map rest))
                  ;; REVIEW 2023-06-05: Maybe replace with `eval-when!'/`eval-unless!'
                  ((or :when :unless)
-                  (zenit--map-nested (list (intern (zenit-keyword-name key)) (pop rest)) rest)
+                  (zenit--map-nested (list (intern (concat "eval-" (zenit-keyword-name key) "!")) (pop rest)) rest)
                   (setq rest nil))
                  (:prefix-map
                   (cl-destructuring-bind (prefix . desc)

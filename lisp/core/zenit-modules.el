@@ -34,6 +34,12 @@ after `zenit-module-init-file'.")
 
 They are rarely read in interactive sessions.")
 
+(defvar zenit-module-control-file "control.el"
+  "The filename for the module control file.
+
+Control files define dependencies and conflicts, along other
+metadata. They are rarely read in interactive sessions.")
+
 (defvar zenit-inhibit-module-warnings (not noninteractive)
   "If non-nil, don't emit deprecated or missing module warnings at
 startup.")
@@ -167,12 +173,12 @@ than their configdepth. See `zenit-module-set' for details."
             (delete-dups
              (append (seq-remove #'cdr (zenit-module-list nil initorder?))
                      (zenit-files-in (if (listp paths-or-all)
-                                        paths-or-all
-                                      zenit-modules-dirs)
-                                    :map #'zenit-module-from-path
-                                    :type 'dirs
-                                    :mindepth 1
-                                    :depth 1)))
+                                         paths-or-all
+                                       zenit-modules-dirs)
+                                     :map #'zenit-module-from-path
+                                     :type 'dirs
+                                     :mindepth 1
+                                     :depth 1)))
           (hash-table-keys zenit-modules))
         (let ((idx (if initorder? 1 2)))
           (lambda! ((groupa . namea) (groupb . nameb))
@@ -290,6 +296,76 @@ disabled ones) available in those directories."
       (setq zenit-inhibit-module-warnings t))
     (nreverse results)))
 
+(defvar zenit--module-dependencies nil
+  "Stores module dependency messages")
+(defvar zenit--module-conflicts nil
+  "Stores module conflict messages")
+
+(defun zenit-module-resolve (module &optional conflicts)
+  "Processes a module's `zenit-module-control-file'.
+
+If CONFLICTS is nil, the function will resolve dependencies and
+add them to `zenit-modules' if not already set. Otherwise it look
+for conflicts and add them to `zenit--module-conflicts'."
+  (cl-destructuring-bind (category . module) module
+    (let* ((path (zenit-module-locate-path category module))
+           (control-file (file-name-concat path zenit-module-control-file)))
+      (when (file-exists-p control-file)
+        (let ((control
+               (with-temp-buffer
+                 (insert-file-contents-literally control-file)
+                 (read (current-buffer))))
+              (key (if conflicts :conflicts :depends)))
+          (dolist (entry (plist-get control key))
+            (cl-destructuring-bind (flag dep-category dep-module &rest dep-flags) entry
+              ;; flag is t (module itself) or a module flag
+              (when (and (if (not (eq flag t))
+                             (zenit-module-p category module flag)
+                           (setq flag nil)
+                           (zenit-module-p category module))
+                         ;; Check if module is already set as desired. Also take
+                         ;; into account that there can be multiple dependency
+                         ;; flags.
+                         (if dep-flags
+                             (let (result)
+                               (dolist (flag dep-flags result)
+                                 (if (zenit-module-p dep-category dep-module flag)
+                                     (push t result)
+                                   (push nil result)))
+                               ;; For :depends we want to proceed only if a
+                               ;; module is not set up and the opposite in case
+                               ;; of :conflicts
+                               (if (eq key :depends)
+                                   (not (cl-every (lambda (x) (eq x t)) result))
+                                 (cl-every (lambda (x) (eq x t)) result)))
+                           (if (eq key :depends)
+                               (not (zenit-module-p dep-category dep-module))
+                             (zenit-module-p dep-category dep-module))))
+                (cond ((eq key :depends)
+                       (if (zenit-module-get dep-category dep-module)
+                           (let ((old-flags (zenit-module-get
+                                             dep-category dep-module :flags)))
+                             (push (format "Adding %s %s %s as dependency of %s %s %s"
+                                           dep-category dep-module dep-flags category module flag)
+                                   zenit--module-dependencies)
+                             ;; Append new flags to existing module
+                             (zenit-module-set
+                              dep-category dep-module
+                              :path (zenit-module-locate-path dep-category dep-module)
+                              :flags (append old-flags dep-flags)))
+                         ;; If module is not set yet, add it
+                         (push (format "Adding %s %s %s as dependency of %s %s"
+                                       dep-category dep-module dep-flags category module)
+                               zenit--module-dependencies)
+                         (zenit-module-set
+                          dep-category dep-module
+                          :path (zenit-module-locate-path dep-category dep-module)
+                          :flags dep-flags)))
+                      ((eq key :conflicts)
+                       (push (format"%s %s %s conflicts with %s %s %s"
+                                    category module flag dep-category dep-module dep-flags)
+                             zenit--module-conflicts)))))))))))
+
 
 ;;
 ;;; Module config macros
@@ -326,6 +402,23 @@ Order defines precedence (from most to least)."
       ,@(if (keywordp (car modules))
             (list (list 'quote modules))
           modules))
+     ;; Add dependencies
+     (print! (start "Resolving module dependencies ..."))
+     (dolist (module (zenit-module-list))
+       (zenit-module-resolve module))
+     (print-group!
+      (dolist (msg zenit--module-dependencies)
+          (print! (info "%s" msg)))
+      (print! (success "Dependencies resolved")))
+     ;; Check for conflicts
+     (dolist (module (zenit-module-list))
+       (zenit-module-resolve module 'conflicts))
+     (when zenit--module-conflicts
+       (print! (error "Module conflicts detected"))
+       (print-group!
+        (dolist (msg zenit--module-conflicts)
+          (print! (info "%s" msg))))
+       (signal 'zenit-module-error (list "Module conflicts detected")))
      zenit-modules))
 
 
@@ -339,7 +432,7 @@ where no module specifics have been defined.")
 
 (eval-and-compile
   (setplist 'zenit-module-context '(index 0 initdepth 1 configdepth 2
-                                   group 3 name 4 flags 5 features 6)))
+                                    group 3 name 4 flags 5 features 6)))
 (defvar zenit-module-context zenit--empty-module-context
   "A vector describing the module associated it with the active context.
 Contains the following: [INDEX INITDEPTH CONFIGDEPTH :GROUP

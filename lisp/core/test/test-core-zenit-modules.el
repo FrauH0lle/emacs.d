@@ -370,23 +370,22 @@
 
 
   (describe "zenit-module-context-get"
-    (let ((temp-context [0 1 2 :group :name :flags :features]))
-      (it "returns the correct value for a given field"
-        (expect (zenit-module-context-get 'index temp-context) :to-equal 0)
-        (expect (zenit-module-context-get 'initdepth temp-context) :to-equal 1)
-        (expect (zenit-module-context-get 'configdepth temp-context) :to-equal 2)
-        (expect (zenit-module-context-get 'group temp-context) :to-equal :group)
-        (expect (zenit-module-context-get 'name temp-context) :to-equal :name)
-        (expect (zenit-module-context-get 'flags temp-context) :to-equal :flags)
-        (expect (zenit-module-context-get 'features temp-context) :to-equal :features))
+    :var ((temp-context [5 1 2 :group :name :flags :features]))
 
-      (it "throws error when the field does not exist"
-        (expect (zenit-module-context-get 'non-existent-field temp-context) :to-throw))
+    (it "returns the correct value for a given field"
+      (expect (zenit-module-context-get 'index temp-context) :to-equal 5)
+      (expect (zenit-module-context-get 'initdepth temp-context) :to-equal 1)
+      (expect (zenit-module-context-get 'configdepth temp-context) :to-equal 2)
+      (expect (zenit-module-context-get 'group temp-context) :to-equal :group)
+      (expect (zenit-module-context-get 'name temp-context) :to-equal :name)
+      (expect (zenit-module-context-get 'flags temp-context) :to-equal :flags)
+      (expect (zenit-module-context-get 'features temp-context) :to-equal :features))
 
-      (it "uses `zenit-module-context' when no context is provided"
-        (spy-on 'aref :and-return-value :dummy-value)
-        (zenit-module-context-get 'index)
-        (expect 'aref :to-have-been-called-with zenit-module-context 0))))
+    (it "throws error when the field does not exist"
+      (expect (zenit-module-context-get 'non-existent-field temp-context) :to-throw))
+
+    (it "uses `zenit-module-context' when no context is provided"
+      (expect (zenit-module-context-get 'index) :to-equal nil)))
 
 
   (describe "zenit-module-context"
@@ -462,11 +461,13 @@
       (expect (modulep! :category1 module1 +flag1) :to-be nil))
 
     (it "returns t if the current module has a certain flag enabled"
-      (expect (zenit-module-context-with '(:category1 . module2)
-                (modulep! +flag1))
-              :to-be t))
+      (let (result)
+        (setq result (zenit-module-context-with '(:category1 . module2)
+                       (modulep! +flag1)))
+        (expect result :to-be t)))
 
     (it "returns nil if the current module does not have a certain flag enabled"
-      (expect (zenit-module-context-with '(:category1 . module1)
-                (modulep! +flag1))
-              :to-be nil))))
+      (let (result)
+        (setq result (zenit-module-context-with '(:category1 . module1)
+                       (modulep! +flag1)))
+        (expect result :to-be nil)))))

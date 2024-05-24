@@ -134,9 +134,11 @@
                                                           (file-name-concat test-dir "a.txt")))))
 
     (it "returns directories in a directory"
-      (let ((sub-dir (expand-file-name "sub-dir" test-dir)))
+      (let ((sub-dir (expand-file-name "sub-dir" test-dir))
+            result)
         (make-directory sub-dir)
-        (expect (zenit-files-in test-dir :type 'dirs) :to-equal (list sub-dir))))
+        (setq result (zenit-files-in test-dir :type 'dirs))
+        (expect result :to-equal (list sub-dir))))
 
     (it "filters files based on a filter function"
       (let ((file-a (expand-file-name "a.txt" test-dir))

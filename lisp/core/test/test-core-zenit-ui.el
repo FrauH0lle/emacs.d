@@ -269,23 +269,24 @@
 
 
   (describe "zenit-init-theme-h"
+
+    (before-each
+      (setq zenit-theme 'some-theme)
+      (spy-on 'load-theme))
+
     (it "loads the theme specified by `zenit-theme` if not already enabled"
       (spy-on 'custom-theme-enabled-p :and-return-value nil)
-      (spy-on 'load-theme)
 
-      (let ((zenit-theme 'some-theme))
-        ;; The theme is not already enabled, so zenit-init-theme-h should load it.
-        (zenit-init-theme-h)
-        (expect 'load-theme :to-have-been-called-with zenit-theme t)))
+      ;; The theme is not already enabled, so zenit-init-theme-h should load it.
+      (zenit-init-theme-h)
+      (expect 'load-theme :to-have-been-called-with zenit-theme t))
 
     (it "does not load the theme specified by `zenit-theme` if already enabled"
       (spy-on 'custom-theme-enabled-p :and-return-value t)
-      (spy-on 'load-theme)
 
-      (let ((zenit-theme 'some-theme))
-        ;; This time, zenit-init-theme-h should not try to load the theme.
-        (zenit-init-theme-h)
-        (expect 'load-theme :not :to-have-been-called))))
+      ;; This time, zenit-init-theme-h should not try to load the theme.
+      (zenit-init-theme-h)
+      (expect 'load-theme :not :to-have-been-called)))
 
 
   (describe "zenit--load-theme-a"

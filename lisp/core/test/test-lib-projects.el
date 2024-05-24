@@ -75,7 +75,8 @@
 
   (describe "project-file-exists-p!"
     (it "checks if the file exists in the project root"
-      (expect (project-file-exists-p! "init.el") :to-be-truthy))
+      (let ((default-directory user-emacs-directory))
+        (expect (project-file-exists-p! "init.el") :to-be-truthy)))
 
     (it "checks if the absolute file exists for absolute paths"
       (expect (project-file-exists-p! (file-name-concat user-emacs-directory "init.el")) :to-be-truthy)))

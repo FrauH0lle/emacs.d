@@ -9,13 +9,16 @@
 ;; - DONE Solve the issue with the modulep! and load! macros. Both of them try to
 ;;   figure out the path of the file they run in, which would be wrong if called
 ;;   in init.el
-;; - Similar as above, load-history will record defuns etc. from init.el, but
+;; - DONE Similar as above, load-history will record defuns etc. from init.el, but
 ;;   this is not where the actual source is.
 
 ;; A bit of a rough hack, however, the async native compiler does its work in a
 ;; pristine emacs process. This is good for packages, but not for our config
 ;; files. Thus, we patch this function so it loads our config environment
 ;; beforehand in case the file to be compiled is part of `zenit-core-dir'.
+
+(eval-when-compile
+  (require 'el-patch))
 
 (el-patch-feature comp)
 (with-eval-after-load 'comp
@@ -60,6 +63,7 @@ display a message."
                                                native-comp-driver-options
                                                load-path
                                                backtrace-line-length
+                                               byte-compile-warnings
                                                ;; package-load-list
                                                ;; package-user-dir
                                                ;; package-directory-list
@@ -93,6 +97,7 @@ display a message."
                           (comp-log "\n")
                           (mapc #'comp-log expr-strings)))
                      (load1 load)
+                     (default-directory invocation-directory)
                      (process (make-process
                                :name (concat "Compiling: " source-file)
                                :buffer (with-current-buffer

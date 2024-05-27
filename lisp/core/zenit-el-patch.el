@@ -10,7 +10,7 @@
 ;; `el-patch' is great! We add extra `el-patch-deftype's early, so we can use
 ;; them.
 
-;;Add `cl-defmacro'
+;; Add `cl-defmacro'
 (with-eval-after-load 'el-patch
   (el-patch-deftype cl-defmacro
     :classify el-patch-classify-function

@@ -1,9 +1,12 @@
 ;; ui/popup/config.el -*- lexical-binding: t; -*-
 
 ;; PATCH We create `+popup-display-buffer-stacked-side-window-fn' by creating a
-;;       fork of `display-buffer-in-side-window'
+;;   fork of `display-buffer-in-side-window'
+(eval-when-compile
+  (require 'el-patch))
+
 (el-patch-feature window)
-(after! window
+(with-eval-after-load 'window
   (el-patch-defun (el-patch-swap display-buffer-in-side-window +popup-display-buffer-stacked-side-window-fn) (buffer alist)
     (el-patch-concat
       "Display BUFFER in a side window of the selected frame.\n"

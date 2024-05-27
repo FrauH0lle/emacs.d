@@ -93,6 +93,51 @@ returns non-nil, all hooks after it are ignored.")
 ;;; General + leader/localleader keys
 
 (require 'general)
+
+;; PATCH `general-predicate-dispatch' Each branch binds 'it' to the return value
+;;   of the predicate (anaphoric)
+(eval-when-compile
+  (require 'el-patch))
+
+(el-patch-feature general)
+(with-eval-after-load 'general
+  (el-patch-cl-defmacro general-predicate-dispatch
+    (fallback-def &rest defs
+                  &key docstring
+                  &allow-other-keys)
+    (el-patch-let ((doc "Create a menu item that will run FALLBACK-DEF or a definition from DEFS.
+DEFS consists of <predicate> <definition> pairs. Binding this menu-item to a key
+will cause that key to act as the corresponding definition (a command, keymap,
+etc) for the first matched predicate. If no predicate is matched FALLBACK-DEF
+will be run. When FALLBACK-DEF is nil and no predicates are matched, the keymap
+with the next highest precedence for the pressed key will be checked. DOCSTRING
+can be specified as a description for the menu item.")
+                   (dec (declare (indent 1))))
+      (el-patch-remove dec doc)
+      (el-patch-add doc dec))
+    ;; remove keyword arguments from defs and sort defs into pairs
+    (let ((defs (cl-loop for (key value) on defs by 'cddr
+                         unless (keywordp key)
+                         collect (list key value))))
+      `'(menu-item
+         ,(or docstring "") nil
+         :filter (lambda (&optional _)
+                   (el-patch-swap
+                     (cond ,@(mapcar (lambda (pred-def)
+                                       `(,(car pred-def) ,(cadr pred-def)))
+                                     defs)
+                           (t ,fallback-def))
+                     (let (it)
+                       (cond ,@(mapcar (lambda (pred-def)
+                                         `((setq it ,(car pred-def))
+                                           ,(cadr pred-def)))
+                                       defs)
+                             (t ,fallback-def))))))))
+
+  ;; This looks picky but otherwise `el-patch' cannot find the definition.
+  (with-eval-after-load 'el-patch
+    (push `(,(locate-library "general") (defun . general-predicate-dispatch)) load-history)))
+
 ;; Convenience aliases
 (defalias 'define-key! #'general-def)
 (defalias 'undefine-key! #'general-unbind)
@@ -177,43 +222,6 @@ change the localleader prefix."
       :major-modes t
       :prefix zenit-localleader-alt-key
       ,@args)))
-
-;; PATCH `general-predicate-dispatch' Each branch binds 'it' to the return value
-;;       of the predicate (anaphoric)
-(el-patch-feature general)
-(after! general
-  (el-patch-cl-defmacro general-predicate-dispatch
-    (fallback-def &rest defs
-                  &key docstring
-                  &allow-other-keys)
-    (el-patch-let ((doc "Create a menu item that will run FALLBACK-DEF or a definition from DEFS.
-DEFS consists of <predicate> <definition> pairs. Binding this menu-item to a key
-will cause that key to act as the corresponding definition (a command, keymap,
-etc) for the first matched predicate. If no predicate is matched FALLBACK-DEF
-will be run. When FALLBACK-DEF is nil and no predicates are matched, the keymap
-with the next highest precedence for the pressed key will be checked. DOCSTRING
-can be specified as a description for the menu item.")
-                   (dec (declare (indent 1))))
-      (el-patch-remove dec doc)
-      (el-patch-add doc dec))
-    ;; remove keyword arguments from defs and sort defs into pairs
-    (let ((defs (cl-loop for (key value) on defs by 'cddr
-                         unless (keywordp key)
-                         collect (list key value))))
-      `'(menu-item
-         ,(or docstring "") nil
-         :filter (lambda (&optional _)
-                   (el-patch-swap
-                     (cond ,@(mapcar (lambda (pred-def)
-                                       `(,(car pred-def) ,(cadr pred-def)))
-                                     defs)
-                           (t ,fallback-def))
-                     (let (it)
-                       (cond ,@(mapcar (lambda (pred-def)
-                                         `((setq it ,(car pred-def))
-                                           ,(cadr pred-def)))
-                                       defs)
-                             (t ,fallback-def)))))))))
 
 ;; We use a prefix commands instead of general's :prefix/:non-normal-prefix
 ;; properties because general is incredibly slow binding keys en mass with them

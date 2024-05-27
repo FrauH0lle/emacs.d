@@ -55,11 +55,12 @@ auto-installed if missing) and shouldn't be deleted.")
       ;; Disabling this makes 'make refresh' instant (once everything set up),
       ;; which is much nicer UX than the several seconds modification checks.
       straight-check-for-modifications nil
-      ;; We handle package.el ourselves (and a little more comprehensively)
+      ;; We handle package.el ourselves
       straight-enable-package-integration nil
       ;; Use shallow clones
       ;; straight-vc-git-default-clone-depth 1
-      ;; Tell straight.el about the profiles we are going to be using.
+      ;; Tell straight.el about the profiles we are going to be using. Will be
+      ;; dynamically modified by the `package!' macro.
       straight-profiles
       '(;; Packages registered by the packages.el files in `zenit-core-dir'
         (core . "core.el")

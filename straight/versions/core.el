@@ -2,7 +2,7 @@
  ("better-jumper" . "47622213783ece37d5337dc28d33b530540fc319")
  ("dtrt-indent" . "d4fd1b4977eb0d534844fddf01c3c51c70c57205")
  ("el-get" . "f8f651b448f0b5ba478a92bf1c361ff17b10e8d2")
- ("el-patch" . "156c61b72c1c9c61bd886b5931b8a382153f52fa")
+ ("el-patch" . "92803e7ea6e07cd56667ed7ea0dfacfc1f37f6d9")
  ("emacs-buttercup" . "a1a86b027ffe030e1c78a9f43c50cd20a6fed19a")
  ("emacs-hide-mode-line" . "bc5d293576c5e08c29e694078b96a5ed85631942")
  ("emacs-which-key" . "8093644032854b1cdf3245ce4e3c7b6673f741bf")

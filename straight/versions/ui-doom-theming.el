@@ -1,3 +1,3 @@
-(("emacs-solaire-mode" . "8af65fbdc50b25ed3214da949b8a484527c7cc14")
- ("themes" . "b5ff201f4bea4286e9ed015a2043cf2394182232"))
+(("emacs-solaire-mode" . "8ccdceeb9298b3c4e35f630914f467bf164f39ad")
+ ("themes" . "3b2422b208d28e8734b300cd3cc6a7f4af5eba55"))
 :gamma

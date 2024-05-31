@@ -162,11 +162,10 @@
       (setq temp-file-1 (make-temp-file "test-1")
             temp-file-2 (make-temp-file "test-2")
             zenit-include--current-file nil
-            zenit-include--files nil
             zenit-include--previous-file nil)
 
       (with-temp-file temp-file-1
-        (insert (concat "(cl-eval-when (compile)
+        (insert (concat "(eval-when-compile
          (setq zenit-include--current-file \"" temp-file-2 "\"))"))
         (insert (concat "(zenit-include \"" temp-file-2 "\")")))
       (with-temp-file temp-file-2
@@ -176,7 +175,6 @@
 
     (after-each
       (setq zenit-include--current-file nil
-            zenit-include--files nil
             zenit-include--previous-file nil))
 
     (it "embeds file contents if byte-compiling"
@@ -199,7 +197,6 @@
             temp-file-2 (make-temp-file "include-test-2-" nil ".el")
             temp-file-3 (make-temp-file "include-test-3-" nil ".el")
             zenit-include--current-file nil
-            zenit-include--files nil
             zenit-include--previous-file nil)
 
       (with-temp-file temp-file-1
@@ -215,7 +212,6 @@
                    (setq bar 43))")))
     (after-each
       (setq zenit-include--current-file nil
-            zenit-include--files nil
             zenit-include--previous-file nil))
 
     (it "embeds file contents if byte-compiling"

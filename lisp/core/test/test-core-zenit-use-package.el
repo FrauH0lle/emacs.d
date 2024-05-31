@@ -15,10 +15,11 @@
 
 
   (describe "use-package!"
-    (it "expands into use-package form"
+    (it "expands into protected use-package form"
       (expect '(use-package! test-package)
               :to-expand-into
-              '(use-package test-package)))
+              '(protect-macros-maybe! test-package
+                 (use-package test-package))))
 
     (it "ignores disabled packages"
       (defvar zenit-disabled-packages ())

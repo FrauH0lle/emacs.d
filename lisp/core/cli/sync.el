@@ -37,7 +37,6 @@
        (when (zenit-autoloads-reload)
          (when (modulep! :config compile)
            (zenit-cli-compile))
-         (quiet! (zenit-generate-load-history))
          (print! (info "Restart Emacs for changes to take effect")))
        t)))
 
@@ -72,6 +71,5 @@
        (when (zenit-autoloads-reload)
          (when (modulep! :config compile)
            (zenit-cli-compile))
-         (quiet! (zenit-generate-load-history))
          (print! (info "Restart Emacs for changes to take effect")))
        t)))

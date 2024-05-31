@@ -192,6 +192,185 @@ statements."
                    (zenit-emacs-directory-size (expand-file-name (car attrs) dir))
                  (/ (nth 8 attrs) 1024.0))))))))
 
+
+;;
+;;; File read/write
+
+(defmacro zenit--with-prepared-file-buffer (file coding mode &rest body)
+  "Create a temp buffer and prepare it for file IO in BODY."
+  (declare (indent 3))
+  (let ((nmask (make-symbol "new-mask"))
+        (omask (make-symbol "old-mask")))
+    `(let* ((,nmask ,mode)
+            (,omask (if ,nmask (default-file-modes))))
+       (unwind-protect
+           (with-temp-buffer
+             (if ,nmask (set-default-file-modes ,nmask))
+             (let* ((buffer-file-name (zenit-path ,file))
+                    (coding-system-for-read  (or ,coding 'binary))
+                    (coding-system-for-write (or coding-system-for-write coding-system-for-read 'binary)))
+               (when (eq coding-system-for-read 'binary)
+                 (set-buffer-multibyte nil)
+                 (setq-local buffer-file-coding-system 'binary))
+               ,@body))
+         (if ,nmask (set-default-file-modes ,omask))))))
+
+;;;###autoload
+(cl-defun zenit-file-read
+    (file &key
+          (by 'buffer-string)
+          (coding (or coding-system-for-read 'utf-8))
+          noerror
+          beg end)
+  "Read FILE and return its contents.
+
+Set BY to change how its contents are consumed. It accepts any
+function, to be called with no arguments and expected to return
+the contents as any arbitrary data. By default, BY is set to
+`buffer-string'. Otherwise, BY recognizes these special values:
+
+\\='insert      -- insert FILE's contents into the current buffer
+                   before point.
+\\='read        -- read the first form in FILE and return it as a
+                   single S-exp.
+\\='read*       -- read all forms in FILE and return it as a list of
+                   S-exps.
+\\='(read . N)  -- read the first N (an integer) S-exps in FILE.
+
+CODING dictates the encoding of the buffer. This defaults to
+`utf-8'. If set to nil, `binary' is used.
+
+If NOERROR is non-nil, don't throw an error if FILE doesn't
+exist. This will still throw an error if FILE is unreadable,
+however.
+
+If BEG and/or END are integers, only that region will be read
+from FILE."
+  (when (or (not noerror)
+            (file-exists-p file))
+    (let ((old-buffer (current-buffer)))
+      (zenit--with-prepared-file-buffer file coding nil
+        (if (not (eq coding-system-for-read 'binary))
+            (insert-file-contents buffer-file-name nil beg end)
+          (insert-file-contents-literally buffer-file-name nil beg end))
+        (pcase by
+          ('insert
+           (insert-into-buffer old-buffer)
+           t)
+          ('buffer-string
+           (buffer-substring-no-properties (point-min) (point-max)))
+          ('read
+           (condition-case _ (read (current-buffer)) (end-of-file)))
+          ('(read . ,i)
+           (let (forms)
+             (condition-case _
+                 (dotimes (_ i) (push (read (current-buffer)) forms))
+               (end-of-file))
+             (nreverse forms)))
+          ('read*
+           (let (forms)
+             (condition-case _
+                 (while t (push (read (current-buffer)) forms))
+               (end-of-file))
+             (nreverse forms)))
+          (fn (funcall fn)))))))
+
+;;;###autoload
+(cl-defun zenit-file-write
+    (file contents
+          &key
+          append
+          ;; default: `utf-8'
+          (coding 'utf-8)
+          ;; default: `default-file-modes' (#o755)
+          mode
+          (mkdir    'parents)
+          (insertfn #'insert)
+          (printfn  #'prin1))
+  "Write CONTENTS (a string or list of forms) to FILE (a string
+path).
+
+If CONTENTS is list of forms, any literal strings in the list are
+inserted verbatim, as text followed by a newline, with `insert'.
+Sexps are inserted with `prin1'. This can be modified by setting
+INSERTFN and PRINTFN respectively.
+
+MODE dictates the permissions of created file and directories.
+MODE is either an integer or a cons cell whose car is the mode
+for files and cdr the mode for directories. If FILE already
+exists, its permissions will be changed. The permissions of
+existing directories will never be changed.
+
+CODING dictates the encoding to read/write with (see
+`coding-system-for-write'). This defaults to `utf-8'. If set to
+nil, `binary' is used.
+
+APPEND dictates where CONTENTS will be written. If neither is
+set, the file will be overwritten. If both are, the contents will
+be written to both ends. Set either APPEND or PREPEND to
+`noerror' to silently ignore read errors."
+  (let ((mode (ensure-list mode))
+        (contents (ensure-list contents))
+        datum)
+    (zenit--with-prepared-file-buffer file coding (car mode)
+      (while (setq datum (pop contents))
+        (cond ((stringp datum)
+               (funcall
+                insertfn (if (or (string-suffix-p "\n" datum)
+                                 (stringp (cadr contents)))
+                             datum
+                           (concat datum "\n"))))
+              ((bufferp datum)
+               (insert-buffer-substring datum))
+              ((let ((standard-output (current-buffer))
+                     (print-quoted t)
+                     (print-level nil)
+                     (print-length nil)
+                     ;; Escape special chars to avoid any shenanigans
+                     (print-escape-newlines t)
+                     (print-escape-control-characters t)
+                     (print-escape-nonascii t)
+                     (print-escape-multibyte t))
+                 (funcall printfn datum)))))
+      (let (write-region-annotate-functions
+            write-region-post-annotation-function)
+        (when mkdir
+          (with-file-modes (or (cdr mode) (default-file-modes))
+            (make-directory (file-name-directory buffer-file-name)
+                            (eq mkdir 'parents))))
+        (write-region nil nil buffer-file-name append :silent))
+      buffer-file-name)))
+
+;;;###autoload
+(defmacro with-file-contents! (file &rest body)
+  "Create a temporary buffer with FILE's contents and execute BODY
+in it.
+
+The point is at the beginning of the buffer afterwards.
+
+A convenience macro to express the common `with-temp-buffer' +
+`insert-file-contents' idiom more succinctly, enforce `utf-8',
+and perform some optimizations for `binary' IO."
+  (declare (indent 1))
+  `(zenit--with-prepared-file-buffer ,file (or coding-system-for-read 'utf-8) nil
+     (zenit-file-read buffer-file-name :by 'insert :coding coding-system-for-read)
+     (goto-char (point-min))
+     ,@body))
+
+;;;###autoload
+(defmacro with-file! (file &rest body)
+  "Evaluate BODY in a temp buffer, then write its contents to FILE.
+
+Unlike `with-temp-file', this uses the `utf-8' encoding by
+default and performs some optimizations for `binary' IO."
+  (declare (indent 1))
+  `(zenit--with-prepared-file-buffer ,file (or coding-system-for-read 'utf-8) nil
+     (prog1 (progn ,@body)
+       (zenit-file-write buffer-file-name (current-buffer)
+                        :coding (or coding-system-for-write 'utf-8)))))
+
+
+;;
 ;;; Helpers
 
 (defun zenit--update-files (&rest files)
@@ -218,6 +397,7 @@ statements."
     (when (bound-and-true-p save-place-mode)
       (save-place-forget-unreadable-files))))
 
+;;
 ;;; Commands
 
 ;;;###autoload

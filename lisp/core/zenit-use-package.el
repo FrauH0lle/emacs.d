@@ -150,6 +150,7 @@ support for two extra properties:
               ;; for packages at compile time:
               (and (bound-and-true-p byte-compile-current-file)
                    (not (locate-library (symbol-name name)))))
-    `(use-package ,name ,@plist)))
+    `(protect-macros-maybe! ,name
+       (use-package ,name ,@plist))))
 
 (provide 'zenit-use-package)

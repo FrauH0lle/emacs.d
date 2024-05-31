@@ -192,33 +192,35 @@ If NOERROR, don't throw an error if PATH doesn't exist."
                    ('zenit-error))
              (list path e)))))
 
+(defmacro zenit--with-local-load-history (file &rest body)
+  "Evaluate BODY as part of FILE.
+
+FILE is either a file path string or a form that should evaluate
+to such a string.
+
+This macro ensures that defined functions and variables show up
+as being defined in FILE, instead of whatever file they are being
+loaded from."
+  (declare (indent 0))
+  (let ((file (if (stringp file)
+                  file
+                (apply (car file) (cdr file)))))
+    `(let ((current-load-list nil))
+       ,@body
+       (push (cons ',file current-load-list) load-history))))
+
 (defvar zenit-include--current-file nil
   "Stores the filename of the file to be included.")
-(defvar zenit-include--files nil
-  "Stores the included files.")
-(defmacro zenit-include (path &optional noerror)
-  "Include file contents from PATH when byte-compiling.
+(defmacro zenit-include (file &optional noerror)
+  "Include file contents from FILE when byte-compiling.
 
 Otherwise it delegates to `zenit-load'. If NOERROR, don't throw
-an error if PATH doesn't exist."
+an error if FILE doesn't exist."
   (if (not (bound-and-true-p byte-compile-current-file))
-      `(zenit-load ,path ,noerror)
-    (zenit-log "include: %s %s" (abbreviate-file-name path) noerror)
-    ;; Keep track of embedded files
-    (push path zenit-include--files)
-    (let ((forms nil))
-      (with-temp-buffer
-        (ignore-errors
-          ;; Can't do this literally because it breaks Unicode
-          ;; characters.
-          (insert-file-contents path))
-        (condition-case _
-            (while t
-              (let ((form (read (current-buffer))))
-                (push form forms)))
-          (end-of-file)))
-      (setq forms (nreverse forms))
-      (macroexp-progn forms))))
+      `(zenit-load ,file ,noerror)
+    (zenit-log "include: %s %s" (abbreviate-file-name file) noerror)
+    (let ((forms (zenit-file-read file :by 'read*)))
+      `(zenit--with-local-load-history ,file ,@forms))))
 
 (defvar zenit-include--previous-file nil
   "Stores the filename of the previously included file.")
@@ -241,45 +243,16 @@ exist."
                (if (string-suffix-p ".el" filename)
                    filename
                  (concat filename ".el")))))
-    (macroexp-progn
-     ;; Set `zenit-include--current-file' during compilation only
-     `((cl-eval-when (compile)
+    `(progn
+       (eval-when-compile
+         ;; Set `zenit-include--current-file' only during compilation
          (setq zenit-include--previous-file ,zenit-include--current-file
                zenit-include--current-file ,file))
        ;; Include the file
        (zenit-include ,file ,noerror)
        ;; Reset `zenit-include--current-file' to the previous one
-       (cl-eval-when (compile)
-         (setq zenit-include--current-file zenit-include--previous-file))))))
-
-(defun zenit-generate-load-history ()
-  "Iterate over `zenit-include--files' and load them, thus
-generating a `load-history' entry.
-
-Extract and store these entries in a file to load them later"
-  (let (forms)
-    (dolist (file zenit-include--files forms)
-      (zenit-log "include: Extracting `load-history' for %s" file)
-      (zenit-load file t)
-      (let ((form
-             ;; Filter out unesscary forms
-             (cl-remove-if
-              (lambda (item)
-                (cond ((symbolp item)
-                       ;; Remove `use-package--warning*' entries
-                       (string-match "use-package--warning" (symbol-name item)))
-                      ;; Remove transient functions which have an ever changing name
-                      ((listp item)
-                       (or
-                        (string-match "zenit-transient-hook" (symbol-name (cdr item)))
-                        (string-match "zenit--customize-themes-h-" (symbol-name (cdr item)))))
-                      (t nil)))
-              (assoc file load-history))))
-        (when (and form (> (length form) 1))
-          (pushnew! forms form))))
-    ;; Store forms in file
-    (with-temp-file (file-name-concat zenit-cache-dir "zenit-cached-load-history.el")
-      (pp `(dolist (form ',forms) (push form load-history)) (current-buffer)))))
+       (eval-when-compile
+         (setq zenit-include--current-file zenit-include--previous-file)))))
 
 (defun zenit-load-envvars-file (file &optional noerror)
   "Read and set envvars from FILE.

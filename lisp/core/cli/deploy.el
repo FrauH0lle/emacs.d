@@ -22,8 +22,6 @@
   (when (modulep! :config compile)
     (zenit-cli-compile))
 
-  (quiet! (zenit-generate-load-history))
-
   ;; Install `nerd-icons' fonts
   (when (or zenit-auto-accept
             (y-or-n-p "Download and install nerd-icon's fonts?"))

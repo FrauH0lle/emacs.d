@@ -1,6 +1,6 @@
-(("elisp-def" . "1d2e88a232ec16bce036b49577c4d4d96035f9f7")
- ("elisp-demos" . "792be709c82101aea0585ece7429e2fdded74494")
+(("elisp-def" . "1ad4baccbf3d0d13e7607d332ae6bc60a5dd7360")
+ ("elisp-demos" . "1a108d1c5011f9ced58be2ca98bea1fbd4130a2f")
  ("emacs-buttercup" . "a1a86b027ffe030e1c78a9f43c50cd20a6fed19a")
  ("highlight-quoted" . "24103478158cd19fbcfb4339a3f1fa1f054f1469")
- ("macrostep" . "75ecd041219239f0dceab4883594ea2fe366b484"))
+ ("macrostep" . "4939d88779761e8b5461b4cf73f86600172987db"))
 :gamma

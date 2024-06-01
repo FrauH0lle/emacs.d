@@ -2,38 +2,38 @@
 ;; lang/python/packages.el
 
 ;; Major modes
-(package! pip-requirements)
+(package! pip-requirements :lockfile lang-python)
 (when (modulep! +cython)
-  (package! cython-mode)
+  (package! cython-mode :lockfile lang-python)
   (when (modulep! :checkers syntax)
-    (package! flycheck-cython)))
+    (package! flycheck-cython :lockfile lang-python)))
 
 ;; LSP
 (when (modulep! +lsp)
   (unless (modulep! :tools lsp +eglot)
     (if (modulep! +pyright)
-        (package! lsp-pyright)
-      (package! lsp-python-ms))))
+        (package! lsp-pyright :lockfile lang-python)
+      (package! lsp-python-ms :lockfile lang-python))))
 
 ;; Programming environment
 (package! anaconda-mode)
 (when (modulep! :completion company)
-  (package! company-anaconda))
+  (package! company-anaconda :lockfile lang-python))
 
 ;; Environment management
-(package! pipenv)
-(package! pyvenv)
+(package! pipenv :lockfile lang-python)
+(package! pyvenv :lockfile lang-python)
 (when (modulep! +pyenv)
-  (package! pyenv-mode))
+  (package! pyenv-mode :lockfile lang-python))
 (when (modulep! +conda)
-  (package! conda))
+  (package! conda :lockfile lang-python))
 (when (modulep! +poetry)
-  (package! poetry))
+  (package! poetry :lockfile lang-python))
 
 ;; Testing frameworks
-(package! nose)
-(package! python-pytest)
+(package! nose :lockfile lang-python)
+(package! python-pytest :lockfile lang-python)
 
 ;; Import managements
-(package! pyimport)
-(package! py-isort)
+(package! pyimport :lockfile lang-python)
+(package! py-isort :lockfile lang-python)

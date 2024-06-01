@@ -1,2 +1,2 @@
-(("editorconfig-emacs" . "e1a391a618ec33d157822dbcc51d010559289f1a"))
+(("editorconfig-emacs" . "b120ccdcd853205e46ccc2f296055d5b09c7f9a0"))
 :gamma

@@ -8,12 +8,12 @@
            ;;   shallow clone support.
            :repo "emacs-straight/org-mode")
   :lockfile 'pinned
-  :pin "630f86dfc42472aafd9a4f305e1965cbe92b2891")
+  :pin "ab730145ba67596151f60cdc30a7963520832d7d")
 (package! org-contrib
   :recipe (:host github
            :repo "emacsmirror/org-contrib")
   :lockfile 'pinned
-  :pin "d0cebebb301b5de93e9c5228a91e3e4f5d41902b")
+  :pin "351c71397d893d896a47ad7e280607b4d59b84e4")
 
 (package! avy :lockfile emacs-org)
 (package! htmlize :lockfile emacs-org)

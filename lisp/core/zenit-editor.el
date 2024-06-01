@@ -653,8 +653,7 @@ bizarre reason."
 
 
 (use-package! smartparens
-  ;; Auto-close delimiters and blocks as you type. It's more powerful than that,
-  ;; but that is all Doom uses it for.
+  ;; Auto-close delimiters and blocks as you type.
   :hook (zenit-first-buffer . smartparens-global-mode)
   :commands sp-pair sp-local-pair sp-with-modes sp-point-in-comment sp-point-in-string
   :config
@@ -721,15 +720,17 @@ on."
     "Variable indicating whether smartparens mode is active in the
 current buffer.")
   (defhook! zenit-enable-smartparens-mode-maybe-h ()
+    "Enable `smartparens-mode' after exiting `evil-replace-state'."
     'evil-replace-state-exit-hook
     (when zenit-buffer-smartparens-mode
       (turn-on-smartparens-mode)
       (kill-local-variable 'zenit-buffer-smartparens-mode)))
   (defhook! zenit-disable-smartparens-mode-maybe-h ()
+    "Disable `smartparens-mode' upon entering `evil-replace-state'."
     'evil-replace-state-entry-hook
     (when smartparens-mode
       (setq-local zenit-buffer-smartparens-mode t)
-      (turn-off-smartparens-mode))))
+      (smartparens-mode -1))))
 
 
 (use-package! so-long

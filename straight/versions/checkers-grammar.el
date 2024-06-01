@@ -1,2 +1,2 @@
-(("Emacs-langtool" . "fc6c046af1c5e4e55331414387865f65afb1bd3c"))
+(("Emacs-langtool" . "d86101eafe9a994eb0425e08e7c1795e9cb0cd42"))
 :gamma

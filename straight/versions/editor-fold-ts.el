@@ -1,2 +1,2 @@
-(("ts-fold" . "de6d9ae174e3275d9a7aa7b8b483c6a76410ecf6"))
+(("ts-fold" . "6b37ac1864ce98f553da04da354f93e07bfb5405"))
 :gamma

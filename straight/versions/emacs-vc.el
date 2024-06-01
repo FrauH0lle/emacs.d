@@ -1,5 +1,5 @@
-(("browse-at-remote" . "c020975a891438e278ad1855213d4f3d62c9fccb")
- ("git-modes" . "1533b38a27959af29d28ff94291f5992e60517a2")
- ("git-timemachine" . "d8ffd0d7cc4ab3dd7de494c9ea36dfd99e2744fa")
- ("magit" . "f7cba11588c4a35f91922ef28658aa88a59c895b"))
+(("browse-at-remote" . "76aa27dfd469fcae75ed7031bb73830831aaccbf")
+ ("git-modes" . "52ea2a1281ea9df9b8732fe2add0e6a0c9c2cd11")
+ ("git-timemachine" . "5ed73c3831cf6da10ba941e6abba708a86853e8f")
+ ("magit" . "f9268a959828d0c6ab26171dd2fb1ffc55e5ae70"))
 :gamma

@@ -1,3 +1,3 @@
-(("org-contrib" . "d0cebebb301b5de93e9c5228a91e3e4f5d41902b")
- ("org" . "630f86dfc42472aafd9a4f305e1965cbe92b2891"))
+(("org-contrib" . "351c71397d893d896a47ad7e280607b4d59b84e4")
+ ("org" . "ab730145ba67596151f60cdc30a7963520832d7d"))
 :gamma

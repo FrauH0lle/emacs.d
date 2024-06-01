@@ -1,2 +1,2 @@
-(("undo-tree" . "16f4121032d09ef44b3d7d02c4d02c3c2f18041f"))
+(("undo-tree" . "5e9f4c92348b3cfd6f140c1730294017dca4bc05"))
 :gamma

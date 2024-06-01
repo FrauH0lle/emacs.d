@@ -92,49 +92,53 @@ returns non-nil, all hooks after it are ignored.")
 ;;
 ;;; General + leader/localleader keys
 
+(require 'general)
+
 (eval-when-compile
-  (require 'el-patch)
-  (require 'general))
+  (require 'el-patch))
 
+;; PATCH `general-predicate-dispatch' Each branch binds 'it' to the return value
+;;   of the predicate (anaphoric)
 (el-patch-feature general)
-
-(with-eval-after-load 'general
-  (zenit--with-local-load-history
-    (locate-library "general")
-    (el-patch-cl-defmacro general-predicate-dispatch
-      (fallback-def &rest defs
-                    &key docstring
-                    &allow-other-keys)
-      (el-patch-let ((doc "Create a menu item that will run FALLBACK-DEF or a definition from DEFS.
+(el-patch-cl-defmacro general-predicate-dispatch
+  (fallback-def &rest defs
+                &key docstring
+                &allow-other-keys)
+  (el-patch-let ((doc "Create a menu item that will run FALLBACK-DEF or a definition from DEFS.
 DEFS consists of <predicate> <definition> pairs. Binding this menu-item to a key
 will cause that key to act as the corresponding definition (a command, keymap,
 etc) for the first matched predicate. If no predicate is matched FALLBACK-DEF
 will be run. When FALLBACK-DEF is nil and no predicates are matched, the keymap
 with the next highest precedence for the pressed key will be checked. DOCSTRING
 can be specified as a description for the menu item.")
-                     (dec (declare (indent 1))))
-        (el-patch-remove dec doc)
-        (el-patch-add doc dec))
-      ;; remove keyword arguments from defs and sort defs into pairs
-      (let ((defs (cl-loop for (key value) on defs by 'cddr
-                           unless (keywordp key)
-                           collect (list key value))))
-        `'(menu-item
-           ,(or docstring "") nil
-           :filter (lambda (&optional _)
-                     (el-patch-swap
-                       (cond ,@(mapcar (lambda (pred-def)
-                                         `(,(car pred-def) ,(cadr pred-def)))
-                                       defs)
-                             (t ,fallback-def))
-                       (let (it)
-                         (cond ,@(mapcar (lambda (pred-def)
-                                           `((setq it ,(car pred-def))
-                                             ,(cadr pred-def)))
-                                         defs)
-                               (t ,fallback-def))))))))))
+                 (dec (declare (indent 1))))
+    (el-patch-remove dec doc)
+    (el-patch-add doc dec))
+  ;; remove keyword arguments from defs and sort defs into pairs
+  (let ((defs (cl-loop for (key value) on defs by 'cddr
+                       unless (keywordp key)
+                       collect (list key value))))
+    `'(menu-item
+       ,(or docstring "") nil
+       :filter (lambda (&optional _)
+                 (el-patch-swap
+                   (cond ,@(mapcar (lambda (pred-def)
+                                     `(,(car pred-def) ,(cadr pred-def)))
+                                   defs)
+                         (t ,fallback-def))
+                   (let (it)
+                     (cond ,@(mapcar (lambda (pred-def)
+                                       `((setq it ,(car pred-def))
+                                         ,(cadr pred-def)))
+                                     defs)
+                           (t ,fallback-def))))))))
 
-(require 'general)
+(defhook! +general-predicate-dispatch-fix-load-history-h ()
+  "Add `general-predicate-dispatch' explicitly to load-history so
+the patch can be validated."
+  'zenit-first-input-hook
+  (push
+   `(,(locate-library "general") (defun . general-predicate-dispatch)) load-history))
 
 ;; Convenience aliases
 (defalias 'define-key! #'general-def)

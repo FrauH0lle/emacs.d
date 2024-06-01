@@ -471,10 +471,6 @@ faster `prin1'."
 (use-package! better-jumper
   :hook (zenit-first-input . better-jumper-mode)
   :commands zenit-set-jump-a zenit-set-jump-maybe-a zenit-set-jump-h
-  :preface
-  ;; REVIEW Suppress byte-compiler warning spawning a *Compile-Log* buffer at
-  ;; startup. This can be removed once gilbertw1/better-jumper#2 is merged.
-  (defvar better-jumper-local-mode nil)
   :init
   (global-set-key [remap evil-jump-forward]  #'better-jumper-jump-forward)
   (global-set-key [remap evil-jump-backward] #'better-jumper-jump-backward)
@@ -522,7 +518,11 @@ short-circuiting hooks."
   (advice-add #'kill-current-buffer :around #'zenit-set-jump-a)
 
   ;; Create a jump point before jumping with imenu.
-  (advice-add #'imenu :around #'zenit-set-jump-a))
+  (advice-add #'imenu :around #'zenit-set-jump-a)
+
+  ;; Recenter after jumping
+  (advice-add #'better-jumper-jump-forward :after #'zenit-recenter-a)
+  (advice-add #'better-jumper-jump-backward :after #'zenit-recenter-a))
 
 
 (use-package! dtrt-indent

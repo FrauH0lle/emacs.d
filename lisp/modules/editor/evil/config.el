@@ -207,6 +207,10 @@ helpful,`abort-recursive-edit' gets called one time too many."
   (advice-add #'evil-open-above :around #'+evil--insert-newline-above-and-respect-comments-a)
   (advice-add #'evil-open-below :around #'+evil--insert-newline-below-and-respect-comments-a)
 
+  ;; Jump tracking
+  (advice-add #'evil-goto-first-line :around #'zenit-set-jump-a)
+  (advice-add #'evil-goto-line       :around #'zenit-set-jump-a)
+
   ;; These arg types will highlight matches in the current buffer
   (evil-ex-define-argument-type regexp-match
     :runner (lambda (flag &optional arg) (+evil-ex-regexp-match flag arg 'inverted)))

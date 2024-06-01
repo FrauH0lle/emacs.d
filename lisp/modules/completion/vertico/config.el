@@ -145,6 +145,9 @@ orderless."
     :before #'consult-recent-file
     (recentf-mode +1))
 
+  ;; Track jump
+  (advice-add #'consult--read :around #'zenit-set-jump-a)
+
   (setq consult-project-root-function #'zenit-project-root
         consult-narrow-key "<"
         consult-line-numbers-widen t

@@ -10,9 +10,7 @@ If prefix ARG is set, prompt for a directory to search from."
               (read-directory-name "Search directory: ")
             default-directory)))
     (call-interactively
-     (cond ((modulep! :completion ivy)     #'+ivy/project-search-from-cwd)
-           ((modulep! :completion helm)    #'+helm/project-search-from-cwd)
-           ((modulep! :completion vertico) #'+vertico/project-search-from-cwd)
+     (cond ((modulep! :completion vertico) #'+vertico/project-search-from-cwd)
            (#'rgrep)))))
 
 ;;;###autoload
@@ -27,20 +25,18 @@ If prefix ARG is set, prompt for a directory to search from."
   (interactive)
   (let ((default-directory zenit-emacs-dir))
     (call-interactively
-     (cond ((modulep! :completion ivy)     #'+ivy/project-search-from-cwd)
-           ((modulep! :completion helm)    #'+helm/project-search-from-cwd)
-           ((modulep! :completion vertico) #'+vertico/project-search-from-cwd)
+     (cond ((modulep! :completion vertico) #'+vertico/project-search-from-cwd)
            (#'rgrep)))))
 
 ;;;###autoload
 (defun +default/search-buffer ()
   "Conduct a text search on the current buffer.
 
-If a selection is active and multi-line, perform a search restricted to that
-region.
+If a selection is active and multi-line, perform a search
+restricted to that region.
 
-If a selection is active and not multi-line, use the selection as the initial
-input and search the whole buffer for it."
+If a selection is active and not multi-line, use the selection as
+the initial input and search the whole buffer for it."
   (interactive)
   (let (start end multiline-p)
     (save-restriction
@@ -52,13 +48,7 @@ input and search the whole buffer for it."
         (deactivate-mark)
         (when multiline-p
           (narrow-to-region start end)))
-      (cond ((or (modulep! :completion helm)
-                 (modulep! :completion ivy))
-             (call-interactively
-              (if (and start end (not multiline-p))
-                  #'swiper-isearch-thing-at-point
-                #'swiper-isearch)))
-            ((modulep! :completion vertico)
+      (cond ((modulep! :completion vertico)
              (if (and start end (not multiline-p))
                  (consult-line
                   (replace-regexp-in-string
@@ -82,9 +72,7 @@ If prefix ARG is set, include ignored/hidden files."
                  (user-error "There are no known projects"))
              default-directory)))
     (call-interactively
-     (cond ((modulep! :completion ivy)     #'+ivy/project-search)
-           ((modulep! :completion helm)    #'+helm/project-search)
-           ((modulep! :completion vertico) #'+vertico/project-search)
+     (cond ((modulep! :completion vertico) #'+vertico/project-search)
            (#'projectile-ripgrep)))))
 
 ;;;###autoload

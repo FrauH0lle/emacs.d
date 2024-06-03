@@ -33,13 +33,13 @@ Used for Insert and Emacs states, and for non-evil users.")
         w32-rwindow-modifier 'super)))
 
 ;; HACK: Emacs cannot distinguish between C-i from TAB. This is largely a
-;;       byproduct of its history in the terminal, which can't distinguish them
-;;       either, however, when GUIs came about Emacs created separate input
-;;       events for more contentious keys like TAB and RET. Therefore [return]
-;;       != RET, [tab] != TAB, and [backspace] != DEL.
+;;   byproduct of its history in the terminal, which can't distinguish them
+;;   either, however, when GUIs came about Emacs created separate input events
+;;   for more contentious keys like TAB and RET. Therefore [return] != RET,
+;;   [tab] != TAB, and [backspace] != DEL.
 ;;
-;;       In the same vein, this keybind adds a [C-i] event, so users can bind to
-;;       it. Otherwise, it falls back to regular C-i keybinds.
+;;   In the same vein, this keybind adds a [C-i] event, so users can bind to it.
+;;   Otherwise, it falls back to regular C-i keybinds.
 (define-key key-translation-map [?\C-i]
             (cmd!
              (if (let ((keys (this-single-command-raw-keys)))

@@ -155,66 +155,6 @@ If ALL is non-nil, simply remove all files in the eln cache."
                     (when (file-exists-p eln-file)
                       (delete-file eln-file)))))))
 
-(defun zenit--native-compile-done-h (file)
-  "Callback fired when an item has finished async compilation."
-  (when file
-    (let* ((eln-name (zenit--eln-file-name file))
-           (eln-file (zenit--eln-output-file eln-name))
-           (error-file (zenit--eln-error-file eln-name)))
-      (if (file-exists-p eln-file)
-          (zenit-log "Compiled %s" eln-file)
-        (make-directory (file-name-directory error-file) 'parents)
-        (write-region "" nil error-file)
-        (zenit-log "Wrote %s" error-file)))))
-
-(defun zenit--native-compile-jobs ()
-  "How many async native compilation jobs are queued or in-progress."
-  (if (featurep 'comp)
-      (+ (length comp-files-queue)
-         (comp-async-runnings))
-    0))
-
-(defun zenit--wait-for-native-compile-jobs ()
-  "Wait for all pending async native compilation jobs."
-  (cl-loop for pending = (zenit--native-compile-jobs)
-           with previous = 0
-           while (not (zerop pending))
-           if (/= previous pending) do
-           (print! (start "\033[KNatively compiling %d files...\033[1A" pending))
-           (setq previous pending)
-           else do
-           (let ((inhibit-message t))
-             (sleep-for 0.1))))
-
-(defun zenit--write-missing-eln-errors ()
-  "Write .error files for any expected .eln files that are missing."
-  (when NATIVECOMP
-    (cl-loop for file in zenit--eln-output-expected
-             for eln-name = (zenit--eln-file-name file)
-             for eln-file = (zenit--eln-output-file eln-name)
-             for error-file = (zenit--eln-error-file eln-name)
-             unless (or (file-exists-p eln-file)
-                        (file-newer-than-file-p error-file file))
-             do (make-directory (file-name-directory error-file) 'parents)
-             (write-region "" nil error-file)
-             (zenit-log "Wrote %s" error-file))
-    (setq zenit--eln-output-expected nil)))
-
-(defun zenit--compile-site-packages ()
-  "Queue async compilation for all non-config Elisp files."
-  (when NATIVECOMP
-    (cl-loop with paths = (cl-loop for path in load-path
-                                   unless (string-prefix-p zenit-local-dir path)
-                                   collect path)
-             for file in (zenit-files-in paths :match "\\.el\\(?:\\.gz\\)?$")
-             if (and (file-exists-p (byte-compile-dest-file file))
-                     (not (zenit--find-eln-file (zenit--eln-file-name file)))
-                     (not (cl-some (lambda (re)
-                                     (string-match-p re file))
-                                   native-comp-jit-compilation-deny-list))) do
-             (zenit-log "Compiling %s" file)
-             (native-compile-async file))))
-
 (defun zenit-package-recipe-list ()
   "Return straight recipes for non-builtin packages with a local-repo."
   (let (recipes)
@@ -225,11 +165,6 @@ If ALL is non-nil, simply remove all files in the eln cache."
                     (eq type 'built-in))
           (push recipe recipes))))
     recipes))
-
-(defun zenit--barf-if-incomplete-packages ()
-  (let ((straight-safe-mode t))
-    (condition-case _ (straight-check-all)
-      (error (user-error "Package state is incomplete. Run 'make clean' in cmdline.")))))
 
 (defun zenit--remove-wrong-eln-cache ()
   "Remove the ~/.emacs.d/eln-cache folder if it exists."
@@ -258,8 +193,6 @@ already been."
   (print! (start "Installing packages..."))
   ;; Collect package versions
   (let ((pinned (straight--lockfile-read-all)))
-    ;; Setup hook for native compilation
-    ;; (add-hook 'native-comp-async-cu-done-functions #'zenit--native-compile-done-h)
     (print-group!
      (if-let (built
               (zenit--with-package-recipes (zenit-package-recipe-list)
@@ -291,11 +224,12 @@ already been."
                                          (print! (info "Checked out %s: %s") pkg commit)))
                                      straight-use-package-pre-build-functions)))
                           (straight-use-package (intern package))
-                          ;; HACK Line encoding issues can plague repos with dirty
-                          ;;      worktree prompts when updating packages or "Local
-                          ;;      variables entry is missing the suffix" errors when
-                          ;;      installing them (see hlissner/zenit-emacs#2637), so
-                          ;;      have git handle conversion by force.
+                          ;; HACK Line encoding issues can plague repos with
+                          ;;   dirty worktree prompts when updating packages or
+                          ;;   "Local variables entry is missing the suffix"
+                          ;;   errors when installing them (see
+                          ;;   hlissner/zenit-emacs#2637), so have git handle
+                          ;;   conversion by force.
                           (when (and IS-WINDOWS (stringp local-repo))
                             (let ((default-directory (straight--repos-dir local-repo)))
                               (when (file-in-directory-p default-directory straight-base-dir)
@@ -308,16 +242,7 @@ already been."
                             (zenit--remove-eln-files build-dir)))
                       (error
                        (signal 'zenit-package-error (list package e))))))))
-         ;; FIXME This does not work as expected. The files get compiled,
-         ;; eventhough they shouldn't.
-         ;; Run native compilation on packages, if available
          (progn
-           (when (featurep 'native-compile)
-             ;; (zenit--remove-wrong-eln-cache)
-             ;; (zenit--compile-site-packages)
-             ;; (zenit--wait-for-native-compile-jobs)
-             ;; (zenit--write-missing-eln-errors)
-             )
            (print! (success "\033[KInstalled %d packages") (length built)))
        (print! (info "No packages need to be installed"))
        nil))))
@@ -345,7 +270,6 @@ already been."
           (or (if force-p :all straight--packages-to-rebuild)
               (make-hash-table :test #'equal)))
          (recipes (zenit-package-recipe-list)))
-     ;; (add-hook 'native-comp-async-cu-done-functions #'zenit--native-compile-done-h)
 
      (unless force-p
        (straight--make-build-cache-available))
@@ -412,22 +336,13 @@ already been."
                     (straight-register-repo-modification local-repo)
                     (straight-use-package (intern package))))))
 
-         ;; FIXME This does not work as expected. The files get compiled,
-         ;; eventhough they shouldn't.
-         ;; Run native compilation on packages, if available
          (progn
-           (when (featurep 'native-compile)
-             ;; (zenit--remove-wrong-eln-cache)
-             ;; (zenit--compile-site-packages)
-             ;; (zenit--wait-for-native-compile-jobs)
-             ;; (zenit--write-missing-eln-errors)
-             )
            ;; HACK Every time you save a file in a package that straight tracks,
-           ;;      it is recorded in ~/.emacs.d/straight/modified/. Typically,
-           ;;      straight will clean these up after rebuilding, but our
-           ;;      use-case circumnavigates that, leaving these files there and
-           ;;      causing a rebuild of those packages each time `sync' or
-           ;;      similar is run, so we clean it up ourselves:
+           ;;   it is recorded in ~/.emacs.d/straight/modified/. Typically,
+           ;;   straight will clean these up after rebuilding, but our use-case
+           ;;   circumnavigates that, leaving these files there and causing a
+           ;;   rebuild of those packages each time `sync' or similar is run, so
+           ;;   we clean it up ourselves:
            (delete-directory (straight--modified-dir) 'recursive)
            (print! (success "\033[KRebuilt %d package(s)") (length built)))
        (print! (info "No packages need rebuilding"))
@@ -440,7 +355,6 @@ already been."
 (defun zenit-cli-packages-update (&optional force-p)
   "Updates packages."
   (zenit-initialize-packages)
-  ;; (zenit--barf-if-incomplete-packages)
   (zenit--cli-recipes-update)
   (let* ((repo-dir (straight--repos-dir))
          (pinned (straight--lockfile-read-all))
@@ -681,13 +595,17 @@ already been."
 
 (defun zenit-packages-purge (&optional elpa-p builds-p repos-p regraft-repos-p)
   "Auto-removes orphaned packages and repos.
-An orphaned package is a package that isn't a primary package (i.e. doesn't have
-a `package!' declaration) or isn't depended on by another primary package.
+An orphaned package is a package that isn't a primary
+package (i.e. doesn't have a `package!' declaration) or isn't
+depended on by another primary package.
+
 If BUILDS-P, include straight package builds.
+
 If REPOS-P, include straight repos.
-If ELPA-P, include packages installed with package.el (M-x package-install)."
+
+If ELPA-P, include packages installed with package.el (M-x
+package-install)."
   (zenit-initialize-packages)
-  ;; (zenit--barf-if-incomplete-packages)
   (print! (start "Purging orphaned packages (for the emperor)..."))
   (quiet! (straight-prune-build-cache))
   (cl-destructuring-bind (&optional builds-to-purge repos-to-purge repos-to-regraft)

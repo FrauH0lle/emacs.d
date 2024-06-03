@@ -1,5 +1,22 @@
 ;; lisp/core/cli/compile.el -*- lexical-binding: t; no-byte-compile: t; -*-
 
+(defun zenit--byte-compile-ignore-file-p (path)
+  (let ((filename (file-name-nondirectory path)))
+    (or (string-prefix-p "." filename)
+        (string-prefix-p "test-" filename)
+        (string-suffix-p ".example.el" filename)
+        (string-prefix-p "flycheck_" filename)
+        (not (equal (file-name-extension path) "el"))
+        (not (zenit-file-cookie-p path "if" t))
+        (member filename
+                (list
+                 ;; These module file should be either embedded or ignored
+                 "init.el" "config.el" "packages.el"
+                 ;; Ignore
+                 "custom.el"
+                 ;; Core files which are not used in the interactive session
+                 "zenit-cli.el" "zenit-packages.el")))))
+
 (defun zenit-cli-compile-setup-env ()
   "Load required files for the byte-compilation."
   (dolist (cache-file (butlast (mapcar #'car zenit-cache-generators) 1))
@@ -48,12 +65,6 @@
     ;; Assemble el files we want to compile
     (appendq! targets
               (append
-               ;; NOTE 2023-02-05: For the time being, compile the files in the
-               ;; core directory plus the autloads. For the future, investigate
-               ;; again if it makes sense in terms of perormance to include the
-               ;; module config files content into init.el and compile that
-               ;; file.
-
                ;; Collect files in core dir
                (zenit-files-in zenit-core-dir
                                :match "\\.el$"
@@ -63,18 +74,7 @@
                (zenit-files-in (file-name-concat zenit-core-dir "lib/")
                                :match "\\.el$"
                                :filter #'zenit--byte-compile-ignore-file-p
-                               :depth 0)
-               ;; Collect files in modules dir
-               ;; (zenit-files-in (seq-filter
-               ;;                  ;; Only compile activated modules, currently
-               ;;                  ;; excluding local ones
-               ;;                  (zenit-rpartial (lambda (x) (not (file-in-directory-p x zenit-local-dir))))
-               ;;                  (zenit-module-load-path))
-               ;;                 :match "\\.el$"
-               ;;                 :filter #'zenit--byte-compile-ignore-file-p)
-               ;; TODO Collect files in local conf dir, but this be behind a
-               ;; switch
-               ))
+                               :depth 0)))
 
     (unless targets
       (print!

@@ -1,10 +1,13 @@
 ;; ui/popup/autoload/settings.el -*- lexical-binding: t; -*-
 
 ;;;###autoload
-(defvar +popup--display-buffer-alist nil)
+(defvar +popup--display-buffer-alist nil
+  "Alist intended for `display-buffer-alist'.")
 
 ;;;###autoload
-(defvar +popup--reference-buffers nil)
+(defvar +popup--buffer-alist nil
+  "Alist of buffers to treat as popups.
+Each entry is a pair of (buffer-name-regexp . ignore?).")
 
 ;;;###autoload
 (defvar +popup-defaults
@@ -13,6 +16,7 @@
         :width  40
         :quit   t
         :select #'ignore
+        :selectable t
         :ttl    5)
   "Default properties for popup rules defined with
 `set-popup-rule!'.")
@@ -34,6 +38,7 @@
             `((ttl      . ,(plist-get plist :ttl))
               (quit     . ,(plist-get plist :quit))
               (select   . ,(plist-get plist :select))
+              (no-other-window . ,(not (plist-get plist :selectable)))
               (modeline . ,(plist-get plist :modeline))
               (autosave . ,(plist-get plist :autosave))
               ,@(plist-get plist :parameters))))
@@ -45,8 +50,8 @@
 (defun set-popup-rule! (predicate &rest plist)
   "Define a popup rule.
 
-These rules affect buffers displayed with `pop-to-buffer' and `display-buffer'
-(or their siblings). Buffers displayed with
+These rules affect buffers displayed with `pop-to-buffer' and
+`display-buffer'(or their siblings). Buffers displayed with
 `switch-to-buffer' (and its variants) will not be affected by
 these rules (as they are unaffected by `display-buffer-alist',
 which powers the popup management system).
@@ -59,23 +64,27 @@ returns a boolean.
 PLIST can be made up of any of the following properties:
 
 :ignore BOOL
+
   If BOOL is non-nil, popups matching PREDICATE will not be
   handled by the popup system. Use this for buffers that have
   their own window management system like magit or helm.
 
 :actions ACTIONS
+
   ACTIONS is a list of functions or an alist containing (FUNCTION
   . ALIST). See `display-buffer''s second argument for more
   information on its format and what it accepts. If omitted,
   `+popup-default-display-buffer-actions' is used.
 
 :side 'bottom|'top|'left|'right
+
   Which side of the frame to open the popup on. This is only
   respected if `+popup-display-buffer-stacked-side-window-fn' or
   `display-buffer-in-side-window' is in :actions or
   `+popup-default-display-buffer-actions'.
 
 :size/:width/:height FLOAT|INT|FN
+
   Determines the size of the popup. If more than one of these
   size properties are given :size always takes precedence, and is
   mapped with window-width or window-height depending on what
@@ -92,6 +101,7 @@ PLIST can be made up of any of the following properties:
     `+popup-shrink-to-fit'.
 
 :slot/:vslot INT
+
   (This only applies to popups with a :side and only if :actions
   is blank or contains the
   `+popup-display-buffer-stacked-side-window-fn' action) These
@@ -101,17 +111,18 @@ PLIST can be made up of any of the following properties:
   :slot controls lateral positioning (e.g. the horizontal
     positioning for top/bottom popups, or vertical positioning
     for left/right popups).
+
   :vslot controls popup stacking (from the edge of the frame
     toward the center).
 
-  Let's assume popup A and B are opened with :side 'bottom, in that order.
-
+  Let's assume popup A and B are opened with :side 'bottom, in
+  that order.
     If they possess the same :slot and :vslot, popup B will
-      replace popup A.
+    replace popup A.
     If popup B has a higher :slot, it will open to the right of
-      popup A.
+    popup A.
     If popup B has a lower :slot, it will open to the left of
-      popup A.
+    popup A.
     If popup B has a higher :vslot, it will open above popup A.
     If popup B has a lower :vslot, it will open below popup A.
 
@@ -159,6 +170,10 @@ PLIST can be made up of any of the following properties:
     The popup system does nothing else and ignores the function's
     return value.
 
+:selectable BOOL
+  If BOOL is non-nil, the popup window can be selected by
+  `other-window'. This is the default behavior.
+
 :modeline BOOL|FN|LIST
   Can be t (show the default modeline), nil (show no modeline), a
   function that returns a modeline format or a valid value for
@@ -173,12 +188,9 @@ PLIST can be made up of any of the following properties:
   If t, no prompts. Just save them automatically (if they're
     file-visiting buffers). Same as 'ignore for non-file-visiting
     buffers.
-
   If nil (the default), prompt the user what to do if the buffer
     is file-visiting and modified.
-
   If 'ignore, no prompts, no saving. Just silently kill it.
-
   If a function, it is run with one argument: the popup buffer,
     and must return non-nil to save or nil to do nothing (but no
     prompts).
@@ -194,10 +206,9 @@ If any of these are omitted, defaults derived from
 VSLOT TTL QUIT SELECT MODELINE AUTOSAVE PARAMETERS)"
   (declare (indent defun))
   (push (+popup-make-rule predicate plist) +popup--display-buffer-alist)
-  (push predicate +popup--reference-buffers)
-  (when (bound-and-true-p popper-mode)
-    (setq display-buffer-alist +popup--display-buffer-alist
-          popper-reference-buffers +popup--reference-buffers))
+  (push (cons predicate (plist-get plist :ignore)) +popup--buffer-alist)
+  (when (bound-and-true-p +popup-mode)
+    (setq display-buffer-alist +popup--display-buffer-alist))
   +popup--display-buffer-alist)
 
 ;;;###autodef
@@ -220,8 +231,8 @@ Example:
     (dolist (rule rules)
       (push (+popup-make-rule (car rule) (cdr rule))
             +popup--display-buffer-alist)
-        (push (car rule) +popup--reference-buffers)))
-  (when (bound-and-true-p popper-mode)
-    (setq display-buffer-alist +popup--display-buffer-alist
-          popper-reference-buffers +popup--reference-buffers))
+      (push (cons (car rule) (plist-get (cdr rule) :ignore)) +popup--buffer-alist)))
+  (when (bound-and-true-p +popup-mode)
+    (setq display-buffer-alist +popup--display-buffer-alist))
   +popup--display-buffer-alist)
+

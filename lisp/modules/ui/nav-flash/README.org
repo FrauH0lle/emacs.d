@@ -2,8 +2,6 @@
 #+subtitle: Blink after big motions
 #+created:  June 04, 2017
 
------
-
 * Description :unfold:
 Makes it easier to follow the cursor after certain movements and operations.
 

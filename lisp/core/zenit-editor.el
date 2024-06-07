@@ -571,6 +571,10 @@ Emacs in a broken state."
                          (message ""))))) ; warn silently
         (funcall fn arg)))))
 
+(defvar zenit-clone-emacs-C-src nil
+  "If non-nil, prompt user to clone the Emacs source repository when
+looking up a C function.")
+
 (use-package! helpful
   ;; a better *help* buffer
   :commands helpful--read-symbol
@@ -604,48 +608,49 @@ Emacs in a broken state."
        (lambda (button)
          (helpful-variable (button-get button 'apropos-symbol))))))
 
-  ;; Standard location for the Emacs source code
-  (setq source-directory (file-name-concat zenit-data-dir "src/"))
-
-  ;; This is initialized to nil by `find-func' if the source is not cloned when
-  ;; the library is loaded
-  (setq find-function-C-source-directory
-        (expand-file-name "src" source-directory))
-
-  (defun zenit--clone-emacs-source-maybe ()
-    "Prompt user to clone Emacs source repository if needed."
-    (when (and (not (file-directory-p source-directory))
-               (not (get-buffer "*clone-emacs-src*"))
-               (yes-or-no-p "Clone Emacs source repository? "))
-      (make-directory (file-name-directory source-directory) 'parents)
-      (let ((branch (concat "emacs-" (prin1-to-string emacs-major-version)))
-            (compilation-buffer-name-function
-             (lambda (&rest _)
-               "*clone-emacs-src*")))
-        (save-current-buffer
-          (compile
-           (format
-            "git clone -b %s --depth 1 https://github.com/emacs-mirror/emacs.git %s"
-            (shell-quote-argument branch)
-            (shell-quote-argument source-directory)))))))
-
-  (after! find-func
-    (defadvice! +find-func--clone-emacs-source-a (&rest _)
-      "Clone Emacs source if needed to view definition."
-      :before #'find-function-C-source
-      (zenit--clone-emacs-source-maybe)))
-
   :config
   ;; Function used by `helpful--set' to interactively set variables
   (setq helpful-set-variable-function #'setq!)
 
-  (defadvice! +helpful--clone-emacs-source-a (library-name)
-    "Prompt user to clone Emacs source code when looking up functions.
+  (when zenit-clone-emacs-C-src
+    ;; Standard location for the Emacs source code
+    (setq source-directory (file-name-concat zenit-data-dir "src/"))
+
+    ;; This is initialized to nil by `find-func' if the source is not cloned when
+    ;; the library is loaded
+    (setq find-function-C-source-directory
+          (expand-file-name "src" source-directory))
+
+    (defun zenit--clone-emacs-source-maybe ()
+      "Prompt user to clone Emacs source repository if needed."
+      (when (and (not (file-directory-p source-directory))
+                 (not (get-buffer "*zenit clone emacs src*"))
+                 (yes-or-no-p "Clone Emacs source repository? "))
+        (make-directory (file-name-directory source-directory) 'parents)
+        (let ((branch (concat "emacs-" (prin1-to-string emacs-major-version)))
+              (compilation-buffer-name-function
+               (lambda (&rest _)
+                 "*zenit clone emacs src*")))
+          (save-current-buffer
+            (compile
+             (format
+              "git clone -b %s --depth 1 https://github.com/emacs-mirror/emacs.git %s"
+              (shell-quote-argument branch)
+              (shell-quote-argument source-directory)))))))
+
+    (after! find-func
+      (defadvice! +find-func--clone-emacs-source-a (&rest _)
+        "Clone Emacs source if needed to view definition."
+        :before #'find-function-C-source
+        (zenit--clone-emacs-source-maybe)))
+
+    (defadvice! +helpful--clone-emacs-source-a (library-name)
+      "Prompt user to clone Emacs source code when looking up functions.
 Otherwise, it only happens when looking up variables, for some
 bizarre reason."
-    :before #'helpful--library-path
-    (when (member (file-name-extension library-name) '("c" "rs"))
-      (zenit--clone-emacs-source-maybe))))
+      :before #'helpful--library-path
+      (when (member (file-name-extension library-name) '("c" "rs"))
+        (zenit--clone-emacs-source-maybe)))))
 
 
 ;;;###package imenu

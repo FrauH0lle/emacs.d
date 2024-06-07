@@ -18,7 +18,4 @@
     :declare ((doc-string 3)
               (indent defun))))
 
-(eval-when-compile
-  (require 'el-patch))
-
 (provide 'zenit-el-patch)

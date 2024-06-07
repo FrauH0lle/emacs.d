@@ -1,0 +1,52 @@
+#+title: :core
+
+* Description :unfold:
+Core configuration.
+
+** Module flags
+/None/
+
+** Packages
+- auto-minor-mode
+- gcmh
+
+*** UI
+- nerd-icons
+- hide-mode-line
+- highlight-numbers
+- rainbow-delimiters
+- restart-emacs
+
+*** Editor
+- better-jumper
+- dtrt-indent
+- expand-region
+- helpful
+- pcre
+- smartparens
+- undo-tree
+- ws-butler
+
+*** Modules
+- el-patch
+
+*** Packages
+
+*** Projects
+- projectile
+
+*** Keybinds
+- general
+- which-key
+
+*** Tests
+- buttercup
+
+* Configuration
+** Editor
+
+#+begin_src elisp
+(defvar zenit-clone-emacs-C-src nil
+  "If non-nil, prompt user to clone the Emacs source repository when
+looking up a C function.")
+#+end_src

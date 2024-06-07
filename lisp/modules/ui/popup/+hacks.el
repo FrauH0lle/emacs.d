@@ -1,4 +1,4 @@
-;;; ui/popup/+hacks.el -*- lexical-binding: t; -*-
+;; ui/popup/+hacks.el -*- lexical-binding: t; -*-
 
 ;; What follows are all the hacks needed to get various parts of Emacs and other
 ;; plugins to cooperate with the popup management system. Essentially, it comes
@@ -16,8 +16,7 @@
 ;;
 ;; Keep in mind, all this black magic may break in future updates, and will need
 ;; to be watched carefully for corner cases. Also, once this file is loaded,
-;; many of its changes are irreversible without restarting Emacs! I don't like
-;; it either, but I will address this over time.
+;; many of its changes are irreversible without restarting Emacs!
 ;;
 ;; Hacks should be kept in alphabetical order, named after the feature they
 ;; modify, and should follow a ;;;## package-name header line (if not using
@@ -29,43 +28,29 @@
 (defadvice! +popup--make-case-sensitive-a (fn &rest args)
   "Make regexps in `display-buffer-alist' case-sensitive.
 
-To reduce fewer edge cases and improve performance when `display-buffer-alist'
-grows larger."
+To reduce fewer edge cases and improve performance when
+`display-buffer-alist' grows larger."
   :around #'display-buffer-assq-regexp
   (let (case-fold-search)
     (apply fn args)))
-
-(defadvice! +consult--foo-a (fn &rest args)
-  "TODO"
-  :around #'consult--read
-  (let ((switch-to-buffer-obey-display-actions nil))
-    ;; (message "var: %s" switch-to-buffer-obey-display-actions)
-    (apply fn args))
-  )
-(defadvice! +consult--foo-2-a (fn &rest args)
-  "TODO"
-  :around #'consult--buffer-preview
-  (pop-to-buffer (apply fn args))
-  )
-
-
-;; (advice-add #'consult--buffer-preview :around #'+popup-save-a)
 
 ;; Don't try to resize popup windows
 (advice-add #'balance-windows :around #'+popup-save-a)
 
 (defun +popup/quit-window ()
-  "The regular `quit-window' sometimes kills the popup buffer and switches to a
-buffer that shouldn't be in a popup. We prevent that by remapping `quit-window'
-to this commmand."
+  "The regular `quit-window' sometimes kills the popup buffer and
+switches to a buffer that shouldn't be in a popup. We prevent
+that by remapping `quit-window' to this commmand."
   (interactive)
-  (let ((orig-buffer (current-buffer)))
+  (let ((orig-buffer (current-buffer))
+        (parent (car +popup--parents)))
     (quit-window)
     (when (and (eq orig-buffer (current-buffer))
-               ;; (+popup-buffer-p)
-               (popper-popup-p (current-buffer))
-               )
-      (+popup/close nil 'force))))
+               (popper-popup-p (current-buffer)))
+      (+popup/close nil 'force))
+    (when-let* ((parent-buffer (car parent))
+                (live-p (buffer-live-p parent-buffer)))
+      (display-buffer parent-buffer))))
 (global-set-key [remap quit-window] #'+popup/quit-window)
 
 (defadvice! +popup-override-display-buffer-alist-a (fn &rest args)
@@ -94,15 +79,82 @@ override `display-buffer-alist'."
 
 ;;;###package compile
 (defadvice! +popup--compilation-goto-locus-a (fn &rest args)
-  "Fix links in popup compilation buffers creating a new window each time they
-were followed."
+  "Fix links in popup compilation buffers creating a new window each
+time they were followed."
   :around #'compilation-goto-locus
   (letf! (defun pop-to-buffer (buffer &optional action norecord)
-           (let ((pop-up-windows (not ;; (+popup-buffer-p (current-buffer))
-                                  (popper-popup-p (current-buffer))
-                                      )))
+           (let ((pop-up-windows (not (popper-popup-p (current-buffer)))))
              (funcall pop-to-buffer buffer action norecord)))
     (apply fn args)))
+
+
+;;;###package consult
+(eval-when! (modulep! :completion vertico)
+  (eval-when-compile
+    (require 'el-patch)
+    (require 'consult))
+
+  (el-patch-feature consult)
+
+  (el-patch-defvar consult--source-buffer
+    `(:name     "Buffer"
+      :narrow   ?b
+      :category buffer
+      :face     consult-buffer
+      :history  buffer-name-history
+      :state    ,#'consult--buffer-state
+      :default  t
+      :items
+      ,(lambda () (consult--buffer-query :sort 'visibility
+                                         (el-patch-add
+                                           :predicate (lambda (x) (not (popper-popup-p x))))
+                                         :as #'buffer-name)))
+    "Buffer candidate source for `consult-buffer'.")
+
+  (el-patch-defvar (el-patch-swap consult--source-buffer consult--source-popup-buffer)
+    `(:name     (el-patch-swap "Buffer" "Popup")
+      :narrow   (el-patch-swap ?b ?P)
+      :category buffer
+      :face     consult-buffer
+      :history  buffer-name-history
+      :state    ,#'consult--buffer-state
+      (el-patch-remove
+        :default  t)
+      (el-patch-add
+        :hidden  t)
+      :items
+      ,(lambda () (consult--buffer-query :sort 'visibility
+                                         (el-patch-add
+                                           :predicate #'popper-popup-p)
+                                         :as #'buffer-name)))
+    (el-patch-swap
+      "Buffer candidate source for `consult-buffer'."
+      "Popup buffer candidate source for `consult-buffer'."))
+
+  (el-patch-defcustom consult-buffer-sources
+    '(consult--source-hidden-buffer
+      consult--source-modified-buffer
+      (el-patch-add consult--source-popup-buffer)
+      consult--source-buffer
+      consult--source-recent-file
+      consult--source-file-register
+      consult--source-bookmark
+      consult--source-project-buffer
+      consult--source-project-recent-file)
+    "Sources used by `consult-buffer'.
+See also `consult-project-buffer-sources'.
+See `consult--multi' for a description of the source data structure."
+    :type '(repeat symbol))
+
+  (with-eval-after-load 'consult
+    (el-patch-defun consult--buffer-action (buffer &optional norecord)
+      "Switch to BUFFER via `consult--buffer-display' function.
+If NORECORD is non-nil, do not record the buffer switch in the buffer list."
+      (el-patch-swap
+        (funcall consult--buffer-display buffer norecord)
+        (let ((switch-to-buffer-obey-display-actions t))
+          (message "yay, works!")
+          (funcall consult--buffer-display buffer norecord))))))
 
 
 ;;;###package eshell
@@ -111,8 +163,9 @@ were followed."
 
   ;; When eshell runs a visual command (see `eshell-visual-commands'), it spawns
   ;; a term buffer to run it in, but where it spawns it is the problem...
-  (defadvice! +popup--eshell-undedicate-popup (&rest _)
-    "Force spawned term buffer to share with the eshell popup (if necessary)."
+  (defadvice! +popup--eshell-undedicate-popup-a (&rest _)
+    "Force spawned term buffer to share with the eshell popup (if
+necessary)."
     :before #'eshell-exec-visual
     (when (+popup-window-p)
       (set-window-dedicated-p nil nil)
@@ -123,8 +176,8 @@ were followed."
 ;;;###package evil
 (progn
   (defadvice! +popup--evil-command-window-execute-a ()
-    "Execute the command under the cursor in the appropriate buffer, rather than
-the command buffer."
+    "Execute the command under the cursor in the appropriate buffer,
+rather than the command buffer."
     :override #'evil-command-window-execute
     (interactive)
     (let ((result (buffer-substring (line-beginning-position)
@@ -191,7 +244,8 @@ the command buffer."
 
 ;;;###package helpful
 (defadvice! +popup--helpful-open-in-origin-window-a (button)
-  "Open links in non-popup, originating window rather than helpful's window."
+  "Open links in non-popup, originating window rather than helpful's
+window."
   :override #'helpful--navigate
   (let ((path (substring-no-properties (button-get button 'path)))
         enable-local-variables
@@ -204,38 +258,6 @@ the command buffer."
      (setq origin (selected-window))
      (recenter))
     (select-window origin)))
-
-
-;;;###package helm
-;;;###package helm-ag
-(when (modulep! :completion helm)
-  (setq helm-default-display-buffer-functions '(+popup-display-buffer-stacked-side-window-fn))
-
-  ;; Fix #897: "cannot open side window" error when TAB-completing file links
-  (defadvice! +popup--helm-hide-org-links-popup-a (fn &rest args)
-    :around #'org-insert-link
-    (letf! ((defun org-completing-read (&rest args)
-              (when-let (win (get-buffer-window "*Org Links*"))
-                ;; While helm is opened as a popup, it will mistaken the *Org
-                ;; Links* popup for the "originated window", and will target it
-                ;; for actions invoked by the user. However, since *Org Links*
-                ;; is a popup too (they're dedicated side windows), Emacs
-                ;; complains about being unable to split a side window. The
-                ;; simple fix: get rid of *Org Links*!
-                (delete-window win)
-                ;; ...but it must exist for org to clean up later.
-                (get-buffer-create "*Org Links*"))
-              (apply org-completing-read args)))
-      (apply #'funcall-interactively fn args)))
-
-  ;; Fix left-over popup window when closing persistent help for `helm-M-x'
-  (defadvice! +popup--helm-elisp--persistent-help-a (candidate _fun &optional _name)
-    :before #'helm-elisp--persistent-help
-    (let (win)
-      (and (helm-attr 'help-running-p)
-           (string= candidate (helm-attr 'help-current-symbol))
-           (setq win (get-buffer-window (get-buffer (help-buffer))))
-           (delete-window win)))))
 
 
 ;;;###package Info
@@ -255,9 +277,9 @@ the command buffer."
 
 (after! org
   (defadvice! +popup--suppress-delete-other-windows-a (fn &rest args)
-    "Org has a scorched-earth window management policy I'm not fond of. i.e. it
-kills all other windows just so it can monopolize the frame. No thanks. We can
-do better."
+    "Org has a scorched-earth window management policy I'm not fond
+of. i.e. it kills all other windows just so it can monopolize the
+frame. No thanks. We can do better."
     :around #'org-add-log-note
     :around #'org-capture-place-template
     :around #'org-export--dispatch-ui
@@ -272,9 +294,10 @@ do better."
       (apply fn args)))
 
   (defadvice! +popup--org-fix-goto-a (fn &rest args)
-    "`org-goto' uses `with-output-to-temp-buffer' to display its help buffer,
-for some reason, which is very unconventional, and so requires these gymnastics
-to tame (i.e. to get the popup manager to handle it)."
+    "`org-goto' uses `with-output-to-temp-buffer' to display its help
+buffer,for some reason, which is very unconventional, and so
+requires these gymnastics to tame (i.e. to get the popup manager
+to handle it)."
     :around #'org-goto-location
     (if popper-mode
         (letf! (defun internal-temp-output-buffer-show (buffer)
@@ -287,9 +310,9 @@ to tame (i.e. to get the popup manager to handle it)."
       (apply fn args)))
 
   (defadvice! +popup--org-fix-popup-window-shrinking-a (fn &rest args)
-    "Hides the mode-line in *Org tags* buffer so you can actually see its
-content and displays it in a side window without deleting all other windows.
-Ugh, such an ugly hack."
+    "Hides the mode-line in *Org tags* buffer so you can actually see
+its content and displays it in a side window without deleting all
+other windows. Ugh, such an ugly hack."
     :around #'org-fast-tag-selection
     :around #'org-fast-todo-selection
     (if popper-mode
@@ -317,7 +340,8 @@ Ugh, such an ugly hack."
         (when (and popup-p (window-live-p window))
           (delete-window window)))))
 
-  ;; Ensure todo, agenda, and other minor popups are delegated to the popup system.
+  ;; Ensure todo, agenda, and other minor popups are delegated to the popup
+  ;; system.
   (defadvice! +popup--org-pop-to-buffer-a (fn buf &optional norecord)
     "Use `pop-to-buffer' instead of `switch-to-buffer' to open buffer.'"
     :around #'org-switch-to-buffer-other-window

@@ -1,5 +1,9 @@
 ;; ui/popup2/config.el -*- lexical-binding: t; -*-
 
+;; Load display buffer function
+(defvar +popup--internal nil)
+(include! "+popup-display-func")
+
 (defconst +popup-window-parameters '(ttl quit select modeline popup)
   "A list of custom parameters to be added to
 `window-persistent-parameters'. Modifying this has no
@@ -25,16 +29,23 @@ effect, unless done before ui/popup loads.")
   "Size of the margins to give popup windows. Set this to nil to
 disable margin adjustment.")
 
-(defvar +popup--inhibit-transient nil)
-(defvar +popup--inhibit-select nil)
-(defvar +popup--old-display-buffer-alist nil)
-(defvar +popup--old-reference-buffers nil)
-(defvar +popup--remember-last t)
-(defvar +popup--last nil)
-(defvar-local +popup--timer nil)
+(defvar +popup--inhibit-transient nil
+  "If non-nil, do not kill popup buffer (window parameter ttl).")
+(defvar +popup--inhibit-select nil
+  "If non-nil, do not select popup buffer (window parameter select).")
+(defvar +popup--old-display-buffer-alist nil
+  "Alist storing old `display-buffer-alist'.")
+(defvar +popup--old-reference-buffers nil
+  "Alist storing old `popper-reference-buffers'.")
+(defvar +popup--remember-last t
+  "If non-nil, store last popup.")
+(defvar +popup--last nil
+  "Stores the last popup configuration.")
+(defvar-local +popup--parents nil
+  "Stores the popup's parent buffers.")
+(defvar-local +popup--timer nil
+  "Stores current timer for killing the buffer.")
 
-
-;; REVIEW Use `switch-to-buffer-obey-display-actions'?
 
 ;;
 ;;; Packages
@@ -43,45 +54,41 @@ disable margin adjustment.")
   :defer t
   :custom
   (popper-display-control nil)
-  (popper-mode-line nil)
-  :init
-  (add-hook 'zenit-init-ui-hook #'popper-mode 'append))
+  (popper-mode-line t)
+  :config
+  (defadvice! +popper-setup-reference-buffers-a (fn &rest args)
+    "Populate `popper-reference-buffers'."
+    :around #'popper-mode
+    (unless popper-mode
+      (setq +popup--old-reference-buffers popper-reference-buffers
+            popper-reference-buffers +popup--reference-buffers))
+    (apply fn args))
 
+  (defhook! +popup-init-h ()
+    "Initialize our modifications."
+    'popper-mode-hook
+    (cond (;; Turning ON
+           popper-mode
+           (add-hook 'zenit-escape-hook #'+popup-close-on-escape-h 'append)
+           (setq +popup--old-display-buffer-alist display-buffer-alist
+                 display-buffer-alist +popup--display-buffer-alist
+                 window--sides-inhibit-check t)
+           (dolist (prop +popup-window-parameters)
+             (push (cons prop 'writable) window-persistent-parameters)))
+          (;; Turning OFF
+           t
+           (remove-hook 'zenit-escape-hook #'+popup-close-on-escape-h)
+           (setq display-buffer-alist +popup--old-display-buffer-alist
+                 popper-reference-buffers +popup--old-reference-buffers
+                 window--sides-inhibit-check nil)
+           (+popup-cleanup-rules-h)
+           (dolist (prop +popup-window-parameters)
+             (delq (assq prop window-persistent-parameters)
+                   window-persistent-parameters))))))
 
-
-
-(add-hook! '+popup-buffer-mode-hook
-           #'+popup-adjust-fringes-h
-           #'+popup-adjust-margins-h
-           #'+popup-set-modeline-on-enable-h
-           #'+popup-unset-modeline-on-disable-h)
-
-(defhook! +popup-init-h ()
-  "TODO"
-  'popper-mode-hook
-  (cond (;; Turning ON
-         popper-mode
-         (add-hook 'zenit-escape-hook #'+popup-close-on-escape-h 'append)
-         (setq +popup--old-display-buffer-alist display-buffer-alist
-               +popup--old-reference-buffers popper-reference-buffers
-               display-buffer-alist +popup--display-buffer-alist
-               popper-reference-buffers +popup--reference-buffers
-               window--sides-inhibit-check t)
-         (dolist (prop +popup-window-parameters)
-           (push (cons prop 'writable) window-persistent-parameters)))
-        (;; Turning OFF
-         t
-         (remove-hook 'zenit-escape-hook #'+popup-close-on-escape-h)
-         (setq display-buffer-alist +popup--old-display-buffer-alist
-               popper-reference-buffers +popup--old-reference-buffers
-               window--sides-inhibit-check nil)
-         (+popup-cleanup-rules-h)
-         (dolist (prop +popup-window-parameters)
-           (delq (assq prop window-persistent-parameters)
-                 window-persistent-parameters)))))
 
 ;;
-;; Global modes
+;;; Global modes
 
 (defvar +popup-buffer-mode-map
   (let ((map (make-sparse-keymap)))
@@ -110,16 +117,7 @@ disabled when that window has been changed or closed."
            (setq +popup--timer nil)))
         (;; Turning OFF
          t
-         (remove-hook 'after-change-major-mode-hook #'+popup-set-modeline-on-enable-h t)))
-  ;; (if (not +popup-buffer-mode)
-  ;;     (remove-hook 'after-change-major-mode-hook #'+popup-set-modeline-on-enable-h t)
-  ;;   (add-hook 'after-change-major-mode-hook #'+popup-set-modeline-on-enable-h
-  ;;             nil 'local)
-  ;;   (when (timerp +popup--timer)
-  ;;     (remove-hook 'kill-buffer-hook #'+popup-kill-buffer-hook-h t)
-  ;;     (cancel-timer +popup--timer)
-  ;;     (setq +popup--timer nil)))
-  )
+         (remove-hook 'after-change-major-mode-hook #'+popup-set-modeline-on-enable-h t))))
 
 (put '+popup-buffer-mode 'permanent-local t)
 (put '+popup-buffer-mode 'permanent-local-hook t)
@@ -127,7 +125,7 @@ disabled when that window has been changed or closed."
 
 
 ;;
-;; Macros
+;;; Macros
 
 (defmacro with-popup-rules! (rules &rest body)
   "Evaluate BODY with popup RULES. RULES is a list of popup rules.
@@ -145,8 +143,7 @@ Each rule should match the arguments of `+popup-define' or the
   "Sets aside all popups before executing the original
 function,usually to prevent the popup(s) from messing up the
 UI (or vice versa)."
-  `(let* (;; (in-popup-p (+popup-buffer-p))
-          (in-popup-p (popper-popup-p (current-buffer)))
+  `(let* ((in-popup-p (popper-popup-p (current-buffer)))
           (popups (+popup-windows))
           (+popup--inhibit-transient t)
           buffer-list-update-hook
@@ -163,7 +160,7 @@ UI (or vice versa)."
 
 
 ;;
-;; Default popup rules & bootstrap
+;;; Default popup rules & bootstrap
 
 (set-popup-rules!
   '(("^\\*Completions" :ignore t)
@@ -171,12 +168,14 @@ UI (or vice versa)."
      :vslot -1 :slot 1 :size +popup-shrink-to-fit)
     ("^\\*\\(?:[Cc]ompil\\(?:ation\\|e-Log\\)\\|Messages\\)"
      :vslot -2 :size 0.3  :autosave t :quit t :ttl nil)
-    ("^\\*\\(?:doom \\|Pp E\\)"  ; transient buffers (no interaction required)
+    ("^\\*\\(?:zenit \\|Pp E\\)"  ; transient buffers (no interaction required)
      :vslot -3 :size +popup-shrink-to-fit :autosave t :select ignore :quit t :ttl 0)
-    ("^\\*doom:"  ; editing buffers (interaction required)
+    ("^\\*zenit:"  ; editing buffers (interaction required)
      :vslot -4 :size 0.35 :autosave t :select t :modeline t :quit nil :ttl t)
-    ("^\\*doom:\\(?:v?term\\|e?shell\\)-popup"  ; editing buffers (interaction required)
+    ("^\\*zenit:\\(?:v?term\\|e?shell\\)-popup"  ; editing buffers (interaction required)
      :vslot -5 :size 0.35 :select t :modeline nil :quit nil :ttl nil)
+    ("^\\*zenit:scratch"
+     :slot 2 :vslot -4 :side right :size 0.5 :autosave t :select t :modeline t :quit nil :ttl t)
     ("^\\*\\(?:Wo\\)?Man "
      :vslot -6 :size 0.45 :select t :quit t :ttl 0)
     ("^\\*Calc"
@@ -185,10 +184,14 @@ UI (or vice versa)."
      :slot 2 :side right :size 0.5 :select t :quit nil)
     ("^ \\*undo-tree\\*"
      :slot 2 :side left :size 20 :select t :quit t)
+    ("^ \\*undo-tree Diff\\*"
+     :slot 2 :side bottom :size +popup-shrink-to-fit :select ignore :quit t :ttl 0)
     ;; `help-mode', `helpful-mode'
-    ;; ((major-mode helpful-mode)
-    ;;  :slot 2 :vslot -8 :size 0.42 :select t)
     ("^\\*\\([Hh]elp\\|Apropos\\)"
+     :slot 2 :vslot -8 :size 0.42 :select t)
+    (help-mode
+     :slot 2 :vslot -8 :size 0.42 :select t)
+    (helpful-mode
      :slot 2 :vslot -8 :size 0.42 :select t)
     ("^\\*eww\\*"  ; `eww' (and used by dash docsets)
      :vslot -11 :size 0.35 :select t)
@@ -203,7 +206,16 @@ UI (or vice versa)."
     ("^\\*Process List\\*" :side bottom :vslot 101 :size 0.25 :select t :quit t)
     ("^\\*\\(?:Proced\\|timer-list\\|Abbrevs\\|Output\\|Occur\\|unsent mail.*?\\|message\\)\\*" :ignore t)))
 
+(add-hook 'zenit-init-ui-hook #'popper-mode 'append)
+
+(add-hook! '+popup-buffer-mode-hook
+           #'+popup-adjust-fringes-h
+           #'+popup-adjust-margins-h
+           #'+popup-set-modeline-on-enable-h
+           #'+popup-unset-modeline-on-disable-h)
+
+
 ;;
 ;;; Hacks
 
-(load! "+hacks")
+(include! "+hacks")

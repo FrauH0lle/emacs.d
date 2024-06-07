@@ -369,6 +369,7 @@ variable.")
   (eval-when! (modulep! :ui popup)
     (after! ess-r-mode
       (set-popup-rule! "^\\*R" :side 'bottom :height 0.33 :width 0.5 :quit nil)
+      (set-popup-rule! 'inferior-ess-r-mode :side 'bottom :height 0.33 :width 0.5 :quit nil)
       (set-popup-rule! "^\\*R dired*" :side 'right :size 0.25 :height 0.5 :vslot 99 :slot 1
         :select nil :quit nil))
     (after! ess-help

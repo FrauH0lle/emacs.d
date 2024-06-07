@@ -19,27 +19,31 @@
 
 ;;;###autoload
 (defun +popup-make-rule (predicate plist)
-  (if (plist-get plist :ignore)
-      (list predicate nil)
-    (let* ((plist (append plist +popup-defaults))
-           (alist
-            `((actions       . ,(plist-get plist :actions))
-              (side          . ,(plist-get plist :side))
-              (size          . ,(plist-get plist :size))
-              (window-width  . ,(plist-get plist :width))
-              (window-height . ,(plist-get plist :height))
-              (slot          . ,(plist-get plist :slot))
-              (vslot         . ,(plist-get plist :vslot))))
-           (params
-            `((ttl      . ,(plist-get plist :ttl))
-              (quit     . ,(plist-get plist :quit))
-              (select   . ,(plist-get plist :select))
-              (modeline . ,(plist-get plist :modeline))
-              (autosave . ,(plist-get plist :autosave))
-              ,@(plist-get plist :parameters))))
-      `(,predicate (+popup-buffer)
-                   ,@alist
-                   (window-parameters ,@params)))))
+  (let ((predicate (if (and (symbolp predicate)
+                            (string-suffix-p "-mode" (symbol-name predicate)))
+                       `(major-mode . ,predicate)
+                     predicate)))
+    (if (plist-get plist :ignore)
+        (list predicate nil)
+      (let* ((plist (append plist +popup-defaults))
+             (alist
+              `((actions       . ,(plist-get plist :actions))
+                (side          . ,(plist-get plist :side))
+                (size          . ,(plist-get plist :size))
+                (window-width  . ,(plist-get plist :width))
+                (window-height . ,(plist-get plist :height))
+                (slot          . ,(plist-get plist :slot))
+                (vslot         . ,(plist-get plist :vslot))))
+             (params
+              `((ttl      . ,(plist-get plist :ttl))
+                (quit     . ,(plist-get plist :quit))
+                (select   . ,(plist-get plist :select))
+                (modeline . ,(plist-get plist :modeline))
+                (autosave . ,(plist-get plist :autosave))
+                ,@(plist-get plist :parameters))))
+        `(,predicate (+popup-buffer)
+          ,@alist
+          (window-parameters ,@params))))))
 
 ;;;###autodef
 (defun set-popup-rule! (predicate &rest plist)
@@ -52,9 +56,12 @@ these rules (as they are unaffected by `display-buffer-alist',
 which powers the popup management system).
 
 PREDICATE can be either a) a regexp string (matched against the
-buffer's name) or b) a function that takes two arguments (a
+buffer's name), b) a function that takes two arguments (a
 buffer name and the ACTION argument of `display-buffer') and
-returns a boolean.
+returns a boolean or c) a `major-mode' symbol.
+
+Some buffers might require a regexp and major mode rule due to
+the way they are created.
 
 PLIST can be made up of any of the following properties:
 

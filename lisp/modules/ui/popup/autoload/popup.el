@@ -1,6 +1,4 @@
-;;; ui/popup/autoload/popup.el -*- lexical-binding: t; -*-
-
-(defvar +popup--internal nil)
+;; ui/popup/autoload/popup.el -*- lexical-binding: t; -*-
 
 (defun +popup--remember (windows)
   "Remember WINDOWS (a list of windows) for later restoration."
@@ -11,8 +9,9 @@
                                (window-state-get w)))))
 
 (defun +popup--kill-buffer (buffer ttl)
-  "Tries to kill BUFFER, as was requested by a transient timer. If it fails, eg.
-the buffer is visible, then set another timer and try again later."
+  "Tries to kill BUFFER, as was requested by a transient timer. If
+it fails, eg. the buffer is visible, then set another timer and
+try again later."
   (let ((inhibit-quit t))
     (cond ((not (buffer-live-p buffer)))
           ((not (get-buffer-window buffer t))
@@ -25,8 +24,8 @@ the buffer is visible, then set another timer and try again later."
                      (kill-process process)))
                  (let (kill-buffer-query-functions)
                    ;; HACK The debugger backtrace buffer, when killed, called
-                   ;;      `top-level'. This causes jumpiness when the popup
-                   ;;      manager tries to clean it up.
+                   ;;   `top-level'. This causes jumpiness when the popup
+                   ;;   manager tries to clean it up.
                    (cl-letf (((symbol-function #'top-level) #'ignore))
                      (kill-buffer buffer)))))))
           ((let ((ttl (if (= ttl 0)
@@ -90,7 +89,8 @@ the buffer is visible, then set another timer and try again later."
   nil)
 
 (defun +popup--normalize-alist (alist)
-  "Merge `+popup-default-alist' and `+popup-default-parameters' with ALIST."
+  "Merge `+popup-default-alist' and `+popup-default-parameters' with
+ALIST."
   (when alist
     (let ((alist  ; handle defaults
            (cl-remove-duplicates
@@ -111,9 +111,9 @@ the buffer is visible, then set another timer and try again later."
         (setf (alist-get param alist) size))
       (setf (alist-get 'window-parameters alist)
             parameters)
-      ;; Fixes #1305: addresses an edge case where a popup with a :size, :width
-      ;; or :height greater than the current frame's dimensions causes
-      ;; hanging/freezing (a bug in Emacs' `display-buffer' API perhaps?)
+      ;; Addresses an edge case where a popup with a :size, :width or :height
+      ;; greater than the current frame's dimensions causes hanging/freezing (a
+      ;; bug in Emacs' `display-buffer' API perhaps?)
       (let ((width  (cdr (assq 'window-width  alist)))
             (height (cdr (assq 'window-height alist))))
         (setf (alist-get 'window-width alist)
@@ -127,7 +127,8 @@ the buffer is visible, then set another timer and try again later."
         alist))))
 
 (defun +popup--split-window (window size side)
-  "Ensure a non-dedicated/popup window is selected when splitting a window."
+  "Ensure a non-dedicated/popup window is selected when splitting a
+window."
   (unless +popup--internal
     (cl-loop for win
              in (cons (or window (selected-window))
@@ -138,7 +139,8 @@ the buffer is visible, then set another timer and try again later."
     (split-window window size side)))
 
 (defun +popup--maybe-select-window (window origin)
-  "Select a window based on `+popup--inhibit-select' and this window's `select' parameter."
+  "Select a window based on `+popup--inhibit-select' and this
+window's `select' parameter."
   (unless +popup--inhibit-select
     ;; REVIEW: Once our minimum version is bumped up to Emacs 30.x, replace this
     ;;   with `post-command-select-window' window parameter.
@@ -168,11 +170,12 @@ leftover transient timers and enables `+popup-buffer-mode'."
 
 
 ;;
-;; Public library
+;;; Public library
 
 ;;;###autoload
 (defun +popup-window-p (&optional window)
-  "Return non-nil if WINDOW is a popup window. Defaults to the current window."
+  "Return non-nil if WINDOW is a popup window. Defaults to the
+current window."
   (when popper-mode
     (let* ((window (or window (selected-window)))
            (buffer (window-buffer window)))
@@ -301,8 +304,8 @@ for `mode-line-format'."
 ;;;###autoload
 (defun +popup-close-on-escape-h ()
   "If called inside a popup, try to close that popup window (see
-`+popup/close'). If called outside, try to close all popup windows (see
-`+popup/close-all')."
+`+popup/close'). If called outside, try to close all popup
+windows (see `+popup/close-all')."
   (if (+popup-window-p)
       (+popup/close)
     (+popup/close-all)))
@@ -331,7 +334,7 @@ for `mode-line-format'."
 
 
 ;;
-;; Commands
+;;; Commands
 
 ;;;###autoload
 (defalias 'other-popup #'+popup/other)
@@ -355,6 +358,15 @@ for `mode-line-format'."
       (setq popper-popup-status 'popup))
     (pop-to-buffer buffer)))
 
+(defun +popup--reap-parents (window keep)
+  "Close all parent popup buffers of WINDOW.
+Windows with a `quit' window parameter matching the list KEEP
+will be ignored."
+  (when-let ((parents (with-current-buffer (window-buffer window) +popup--parents)))
+    (dolist (parent parents)
+      (unless (memq (cdr parent) keep)
+        (+popup--kill-buffer (car parent) 1)))))
+
 ;;;###autoload
 (defun +popup/close (&optional window force-p)
   "Close WINDOW, if it's a popup window.
@@ -372,6 +384,7 @@ is non-nil."
                          '(t current))))
       (when +popup--remember-last
         (+popup--remember (list window)))
+      (+popup--reap-parents window '(nil other))
       (popper--delete-popup window)
       t)))
 
@@ -391,19 +404,12 @@ non-nil."
         (push window targets)))
     (when targets
       (+popup--remember targets)
+      (mapc (zenit-rpartial #'+popup--reap-parents '(nil current)) targets)
       (mapc #'popper--delete-popup targets)
       t)))
 
 ;;;###autoload
 (defalias '+popup/toggle #'popper-toggle)
-;; (defun +popup/toggle ()
-;;   "Toggle any visible popups.
-;; If no popups are available, display the *Messages* buffer in a popup window."
-;;   (interactive)
-;;   (let ((+popup--inhibit-transient t))
-;;     (cond ((+popup-windows) (+popup/close-all t))
-;;           ((ignore-errors (+popup/restore)))
-;;           ((display-buffer (get-buffer "*Messages*"))))))
 
 ;;;###autoload
 (defun +popup/restore ()
@@ -419,24 +425,6 @@ non-nil."
 
 ;;;###autoload
 (defalias '+popup/raise #'popper-toggle-type)
-;; (defun +popup/raise (window &optional arg)
-;;   "Raise the current popup window into a regular window and
-;; return it. If prefix ARG, raise the current popup into a new
-;; window and return that window."
-;;   (interactive
-;;    (list (selected-window) current-prefix-arg))
-;;   (cl-check-type window window)
-;;   (unless (+popup-window-p window)
-;;     (user-error "Cannot raise a non-popup window"))
-;;   (let ((buffer (current-buffer))
-;;         (+popup--inhibit-transient t)
-;;         +popup--remember-last)
-;;     (+popup/close window 'force)
-;;     (let (display-buffer-alist)
-;;       (if arg
-;;           (pop-to-buffer buffer)
-;;         (switch-to-buffer buffer)))
-;;     (selected-window)))
 
 ;;;###autoload
 (defun +popup/diagnose ()
@@ -447,6 +435,8 @@ non-nil."
                          if (and (functionp pred) (funcall pred bname action))
                          return (cons pred action)
                          else if (and (stringp pred) (string-match-p pred bname))
+                         return (cons pred action)
+                         else if (and (consp pred) (buffer-match-p pred bname))
                          return (cons pred action)))
       (message "Rule matches: %s" rule)
     (message "No popup rule for this buffer")))
@@ -456,6 +446,22 @@ non-nil."
 ;;; Advice
 
 ;;;###autoload
+(defun +popup-record-parent-a (fn &rest args)
+  "Record popup's parent buffer."
+  (if (popper-popup-p (current-buffer))
+      (let ((parent (current-buffer))
+            (parents +popup--parents)
+            (quit (+popup-parameter 'quit))
+            ;; Do not destroy the parent
+            +popup--timer)
+        (apply fn args)
+        (when (popper-popup-p (current-buffer))
+          (push (cons parent quit) parents)
+          (setq +popup--parents parents)))
+    (apply fn args)))
+(advice-add #'+popup-buffer :around #'+popup-record-parent-a)
+
+;;;###autoload
 (defun +popup-close-a (&rest _)
   "TODO"
   (+popup/close nil t))
@@ -463,169 +469,6 @@ non-nil."
 ;;;###autoload
 (defun +popup-save-a (fn &rest args)
   "Sets aside all popups before executing the original
-function,usually to prevent the popup(s) from messing up the
+function, usually to prevent the popup(s) from messing up the
 UI (or vice versa)."
   (save-popups! (apply fn args)))
-
-;;;###autoload
-(defun +popup-display-buffer-fullframe-fn (buffer alist)
-  "Displays the buffer fullscreen."
-  (let ((wconf (current-window-configuration)))
-    (when-let (window (or (display-buffer-reuse-window buffer alist)
-                          (display-buffer-same-window buffer alist)
-                          (display-buffer-pop-up-window buffer alist)
-                          (display-buffer-use-some-window buffer alist)))
-      (set-window-parameter window 'saved-wconf wconf)
-      (add-to-list 'window-persistent-parameters '(saved-wconf . t))
-      (delete-other-windows window)
-      window)))
-
-;;;###autoload
-(defun +popup-display-buffer-stacked-side-window-fn (buffer alist)
-  "A `display-buffer' action that serves as an alternative to
-`display-buffer-in-side-window', but allows for stacking popups with the `vslot'
-alist entry.
-
-Accepts the same arguments as `display-buffer-in-side-window'. You must set
-`window--sides-inhibit-check' to non-nil for this work properly."
-  (let* ((side  (or (cdr (assq 'side alist)) 'bottom))
-         (slot  (or (cdr (assq 'slot alist))  0))
-         (vslot (or (cdr (assq 'vslot alist)) 0))
-         (left-or-right (memq side '(left right)))
-         (display-buffer-mark-dedicated (or display-buffer-mark-dedicated 'popup)))
-
-    (cond ((not (memq side '(top bottom left right)))
-           (error "Invalid side %s specified" side))
-          ((not (numberp slot))
-           (error "Invalid slot %s specified" slot))
-          ((not (numberp vslot))
-           (error "Invalid vslot %s specified" vslot)))
-
-    (let* ((live (get-window-with-predicate
-                   (lambda (window)
-                     (and (eq (window-parameter window 'window-side) side)
-                          (eq (window-parameter window 'window-vslot) vslot)))
-                   nil))
-           ;; As opposed to the `window-side' property, our `window-vslot'
-           ;; parameter is set only on a single live window and never on internal
-           ;; windows. Moreover, as opposed to `window-with-parameter' (as used
-           ;; by the original `display-buffer-in-side-window'),
-           ;; `get-window-with-predicate' only returns live windows anyway. In
-           ;; any case, we will have missed the major side window and got a
-           ;; child instead if the major side window happens to be an internal
-           ;; window with multiple children. In that case, all childen should
-           ;; have the same `window-vslot' parameter, and the major side window
-           ;; is the parent of the live window.
-           (prev (and live (window-prev-sibling live)))
-           (next (and live (window-next-sibling live)))
-           (prev-vslot (and prev (window-parameter prev 'window-vslot)))
-           (next-vslot (and next (window-parameter next 'window-vslot)))
-           (major (and live
-                       (if (or (eq prev-vslot vslot) (eq next-vslot vslot))
-                           (window-parent live)
-                         live)))
-           (reversed (window--sides-reverse-on-frame-p (selected-frame)))
-           (windows
-            (cond ((window-live-p major)
-                   (list major))
-                  ((window-valid-p major)
-                   (let* ((first (window-child major))
-                          (next (window-next-sibling first))
-                          (windows (list next first)))
-                     (setq reversed (> (window-parameter first 'window-slot)
-                                       (window-parameter next 'window-slot)))
-                     (while (setq next (window-next-sibling next))
-                       (setq windows (cons next windows)))
-                     (if reversed windows (nreverse windows))))))
-           (slots (if major (max 1 (window-child-count major))))
-           (max-slots
-            (nth (plist-get '(left 0 top 1 right 2 bottom 3) side)
-                 window-sides-slots))
-           (window--sides-inhibit-check t)
-           window this-window this-slot prev-window next-window
-           best-window best-slot abs-slot)
-
-      (cond ((and (numberp max-slots) (<= max-slots 0))
-             nil)
-            ((not windows)
-             (cl-letf (((symbol-function 'window--make-major-side-window-next-to)
-                        (lambda (_side) (frame-root-window (selected-frame)))))
-               (when-let (window (window--make-major-side-window buffer side slot alist))
-                 (set-window-parameter window 'window-vslot vslot)
-                 (add-to-list 'window-persistent-parameters '(window-vslot . writable))
-                 window)))
-            (t
-             ;; Scan windows on SIDE.
-             (catch 'found
-               (dolist (window windows)
-                 (setq this-slot (window-parameter window 'window-slot))
-                 (cond ((not (numberp this-slot)))
-                       ((= this-slot slot) ; A window with a matching slot found
-                        (setq this-window window)
-                        (throw 'found t))
-                       (t
-                        ;; Check if this window has a better slot value wrt the
-                        ;; slot of the window we want.
-                        (setq abs-slot
-                              (if (or (and (> this-slot 0) (> slot 0))
-                                      (and (< this-slot 0) (< slot 0)))
-                                  (abs (- slot this-slot))
-                                (+ (abs slot) (abs this-slot))))
-                        (unless (and best-slot (<= best-slot abs-slot))
-                          (setq best-window window)
-                          (setq best-slot abs-slot))
-                        (if reversed
-                            (cond
-                             ((<= this-slot slot)
-                              (setq next-window window))
-                             ((not prev-window)
-                              (setq prev-window window)))
-                          (cond
-                           ((<= this-slot slot)
-                            (setq prev-window window))
-                           ((not next-window)
-                            (setq next-window window))))))))
-
-             ;; `this-window' is the first window with the same SLOT.
-             ;; `prev-window' is the window with the largest slot < SLOT. A new
-             ;; window will be created after it.
-             ;; `next-window' is the window with the smallest slot > SLOT. A new
-             ;; window will be created before it.
-             ;; `best-window' is the window with the smallest absolute
-             ;; difference of its slot and SLOT.
-             (or (and this-window
-                      ;; Reuse `this-window'.
-                      (with-current-buffer buffer
-                        (setq window--sides-shown t))
-                      (window--display-buffer
-                       buffer this-window 'reuse alist))
-                 (and (or (not max-slots) (< slots max-slots))
-                      (or (and next-window
-                               ;; Make new window before `next-window'.
-                               (let ((next-side (if left-or-right 'above 'left))
-                                     (+popup--internal t)
-                                     (window-combination-resize 'side))
-                                 (setq window
-                                       (ignore-errors (split-window next-window nil next-side)))))
-                          (and prev-window
-                               ;; Make new window after `prev-window'.
-                               (let ((prev-side (if left-or-right 'below 'right))
-                                     (+popup--internal t)
-                                     (window-combination-resize 'side))
-                                 (setq window
-                                       (ignore-errors (split-window prev-window nil prev-side))))))
-                      (set-window-parameter window 'window-slot slot)
-                      (set-window-parameter window 'window-vslot vslot)
-                      (with-current-buffer buffer
-                        (setq window--sides-shown t))
-                      (window--display-buffer
-                       buffer window 'window alist))
-                 (and best-window
-                      ;; Reuse `best-window'.
-                      (progn
-                        ;; Give best-window the new slot value.
-                        (set-window-parameter best-window 'window-slot slot)
-                        (with-current-buffer buffer
-                          (setq window--sides-shown t))
-                        (window--display-buffer
-                         buffer best-window 'reuse alist)))))))))

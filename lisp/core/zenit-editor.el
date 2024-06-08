@@ -79,8 +79,10 @@ themselves) to ensure the buffer is as fast as possible."
   "Save the origin after following a symlink."
   :around #'vc-follow-link
   (let ((origin (buffer-file-name)))
-    (funcall orig-fn)
-    (setq-local zenit--symlink-origin origin)))
+    (prog1
+        (funcall orig-fn)
+      (with-current-buffer (current-buffer)
+        (setq zenit--symlink-origin origin)))))
 
 ;; Disable the warning "X and Y are the same file". It's fine to ignore this
 ;; warning as it will redirect you to the existing buffer anyway.

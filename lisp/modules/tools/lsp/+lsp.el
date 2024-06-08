@@ -21,9 +21,9 @@
   (setq lsp-keep-workspace-alive nil)
 
   ;; NOTE I tweak LSP's defaults in order to make its more expensive or imposing
-  ;;      features opt-in. Some servers implement these poorly and, in most
-  ;;      cases, it's safer to rely on Emacs' native mechanisms (eldoc vs
-  ;;      lsp-ui-doc, open in popup vs sideline, etc).
+  ;;   features opt-in. Some servers implement these poorly and, in most cases,
+  ;;   it's safer to rely on Emacs' native mechanisms (eldoc vs lsp-ui-doc, open
+  ;;   in popup vs sideline, etc).
 
   ;; Disable features that have great potential to be slow.
   (setq lsp-enable-folding nil
@@ -69,7 +69,8 @@
                           :type-definition #'lsp-find-type-definition))
 
   (defadvice! +lsp--respect-user-defined-checkers-a (fn &rest args)
-    "Ensure user-defined `flycheck-checker' isn't overwritten by `lsp'."
+    "Ensure user-defined `flycheck-checker' isn't overwritten by
+`lsp'."
     :around #'lsp-diagnostics-flycheck-enable
     (if flycheck-checker
         (let ((old-checker flycheck-checker))
@@ -99,9 +100,10 @@
   (defvar +lsp--deferred-shutdown-timer nil)
   (defadvice! +lsp-defer-server-shutdown-a (fn &optional restart)
     "Defer server shutdown for a few seconds.
-This gives the user a chance to open other project files before the server is
-auto-killed (which is a potentially expensive process). It also prevents the
-server getting expensively restarted when reverting buffers."
+This gives the user a chance to open other project files before
+the server is auto-killed (which is a potentially expensive
+process). It also prevents the server getting expensively
+restarted when reverting buffers."
     :around #'lsp--shutdown-workspace
     (if (or lsp-keep-workspace-alive
             restart

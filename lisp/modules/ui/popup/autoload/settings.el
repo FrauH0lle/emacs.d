@@ -206,8 +206,8 @@ VSLOT TTL QUIT SELECT MODELINE AUTOSAVE PARAMETERS)"
     (push predicate +popup--reference-buffers))
   (when (bound-and-true-p popper-mode)
     (setq display-buffer-alist +popup--display-buffer-alist
-          popper-reference-buffers +popup--reference-buffers))
-  (popper--set-reference-vars)
+          popper-reference-buffers +popup--reference-buffers)
+    (popper--set-reference-vars))
   +popup--display-buffer-alist)
 
 ;;;###autodef
@@ -235,6 +235,6 @@ Example:
         (push (car rule) +popup--reference-buffers))))
   (when (bound-and-true-p popper-mode)
     (setq display-buffer-alist +popup--display-buffer-alist
-          popper-reference-buffers +popup--reference-buffers))
-  (popper--set-reference-vars)
+          popper-reference-buffers +popup--reference-buffers)
+    (popper--set-reference-vars))
   +popup--display-buffer-alist)

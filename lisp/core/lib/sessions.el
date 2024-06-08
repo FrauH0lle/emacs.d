@@ -173,8 +173,8 @@ command then calls `zenit-save-session' with the selected FILE."
   (zenit-save-session file))
 
 ;; NOTE 2023-02-05: Emacs 29+ includes its own `restart-emacs' command which has
-;;      less features. Emacs lacks namespaces so we need to require
-;;      `restart-emacs' after `files' has loaded.
+;;   less features. Emacs lacks namespaces so we need to require `restart-emacs'
+;;   after `files' has loaded.
 (eval-and-compile
   (with-eval-after-load 'files
     (require 'restart-emacs nil t)))

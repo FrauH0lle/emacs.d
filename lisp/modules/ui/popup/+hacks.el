@@ -90,12 +90,14 @@ time they were followed."
 
 ;;;###package consult
 (eval-when! (modulep! :completion vertico)
+  ;; PATCH Refine integration of `consult' and the popup system.
   (eval-when-compile
     (require 'el-patch)
     (require 'consult))
 
   (el-patch-feature consult)
 
+  ;; Remove popups by default from consult buffer source
   (el-patch-defvar consult--source-buffer
     `(:name     "Buffer"
       :narrow   ?b
@@ -111,6 +113,7 @@ time they were followed."
                                          :as #'buffer-name)))
     "Buffer candidate source for `consult-buffer'.")
 
+  ;; Add separate source for popups
   (el-patch-defvar (el-patch-swap consult--source-buffer consult--source-popup-buffer)
     `(:name     (el-patch-swap "Buffer" "Popup")
       :narrow   (el-patch-swap ?b ?P)
@@ -147,13 +150,14 @@ See `consult--multi' for a description of the source data structure."
     :type '(repeat symbol))
 
   (with-eval-after-load 'consult
+    ;; Let `switch-to-buffer' obey `display-buffer-alist' when switching to a
+    ;; buffer.
     (el-patch-defun consult--buffer-action (buffer &optional norecord)
       "Switch to BUFFER via `consult--buffer-display' function.
 If NORECORD is non-nil, do not record the buffer switch in the buffer list."
       (el-patch-swap
         (funcall consult--buffer-display buffer norecord)
         (let ((switch-to-buffer-obey-display-actions t))
-          (message "yay, works!")
           (funcall consult--buffer-display buffer norecord))))))
 
 

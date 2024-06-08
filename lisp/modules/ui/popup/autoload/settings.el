@@ -201,10 +201,13 @@ If any of these are omitted, defaults derived from
 VSLOT TTL QUIT SELECT MODELINE AUTOSAVE PARAMETERS)"
   (declare (indent defun))
   (push (+popup-make-rule predicate plist) +popup--display-buffer-alist)
-  (push predicate +popup--reference-buffers)
+  (if (plist-get plist :ignore)
+      (setq +popup--reference-buffers (delete predicate +popup--reference-buffers))
+    (push predicate +popup--reference-buffers))
   (when (bound-and-true-p popper-mode)
     (setq display-buffer-alist +popup--display-buffer-alist
           popper-reference-buffers +popup--reference-buffers))
+  (popper--set-reference-vars)
   +popup--display-buffer-alist)
 
 ;;;###autodef
@@ -227,8 +230,11 @@ Example:
     (dolist (rule rules)
       (push (+popup-make-rule (car rule) (cdr rule))
             +popup--display-buffer-alist)
-        (push (car rule) +popup--reference-buffers)))
+      (if (plist-get (cdr rule) :ignore)
+          (setq +popup--reference-buffers (delete (car rule) +popup--reference-buffers))
+        (push (car rule) +popup--reference-buffers))))
   (when (bound-and-true-p popper-mode)
     (setq display-buffer-alist +popup--display-buffer-alist
           popper-reference-buffers +popup--reference-buffers))
+  (popper--set-reference-vars)
   +popup--display-buffer-alist)

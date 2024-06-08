@@ -189,10 +189,6 @@ UI (or vice versa)."
     ;; `help-mode', `helpful-mode'
     ("^\\*\\([Hh]elp\\|Apropos\\)"
      :slot 2 :vslot -8 :size 0.42 :select t)
-    (help-mode
-     :slot 2 :vslot -8 :size 0.42 :select t)
-    (helpful-mode
-     :slot 2 :vslot -8 :size 0.42 :select t)
     ("^\\*eww\\*"  ; `eww' (and used by dash docsets)
      :vslot -11 :size 0.35 :select t)
     ("^\\*xwidget"

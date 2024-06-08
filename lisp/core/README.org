@@ -7,40 +7,40 @@ Core configuration.
 /None/
 
 ** Packages
-- auto-minor-mode
-- gcmh
+- [[https://github.com/joewreschnig/auto-minor-mode][auto-minor-mode]]
+- [[https://github.com/emacsmirror/gcmh][gcmh]]
 
 *** UI
-- nerd-icons
-- hide-mode-line
-- highlight-numbers
-- rainbow-delimiters
-- restart-emacs
+- [[https://github.com/rainstormstudio/nerd-icons.el][nerd-icons]]
+- [[https://github.com/hlissner/emacs-hide-mode-line][hide-mode-line]]
+- [[https://github.com/Fanael/highlight-numbers?tab=readme-ov-file][highlight-numbers]]
+- [[https://github.com/Fanael/rainbow-delimiters][rainbow-delimiters]]
+- [[https://github.com/iqbalansari/restart-emacs][restart-emacs]]
 
 *** Editor
-- better-jumper
-- dtrt-indent
-- expand-region
-- helpful
-- pcre
-- smartparens
-- undo-tree
-- ws-butler
+- [[https://github.com/gilbertw1/better-jumper][better-jumper]]
+- [[https://github.com/jscheid/dtrt-indent][dtrt-indent]]
+- [[https://github.com/magnars/expand-region.el][expand-region]]
+- [[https://github.com/Wilfred/helpful][helpful]]
+- [[https://github.com/joddie/pcre2el][pcre2el]]
+- [[https://github.com/Fuco1/smartparens][smartparens]]
+- [[https://elpa.gnu.org/packages/undo-tree.html][undo-tree]]
+- [[https://github.com/hlissner/ws-butler][ws-butler]]
 
 *** Modules
-- el-patch
+- [[https://github.com/radian-software/el-patch][el-patch]]
 
 *** Packages
 
 *** Projects
-- projectile
+- [[https://github.com/bbatsov/projectile][projectile]]
 
 *** Keybinds
-- general
-- which-key
+- [[https://github.com/noctuid/general.el][general]]
+- [[https://github.com/justbur/emacs-which-key][which-key]]
 
 *** Tests
-- buttercup
+- [[https://github.com/jorgenschaefer/emacs-buttercup][buttercup]]
 
 * Configuration
 ** Editor

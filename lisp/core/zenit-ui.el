@@ -396,9 +396,7 @@ buffers are visible in other windows, switch to
 
 (use-package! goto-addr
   :hook (text-mode . goto-address-mode)
-  :hook (prog-mode . goto-address-prog-mode)
-  :config
-  (define-key goto-address-highlight-keymap (kbd "RET") #'goto-address-at-point))
+  :hook (prog-mode . goto-address-prog-mode))
 
 
 (use-package! hl-line

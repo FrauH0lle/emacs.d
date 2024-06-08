@@ -185,7 +185,6 @@ autoloads.")
 Autoloads will be generated from autoload cookies in FILES (except those that
 match one of the regexps in EXCLUDE -- a list of strings). If LITERAL is
 non-nil, treat FILES as pre-generated autoload files instead."
-  (require 'autoload)
   (let ((zenit-loaddefs-temp-file (make-temp-file "zenit-loaddefs"))
         autoloads)
     (dolist (file files (nreverse (delq nil autoloads)))

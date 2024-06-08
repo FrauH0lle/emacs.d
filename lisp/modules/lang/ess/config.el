@@ -369,7 +369,6 @@ variable.")
   (eval-when! (modulep! :ui popup)
     (after! ess-r-mode
       (set-popup-rule! "^\\*R" :side 'bottom :height 0.33 :width 0.5 :quit nil)
-      (set-popup-rule! 'inferior-ess-r-mode :side 'bottom :height 0.33 :width 0.5 :quit nil)
       (set-popup-rule! "^\\*R dired*" :side 'right :size 0.25 :height 0.5 :vslot 99 :slot 1
         :select nil :quit nil))
     (after! ess-help
@@ -434,13 +433,11 @@ See URL `https://github.com/emacs-ess/ESS/issues/300'."
 
   (add-hook 'comint-mode-hook #'+ess-comint-h)
 
-  ;; Patch ess-rdired
-  (eval-when-compile
-    (require 'el-patch))
-
-  (el-patch-feature ess-rdired)
-  (with-eval-after-load 'ess-rdired
-    (el-patch-defun ess-rdired-refresh ()
+  ;; PATCH `ess-rdired'
+  (use-package! ess-rdired
+    :defer t
+    :config/el-patch
+    (defun ess-rdired-refresh ()
       "Refresh the `ess-rdired' buffer."
       (let* ((buff (get-buffer-create ess-rdired-buffer))
              (proc-name (buffer-local-value 'ess-local-process-name buff))
@@ -455,12 +452,12 @@ See URL `https://github.com/emacs-ess/ESS/issues/300'."
             ;; Delete two lines. One filled with +'s from R's prompt
             ;; printing, the other with the header info from the data.frame
             (el-patch-remove
-              (delete-region (point-min) (1+ (point-at-eol 2)))
+              (delete-region (point-min) (1+ (line-end-position 2)))
               (setq text (split-string (buffer-string) "\n" t "\n"))
               (erase-buffer))
             (el-patch-add
               (when (> (count-lines (point-min) (point-max)) 2)
-                (delete-region (point-min) (1+ (point-at-eol 2)))
+                (delete-region (point-min) (1+ (line-end-position 2)))
                 (setq text (split-string (buffer-string) "\n" t "\n"))
                 (erase-buffer))))
           (with-current-buffer buff

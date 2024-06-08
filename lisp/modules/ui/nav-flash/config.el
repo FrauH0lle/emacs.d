@@ -2,7 +2,7 @@
 
 (defvar +nav-flash-exclude-commands
   '(mouse-set-point mouse-drag-region evil-mouse-drag-region +org/dwim-at-point
-    org-find-file org-find-file-at-mouse)
+    org-find-file org-find-file-at-mouse corfu--goto)
   "A list of commands that should not trigger nav-flash.")
 
 (defvar +nav-flash-exclude-modes

@@ -454,11 +454,13 @@ non-nil."
             (quit (+popup-parameter 'quit))
             ;; Do not destroy the parent
             +popup--timer)
-        (apply fn args)
-        (when (popper-popup-p (current-buffer))
-          (push (cons parent quit) parents)
-          (setq +popup--parents parents)))
+        (prog1
+            (apply fn args)
+          (when (popper-popup-p (current-buffer))
+            (push (cons parent quit) parents)
+            (setq +popup--parents parents))))
     (apply fn args)))
+
 (advice-add #'+popup-buffer :around #'+popup-record-parent-a)
 
 ;;;###autoload

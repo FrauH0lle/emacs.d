@@ -1,6 +1,5 @@
 #+title:    :editor file-templates
-#+subtitle: File templates
-#+created:  June 09, 2024
+#+created: 2024-06-09
 
 * Description :unfold:
 Insert file templates into blank files

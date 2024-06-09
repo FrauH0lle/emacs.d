@@ -59,6 +59,7 @@ may contain these properties:
 ;;
 ;;; Library
 
+(defvar +file-templates--expanding-p nil)
 ;;;###autoload
 (cl-defun +file-templates--expand (pred &key project mode trigger ignore _when)
   "Auto insert a tempel snippet into current file and enter
@@ -77,7 +78,8 @@ insert mode (if evil is loaded and enabled)."
       (if (functionp trigger)
           (funcall trigger)
         (require 'tempel)
-        (let ((tempel-path (zenit-files-in +file-templates-dirs :match "\\.eld$")))
+        (let ((tempel-path (zenit-files-in +file-templates-dirs :match "\\.eld$"))
+              (+file-templates--expanding-p t))
           (tempel-insert (intern trigger)))
         (when (and (buffer-local-value 'tempel--active (current-buffer))
                    (and (featurep 'evil) evil-local-mode)
@@ -111,8 +113,8 @@ insert mode (if evil is loaded and enabled)."
 
 ;;;###autoload
 (defun +file-templates/debug ()
-  "Tests the current buffer and outputs the file template rule most appropriate
-for it. This is used for testing."
+  "Tests the current buffer and outputs the file template rule most
+appropriate for it. This is used for testing."
   (interactive)
   (require 'tempel)
   (cl-destructuring-bind (pred &rest plist &key trigger mode &allow-other-keys)
@@ -125,3 +127,16 @@ for it. This is used for testing."
                      :key #'car))
         (message "Found %s" (cons pred plist))
       (message "Found rule, but can't find associated snippet: %s" (cons pred plist)))))
+
+
+;;
+;;; Trigger functions
+
+(defun +file-templates-insert-zenit-module-docs-fn ()
+  "Expand one of the following README templates."
+  (+file-templates--expand
+   t :trigger
+   (let ((path (file-truename (buffer-file-name))))
+     (cond ((string-match-p "/modules/[^/]+/[^/]+/README\\.org$" path)
+            "__zenit-module-readme")
+           ("__")))))

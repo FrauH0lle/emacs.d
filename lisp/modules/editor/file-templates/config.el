@@ -76,6 +76,7 @@ don't have a :trigger property in `+file-templates-alist'.")
     (nix-mode)
     ;; Org
     (org-journal-mode :ignore t)
+    ("/README\\.org$" :trigger +file-templates-insert-zenit-module-docs-fn :mode org-mode)
     (org-mode)
     ;; PHP
     ("\\.class\\.php$" :trigger "__.class.php" :mode php-mode)

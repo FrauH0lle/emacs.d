@@ -141,6 +141,11 @@ argument is expected, such as in `add-hook'."
     (unless (equal (old-selected-frame) (selected-frame))
       (run-hooks 'zenit-switch-frame-hook))
     (unless (or (minibufferp)
+                ;; REVIEW 2024-06-09 This is mainly added because otherwise the
+                ;;   `corfu' completion popup would trigger
+                ;;   `zenit-switch-window-hook' which in turn can trigger
+                ;;   `pulsar'
+                (equal (old-selected-window) (selected-window))
                 (equal (old-selected-window) (minibuffer-window)))
       (run-hooks 'zenit-switch-window-hook))))
 

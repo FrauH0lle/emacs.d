@@ -1,8 +1,0 @@
-# -*- mode: snippet -*-
-# group: file templates
-# --
-{ config, lib, pkgs, ... }:
-
-{
-  $0
-}

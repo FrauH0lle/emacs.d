@@ -1,0 +1,27 @@
+#+title:    :editor file-templates
+#+subtitle: File templates
+#+created:  June 09, 2024
+
+* Description :unfold:
+Insert file templates into blank files
+
+** Module flags
+/None/
+
+** Packages
+- [[https://github.com/minad/tempel][tempel]]
+
+* Configuration
+#+begin_src elisp
+(defvar +file-templates-dirs
+  `(,(file-name-concat zenit-emacs-dir "templates" "file-templates")
+    ,(file-name-concat zenit-local-conf-dir "templates" "file-templates"))
+  "Folders searched for file templates.
+Defaults to the folders templates/file-templates/ located in
+`zenit-emacs-dir' and `zenit-local-conf-dir'. Templates defined
+in `zenit-local-conf-dir' take precedence.")
+
+(defvar +file-templates-default-trigger "__"
+  "The default trigger key (a string) for file template rules that
+don't have a :trigger property in `+file-templates-alist'.")
+#+end_src

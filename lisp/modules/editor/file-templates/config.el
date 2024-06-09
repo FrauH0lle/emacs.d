@@ -1,14 +1,16 @@
 ;; editor/file-templates/config.el -*- lexical-binding: t; -*-
 
-(defvar +file-templates-dir
-  (file-name-concat zenit-emacs-dir "snippets" "file-templates/")
-  "The path to a directory of yasnippet folders to use for file
-templates.")
+(defvar +file-templates-dirs
+  `(,(file-name-concat zenit-emacs-dir "templates" "file-templates")
+    ,(file-name-concat zenit-local-conf-dir "templates" "file-templates"))
+  "Folders searched for file templates.
+Defaults to the folders templates/file-templates/ located in
+`zenit-emacs-dir' and `zenit-local-conf-dir'. Templates defined
+in `zenit-local-conf-dir' take precedence.")
 
 (defvar +file-templates-default-trigger "__"
-  "The default yasnippet trigger key (a string) for file template
-rules that don't have a :trigger property in
-`+file-templates-alist'.")
+  "The default trigger key (a string) for file template rules that
+don't have a :trigger property in `+file-templates-alist'.")
 
 (defvar +file-templates-inhibit nil
   "If non-nil, inhibit file template expansion.")
@@ -34,7 +36,7 @@ rules that don't have a :trigger property in
      :trigger "__zenit-module"
      :mode emacs-lisp-mode)
     ("-test\\.el$" :mode emacs-ert-mode)
-    (emacs-lisp-mode :trigger "__package")
+    (emacs-lisp-mode :trigger "__")
     (snippet-mode)
     ;; C/C++
     ("/main\\.c\\(?:c\\|pp\\)$"   :trigger "__main.cpp"    :mode c++-mode)
@@ -148,17 +150,19 @@ must be non-read-only, empty, and there must be a rule in
 ;;
 ;;; Bootstrap
 
-(after! yasnippet
-  ;; Simpler `yas-selected-text' alias for templates
-  (defvaralias '% 'yas-selected-text)
-  (eval-if! (modulep! :editor snippets)
-      (add-to-list 'yas-snippet-dirs '+file-templates-dir 'append #'eq)
-    (setq yas-prompt-functions (delq #'yas-dropdown-prompt yas-prompt-functions)
-          yas-snippet-dirs '(+file-templates-dir))
-    ;; Exit snippets on ESC from normal mode
-    (add-hook 'zenit-escape-hook #'yas-abort-snippet)
-    ;; Ensure file templates in `+file-templates-dir' are visible
-    (yas-reload-all)))
+(after! tempel
+  (eval-unless! (modulep! :editor snippets)
+    ;; Keybinds, if not set up already
+    (map! :map tempel-map
+          "<tab>"     #'tempel-next
+          "TAB"       #'tempel-next
+          "<backtab>" #'tempel-previous
+          "C-g"       #'tempel-abort
+          "C-<home>"  #'tempel-beginning
+          "C-<end>"   #'tempel-end))
+
+  ;; Exit snippets on ESC from normal mode
+  (add-hook 'zenit-escape-hook #'tempel-abort))
 
 ;;
 (add-hook 'zenit-switch-buffer-hook #'+file-templates-check-h)

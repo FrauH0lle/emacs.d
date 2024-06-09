@@ -1,0 +1,34 @@
+#+title: :editor snippets
+#+created: 2024-06-09
+
+* Description :unfold:
+Snippet expansion powered by TempEL.
+
+** Module flags
+/None/
+
+** Packages
+- [[https://github.com/minad/tempel][tempel]]
+
+* Configuration
+#+begin_src elisp
+(defvar +snippets-dir
+  (file-name-concat zenit-emacs-dir "templates" "snippets")
+  "Directory where `tempel' will search for built-in snippets.")
+
+(defvar +snippets-local-dir
+  (file-name-concat zenit-local-conf-dir "templates" "snippets")
+  "Directory where `tempel' will search for local snippets.")
+
+(defvar +snippets-dirs
+  (list +snippets-dir +snippets-local-dir)
+  "Directories where `tempel' will search for snippets.
+Defaults to the folders templates/snippets/ located in
+`zenit-emacs-dir' and `zenit-local-conf-dir'. Templates defined
+in `zenit-local-conf-dir' take precedence.")
+
+;; Minor modes can have their own snippets. Register them via
+;; `set-tempel-minor-mode!'.
+;; Example:
+(set-tempel-minor-mode! 'projectile-mode)
+#+end_src

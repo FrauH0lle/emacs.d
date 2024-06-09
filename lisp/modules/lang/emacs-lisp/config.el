@@ -198,8 +198,7 @@ This checker tends to produce a lot of false positives in your
   :config
   (eval-when! (modulep! :ui popup)
     (set-popup-rule! "^\\*Buttercup\\*$" :size 0.45 :select nil :ttl 0))
-  (eval-when! (modulep! :editor snippets)
-    (set-yas-minor-mode! 'buttercup-minor-mode))
+  (set-tempel-minor-mode! 'buttercup-minor-mode)
   (eval-when! (modulep! :editor evil)
     (add-hook 'buttercup-minor-mode-hook #'evil-normalize-keymaps))
   (map! :localleader

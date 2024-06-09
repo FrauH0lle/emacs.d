@@ -164,7 +164,7 @@
   :minor ("/test_.+\\.py$" . nose-mode)
   :config
   (set-popup-rule! "^\\*nosetests" :size 0.4 :select nil)
-  ;; (set-yas-minor-mode! 'nose-mode)
+  ;; (set-tempel-minor-mode! 'nose-mode)
   (when (featurep 'evil)
     (add-hook 'nose-mode-hook #'evil-normalize-keymaps))
 

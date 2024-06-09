@@ -107,8 +107,7 @@ info in the `header-line-format' is a more visible indicator."
 (use-package! git-commit
   :hook (zenit-first-file . global-git-commit-mode)
   :config
-  (eval-when! (modulep! :editor snippets)
-  (set-yas-minor-mode! 'git-commit-mode))
+  (set-tempel-minor-mode! 'git-commit-mode)
 
   ;; Enforce git commit conventions.
   ;; See https://chris.beams.io/posts/git-commit/

@@ -547,7 +547,7 @@ See URL `https://github.com/emacs-ess/ESS/issues/300'."
   :mode ("\\.[rR]md$" . poly-markdown+r-mode)
   :config
   (eval-when! (modulep! :editor snippets)
-    (set-yas-minor-mode! 'poly-markdown+r-mode))
+    (set-tempel-minor-mode! 'poly-markdown+r-mode))
 
   ;;     (defhook! +poly-r--mardown-code-face-h ()
   ;;       "Fix unreadable highlighting of code blocks in
@@ -555,5 +555,6 @@ See URL `https://github.com/emacs-ess/ESS/issues/300'."
   ;;       #'poly-markdown+r-mode
   ;;       (face-remap-add-relative 'markdown-code-face '(:background nil)))
 
-  (defvar +poly-r-template-dir (concat +file-templates-dir "Rmd-templates"))
-  (setq poly-r-rmarkdown-template-dirs (list +poly-r-template-dir)))
+  ;; (defvar +poly-r-template-dir (concat +file-templates-dirs "Rmd-templates"))
+  ;; (setq poly-r-rmarkdown-template-dirs (list +poly-r-template-dir))
+  )

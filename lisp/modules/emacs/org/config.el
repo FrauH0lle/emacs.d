@@ -190,7 +190,7 @@ width")
   (define-key org-src-mode-map (kbd "C-c C-c") #'org-edit-src-exit)
 
   ;; so `org-src-mode' buffers can be switched to
-  (add-hook 'org-src-mode-hook #'+workspaces-add-current-buffer-h)
+  ;; (add-hook 'org-src-mode-hook #'+workspaces-add-current-buffer-h)
   (defun +org-src-buffer-p (buf)
     (with-current-buffer buf
       (bound-and-true-p org-src-mode)))

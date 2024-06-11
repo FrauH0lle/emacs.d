@@ -139,14 +139,6 @@ use the minibuffer such as `query-replace'.")
   (advice-add #'eglot-completion-at-point :around #'cape-wrap-nonexclusive)
   (advice-add #'pcomplete-completions-at-point :around #'cape-wrap-nonexclusive))
 
-;; (use-package! yasnippet-capf
-;;   :when (modulep! :editor snippets)
-;;   :defer t
-;;   :init
-;;   (add-hook! 'yas-minor-mode-hook
-;;     (defun +corfu-add-yasnippet-capf-h ()
-;;       (add-hook 'completion-at-point-functions #'yasnippet-capf 30 t))))
-
 (use-package! corfu-terminal
   :when (modulep! :os tty)
   :when (not (display-graphic-p))

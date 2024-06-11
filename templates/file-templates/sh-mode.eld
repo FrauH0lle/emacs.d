@@ -7,7 +7,7 @@ sh-base-mode
              "#!/usr/bin/env zsh")
             (t
              (let ((shell (completing-read "Shell: " '("Bash" "POSIX sh" "Zsh"))))
-               (cond ((member shell '("bash" "zsh"))
-                      (concat "#!/usr/bin/env " shell))
+               (cond ((member shell '("Bash" "Zsh"))
+                      (concat "#!/usr/bin/env " (downcase shell)))
                      (t "#!/bin/sh"))))))
     n n)

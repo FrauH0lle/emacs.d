@@ -23,35 +23,35 @@ org-mode
  n
  "* Description :unfold:" n
  (p "A short description of what this module does.") n
- n
- "If there are any interesting things about this module, add it here as well." n
- "For example funky hacks, tweaks, ..." n
- n
- "** Module flags" n
- "Flags should be in alphanumerical order." n
- "- +bar ::" n
- "  A short description of what this flag does and what it might need when enabled." n
- n
- "If this module has no flags, then ..." n
- "/None/"n
- n
- "** Packages" n
-  "Packages should be a include a link to the homepage or repository." n
-  "- [[https://protesilaos.com/emacs/pulsar][Pulsar]]" n
-  n
-  "If this module installs no packages, then ..." n
-  "/None/"n
-  n
-  "* Installation" n
-  "Add any external requirements etc to this section." n
-  n
-  "* Configuration" n
-  "List user facing configuration variables like so:" n
-  "#+begin_src elisp" n
-  "(defvar +nav-flash-exclude-commands" n
-  "  '(mouse-set-point mouse-drag-region evil-mouse-drag-region +org/dwim-at-point" n
-  "    org-find-file org-find-file-at-mouse)" n
-  "\"A list of commands that should not trigger nav-flash.\")" n
-  "#+end_src" n
-  n
-  "Of course you can write 1 or 2 sentences as well ..." n)
+ "
+If there are any interesting things about this module, add it here as well.
+For example funky hacks, tweaks, ...
+
+** Module flags
+Flags should be in alphanumerical order.
+- +bar ::
+  A short description of what this flag does and what it might need when enabled.
+
+If this module has no flags, then ...
+/None/
+
+** Packages
+ Packages should be a include a link to the homepage or repository.
+ - [[https://protesilaos.com/emacs/pulsar][Pulsar]]
+
+ If this module installs no packages, then ...
+ /None/
+
+* Installation
+ Add any external requirements etc to this section.
+
+* Configuration
+ List user facing configuration variables like so:
+ #+begin_src elisp
+ (defvar +nav-flash-exclude-commands
+   '(mouse-set-point mouse-drag-region evil-mouse-drag-region +org/dwim-at-point
+     org-find-file org-find-file-at-mouse)
+ \"A list of commands that should not trigger nav-flash.\")
+ #+end_src
+
+ Of course you can write 1 or 2 sentences as well ...")

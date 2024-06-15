@@ -344,40 +344,57 @@
 
       ;;; <leader> c --- code
       (:prefix-map ("c" . "code")
-                   (:when (and (modulep! :tools lsp) (not (modulep! :tools lsp +eglot)))
-                     :desc "LSP Execute code action" "a" #'lsp-execute-code-action
-                     :desc "LSP Organize imports" "o" #'lsp-organize-imports
-                     (:when (modulep! :completion vertico)
-                       :desc "Jump to symbol in current workspace" "j"   #'consult-lsp-symbols
-                       :desc "Jump to symbol in any workspace"     "J"   (cmd!! #'consult-lsp-symbols 'all-workspaces))
-                     (:when (modulep! :ui treemacs +lsp)
-                       :desc "Errors list"                         "X"   #'lsp-treemacs-errors-list
-                       :desc "Incoming call hierarchy"             "y"   #'lsp-treemacs-call-hierarchy
-                       :desc "Outgoing call hierarchy"             "Y"   (cmd!! #'lsp-treemacs-call-hierarchy t)
-                       :desc "References tree"                     "R"   (cmd!! #'lsp-treemacs-references t)
-                       :desc "Symbols"                             "S"   #'lsp-treemacs-symbols)
-                     :desc "LSP"                                 "l"   #'+default/lsp-command-map
-                     :desc "LSP Rename"                          "r"   #'lsp-rename)
-                   (:when (modulep! :tools lsp +eglot)
-                     :desc "LSP Execute code action" "a" #'eglot-code-actions
-                     :desc "LSP Rename" "r" #'eglot-rename
-                     :desc "LSP Find declaration"                 "j"   #'eglot-find-declaration
-                     (:when (modulep! :completion vertico)
-                       :desc "Jump to symbol in current workspace" "j"   #'consult-eglot-symbols))
-                   :desc "Compile"                               "c"   #'compile
-                   :desc "Recompile"                             "C"   #'recompile
-                   :desc "Jump to definition"                    "d"   #'+lookup/definition
-                   :desc "Jump to references"                    "D"   #'+lookup/references
-                   :desc "Evaluate buffer/region"                "e"   #'+eval/buffer-or-region
-                   :desc "Evaluate & replace region"             "E"   #'+eval:replace-region
-                   :desc "Format buffer/region"                  "f"   #'+format/region-or-buffer
-                   :desc "Find implementations"                  "i"   #'+lookup/implementations
-                   :desc "Jump to documentation"                 "k"   #'+lookup/documentation
-                   :desc "Send to repl"                          "s"   #'+eval/send-region-to-repl
-                   :desc "Find type definition"                  "t"   #'+lookup/type-definition
-                   :desc "Delete trailing whitespace"            "w"   #'delete-trailing-whitespace
-                   :desc "Delete trailing newlines"              "W"   #'zenit/delete-trailing-newlines
-                   :desc "List errors"                           "x"   #'+default/diagnostics)
+        (:when (and (modulep! :tools lsp) (not (modulep! :tools lsp +eglot)))
+          :desc "LSP Execute code action" "a" #'lsp-execute-code-action
+          :desc "LSP Organize imports" "o" #'lsp-organize-imports
+          (:when (modulep! :completion vertico)
+            :desc "Jump to symbol in current workspace" "j"   #'consult-lsp-symbols
+            :desc "Jump to symbol in any workspace"     "J"   (cmd!! #'consult-lsp-symbols 'all-workspaces))
+          (:when (modulep! :ui treemacs +lsp)
+            :desc "Errors list"                         "X"   #'lsp-treemacs-errors-list
+            :desc "Incoming call hierarchy"             "y"   #'lsp-treemacs-call-hierarchy
+            :desc "Outgoing call hierarchy"             "Y"   (cmd!! #'lsp-treemacs-call-hierarchy t)
+            :desc "References tree"                     "R"   (cmd!! #'lsp-treemacs-references t)
+            :desc "Symbols"                             "S"   #'lsp-treemacs-symbols)
+          :desc "LSP"                                 "l"   #'+default/lsp-command-map
+          :desc "LSP Rename"                          "r"   #'lsp-rename)
+        (:when (modulep! :tools lsp +eglot)
+          :desc "LSP Execute code action" "a" #'eglot-code-actions
+          :desc "LSP Rename" "r" #'eglot-rename
+          :desc "LSP Find declaration"                 "j"   #'eglot-find-declaration
+          (:when (modulep! :completion vertico)
+            :desc "Jump to symbol in current workspace" "j"   #'consult-eglot-symbols))
+
+        :desc "Compile"                               "c"   #'compile
+        :desc "Recompile"                             "C"   #'recompile
+        :desc "Jump to definition"                    "d"   #'+lookup/definition
+        :desc "Jump to references"                    "D"   #'+lookup/references
+        :desc "Evaluate buffer/region"                "e"   #'+eval/buffer-or-region
+        :desc "Evaluate & replace region"             "E"   #'+eval:replace-region
+        :desc "Format buffer/region"                  "f"   #'+format/region-or-buffer
+        :desc "Find implementations"                  "i"   #'+lookup/implementations
+        :desc "Jump to documentation"                 "k"   #'+lookup/documentation
+        :desc "Send to repl"                          "s"   #'+eval/send-region-to-repl
+        ;; :desc "Find type definition"                  "t"   #'+lookup/type-definition
+        (:prefix ("t" . "text")
+                 "f" #'copy-as-format
+                 "a" #'copy-as-format-asciidoc
+                 "b" #'copy-as-format-bitbucket
+                 "d" #'copy-as-format-disqus
+                 "g" #'copy-as-format-github
+                 "l" #'copy-as-format-gitlab
+                 "c" #'copy-as-format-hipchat
+                 "h" #'copy-as-format-html
+                 "j" #'copy-as-format-jira
+                 "m" #'copy-as-format-markdown
+                 "w" #'copy-as-format-mediawiki
+                 "o" #'copy-as-format-org-mode
+                 "p" #'copy-as-format-pod
+                 "r" #'copy-as-format-rst
+                 "s" #'copy-as-format-slack)
+        :desc "Delete trailing whitespace"            "w"   #'delete-trailing-whitespace
+        :desc "Delete trailing newlines"              "W"   #'zenit/delete-trailing-newlines
+        :desc "List errors"                           "x"   #'+default/diagnostics)
 
       ;;; <leader> f --- file
       (:prefix-map ("f" . "file")

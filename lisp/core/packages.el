@@ -14,6 +14,7 @@
 
 ;; zenit-editor.el
 (package! better-jumper :lockfile core)
+(package! copy-as-format :lockfile core)
 (package! dtrt-indent :lockfile core)
 (package! expand-region :lockfile core)
 (package! helpful :lockfile core)

@@ -19,6 +19,7 @@ Core configuration.
 
 *** Editor
 - [[https://github.com/gilbertw1/better-jumper][better-jumper]]
+- [[https://github.com/sshaw/copy-as-format][copy-as-format]]
 - [[https://github.com/jscheid/dtrt-indent][dtrt-indent]]
 - [[https://github.com/magnars/expand-region.el][expand-region]]
 - [[https://github.com/Wilfred/helpful][helpful]]

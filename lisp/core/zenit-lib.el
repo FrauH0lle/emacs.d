@@ -590,6 +590,18 @@ in dependencies."
             collect `(funcall (or (get ',var 'custom-set) #'set-default-toplevel-value)
                               ',var ,val))))
 
+(defmacro setq-local! (&rest settings)
+  "A more sensible `setopt' for setting the local value of
+acustomizable variables.
+
+This behaves the same way as `setq!' but uses `set' instead of
+`set-default-toplevel-value' and will change the local value of a
+buffer-local variable"
+  (macroexp-progn
+   (cl-loop for (var val) on settings by 'cddr
+            collect `(funcall (or (get ',var 'custom-set) #'set)
+                              ',var ,val))))
+
 (defmacro delq! (elt list &optional fetcher)
   "`delq' ELT from LIST in-place.
 If FETCHER is a function, ELT is used as the key in LIST (an

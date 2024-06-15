@@ -29,7 +29,7 @@ function signals an error."
               (require 'bufferlo nil t))
          (if name
              (expand-file-name name +workspaces-save-directory)
-           +workspaces-autosave-file))
+           (expand-file-name +workspaces-autosave-file +workspaces-save-directory)))
         ((require 'desktop nil t)
          (if name
              (expand-file-name name (file-name-directory (desktop-full-file-name)))

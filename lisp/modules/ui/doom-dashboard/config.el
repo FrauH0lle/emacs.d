@@ -127,25 +127,10 @@ PLIST can have the following properties:
     (add-hook 'zenit-switch-buffer-hook #'+doom-dashboard-reload-maybe-h)
     (add-hook 'delete-frame-functions #'+doom-dashboard-reload-frame-h)
 
-    ;; `bufferlo' integration: Record project root to store in bookmark file
-    (defadvice! +doom-dashboard--tab-bar-record-project-a (fn args)
-      "Record the last `zenit-project-root' for the current tab. See
-`+doom-dashboard--tab-bar-detect-project-a' for more information."
-      :around #'bufferlo--bookmark-tab-get
-      (append (funcall fn args) `((last-project-root . ,(zenit-project-root)))))
-
-    (defadvice! +doom-dashboard--tab-bar-detect-project-a (&rest _)
-      "Set dashboard's PWD to current persp's `last-project-root', if it
-exists.
-
-This and `+doom-dashboard--tab-bar-record-project-a' provides
-`bufferlo' integration with the Doom dashboard. It ensures that
-the dashboard is always in the correct project (which may be
-different across tabs)."
-      :after #'tab-bar-select-tab
-      (when (bound-and-true-p bufferlo-mode)
-        (when-let (pwd (alist-get 'last-project-root (cdr (bufferlo--current-tab))))
-          (+doom-dashboard-update-pwd-h pwd)))))
+    ;; `bufferlo' and `tab-bar-mode' integration: Record project root to store
+    ;; it in bookmark file
+    (advice-add #'bufferlo--bookmark-tab-get :around #'+doom-dashboard--tab-bar-record-project-a)
+    (advice-add #'tab-bar-select-tab :after #'+doom-dashboard--tab-bar-detect-project-a)))
 
 (add-hook 'zenit-init-ui-hook #'+doom-dashboard-init-h 'append)
 
@@ -308,6 +293,23 @@ run."
                         (car +doom-dashboard-banner-padding))
                      ?\n))))))))
 
+(defun +doom-dashboard--tab-bar-record-project-a (fn args)
+  "Record the last `zenit-project-root' for the current tab. See
+`+doom-dashboard--tab-bar-detect-project-a' for more information."
+  (append (funcall fn args) `((last-project-root . ,(zenit-project-root)))))
+
+(defun +doom-dashboard--tab-bar-detect-project-a (&rest _)
+  "Set dashboard's PWD to current persp's `last-project-root', if it
+exists.
+
+This and `+doom-dashboard--tab-bar-record-project-a' provides
+`bufferlo' integration with the Doom dashboard. It ensures that
+the dashboard is always in the correct project (which may be
+different across tabs)."
+  (when (bound-and-true-p bufferlo-mode)
+    (when-let (pwd (alist-get 'last-project-root (cdr (bufferlo--current-tab))))
+      (+doom-dashboard-update-pwd-h pwd))))
+
 
 ;;
 ;;; Library
@@ -352,7 +354,7 @@ What it is set to is controlled by `+doom-dashboard-pwd-policy'."
           (goto-char pt)
           (+doom-dashboard-reposition-point-h))
         (+doom-dashboard-resize-h)
-        (+doom-dashboard--persp-detect-project-h)
+        (+doom-dashboard--tab-bar-detect-project-a)
         (+doom-dashboard-update-pwd-h)
         (current-buffer)))))
 

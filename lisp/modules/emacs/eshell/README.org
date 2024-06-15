@@ -1,0 +1,68 @@
+#+title: :emacs eshell
+#+created: 2024-06-15
+
+* Description :unfold:
+Tweaks and features for [[https://www.gnu.org/software/emacs/manual/html_mono/eshell.html][Eshell]]
+
+** Module flags
+/None/
+
+** Packages
+ - [[https://github.com/peterwvj/eshell-up][eshell-up]]
+ - [[https://github.com/xuchunyang/eshell-z][eshell-z]]
+ - [[https://github.com/zbelial/shrink-path.el][shrink-path]]
+ - [[https://github.com/tom-tan/esh-help][esh-help]]
+ - [[https://github.com/xuchunyang/eshell-did-you-mean/tree/80cd8c4b186a2fb29621cf634bcf2bcd914f1e3d][eshell-did-you-mean]]
+ - [[https://github.com/akreisher/eshell-syntax-highlighting][eshell-syntax-highlighting]]
+ - [[https://github.com/LemonBreezes/emacs-fish-completion][fish-completion]]
+ - [[https://github.com/szermatt/emacs-bash-completion][bash-completion]]
+
+
+* Configuration
+ #+begin_src elisp
+;; See:
+;;   + `+eshell/here': open eshell in the current window
+;;   + `+eshell/toggle': toggles an eshell popup
+;;   + `+eshell/frame': converts the current frame into an eshell-dedicated
+;;   frame. Once the last eshell process is killed, the old frame configuration
+;;   is restored.
+
+(defvar +eshell-config-dir
+  (expand-file-name "eshell/" zenit-local-conf-dir)
+  "Where to store eshell configuration files, as opposed to
+`eshell-directory-name', which is where Emacs will store
+temporary/data files.")
+
+(defvar eshell-directory-name (concat zenit-data-dir "eshell")
+  "Where to store temporary/data files, as opposed to
+`eshell-config-dir',which is where Emacs will store eshell
+configuration files.")
+
+(defvar +eshell-enable-new-shell-on-split t
+  "If non-nil, spawn a new eshell session after splitting from an
+eshell buffer.")
+
+(defvar +eshell-kill-window-on-exit nil
+  "If non-nil, eshell will close windows along with its eshell
+buffers.")
+
+(defvar +eshell-aliases
+  '(("q"  "exit")           ; built-in
+    ("f"  "find-file $1")
+    ("ff" "find-file-other-window $1")
+    ("d"  "dired $1")
+    ("bd" "eshell-up $1")
+    ("rg" "rg --color=always $*")
+    ("l"  "ls -lh $*")
+    ("ll" "ls -lah $*")
+    ("git" "git --no-pager $*")
+    ("gg" "magit-status")
+    ("cdp" "cd-to-project")
+    ("clear" "clear-scrollback")) ; more sensible than default
+  "An alist of default eshell aliases, meant to emulate useful shell
+utilities,like fasd and bd. Note that you may overwrite these in
+your `eshell-aliases-file'. This is here to provide an
+alternative, elisp-centric way to define your aliases.
+
+You should use `set-eshell-alias!' to change this.")
+ #+end_src

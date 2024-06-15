@@ -28,7 +28,7 @@ function signals an error."
   (cond ((and (modulep! :ui workspaces)
               (require 'bufferlo nil t))
          (if name
-             (expand-file-name name +workspaces-autosave-directory)
+             (expand-file-name name +workspaces-save-directory)
            +workspaces-autosave-file))
         ((require 'desktop nil t)
          (if name

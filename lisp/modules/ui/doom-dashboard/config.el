@@ -57,7 +57,7 @@ Possible values:
     ("Reload last session"
      :icon (nerd-icons-octicon "nf-oct-history" :face 'doom-dashboard-menu-title)
      :when (cond ((modulep! :ui workspaces)
-                  (file-exists-p (expand-file-name +workspaces-autosave-file +workspaces-autosave-directory)))
+                  (file-exists-p (expand-file-name +workspaces-autosave-file +workspaces-save-directory)))
                  ((require 'desktop nil t)
                   (file-exists-p (desktop-full-file-name))))
      :action zenit/quickload-session)

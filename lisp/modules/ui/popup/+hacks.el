@@ -284,7 +284,7 @@ to handle it)."
     (if popper-mode
         (letf! (defun internal-temp-output-buffer-show (buffer)
                  (let ((temp-buffer-show-function
-                        (doom-rpartial #'+popup-display-buffer-stacked-side-window-fn nil)))
+                        (zenit-rpartial #'+popup-display-buffer-stacked-side-window-fn nil)))
                    (with-current-buffer buffer
                      (+popup-buffer-mode +1))
                    (funcall internal-temp-output-buffer-show buffer)))

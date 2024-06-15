@@ -1,4 +1,4 @@
-;; ui/popup2/config.el -*- lexical-binding: t; -*-
+;; ui/popup/config.el -*- lexical-binding: t; -*-
 
 ;; Load display buffer function
 (defvar +popup--internal nil)

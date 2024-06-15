@@ -4,6 +4,7 @@
 (describe "core/lib/sessions"
 
   (load! "lib/sessions" zenit-core-dir)
+  (load! "zenit-modules" zenit-core-dir)
 
   (describe "zenit-session-file"
     (it "returns the default session file path for desktop"

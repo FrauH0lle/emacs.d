@@ -574,6 +574,29 @@ or `map!')."
 ;;
 ;;; Mutation
 
+(defun zenit-splice-into (seq element after &optional before)
+  "Insert ELEMENT (a symbol, string or list) into the list SEQ,
+between elements BEFORE and AFTER.
+
+Comparison is done via `equal'. Returns the modified list.
+
+ELEMENT will be inserted directly after AFTER or before BEFORE.
+If both AFTER and BEFORE are given, it will be inserted directly
+after AFTER."
+  (let ((after-position (and after (cl-position after seq :test #'equal)))
+        (before-position (and before (cl-position before seq :test #'equal))))
+    (append (and after-position (cl-subseq seq 0 (1+ after-position)))
+            (and (not after-position) (cl-subseq seq 0 before-position))
+            (ensure-list element)
+            (and before-position after-position (cl-subseq seq (1+ after-position) before-position))
+            (and before-position (cl-subseq seq before-position))
+            (and (not before-position) (cl-subseq seq (1+ after-position))))))
+
+(defmacro spliceq! (seq element after &optional before)
+  "Splice ELEMENT into SEQ in place.
+See `zenit-splice-into' for details."
+  `(setq ,seq (zenit-splice-into ,seq ,element ,after ,before)))
+
 (defmacro appendq! (sym &rest lists)
   "Append LISTS to SYM in place."
   `(setq ,sym (append ,sym ,@lists)))

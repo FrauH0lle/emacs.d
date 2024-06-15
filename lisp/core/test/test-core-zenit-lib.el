@@ -525,6 +525,47 @@
       (expect 'message :to-have-been-called-with "Hello, world!")))
 
 
+  (describe "zenit-splice-into"
+    :var ((test-list '("a" "b" "c" "d" "e")))
+
+    (it "inserts element after argument"
+      (expect (zenit-splice-into test-list "foo" "b") :to-equal '("a" "b" "foo" "c" "d" "e"))
+      (expect (zenit-splice-into test-list '("foo" "bar") "b") :to-equal '("a" "b" "foo" "bar" "c" "d" "e")))
+
+    (it "inserts element before argument"
+      (expect (zenit-splice-into test-list "foo" nil "d") :to-equal '("a" "b" "c" "foo" "d" "e"))
+      (expect (zenit-splice-into test-list '("foo" "bar") nil "d") :to-equal '("a" "b" "c" "foo" "bar" "d" "e")))
+
+    (it "inserts element between after and before arguments"
+      (expect (zenit-splice-into test-list "foo" "b" "e") :to-equal '("a" "b" "foo" "c" "d" "e"))
+      (expect (zenit-splice-into test-list '("foo" "bar") "b" "e") :to-equal '("a" "b" "foo" "bar" "c" "d" "e"))))
+
+
+  (describe "spliceq!"
+    :var (test-list)
+
+    (before-each
+      (setq test-list '("a" "b" "c" "d" "e")))
+
+    (it "inserts element after argument in place"
+      (spliceq! test-list "foo" "b")
+      (expect test-list :to-equal '("a" "b" "foo" "c" "d" "e"))
+      (spliceq! test-list '("foo" "bar") "b")
+      (expect test-list :to-equal '("a" "b" "foo" "bar" "foo" "c" "d" "e")))
+
+    (it "inserts element before argument in place"
+      (spliceq! test-list "foo" nil "d")
+      (expect test-list :to-equal '("a" "b" "c" "foo" "d" "e"))
+      (spliceq! test-list '("foo" "bar") nil "d")
+      (expect test-list :to-equal '("a" "b" "c" "foo" "foo" "bar" "d" "e")))
+
+    (it "inserts element between after and before arguments in place"
+      (spliceq! test-list "foo" "b" "e")
+      (expect test-list :to-equal '("a" "b" "foo" "c" "d" "e"))
+      (spliceq! test-list '("foo" "bar") "b" "e")
+      (expect test-list :to-equal '("a" "b" "foo" "bar" "foo" "c" "d" "e"))))
+
+
   (describe "appendq!"
     (it "appends lists to a symbol"
       (let ((my-list '(1 2 3)))

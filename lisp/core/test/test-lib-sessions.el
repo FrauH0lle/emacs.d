@@ -5,20 +5,7 @@
 
   (load! "lib/sessions" zenit-core-dir)
 
-  (before-each
-    (setq persp-auto-save-fname "persp-auto-save-fname"
-          persp-save-dir temporary-file-directory
-          persp-mode nil))
-
   (describe "zenit-session-file"
-    (it "returns the default session file path for persp-mode"
-      (spy-on 'require :and-return-value t)
-      (spy-on 'expand-file-name :and-call-through)
-      (expect (zenit-session-file)
-              :to-equal (expand-file-name persp-auto-save-fname persp-save-dir))
-      (expect 'require
-              :to-have-been-called-with 'persp-mode nil t))
-
     (it "returns the default session file path for desktop"
       (spy-on 'require :and-call-fake (lambda (feature &optional _filename _noerror)
                                         (when (eq feature 'desktop)
@@ -32,25 +19,17 @@
     (it "returns a custom session file path"
       (spy-on 'require :and-return-value t)
       (spy-on 'expand-file-name :and-call-through)
+      (spy-on 'desktop-full-file-name :and-return-value (concat temporary-file-directory "desktop.el"))
       (let ((custom-name "custom-session.el"))
         (expect (zenit-session-file custom-name)
-                :to-equal (expand-file-name custom-name persp-save-dir))))
+                :to-equal (expand-file-name custom-name temporary-file-directory))))
 
     (it "signals an error when no session backend is available"
       (spy-on 'require :and-return-value nil)
       (expect (zenit-session-file) :to-throw 'error)))
 
   (describe "zenit-save-session"
-    (it "saves the current session state using persp-mode"
-      (spy-on 'require :and-return-value t)
-      (spy-on 'persp-mode)
-      (spy-on 'persp-save-state-to-file)
-      (let ((file (concat temporary-file-directory "persp-session.el")))
-        (zenit-save-session file)
-        (expect 'persp-mode :to-have-been-called-with +1)
-        (expect 'persp-save-state-to-file :to-have-been-called-with file)))
-
-    (it "saves the current session state using desktop"
+        (it "saves the current session state using desktop"
       (spy-on 'require :and-call-fake (lambda (feature &optional _filename _noerror)
                                         (when (or (eq feature 'frameset)
                                                   (eq feature 'restart-emacs))
@@ -66,20 +45,6 @@
       (expect (zenit-save-session) :to-throw 'error)))
 
   (describe "zenit-load-session"
-    (it "loads the session state using persp-mode"
-      (spy-on 'message)
-      (spy-on 'require :and-return-value t)
-      (spy-on 'persp-mode)
-      (spy-on 'persp-list-persp-names-in-file)
-      (spy-on 'persp-load-state-from-file)
-      (spy-on 'persp-kill)
-      (setq *persp-hash* (make-hash-table))
-
-      (let ((file (concat temporary-file-directory "persp-session.el")))
-        (zenit-load-session file)
-        (expect 'persp-mode :to-have-been-called-with +1)
-        (expect 'persp-load-state-from-file :to-have-been-called-with file)))
-
     (it "loads the session state using desktop"
       (spy-on 'message)
       (spy-on 'require :and-call-fake (lambda (feature &optional _filename _noerror)

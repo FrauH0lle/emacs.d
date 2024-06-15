@@ -1,10 +1,5 @@
 ;; ui/workspaces/config.el -*- lexical-binding: t; -*-
 
-;; `persp-mode' gives me workspaces, a workspace-restricted `buffer-list', and
-;; file-based session persistence.
-;;
-;; NOTE persp-mode requires `workgroups' for file persistence in Emacs 24.4.
-
 (defvar +workspaces-main "main"
   "The name of the primary and initial workspace, which cannot be
 deleted.")
@@ -25,236 +20,165 @@ t          Always create a new workspace for the project
            has buffers associated with it.
 nil        Never create a new workspace on project switch.")
 
-;; FIXME actually use this for wconf bookmark system
-(defvar +workspaces-data-file "_workspaces"
-  "The basename of the file to store single workspace
- perspectives. Will be stored in `persp-save-dir'.")
+(defvar +workspaces-save-directory (file-name-concat zenit-data-dir "workspaces/")
+ "The directory to store workspaces in.")
 
-(defvar +workspace--old-uniquify-style nil)
+(defvar +workspaces-data-file "_workspaces"
+ "The file to store workspaces in.")
+
+(defvar +workspaces-autosave-file "autosave"
+ "The file to store autosaved workspaces.")
+
+(defvar +workspaces-bookmark-alist nil)
 
 
 ;;
 ;;; Packages
 
-(use-package! persp-mode
-  :unless noninteractive
-  :commands persp-switch-to-buffer
-  :hook (zenit-init-ui . persp-mode)
+(use-package! tab-bar
+  :defer t
+  :config/el-patch
+  (defun tab-bar-tab-name-format-default (tab i)
+    (let ((current-p (eq (car tab) 'current-tab)))
+      (propertize
+       (concat (if tab-bar-tab-hints (format (el-patch-swap "%d " "  #%d: ") i) "")
+               (alist-get 'name tab)
+               (or (and tab-bar-close-button-show
+                        (not (eq tab-bar-close-button-show
+                                 (if current-p 'non-selected 'selected)))
+                        tab-bar-close-button)
+                   ""))
+       'face (funcall tab-bar-tab-face-function tab))))
   :config
-  (setq persp-autokill-buffer-on-remove 'kill-weak
-        persp-reset-windows-on-nil-window-conf nil
-        persp-nil-hidden t
-        persp-auto-save-fname "autosave"
-        persp-save-dir (concat zenit-data-dir "workspaces/")
-        persp-set-last-persp-for-new-frames t
-        persp-switch-to-added-buffer nil
-        persp-kill-foreign-buffer-behaviour 'kill
-        persp-remove-buffers-from-nil-persp-behaviour nil
-        persp-auto-resume-time -1 ; Don't auto-load on startup
-        persp-auto-save-opt (if noninteractive 0 1)) ; auto-save on kill
+  (setq! tab-bar-close-button-show nil
+         tab-bar-new-button-show nil
+         tab-bar-history-limit 25
+         tab-bar-show 1
+         tab-bar-tab-hints t)
 
-  ;; Create main workspace
-  ;; The default perspective persp-mode creates is special and doesn't represent
-  ;; a real persp object, so buffers can't really be assigned to it, among other
-  ;; quirks, so I replace it with a "main" perspective.
-  (add-hook! '(persp-mode-hook persp-after-load-state-functions)
-    (defun +workspaces-ensure-no-nil-workspaces-h (&rest _)
-      (when persp-mode
-        (dolist (frame (frame-list))
-          (when (string= (safe-persp-name (get-current-persp frame)) persp-nil-name)
-            ;; Take extra steps to ensure no frame ends up in the nil perspective
-            (persp-frame-switch (or (cadr (hash-table-keys *persp-hash*))
-                                    +workspaces-main)
-                                frame))))))
+  (custom-set-faces!
+      ;; The tab bar's appearance
+      `(tab-bar
+        :background ,(face-attribute 'mode-line-inactive :background)
+        :foreground ,(face-attribute 'mode-line-inactive :foreground)
+        :box
+        (:line-width 6 :color ,(face-attribute 'mode-line-inactive :background) :style nil))
+      ;; Inactive tabs
+      `(tab-bar-tab-inactive
+        :background ,(face-attribute 'mode-line-inactive :background)
+        :foreground ,(face-attribute 'mode-line-inactive :foreground)
+        :box
+        (:line-width 3 :color ,(face-attribute 'mode-line-inactive :background) :style nil))
+      ;; Active tab
+      `(tab-bar-tab
+        :background ,(face-attribute 'default :background)
+        :foreground ,(face-attribute 'font-lock-keyword-face :foreground nil t)
+        :box
+        (:line-width 3 :color ,(face-attribute 'default :background) :style nil))
 
-  (defhook! +workspaces-init-first-workspace-h (&rest _)
-    "Ensure a main workspace exists."
-    'persp-mode-hook
-    (when persp-mode
-      (when (equal (car persp-names-cache) persp-nil-name)
-        (pop persp-names-cache))
-      ;; ...and create a *real* main workspace to fill this role.
-      (unless (or (persp-get-by-name +workspaces-main)
-                  ;; Start from 2 b/c persp-mode counts the nil workspace
-                  (> (hash-table-count *persp-hash*) 2))
-        (persp-add-new +workspaces-main))
-      ;; HACK Fix #319: the warnings buffer gets swallowed when creating
-      ;;      `+workspaces-main', so display it ourselves, if it exists.
-      (when-let (warnings (get-buffer "*Warnings*"))
-        (save-excursion
-          (display-buffer-in-side-window
-           warnings '((window-height . shrink-window-if-larger-than-buffer)))))
-      (persp-add-buffer (buffer-list) (get-current-persp) nil nil)))
-  (defhook! +workspaces-init-persp-mode-h ()
-    'persp-mode-hook
-    (cond (persp-mode
-           ;; `uniquify' breaks persp-mode. It renames old buffers, which causes
-           ;; errors when switching between perspective (their buffers are
-           ;; serialized by name and persp-mode expects them to have the same
-           ;; name when restored).
-           (when uniquify-buffer-name-style
-             (setq +workspace--old-uniquify-style uniquify-buffer-name-style))
-           (setq uniquify-buffer-name-style nil)
-           ;; Ensure `persp-kill-buffer-query-function' is last
-           (remove-hook 'kill-buffer-query-functions #'persp-kill-buffer-query-function)
-           (add-hook 'kill-buffer-query-functions #'persp-kill-buffer-query-function t)
-           ;; Restrict buffer list to workspace
-           (advice-add #'zenit-buffer-list :override #'+workspace-buffer-list))
-          (t
-           (when +workspace--old-uniquify-style
-             (setq uniquify-buffer-name-style +workspace--old-uniquify-style))
-           (advice-remove #'zenit-buffer-list #'+workspace-buffer-list))))
+      ;; The tab bar's appearance
+      `(tab-bar-tab-ungrouped
+        :background ,(face-attribute 'mode-line-inactive :background)
+        :foreground ,(face-attribute 'mode-line-inactive :foreground)
+        :box
+        (:line-width 3 :color ,(face-attribute 'mode-line-inactive :background) :style nil))
 
-  ;; Per-workspace `winner-mode' history
-  (add-to-list 'window-persistent-parameters '(winner-ring . t))
+      ;; Inactive tabs
+      `(tab-bar-tab-group-inactive
+        :background ,(face-attribute 'mode-line-inactive :background)
+        :foreground ,(face-attribute 'mode-line-inactive :foreground)
+        :box
+        (:line-width 3 :color ,(face-attribute 'mode-line-inactive :background) :style nil))
 
-  (add-hook! 'persp-before-deactivate-functions
-    (defun +workspaces-save-winner-data-h (_)
-      (when (and (bound-and-true-p winner-mode)
-                 (get-current-persp))
-        (set-persp-parameter
-         'winner-ring (list winner-currents
-                            winner-ring-alist
-                            winner-pending-undo-ring)))))
-
-  (add-hook! 'persp-activated-functions
-    (defun +workspaces-load-winner-data-h (_)
-      (when (bound-and-true-p winner-mode)
-        (cl-destructuring-bind
-            (currents alist pending-undo-ring)
-            (or (persp-parameter 'winner-ring) (list nil nil nil))
-          (setq winner-undo-frame nil
-                winner-currents currents
-                winner-ring-alist alist
-                winner-pending-undo-ring pending-undo-ring)))))
-
-  ;; Registering buffers to perspectives
-  (add-hook! 'zenit-switch-buffer-hook
-    (defun +workspaces-add-current-buffer-h ()
-      "Add current buffer to focused perspective."
-      (or (not persp-mode)
-          (persp-buffer-filtered-out-p
-           (or (buffer-base-buffer (current-buffer))
-               (current-buffer))
-           persp-add-buffer-on-after-change-major-mode-filter-functions)
-          (persp-add-buffer (current-buffer) (get-current-persp) nil nil))))
-
-  ;; (add-hook 'persp-add-buffer-on-after-change-major-mode-filter-functions
-  ;;           #'zenit-unreal-buffer-p)
-
-  (defadvice! +workspaces--evil-alternate-buffer-a (&optional window)
-    "Make `evil-alternate-buffer' ignore buffers outside the current workspace."
-    :override #'evil-alternate-buffer
-    (let* ((prev-buffers
-            (if persp-mode
-                (cl-remove-if-not #'persp-contain-buffer-p (window-prev-buffers)
-                                  :key #'car)
-              (window-prev-buffers)))
-           (head (car prev-buffers)))
-      (if (eq (car head) (window-buffer window))
-          (cadr prev-buffers)
-        head)))
-
-  ;; HACK Fixes #4196, #1525: selecting deleted buffer error when quitting Emacs
-  ;;      or on some buffer listing ops.
-  (defadvice! +workspaces-remove-dead-buffers-a (persp)
-    :before #'persp-buffers-to-savelist
-    (when (perspective-p persp)
-      ;; HACK Can't use `persp-buffers' because of a race condition with its gv
-      ;;      getter/setter not being defined in time.
-      (setf (aref persp 2)
-            (cl-delete-if-not #'persp-get-buffer-or-null (persp-buffers persp)))))
-
-  ;; Delete the current workspace if closing the last open window
-  (define-key! persp-mode-map
-    [remap delete-window] #'+workspace/close-window-or-workspace
-    [remap evil-window-delete] #'+workspace/close-window-or-workspace)
-
-  ;; per-frame workspaces
-  (setq persp-init-frame-behaviour t
-        persp-init-new-frame-behaviour-override nil
-        persp-interactive-init-frame-behaviour-override #'+workspaces-associate-frame-fn
-        persp-emacsclient-init-frame-behaviour-override #'+workspaces-associate-frame-fn)
-  (add-hook 'delete-frame-functions #'+workspaces-delete-associated-workspace-h)
-  (add-hook 'server-done-hook #'+workspaces-delete-associated-workspace-h)
-
-  ;; per-project workspaces, but reuse current workspace if empty HACK?? needs
-  ;; review
-  (setq projectile-switch-project-action (lambda () (+workspaces-set-project-action-fn) (+workspaces-switch-to-project-h)))
+      ;; Active tab
+      `(tab-bar-tab-group-current
+        :background ,(face-attribute 'mode-line-inactive :background) :foreground ,(face-attribute 'default :foreground)
+        :box (:line-width 3
+              :color ,(face-attribute 'mode-line-inactive :background)
+              :style nil))))
 
 
-  ;; Don't bother auto-saving the session if no real buffers are open.
-  (advice-add #'persp-asave-on-exit :around #'+workspaces-autosave-real-buffers-a)
+(use-package! bufferlo
+  :unless noninteractive
+  :hook (zenit-init-ui . bufferlo-mode)
+  :config/el-patch
+  (defun bufferlo-isolate-project (&optional file-buffers-only)
+    "Isolate a project in the frame or tab.
+Remove all buffers that do not belong to the current project from
+the local buffer list.  When FILE-BUFFERS-ONLY is non-nil or the
+prefix argument is given, remove only buffers that visit a file.
+Buffers matching `bufferlo-include-buffer-filters' are not removed."
+    (interactive "P")
+    (bufferlo--warn)
+    (let ((curr-project (el-patch-swap (project-current) (zenit-project-root)))
+          (include (bufferlo--merge-regexp-list
+                    (append '("a^") bufferlo-include-buffer-filters))))
+      (if curr-project
+          (dolist (buffer (bufferlo-buffer-list))
+            (when (and (not (string-match-p include (buffer-name buffer)))
+                       (not (equal curr-project
+                                   (with-current-buffer buffer (el-patch-swap (project-current) (zenit-project-root)))))
+                       (or (not file-buffers-only) (buffer-file-name buffer)))
+              (bufferlo-remove buffer)))
+        (message "Current buffer is not part of a project"))))
+  :config
+  ;; Buffer to always include
+  (setq! bufferlo-include-buffer-filters '("^\\*\\Messages" "^\\*Warnings"))
 
-  ;; Fix #1973: visual selection surviving workspace changes
-  (add-hook 'persp-before-deactivate-functions #'deactivate-mark)
+  ;; Toggle `tab-bar-mode'
+  (defhook! +workspaces-toggle-tab-bar-mode-h ()
+    "Toggle `tab-bar-mode' together with `bufferlo-moder'."
+    'bufferlo-mode-hook
+    (cond
+     (bufferlo-mode
+      ;; We include all present buffers in the first workspace
+      (let ((bufferlo-exclude-buffer-filters nil)
+            (bufferlo-include-buffer-filters '(".*")))
+        (bufferlo--include-exclude-buffers nil)
+        (tab-bar-mode +1)))
+     (t (tab-bar-mode -1))))
 
-  ;; Fix #1017: stop session persistence from restoring a broken posframe
-  (after! posframe
-    (add-hook! 'persp-after-load-state-functions
-      (defun +workspaces-delete-all-posframes-h (&rest _)
-        (posframe-delete-all))))
+  ;; Give the first tab the name specified in `+workspaces-main'
+  (after! tab-bar
+    (tab-bar-rename-tab +workspaces-main))
 
-  ;; Don't try to persist dead/remote buffers. They cause errors.
-  (add-hook! 'persp-filter-save-buffers-functions
-    (defun +workspaces-dead-buffer-p (buf)
-      ;; Fix #1525: Ignore dead buffers in PERSP's buffer list
-      (not (buffer-live-p buf)))
-    (defun +workspaces-remote-buffer-p (buf)
-      ;; And don't save TRAMP buffers; they're super slow to restore
-      (let ((dir (buffer-local-value 'default-directory buf)))
-        (ignore-errors (file-remote-p dir)))))
+  ;; `consult' integration
+  (eval-when! (modulep! :completion vertico)
+    (after! consult
+      ;; Hide default buffer source
+      (consult-customize
+       consult--source-buffer
+       :hidden t
+       :default nil)
 
-  ;; Otherwise, buffers opened via bookmarks aren't treated as "real" and are
-  ;; excluded from the buffer list.
-  (add-hook 'bookmark-after-jump-hook #'+workspaces-add-current-buffer-h)
+      ;; Add workspace buffers source
+      (defvar +consult--source-workspace
+        `(:name     "Workspace Buffers"
+          :narrow   ?w
+          :history  buffer-name-history
+          :category buffer
+          :state    ,#'consult--buffer-state
+          :default  t
+          :items
+          ,(lambda () (consult--buffer-query
+                       :predicate (lambda (x)
+                                    (and (bufferlo-local-buffer-p x)
+                                         (if (modulep! :ui popup)
+                                             (not (popper-popup-p x))
+                                           t)))
+                       :sort 'visibility
+                       :as #'buffer-name))))
 
-  ;; eshell
-  (persp-def-buffer-save/load
-   :mode 'eshell-mode :tag-symbol 'def-eshell-buffer
-   :save-vars '(major-mode default-directory))
-  ;; compile
-  (persp-def-buffer-save/load
-   :mode 'compilation-mode :tag-symbol 'def-compilation-buffer
-   :save-vars '(major-mode default-directory compilation-directory
-                compilation-environment compilation-arguments))
-  ;; magit
-  (persp-def-buffer-save/load
-   :mode 'magit-status-mode :tag-symbol 'def-magit-status-buffer
-   :save-vars '(default-directory)
-   :load-function (lambda (savelist &rest _)
-                    (cl-destructuring-bind (buffer-name vars &rest _rest) (cdr savelist)
-                      (magit-status (alist-get 'default-directory vars)))))
-  ;; Restore indirect buffers
-  (defvar +workspaces--indirect-buffers-to-restore nil)
-  (persp-def-buffer-save/load
-   :tag-symbol 'def-indirect-buffer
-   :predicate #'buffer-base-buffer
-   :save-function (lambda (buf tag vars)
-                    (list tag (buffer-name buf) vars
-                          (buffer-name (buffer-base-buffer buf))))
-   :load-function (lambda (savelist &rest _rest)
-                    (cl-destructuring-bind (buf-name _vars base-buf-name &rest _)
-                        (cdr savelist)
-                      (push (cons buf-name base-buf-name)
-                            +workspaces--indirect-buffers-to-restore)
-                      nil)))
-  (add-hook! 'persp-after-load-state-functions
-    (defun +workspaces-reload-indirect-buffers-h (&rest _)
-      (dolist (ibc +workspaces--indirect-buffers-to-restore)
-        (cl-destructuring-bind (buffer-name . base-buffer-name) ibc
-          (let ((base-buffer (get-buffer base-buffer-name)))
-            (when (buffer-live-p base-buffer)
-              (when (get-buffer buffer-name)
-                (setq buffer-name (generate-new-buffer-name buffer-name)))
-              (make-indirect-buffer base-buffer buffer-name t)))))
-      (setq +workspaces--indirect-buffers-to-restore nil)))
+      (spliceq! consult-buffer-sources '+consult--source-workspace 'consult--source-buffer)))
 
-;;; tab-bar
-  (add-hook! 'tab-bar-mode-hook
-    (defun +workspaces-set-up-tab-bar-integration-h ()
-      (add-hook 'persp-before-deactivate-functions #'+workspaces-save-tab-bar-data-h)
-      (add-hook 'persp-activated-functions #'+workspaces-load-tab-bar-data-h)
-      ;; Load and save configurations for tab-bar.
-      (add-hook 'persp-before-save-state-to-file-functions #'+workspaces-save-tab-bar-data-to-file-h)
-      (+workspaces-load-tab-bar-data-from-file-h))))
+  ;; Filter popups by workspace
+  (eval-when! (modulep! :ui popup)
+    (defun +popper-group-by-workspace ()
+      (let ((current-tab (alist-get 'current-tab (funcall tab-bar-tabs-function))))
+        (when (bufferlo-local-buffer-p (current-buffer))
+          (alist-get 'name current-tab))))
+
+    (setq popper-group-function #'+popper-group-by-workspace))
+
+  ;;Projectile
+  (setq projectile-switch-project-action (lambda () (+workspaces-set-project-action-fn) (+workspaces-switch-to-project-h))))

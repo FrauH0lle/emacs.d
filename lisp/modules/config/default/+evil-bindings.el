@@ -269,9 +269,6 @@
         :desc "Toggle last popup"     "~"    #'+popup/toggle)
       :desc "Find file"             "."    #'find-file
       :desc "Switch buffer"         ","    #'switch-to-buffer
-      (:when (modulep! :ui workspaces)
-        :desc "Switch workspace buffer" "," #'persp-switch-to-buffer
-        :desc "Switch buffer"           "<" #'switch-to-buffer)
       :desc "Switch to last buffer" "`"    #'evil-switch-to-windows-last-buffer
       :desc "Resume last search"    "'"
       (cond ((modulep! :completion vertico)    #'vertico-repeat))
@@ -314,10 +311,11 @@
        :desc "Toggle narrowing"            "-"   #'zenit/toggle-narrow-buffer
        :desc "Previous buffer"             "["   #'previous-buffer
        :desc "Next buffer"                 "]"   #'next-buffer
-       (:when (modulep! :ui workspaces)
-         :desc "Switch workspace buffer" "b" #'persp-switch-to-buffer
-         :desc "Switch buffer"           "B" #'switch-to-buffer
-         :desc "ibuffer workspace"       "I" #'+ibuffer/open-for-current-workspace)
+       ;; (:when (modulep! :ui workspaces)
+       ;;   :desc "Switch workspace buffer" "b" #'persp-switch-to-buffer
+       ;;   :desc "Switch buffer"           "B" #'switch-to-buffer
+       ;;   :desc "ibuffer workspace"       "I" #'+ibuffer/open-for-current-workspace)
+       :desc "Switch buffer"               "b"   #'switch-to-buffer
        (:unless (modulep! :ui workspaces)
          :desc "Switch buffer"           "b" #'switch-to-buffer)
        :desc "Clone buffer"                "c"   #'clone-indirect-buffer

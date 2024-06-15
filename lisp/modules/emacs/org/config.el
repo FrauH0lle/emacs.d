@@ -690,12 +690,10 @@ links."
 current workspace."
     'org-agenda-finalize-hook
     (when (and org-agenda-new-buffers
-               (bound-and-true-p persp-mode)
+               (bound-and-true-p bufferlo-mode)
                (not org-agenda-sticky))
-      (let (persp-autokill-buffer-on-remove)
-        (persp-remove-buffer org-agenda-new-buffers
-                             (get-current-persp)
-                             nil))))
+      (dolist (buf org-agenda-new-buffers)
+          (bufferlo-remove buf))))
 
   (defhook! +org-defer-mode-in-agenda-buffers-h ()
     "Org agenda opens temporary agenda incomplete org-mode buffers.

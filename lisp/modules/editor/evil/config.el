@@ -50,7 +50,7 @@ point is on a line with a linewise comment.")
     "When changing major modes, Evil's state is lost. This advice
 preserves it."
     :around #'set-auto-mode
-    (if evil-state
+    (if (bound-and-true-p evil-state)
         (evil-save-state (apply fn args))
       (apply fn args)))
 

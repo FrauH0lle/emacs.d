@@ -57,7 +57,7 @@ Possible values:
     ("Reload last session"
      :icon (nerd-icons-octicon "nf-oct-history" :face 'doom-dashboard-menu-title)
      :when (cond ((modulep! :ui workspaces)
-                  (file-exists-p (expand-file-name persp-auto-save-fname persp-save-dir)))
+                  (file-exists-p (expand-file-name +workspaces-autosave-file +workspaces-autosave-directory)))
                  ((require 'desktop nil t)
                   (file-exists-p (desktop-full-file-name))))
      :action zenit/quickload-session)
@@ -126,15 +126,26 @@ PLIST can have the following properties:
     (add-hook 'window-size-change-functions #'+doom-dashboard-resize-h)
     (add-hook 'zenit-switch-buffer-hook #'+doom-dashboard-reload-maybe-h)
     (add-hook 'delete-frame-functions #'+doom-dashboard-reload-frame-h)
-    ;; `persp-mode' integration: update `default-directory' when switching
-    ;; perspectives
-    (add-hook 'persp-created-functions #'+doom-dashboard--persp-record-project-h)
-    (add-hook 'persp-activated-functions #'+doom-dashboard--persp-detect-project-h)
-    ;; HACK Fix #2219 where, in GUI daemon frames, the dashboard loses center
-    ;;      alignment after switching (or killing) workspaces.
-    (when (daemonp)
-      (add-hook 'persp-activated-functions #'+doom-dashboard-reload-maybe-h))
-    (add-hook 'persp-before-switch-functions #'+doom-dashboard--persp-record-project-h)))
+
+    ;; `bufferlo' integration: Record project root to store in bookmark file
+    (defadvice! +doom-dashboard--tab-bar-record-project-a (fn args)
+      "Record the last `zenit-project-root' for the current tab. See
+`+doom-dashboard--tab-bar-detect-project-a' for more information."
+      :around #'bufferlo--bookmark-tab-get
+      (append (funcall fn args) `((last-project-root . ,(zenit-project-root)))))
+
+    (defadvice! +doom-dashboard--tab-bar-detect-project-a (&rest _)
+      "Set dashboard's PWD to current persp's `last-project-root', if it
+exists.
+
+This and `+doom-dashboard--tab-bar-record-project-a' provides
+`bufferlo' integration with the Doom dashboard. It ensures that
+the dashboard is always in the correct project (which may be
+different across tabs)."
+      :after #'tab-bar-select-tab
+      (when (bound-and-true-p bufferlo-mode)
+        (when-let (pwd (alist-get 'last-project-root (cdr (bufferlo--current-tab))))
+          (+doom-dashboard-update-pwd-h pwd)))))
 
 (add-hook 'zenit-init-ui-hook #'+doom-dashboard-init-h 'append)
 
@@ -296,27 +307,6 @@ run."
                                             2))))
                         (car +doom-dashboard-banner-padding))
                      ?\n))))))))
-
-(defun +doom-dashboard--persp-detect-project-h (&rest _)
-  "Set dashboard's PWD to current persp's `last-project-root', if it exists.
-
-This and `+doom-dashboard--persp-record-project-h' provides
-`persp-mode' integration with the Doom dashboard. It ensures that
-the dashboard is always in the correct project (which may be
-different across perspective)."
-  (when (bound-and-true-p persp-mode)
-    (when-let (pwd (persp-parameter 'last-project-root))
-      (+doom-dashboard-update-pwd-h pwd))))
-
-(defun +doom-dashboard--persp-record-project-h (&optional persp &rest _)
-  "Record the last `zenit-project-root' for the current persp.
-See `+doom-dashboard--persp-detect-project-h' for more information."
-  (when (bound-and-true-p persp-mode)
-    (set-persp-parameter
-     'last-project-root (zenit-project-root)
-     (if (persp-p persp)
-         persp
-       (get-current-persp)))))
 
 
 ;;

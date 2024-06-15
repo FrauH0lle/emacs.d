@@ -137,8 +137,7 @@ orderless."
     [remap switch-to-buffer]              #'consult-buffer
     [remap switch-to-buffer-other-window] #'consult-buffer-other-window
     [remap switch-to-buffer-other-frame]  #'consult-buffer-other-frame
-    [remap yank-pop]                      #'consult-yank-pop
-    [remap persp-switch-to-buffer]        #'+vertico/switch-workspace-buffer)
+    [remap yank-pop]                      #'consult-yank-pop)
   :config
   (defadvice! +vertico--consult-recent-file-a (&rest _args)
     "`consult-recent-file' needs to have `recentf-mode' on to work correctly"
@@ -312,7 +311,6 @@ orderless."
             '(zenit/find-file-in-private-config . file)
             '(zenit/describe-active-minor-mode . minor-mode)
             '(flycheck-error-list-set-filter . builtin)
-            '(persp-switch-to-buffer . buffer)
             '(projectile-find-file . project-file)
             '(projectile-recentf . project-file)
             '(projectile-switch-to-buffer . buffer)

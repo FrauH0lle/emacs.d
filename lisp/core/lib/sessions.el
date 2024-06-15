@@ -13,20 +13,23 @@
 (defun zenit-session-file (&optional name)
   "Return the session file path for the current session backend.
 
-The function supports `persp-mode' and `desktop' as session
+The function supports `bufferlo-mode' and `desktop' as session
 backends. If NAME is provided, it is used as the filename for the
 session file. Otherwise, the default file names for the
 respective backends are used.
 
-When `persp-mode' is available, the file path is constructed
-using `persp-auto-save-fname' and `persp-save-dir'. When
-`desktop' is available, the file path is constructed using
-`desktop-full-file-name' and optionally NAME.
+When `bufferlo-mode' is available, the file path is constructed
+using `zenit-data-dir'. When `desktop' is available, the file
+path is constructed using `desktop-full-file-name' and optionally
+NAME.
 
-If neither `persp-mode' nor `desktop' is available, the function
-signals an error."
-  (cond ((require 'persp-mode nil t)
-         (expand-file-name (or name persp-auto-save-fname) persp-save-dir))
+If neither `bufferlo-mode' nor `desktop' is available, the
+function signals an error."
+  (cond ((and (modulep! :ui workspaces)
+              (require 'bufferlo nil t))
+         (if name
+             (expand-file-name name +workspaces-autosave-directory)
+           +workspaces-autosave-file))
         ((require 'desktop nil t)
          (if name
              (expand-file-name name (file-name-directory (desktop-full-file-name)))
@@ -38,24 +41,33 @@ signals an error."
   "Save the current session state to a file using the available
 session backend.
 
-The function supports `persp-mode' and `desktop' as session
+The function supports `bufferlo-mode' and `desktop' as session
 backends. If FILE is provided, it is used as the target file for
 saving the session state. Otherwise, the default file names for
 the respective backends are used.
 
-When `persp-mode' is available, the session state is saved using
-`persp-save-state-to-file' with the specified FILE. When
+When `bufferlo-mode' is available, the session state is saved
+using `bufferlo-bookmark-tab-save' with the specified FILE. When
 `desktop' is available, the session state is saved using
 `desktop-save' with the specified FILE, and the `frameset' and
 `restart-emacs' packages are used to enhance the session state.
 
-If neither `persp-mode' nor `desktop' is available, the function
-signals an error."
+If neither `bufferlo-mode' nor `desktop' is available, the
+function signals an error."
   (setq file (expand-file-name (or file (zenit-session-file))))
-  (cond ((require 'persp-mode nil t)
-         (unless persp-mode (persp-mode +1))
-         (setq persp-auto-save-opt 0)
-         (persp-save-state-to-file file))
+  (cond ((and (modulep! :ui workspaces)
+              (require 'bufferlo nil t))
+         (unless bufferlo-mode (bufferlo-mode +1))
+         (let ((bookmark-alist nil)
+               (bookmark-default-file file)
+               (current-ws (+workspace-current-name)))
+           (dolist (ws-name (+workspace-list-names))
+             (+workspace-switch ws-name)
+             (letf! ((#'bookmark-maybe-load-default-file #'ignore))
+               (bufferlo-bookmark-tab-save ws-name)))
+           (+workspace-switch current-ws)
+           (bookmark-write-file file)
+           (setq +workspaces-bookmark-alist bookmark-alist)))
         ((and (require 'frameset nil t)
               (require 'restart-emacs nil t))
          (let ((frameset-filter-alist (append '((client . restart-emacs--record-tty-file))
@@ -75,29 +87,36 @@ signals an error."
   "Load a session state from a file using the available session
 backend.
 
-The function supports `persp-mode' and `desktop' as session
+The function supports `bufferlo-mode' and `desktop' as session
 backends. If FILE is provided, it is used as the source file for
 loading the session state. Otherwise, the default file names for
 the respective backends are used.
 
-When `persp-mode' is available, the session state is loaded using
-`persp-load-state-from-file' with the specified FILE. When
+When `bufferlo-mode' is available, the session state is loaded
+using `bufferlo-bookmark-tab-load' with the specified FILE. When
 `desktop' is available, the session state is loaded using
 `restart-emacs--restore-frames-using-desktop' with the specified
 FILE.
 
-If neither `persp-mode' nor `desktop' is available, the function
+If neither `bufferlo-mode' nor `desktop' is available, the function
 signals an error."
   (setq file (expand-file-name (or file (zenit-session-file))))
   (message "Attempting to load %s" file)
-  (cond ((require 'persp-mode nil t)
-         (unless persp-mode
-           (persp-mode +1))
-         (let ((allowed (persp-list-persp-names-in-file file)))
-           (cl-loop for name being the hash-keys of *persp-hash*
-                    unless (member name allowed)
-                    do (persp-kill name))
-           (persp-load-state-from-file file)))
+  (cond ((and (modulep! :ui workspaces)
+              (require 'bufferlo nil t))
+         (unless bufferlo-mode (bufferlo-mode +1))
+         (let ((bookmark-alist nil))
+           (bookmark-load file t)
+           (setq +workspaces-bookmark-alist bookmark-alist)
+           (if (length= bookmark-alist 0)
+               (user-error "No session found to restore")
+             (let ((allowed (delete "" (mapcar 'car bookmark-alist))))
+               (dolist (ws (nreverse (mapcar 'car bookmark-alist)))
+                 (+workspace-switch ws t)
+                 (bufferlo-bookmark-tab-load ws))
+               (cl-loop for name in (+workspace-list-names)
+                        unless (member name allowed)
+                        do (+workspace-delete name))))))
         ((and (require 'frameset nil t)
               (require 'restart-emacs nil t))
          (restart-emacs--restore-frames-using-desktop file))
@@ -196,12 +215,15 @@ the --debug switch."
           (confirm-kill-emacs)
           (tmpfile (make-temp-file "post-load")))
     ;; HACK 2023-02-05: `restart-emacs' does not properly escape arguments on
-    ;;      Windows (in `restart-emacs--daemon-on-windows' and
-    ;;      `restart-emacs--start-gui-on-windows'), so don't give it complex
-    ;;      arguments at all. Should be fixed upstream, but restart-emacs seems
-    ;;      to be unmaintained.
+    ;;   Windows (in `restart-emacs--daemon-on-windows' and
+    ;;   `restart-emacs--start-gui-on-windows'), so don't give it complex
+    ;;   arguments at all. Should be fixed upstream, but restart-emacs seems to
+    ;;   be unmaintained.
     (with-temp-file tmpfile
       (print `(progn (add-hook 'window-setup-hook #'zenit-load-session 100)
+                     ;; (add-transient-hook! 'zenit-after-init-hook (dolist (buf (buffer-list))
+                     ;;                                               (with-current-buffer buf
+                     ;;                                                 (set-auto-mode t))))
                      (delete-file ,tmpfile))
              (current-buffer)))
     (restart-emacs

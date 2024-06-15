@@ -90,64 +90,42 @@ time they were followed."
 
 ;;;###package consult
 (eval-when! (modulep! :completion vertico)
+  (after! consult
+    ;; Remove popups by default from `consult--source-buffer'
+    (consult-customize
+     consult--source-buffer
+     :items
+     (lambda () (consult--buffer-query :sort 'visibility
+                                       :predicate (lambda (x) (not (popper-popup-p x)))
+                                       :as #'buffer-name)))
+
+    ;; Add separate source for popups
+    (defvar +consult--source-popup-buffer
+      `(:name     "Popup"
+        :narrow   ?P
+        :category buffer
+        :face     consult-buffer
+        :history  buffer-name-history
+        :state    ,#'consult--buffer-state
+        :hidden  t
+        :items
+        ,(lambda () (consult--buffer-query :sort 'visibility
+                                           :predicate (lambda (x)
+                                                        (and (popper-popup-p x)
+                                                             (if (modulep! :ui workspaces)
+                                                                 (bufferlo-local-buffer-p x)
+                                                               t)))
+                                           :as #'buffer-name)))
+      "Popup buffer candidate source for `consult-buffer'.")
+
+    (spliceq! consult-buffer-sources '+consult--source-popup-buffer nil 'consult--source-buffer))
+
   ;; PATCH Refine integration of `consult' and the popup system.
   (eval-when-compile
     (require 'el-patch)
     (require 'consult))
 
   (el-patch-feature consult)
-
-  ;; Remove popups by default from consult buffer source
-  (el-patch-defvar consult--source-buffer
-    `(:name     "Buffer"
-      :narrow   ?b
-      :category buffer
-      :face     consult-buffer
-      :history  buffer-name-history
-      :state    ,#'consult--buffer-state
-      :default  t
-      :items
-      ,(lambda () (consult--buffer-query :sort 'visibility
-                                         (el-patch-add
-                                           :predicate (lambda (x) (not (popper-popup-p x))))
-                                         :as #'buffer-name)))
-    "Buffer candidate source for `consult-buffer'.")
-
-  ;; Add separate source for popups
-  (el-patch-defvar (el-patch-swap consult--source-buffer consult--source-popup-buffer)
-    `(:name     (el-patch-swap "Buffer" "Popup")
-      :narrow   (el-patch-swap ?b ?P)
-      :category buffer
-      :face     consult-buffer
-      :history  buffer-name-history
-      :state    ,#'consult--buffer-state
-      (el-patch-remove
-        :default  t)
-      (el-patch-add
-        :hidden  t)
-      :items
-      ,(lambda () (consult--buffer-query :sort 'visibility
-                                         (el-patch-add
-                                           :predicate #'popper-popup-p)
-                                         :as #'buffer-name)))
-    (el-patch-swap
-      "Buffer candidate source for `consult-buffer'."
-      "Popup buffer candidate source for `consult-buffer'."))
-
-  (el-patch-defcustom consult-buffer-sources
-    '(consult--source-hidden-buffer
-      consult--source-modified-buffer
-      (el-patch-add consult--source-popup-buffer)
-      consult--source-buffer
-      consult--source-recent-file
-      consult--source-file-register
-      consult--source-bookmark
-      consult--source-project-buffer
-      consult--source-project-recent-file)
-    "Sources used by `consult-buffer'.
-See also `consult-project-buffer-sources'.
-See `consult--multi' for a description of the source data structure."
-    :type '(repeat symbol))
 
   (with-eval-after-load 'consult
     ;; Let `switch-to-buffer' obey `display-buffer-alist' when switching to a
@@ -361,10 +339,10 @@ other windows. Ugh, such an ugly hack."
     (apply fn args)))
 
 
-;;;###package persp-mode
-(defadvice! +popup--persp-mode-restore-popups-a (&rest _)
+;;;###package bufferlo
+(defadvice! +popup--bufferlo-mode-restore-popups-a (&rest _)
   "Restore popup windows when loading a perspective from file."
-  :after #'persp-load-state-from-file
+  :after #'bufferlo-bookmark-tab-load
   (dolist (window (window-list))
     (when (+popup-parameter 'popup window)
       (+popup--init window nil))))

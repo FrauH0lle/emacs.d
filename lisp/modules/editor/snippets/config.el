@@ -48,6 +48,14 @@ in `zenit-local-conf-dir' take precedence.")
   ;;   hacky and there should be a better way. See
   ;;   https://github.com/minad/tempel/issues/105
   (defvar +tempel--last-motion nil)
+  (defadvice! +tempel-record-motion-direction (fn arg)
+    "Record motion direction."
+    :around #'tempel-next
+    (if (> arg 0)
+        (setq +tempel--last-motion 'forward)
+      (setq +tempel--last-motion 'backward))
+    (funcall fn arg))
+
   (defun tempel--element (st region elt)
     "Add template ELT to ST given the REGION."
     (pcase elt
@@ -122,6 +130,18 @@ in `zenit-local-conf-dir' take precedence.")
   ;; Add snippet libraries
   (setq tempel-path (zenit-files-in +snippets-dirs :match "\\.eld$"))
 
+  ;; Custom elements
+  ;; Include templates in templates by name
+  (defun +tempel-include (elt)
+    (when (eq (car-safe elt) 'i)
+      (if-let (template (alist-get (cadr elt) (tempel--templates)))
+          (cons 'l template)
+        (message "Template %s not found" (cadr elt))
+        nil)))
+  (add-to-list 'tempel-user-elements #'+tempel-include)
+
+  ;; REVIEW 2024-06-13: Maybe there is a better way to do this less frequently.
+  ;;   However, I am not sure if this is really expensive.
   (defadvice! +tempel-update-tempel-path (&rest _)
     "Updates `tempel-path'."
     :before #'tempel-insert

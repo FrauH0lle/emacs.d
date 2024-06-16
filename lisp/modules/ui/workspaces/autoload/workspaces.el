@@ -23,7 +23,7 @@
 (defun +workspace--generate-id ()
   (or (cl-loop for name in (+workspace-list-names)
                when (string-match-p "^workspace-[0-9]+$" name)
-               maximize (string-to-number (substring name 12)) into max
+               maximize (string-to-number (substring name 10)) into max
                finally return (if max (1+ max)))
       1))
 

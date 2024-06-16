@@ -293,7 +293,7 @@ run."
                         (car +doom-dashboard-banner-padding))
                      ?\n))))))))
 
-(defun +doom-dashboard--tab-bar-record-project-a (fn args)
+(defun +doom-dashboard--tab-bar-record-project-a (fn &rest args)
   "Record the last `zenit-project-root' for the current tab. See
 `+doom-dashboard--tab-bar-detect-project-a' for more information."
   (append (funcall fn args) `((last-project-root . ,(zenit-project-root)))))

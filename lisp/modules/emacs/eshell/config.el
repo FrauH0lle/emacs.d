@@ -88,6 +88,22 @@ You should use `set-eshell-alias!' to change this.")
   ;; Enable autopairing in eshell
   (add-hook 'eshell-mode-hook #'smartparens-mode)
 
+  ;; Workspaces integration
+  (eval-when! (modulep! :ui workspaces)
+    (eval-when-compile
+      (require 'el-patch)
+      (require 'esh-mode))
+
+    (el-patch-feature esh-mode)
+    (with-eval-after-load 'esh-mode
+      ;; PATCH Use `+eshell/toggle' instead of `eshell' to launch the shell
+      (el-patch-defun eshell-bookmark-jump (bookmark)
+        "Default bookmark handler for Eshell buffers."
+        (let ((default-directory (bookmark-prop-get bookmark 'location)))
+          (el-patch-swap
+            (eshell)
+            (+eshell/toggle nil))))))
+
   ;; UI enhancements
   (add-hook! 'eshell-mode-hook
     (defun +eshell-remove-fringes-h ()

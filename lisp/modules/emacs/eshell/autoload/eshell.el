@@ -86,8 +86,9 @@
   (let ((eshell-buffer
          (get-buffer-create
           (format "*zenit:eshell-popup:%s*"
-                  (if (bound-and-true-p persp-mode)
-                      (safe-persp-name (get-current-persp))
+                  (if (and (modulep! :ui workspaces)
+                           (bound-and-true-p bufferlo-mode))
+                      (+workspace-current-name)
                     "main"))))
         confirm-kill-processes
         current-prefix-arg)

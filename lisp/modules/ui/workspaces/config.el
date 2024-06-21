@@ -21,13 +21,13 @@ t          Always create a new workspace for the project
 nil        Never create a new workspace on project switch.")
 
 (defvar +workspaces-save-directory (file-name-concat zenit-data-dir "workspaces/")
- "The directory to store workspaces in.")
+  "The directory to store workspaces in.")
 
 (defvar +workspaces-data-file "_workspaces"
- "The file to store workspaces in.")
+  "The file to store workspaces in.")
 
 (defvar +workspaces-autosave-file "autosave"
- "The file to store autosaved workspaces.")
+  "The file to store autosaved workspaces.")
 
 (defvar +workspaces-bookmark-alist nil)
 
@@ -56,7 +56,8 @@ nil        Never create a new workspace on project switch.")
          tab-bar-show 1
          tab-bar-tab-hints t)
 
-  (custom-set-faces!
+  (protect-macros!
+    (custom-set-faces!
       ;; The tab bar's appearance
       `(tab-bar
         :background ,(face-attribute 'mode-line-inactive :background)
@@ -95,7 +96,7 @@ nil        Never create a new workspace on project switch.")
         :background ,(face-attribute 'mode-line-inactive :background) :foreground ,(face-attribute 'default :foreground)
         :box (:line-width 3
               :color ,(face-attribute 'mode-line-inactive :background)
-              :style nil))))
+              :style nil)))))
 
 
 (use-package! bufferlo

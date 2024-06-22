@@ -195,7 +195,16 @@ You should use `set-eshell-alias!' to change this.")
 
 
 (use-package! eshell-did-you-mean
-  :after esh-mode ; Specifically esh-mode, not eshell
+  ;; Specifically esh-mode, not eshell
+  :after esh-mode
+  :config/el-patch
+  (defun eshell-did-you-mean--get-all-commands ()
+    "Feed `eshell-did-you-mean--all-commands'."
+    (el-patch-swap
+      (unless eshell-did-you-mean--all-commands
+        (setq eshell-did-you-mean--all-commands (pcomplete-completions)))
+      (with-memoization eshell-did-you-mean--all-commands
+        (all-completions "" (pcomplete-completions)))))
   :config
   (eshell-did-you-mean-setup)
   ;; HACK There is a known issue with `eshell-did-you-mean' where it does not

@@ -198,6 +198,8 @@ You should use `set-eshell-alias!' to change this.")
   ;; Specifically esh-mode, not eshell
   :after esh-mode
   :config/el-patch
+  ;; PATCH 2024-06-22: The way `pcomplete-completions' is originally used is
+  ;;   probably outdated.
   (defun eshell-did-you-mean--get-all-commands ()
     "Feed `eshell-did-you-mean--all-commands'."
     (el-patch-swap

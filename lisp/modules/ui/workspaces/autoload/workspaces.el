@@ -133,6 +133,44 @@ Returns t on success, nil otherwise."
   t)
 
 ;;;###autoload
+(defun +workspace-save-session (file)
+  "Saves all workspaces from the current session to FILE.
+
+Returns t on success, nil otherwise."
+  (let ((bookmark-alist nil)
+        (bookmark-default-file file)
+        (current-ws (+workspace-current-name)))
+    (dolist (ws-name (+workspace-list-names))
+      (+workspace-switch ws-name)
+      (letf! ((#'bookmark-maybe-load-default-file #'ignore))
+        (bufferlo-bookmark-tab-save ws-name)))
+    (+workspace-switch current-ws)
+    (bookmark-write-file file)
+    (setq +workspaces-bookmark-alist bookmark-alist))
+  t)
+
+;;;###autoload
+(defun +workspaces-rotate-autosaves (fname)
+  "Rotate file FNAME. The number of backups is controlled by
+`+workspaces-autosave-num-of-backups'."
+  (when (> +workspaces-autosave-num-of-backups 0)
+    (cl-do ((cur +workspaces-autosave-num-of-backups (1- cur))
+            (prev (1- +workspaces-autosave-num-of-backups) (1- prev)))
+        ((> 1 cur) nil)
+      (let ((cf (concat fname (number-to-string cur)))
+            (pf (concat fname (if (> prev 0)
+                                  (number-to-string prev)
+                                ""))))
+        (when (file-exists-p pf)
+          (when (file-exists-p cf)
+            (delete-file cf))
+          (rename-file pf cf t))))
+    (when (file-exists-p fname)
+      (rename-file fname (concat fname (number-to-string 1)) t)))
+  (write-file fname nil)
+  t)
+
+;;;###autoload
 (defun +workspace-new (name &optional clone-p)
   "Create a new workspace named NAME. If one already exists, return
 nil.
@@ -578,3 +616,14 @@ This be hooked to `projectile-after-switch-project-hook'."
   (when (zenit-real-buffer-list)
     (apply fn args))
   t)
+
+;;
+;;; Hooks
+
+;;;###autoload
+(defun +workspaces-kill-emacs-h ()
+  "Autosave workspace session."
+  (when +workspaces-autosave
+    (let ((file (zenit-session-file)))
+      (+workspaces-rotate-autosaves file)
+      (+workspace-save-session file))))

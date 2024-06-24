@@ -15,7 +15,7 @@ project.
 
 Can be one of the following:
 
-t          Always create a new workspace for the project
+t          Always create a new workspace for the project.
 'non-empty Only create a new workspace if the current one already
            has buffers associated with it.
 nil        Never create a new workspace on project switch.")
@@ -29,6 +29,16 @@ nil        Never create a new workspace on project switch.")
 (defvar +workspaces-autosave-file "autosave"
   "The file to store autosaved workspaces.")
 
+(defvar +workspaces-autosave t
+  "Controls if the session is autosaved:
+
+nil Do not auto save.
+t   Save on Emacs shutdown.")
+
+(defvar +workspaces-autosave-num-of-backups 3
+  "How many autosave file backups to keep.")
+
+;; REVIEW 2024-06-23: Could this be removed?
 (defvar +workspaces-bookmark-alist nil)
 
 
@@ -102,6 +112,8 @@ nil        Never create a new workspace on project switch.")
 (use-package! bufferlo
   :unless noninteractive
   :hook (zenit-init-ui . bufferlo-mode)
+  :init
+  (defvar bufferlo-mode-map (make-sparse-keymap))
   :config/el-patch
   (defun bufferlo-isolate-project (&optional file-buffers-only)
     "Isolate a project in the frame or tab.
@@ -181,5 +193,13 @@ Buffers matching `bufferlo-include-buffer-filters' are not removed."
 
     (setq popper-group-function #'+popper-group-by-workspace))
 
-  ;;Projectile
-  (setq projectile-switch-project-action (lambda () (+workspaces-set-project-action-fn) (+workspaces-switch-to-project-h))))
+  ;; Delete the current workspace if closing the last open window
+  (define-key! bufferlo-mode-map
+    [remap delete-window] #'+workspace/close-window-or-workspace
+    [remap evil-window-delete] #'+workspace/close-window-or-workspace)
+
+  ;; Projectile
+  (setq projectile-switch-project-action (lambda () (+workspaces-set-project-action-fn) (+workspaces-switch-to-project-h)))
+
+  ;; Autosave
+  (add-hook 'kill-emacs-hook #'+workspaces-kill-emacs-h))

@@ -1,27 +1,47 @@
-;; checkers/spell/autoload.el -*- lexical-binding: t; -*-
+;; checkers/spell/autoload/flyspell.el -*- lexical-binding: t; -*-
+;;;###if (not (executable-find "enchant-2"))
 
 ;;;###autodef
 (defalias 'flyspell-mode! #'flyspell-mode)
 
 (defvar +spell--flyspell-predicate-alist nil
-  "TODO")
+  "An alist of major modes and their corresponding flyspell
+predicates.
+
+Each element is of the form (MAJOR-MODE . PREDICATE), where
+PREDICATE is a function that determines whether a word should be
+spell-checked.")
 
 ;;;###autodef
 (defun set-flyspell-predicate! (modes predicate)
-  "TODO"
+  "Set the flyspell predicate for the specified MODE(S).
+
+MODES can be a single mode or a list of modes. PREDICATE is a
+function that determines whether a word should be spell-checked.
+
+This function adds the mode-predicate pairs to
+`+spell--flyspell-predicate-alist'."
   (declare (indent defun))
   (dolist (mode (ensure-list modes) +spell--flyspell-predicate-alist)
     (add-to-list '+spell--flyspell-predicate-alist (cons mode predicate))))
 
 ;;;###autoload
 (defun +spell-init-flyspell-predicate-h ()
-  "TODO"
+  "Initialize the flyspell predicate for the current major mode.
+
+This function sets the buffer-local
+`flyspell-generic-check-word-predicate' to the predicate
+associated with the current major mode in
+`+spell--flyspell-predicate-alist', if one exists."
   (when-let (pred (assq major-mode +spell--flyspell-predicate-alist))
     (setq-local flyspell-generic-check-word-predicate (cdr pred))))
 
 ;;;###autoload
 (defun +spell-correction-at-point-p (&optional point)
-  "TODO"
+  "Check if there's a spell correction at POINT.
+
+If POINT is nil, use the current point. Returns t if there's a
+flyspell overlay at the specified point, nil otherwise."
   (cl-loop for ov in (overlays-at (or point (point)))
            if (overlay-get ov 'flyspell-overlay)
            return t))

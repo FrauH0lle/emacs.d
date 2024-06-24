@@ -1,0 +1,23 @@
+#+title: :checkers spell
+#+created: 2024-06-24
+
+* Description :unfold:
+Provide spellchecking capabilities.
+
+If ~enchant~ is available as a backend, ~jinx~ will be used. Otherwise
+~flyspell~ will be used as a fallback.
+
+** Module flags
+- +everywhere ::
+  Spell check in all modes (comments only in programming modes).
+
+** Packages
+- if ~enchant~ is available
+  - [[https://github.com/minad/jinx][jinx.el]]
+- else
+  - [[https://github.com/d12frosted/flyspell-correct][flyspell-correct]]
+  - unless ~:completion vertico~: [[https://github.com/d12frosted/flyspell-correct][flyspell-correct-popup]]
+  - [[https://github.com/rolandwalker/flyspell-lazy][flyspell-lazy]]
+
+* Installation
+Make sure that ~libenchant~ and ~pkgconf~ are available on the system. See [[https://github.com/minad/jinx#installation][here]].

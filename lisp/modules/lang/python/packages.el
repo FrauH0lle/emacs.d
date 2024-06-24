@@ -17,8 +17,6 @@
 
 ;; Programming environment
 (package! anaconda-mode)
-(when (modulep! :completion company)
-  (package! company-anaconda :lockfile lang-python))
 
 ;; Environment management
 (package! pipenv :lockfile lang-python)

@@ -105,7 +105,6 @@
                   (not (executable-find python-shell-interpreter t)))
         (anaconda-mode +1))))
   :config
-  (set-company-backend! 'anaconda-mode :company '(company-anaconda))
   ;; (set-lookup-handlers! 'anaconda-mode
   ;;   :definition #'anaconda-mode-find-definitions
   ;;   :references #'anaconda-mode-find-references

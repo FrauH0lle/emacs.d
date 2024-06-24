@@ -86,7 +86,6 @@
 
   ;; Whitelist more commands
   (dolist (fn '((backward-kill-word)
-                (company-complete-common . evil-mc-execute-default-complete)
                 (zenit/backward-to-bol-or-indent . evil-mc-execute-default-call)
                 (zenit/forward-to-last-non-comment-or-eol . evil-mc-execute-default-call)
                 ;; :editor evil

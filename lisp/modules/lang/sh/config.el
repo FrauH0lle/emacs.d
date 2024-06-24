@@ -94,16 +94,6 @@
            "u" 'sh-until
            "g" 'sh-while-getopts)))
 
-(use-package! company-shell
-  :when (modulep! :completion company)
-  :unless (modulep! +lsp)
-  :after sh-script
-  :config
-  (set-company-backend! 'sh-mode :company '((company-shell company-shell-env company-files)))
-  (setq company-shell-delete-duplicates t
-        ;; whatis lookups are exceptionally slow on macOS (#5860)
-        company-shell-dont-fetch-meta IS-MAC))
-
 
 (use-package! powershell
   :when (modulep! +powershell)

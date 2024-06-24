@@ -338,32 +338,11 @@ variable.")
   ;; LSP
   (eval-when! (and (modulep! :tools lsp)
                    (modulep! :lang ess +lsp))
-    (eval-when! (modulep! :completion company)
-      (setq-hook! 'ess-r-mode-local-vars-hook
-        +lsp-company-backends '(:separate company-files company-capf)))
     (defhook! +ess-lsp-init-maybe-h ()
       "Use LSP mode if the buffer is not a remote."
       'ess-r-mode-local-vars-hook
       (unless (file-remote-p default-directory)
         (lsp!))))
-
-  ;; Set company backends
-  (eval-when! (modulep! :completion company)
-    (set-company-backend! 'ess-r-mode :company '((:separate company-R-library
-                                                  company-R-args
-                                                  company-R-objects
-                                                  company-files
-                                                  company-dict
-                                                  company-dabbrev-code
-                                                  company-capf)))
-    (set-company-backend! 'inferior-ess-r-mode :company '((:separate company-R-library
-                                                           company-R-args
-                                                           company-R-objects
-                                                           company-files
-                                                           company-dict
-                                                           company-dabbrev-code
-                                                           company-capf))))
-
 
   ;; Popup rules
   (eval-when! (modulep! :ui popup)

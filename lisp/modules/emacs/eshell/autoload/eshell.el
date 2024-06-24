@@ -173,17 +173,12 @@ Once the eshell process is killed, the previous frame layout is restored."
 
 ;;;###autoload
 (defun +eshell/pcomplete ()
-  "Use pcomplete with completion-in-region backend instead of popup window at
-bottom. This ties pcomplete into ivy or helm, if they are enabled."
+  "Use pcomplete with completion-in-region backend instead of popup
+window at bottom. This ties pcomplete into ivy or helm, if they
+are enabled."
   (interactive)
   (require 'pcomplete)
-  (if (and (bound-and-true-p company-mode)
-           (or company-candidates
-               (and (company-pcomplete-available)
-                    (company-pcomplete--prefix)
-                    (company-pcomplete--candidates))))
-      (call-interactively #'company-pcomplete)
-    (ignore-errors (pcomplete-std-complete))))
+  (ignore-errors (pcomplete-std-complete)))
 
 ;;;###autoload
 (defun +eshell/quit-or-delete-char (arg)

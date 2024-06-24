@@ -10,7 +10,6 @@
   ;; https://github.com/Fuco1/smartparens/issues/397#issuecomment-501059014
   (after! smartparens
     (sp-local-pair 'nxml-mode "<" ">" :post-handlers '(("[d1]" "/"))))
-  ;; (set-company-backend! 'nxml-mode '(company-nxml company-yasnippet))
   (setq-hook! 'nxml-mode-hook tab-width nxml-child-indent)
   (set-formatter! 'xmllint '("xmllint" "--format" "-") :modes '(nxml-mode)))
 
@@ -30,9 +29,9 @@
 (use-package! json-mode
   :mode "\\.js\\(?:on\\|[hl]int\\(?:rc\\)?\\)\\'"
   :init
-  (when (modulep! +lsp)
+  (eval-when! (modulep! +lsp)
     (add-hook 'json-mode-local-vars-hook #'lsp! 'append))
-  (when (modulep! +tree-sitter)
+  (eval-when! (modulep! +tree-sitter)
     (add-hook! '(json-mode-local-vars-hook
                  jsonc-mode-local-vars-hook)
                :append #'tree-sitter!))

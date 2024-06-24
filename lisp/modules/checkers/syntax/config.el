@@ -58,5 +58,4 @@
     (defadvice! +syntax--disable-flycheck-popup-tip-maybe-a (&rest _)
       :before-while #'flycheck-popup-tip-show-popup
       (if evil-local-mode
-          (eq evil-state 'normal)
-        (not (bound-and-true-p company-backend))))))
+          (eq evil-state 'normal)))))

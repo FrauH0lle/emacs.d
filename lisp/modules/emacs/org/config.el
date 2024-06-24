@@ -1157,13 +1157,6 @@ before trying to read/write to it."
     :before-while '(org-id-locations-save org-id-locations-load)
     (file-writable-p org-id-locations-file))
 
-  ;; company backends
-  (eval-when! (modulep! :completion company)
-    (set-company-backend! 'org-mode
-      :company '(company-capf)
-      :capf #'pcomplete-completions-at-point)
-    )
-
   (add-hook 'org-open-at-point-functions #'zenit-set-jump-h)
   ;; allow shift selection
   (setq org-support-shift-select t)

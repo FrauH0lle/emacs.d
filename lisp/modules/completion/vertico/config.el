@@ -1,12 +1,5 @@
 ;; completion/vertico/config.el -*- lexical-binding: t; -*-
 
-(defvar +vertico-company-completion-styles '(basic partial-completion orderless)
-  "Completion styles for company to use.
-
-The completion/vertico module uses the orderless completion style by default,
-but this returns too broad a candidate set for company completion. This variable
-overrides `completion-styles' during company completion sessions.")
-
 (defvar +vertico-consult-fd-args nil
   "Shell command and arguments the vertico module uses for fd.")
 
@@ -73,14 +66,6 @@ overrides `completion-styles' during company completion sessions.")
 (use-package! orderless
   :after-call zenit-first-input-hook
   :config
-  (defadvice! +vertico--company-capf--candidates-a (fn &rest args)
-    "Highlight company matches correctly, and try default completion styles before
-orderless."
-    :around #'company-capf--candidates
-    (let ((orderless-match-faces [completions-common-part])
-          (completion-styles +vertico-company-completion-styles))
-      (apply fn args)))
-
   (defun +vertico-orderless-dispatch (pattern _index _total)
     (cond
      ;; Ensure $ works with Consult commands, which add disambiguation suffixes

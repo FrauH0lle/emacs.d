@@ -70,13 +70,6 @@ override `display-buffer-alist'."
 (define-key Buffer-menu-mode-map (kbd "RET") #'Buffer-menu-other-window)
 
 
-;;;###package company
-(defadvice! +popup--dont-select-me-a (fn &rest args)
-  :around #'company-show-doc-buffer
-  (let ((+popup--inhibit-select t))
-    (apply fn args)))
-
-
 ;;;###package compile
 (defadvice! +popup--compilation-goto-locus-a (fn &rest args)
   "Fix links in popup compilation buffers creating a new window each

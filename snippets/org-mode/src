@@ -1,7 +1,0 @@
-# -*- mode: snippet -*-
-# name: #+begin_src
-# uuid: src
-# --
-#+begin_src $1
-`%`$0
-#+end_src

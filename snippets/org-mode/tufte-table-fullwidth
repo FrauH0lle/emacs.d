@@ -1,7 +1,0 @@
-# -*- mode: snippet -*-
-# name: tufte-table-fullwidth
-# --
-#+name: tab:${1:name}
-#+caption[${2:short caption}]: ${3:caption}
-#+attr_latex: :font \footnotesize :float multicolumn
-| $0 |

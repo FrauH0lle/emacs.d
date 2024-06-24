@@ -1,4 +1,0 @@
-# -*- mode: snippet -*-
-# name: let
-# --
-(let ($1) `(+emacs-snippets-format "%n%s")`)`(+emacs-snippets-newline-or-eol)`

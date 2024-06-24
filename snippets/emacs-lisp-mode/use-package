@@ -1,7 +1,0 @@
-# -*- mode: snippet -*-
-# name: use-package
-# uuid: up
-# --
-(use-package ${1:package}
-  :${2:config}
-  `%`$0)

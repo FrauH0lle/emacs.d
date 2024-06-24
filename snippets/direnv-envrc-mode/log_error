@@ -1,5 +1,0 @@
-# -*- mode: snippet -*-
-# name: log_error MESSAGE ...
-# uuid: le
-# --
-log_error ${1:"message"}

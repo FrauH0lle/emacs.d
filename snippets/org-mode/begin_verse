@@ -1,6 +1,0 @@
-# -*- mode: snippet -*-
-# name: #+begin_verse block
-# key: <v
-# type: command
-# --
-(+emacs-snippets-expand :uuid "verse")

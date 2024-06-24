@@ -1,7 +1,0 @@
-# -*- mode: snippet -*-
-# name: quote block
-# uuid: quote
-# --
-#+begin_quote
-`%`$0
-#+end_quote

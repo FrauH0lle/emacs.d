@@ -1,5 +1,0 @@
-# -*- mode: snippet -*-
-# name: (current time)
-# uuid: time
-# --
-`(current-time-string)`

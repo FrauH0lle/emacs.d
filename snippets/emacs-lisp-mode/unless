@@ -1,4 +1,0 @@
-# -*- mode: snippet -*-
-# name: unless
-# --
-(unless ${1:condition} ${0:`(+emacs-snippets-format "%n%s")`})`(+emacs-snippets-newline-or-eol)`

@@ -1,4 +1,0 @@
-# -*- mode: snippet -*-
-# name: tufte-marginnote
-# --
-[[latex-opt:marginnote][$0;${1:0cm}]]

@@ -1,5 +1,0 @@
-# -*- mode: snippet -*-
-# name: unless ... (...)
-# uuid: unless
-# --
-(unless (${1:condition}) ${2:`(+emacs-snippets-format "%n%s")`})

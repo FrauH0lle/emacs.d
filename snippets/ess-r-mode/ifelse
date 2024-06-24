@@ -1,9 +1,0 @@
-# -*- mode: snippet -*-
-# name: ifelse
-# key: ifelse_
-# --
-if ($1) {
-   `yas/selected-text`$2
-} else {
-   $0
-}

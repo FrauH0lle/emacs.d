@@ -1,6 +1,0 @@
-# -*- mode: snippet -*-
-# name: #+begin_src ... block
-# key: <src
-# type: command
-# --
-(+emacs-snippets-expand :uuid "src")

@@ -1,7 +1,0 @@
-# -*- mode: snippet -*-
-# name: tufte-fig-block
-# --
-#+name: fig:${1:name}
-#+caption[${2:short caption}]: ${3:caption}
-#+attr_latex: :vertical-alignment b
-$0

@@ -1,4 +1,0 @@
-# -*- mode: snippet; require-final-newline: nil -*-
-# name: after
-# --
-(after! ${1:feature-name} `(+emacs-snippets-format "%n%s")`$0)`(+emacs-snippets-newline-or-eol)`

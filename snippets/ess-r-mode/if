@@ -1,7 +1,0 @@
-# -*- mode: snippet -*-
-# name: if
-# key: if_
-# --
-if (${1:condition}) {
-`yas/selected-text`$0
-}

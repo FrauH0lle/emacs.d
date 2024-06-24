@@ -1,6 +1,0 @@
-# -*- mode: snippet -*-
-# name: #+begin_export ... block
-# key: <E
-# type: command
-# --
-(+emacs-snippets-expand :uuid "export")

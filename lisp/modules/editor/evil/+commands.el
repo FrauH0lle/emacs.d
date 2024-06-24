@@ -22,7 +22,7 @@
 (evil-ex-define-cmd "gstage"    #'magit-stage)
 (evil-ex-define-cmd "gunstage"  #'magit-unstage)
 (evil-ex-define-cmd "gblame"    #'magit-blame)
-(evil-ex-define-cmd "grevert"   #'git-gutter:revert-hunk)
+(evil-ex-define-cmd "grevert"   #'+vc-gutter/revert-hunk)
 
 ;; Buffers
 (evil-ex-define-cmd "k[ill]"    #'kill-current-buffer)

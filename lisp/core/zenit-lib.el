@@ -675,8 +675,8 @@ operators. The precise format is:
     (after! (:and package-a package-b ...) BODY...)
     (after! (:and package-a (:or package-b package-c) ...) BODY...)
 - An unquoted list of package symbols (i.e. BODY is evaluated
-  once both magit and git-gutter have loaded)
-    (after! (magit git-gutter) BODY...)
+  once both magit and diff-hl have loaded)
+    (after! (magit diff-hl) BODY...)
   If :or/:any/:and/:all are omitted, :and/:all are implied.
 
 This emulates `eval-after-load' with a few key differences:

@@ -47,26 +47,36 @@
 ;;
 ;;; Auto-revert
 
-(defun +magit--refresh-vc-in-buffer (buffer)
+(defvar +magit--stale-p nil)
+
+(defun +magit--revert-buffer (buffer)
   (with-current-buffer buffer
-    (when (and vc-mode (fboundp 'vc-refresh-state))
-      (vc-refresh-state))
-    (when (and (bound-and-true-p git-gutter-mode)
-               (fboundp '+version-control--update-git-gutter))
-      (+version-control--update-git-gutter))
-    (setq +magit--vc-is-stale-p nil)))
+    (kill-local-variable '+magit--stale-p)
+    (when (and buffer-file-name (file-exists-p buffer-file-name))
+      (if (buffer-modified-p (current-buffer))
+          (when (bound-and-true-p vc-mode)
+            (vc-refresh-state)
+            (force-mode-line-update))
+        (revert-buffer t t t)))))
 
 ;;;###autoload
-(defvar-local +magit--vc-is-stale-p nil)
+(defun +magit-mark-stale-buffers-h ()
+  "Revert all visible buffers and mark buried buffers as stale.
+
+Stale buffers are reverted when they are switched to, assuming
+they haven't been modified."
+  (dolist (buffer (buffer-list))
+    (when (buffer-live-p buffer)
+      (if (get-buffer-window buffer)
+          (+magit--revert-buffer buffer)
+        (with-current-buffer buffer
+          (setq-local +magit--stale-p t))))))
 
 ;;;###autoload
-(defun +magit--refresh-vc-state-maybe-h ()
-  "Update `vc' and `git-gutter' if out of date."
-  (when +magit--vc-is-stale-p
-    (+magit--refresh-vc-in-buffer (current-buffer))))
-
-;;;###autoload
-(add-hook '+emacs-switch-buffer-hook #'+magit--refresh-vc-state-maybe-h)
+(defun +magit-revert-buffer-maybe-h ()
+  "Update `vc' and `diff-hl' if out of date."
+  (when +magit--stale-p
+    (+magit--revert-buffer (current-buffer))))
 
 
 ;;

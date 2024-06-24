@@ -294,7 +294,7 @@ buffers are visible in other windows, switch to
 ;;; Fringes
 
 ;; Reduce the clutter in the fringes; we'd like to reserve that space for more
-;; useful information, like git-gutter and flycheck.
+;; useful information, like diff-hl and flycheck.
 (setq indicate-buffer-boundaries nil
       indicate-empty-lines nil)
 

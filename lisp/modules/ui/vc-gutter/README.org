@@ -1,0 +1,15 @@
+#+title: :ui vc-gutter
+#+created: 2024-06-24
+
+* Description :unfold:
+Display a diff of the current file (against HEAD) in the fringe.
+
+** Module flags
+- +pretty ::
+  Apply some stylistic defaults to the fringe that present the diff in the
+  fringe as thin bars, taking after the modern look of the git-gutter plugin in
+  VSCode and Sublime Text. However, this will look bad with themes that invert
+  the foreground/background of diff-hl’s faces (like modus-themes does).
+
+** Packages
+ - [[https://github.com/dgutov/diff-hl][diff-hl]]

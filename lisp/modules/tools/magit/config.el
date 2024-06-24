@@ -39,6 +39,17 @@ Only has an effect in GUI Emacs.")
   ;; the window after invoking `magit-status-here'.
   (advice-add #'magit-status-here :after #'zenit-recenter-a)
 
+  (defadvice! +magit-revert-repo-buffers-deferred-a (&rest _)
+    "Revert repository buffers in a deferred fashion."
+    :after '(magit-checkout magit-branch-and-checkout)
+    ;; Since the project likely now contains new files, best we undo the
+    ;; projectile cache so it can be regenerated later.
+    (projectile-invalidate-cache nil)
+    ;; Refresh the visible buffers immediately...
+    (+magit-mark-stale-buffers-h))
+  ;; ...then refresh the rest only when we switch to them, not all at once.
+  (add-hook 'zenit-switch-buffer-hook #'+magit-revert-buffer-maybe-h)
+
   ;; The default location for git-credential-cache is in
   ;; ~/.cache/git/credential. However, if ~/.git-credential-cache/ exists, then
   ;; it is used instead. Magit seems to be hardcoded to use the latter, so here

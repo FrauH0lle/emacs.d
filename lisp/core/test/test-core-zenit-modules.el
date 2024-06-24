@@ -206,22 +206,15 @@
   (describe "zenit-module-from-path"
     (it "returns a cons cell for a path to a module"
       (spy-on 'zenit-module-p :and-return-value t)
-      (spy-on 'file-in-directory-p :and-return-value nil)
       (expect (zenit-module-from-path "/modules/lang/python")
               :to-equal '(:lang . python)))
 
     (it "returns a cons cell for a path to a core module"
-      (spy-on 'file-in-directory-p :and-call-fake
-              (lambda (path _dir)
-                (equal path "/path/to/core.el")))
-      (expect (zenit-module-from-path "/path/to/core.el")
-              :to-equal '(:core . nil)))
+      (let ((zenit-core-dir "/path/to/core.el"))
+        (expect (zenit-module-from-path "/path/to/core.el")
+                :to-equal '(:core . nil))))
 
     (it "returns a cons cell for a path to a local config module"
-      (spy-on 'file-in-directory-p :and-call-fake
-              (lambda (path dir)
-                (and (equal path "/path/to/local-conf.el")
-                     (equal dir "/path/to/local-conf.el"))))
       (let ((zenit-local-conf-dir "/path/to/local-conf.el"))
         (expect (zenit-module-from-path "/path/to/local-conf.el")
                 :to-equal '(:local-conf . nil))))

@@ -8,11 +8,11 @@ Provides workspaces powered by bufferlo and tab-bar-mode.
 /None/
 
 ** Packages
- - [[https://github.com/florommel/bufferlo][bufferlo]]
- - tab-bar-mode
+- [[https://github.com/florommel/bufferlo][bufferlo]]
+- tab-bar-mode
 
 * Configuration
- #+begin_src elisp
+#+begin_src elisp
 (defvar +workspaces-main "main"
   "The name of the primary and initial workspace, which cannot be
 deleted.")
@@ -32,4 +32,13 @@ t          Always create a new workspace for the project
 'non-empty Only create a new workspace if the current one already
            has buffers associated with it.
 nil        Never create a new workspace on project switch.")
- #+end_src
+
+(defvar +workspaces-autosave t
+  "Controls if the session is autosaved:
+
+nil Do not auto save.
+t   Save on Emacs shutdown.")
+
+(defvar +workspaces-autosave-num-of-backups 3
+  "How many autosave file backups to keep.")
+#+end_src

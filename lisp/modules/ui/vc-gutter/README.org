@@ -12,4 +12,4 @@ Display a diff of the current file (against HEAD) in the fringe.
   the foreground/background of diff-hl’s faces (like modus-themes does).
 
 ** Packages
- - [[https://github.com/dgutov/diff-hl][diff-hl]]
+- [[https://github.com/dgutov/diff-hl][diff-hl]]

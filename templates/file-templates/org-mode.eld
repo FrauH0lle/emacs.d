@@ -36,22 +36,22 @@ If this module has no flags, then ...
 /None/
 
 ** Packages
- Packages should be a include a link to the homepage or repository.
- - [[https://protesilaos.com/emacs/pulsar][Pulsar]]
+Packages should be a include a link to the homepage or repository.
+- [[https://protesilaos.com/emacs/pulsar][Pulsar]]
 
- If this module installs no packages, then ...
- /None/
+If this module installs no packages, then ...
+/None/
 
 * Installation
- Add any external requirements etc to this section.
+Add any external requirements etc to this section.
 
 * Configuration
- List user facing configuration variables like so:
- #+begin_src elisp
- (defvar +nav-flash-exclude-commands
-   '(mouse-set-point mouse-drag-region evil-mouse-drag-region +org/dwim-at-point
-     org-find-file org-find-file-at-mouse)
- \"A list of commands that should not trigger nav-flash.\")
- #+end_src
+List user facing configuration variables like so:
+#+begin_src elisp
+(defvar +nav-flash-exclude-commands
+  '(mouse-set-point mouse-drag-region evil-mouse-drag-region +org/dwim-at-point
+    org-find-file org-find-file-at-mouse)
+\"A list of commands that should not trigger nav-flash.\")
+#+end_src
 
- Of course you can write 1 or 2 sentences as well ...")
+Of course you can write 1 or 2 sentences as well ...")

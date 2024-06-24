@@ -24,5 +24,5 @@
  ("smartparens" . "a5c68cac1bea737b482a37aa92de4f6efbf7580b")
  ("straight.el" . "88e574ae75344e39b436f863ef0344135c7b6517")
  ("undo-tree" . "5e9f4c92348b3cfd6f140c1730294017dca4bc05")
- ("ws-butler" . "572a10c11b6cb88293de48acbb59a059d36f9ba5"))
+ ("ws-butler" . "e3a38d93e01014cd47bf5af4924459bd145fd7c4"))
 :gamma

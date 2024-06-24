@@ -21,9 +21,7 @@
 (package! pcre2el :lockfile core)
 (package! smartparens :lockfile core)
 (package! undo-tree :lockfile core)
-(package! ws-butler
-  :recipe (:host github :repo "hlissner/ws-butler")
-  :lockfile core)
+(package! ws-butler :lockfile core)
 
 ;; core-modules.el
 (package! el-patch :lockfile core)

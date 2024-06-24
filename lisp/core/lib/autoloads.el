@@ -191,7 +191,6 @@ non-nil, treat FILES as pre-generated autoload files instead."
       (when (and (not (seq-find (zenit-rpartial #'string-match-p file) exclude))
                  (file-readable-p file))
         (zenit-log "loaddefs:scan: %s" file)
-        (setq file (file-truename file))
 
         (zenit--with-prepared-file-buffer file (or coding-system-for-read 'utf-8) nil
           (if literal

@@ -248,9 +248,9 @@ enabled."
                (and (or (null enabled-only)
                         (zenit-module-p category module))
                     (cons category module))))
-            ((file-in-directory-p path zenit-core-dir)
+            ((string-match (concat "^" (regexp-quote zenit-core-dir)) path)
              (cons :core nil))
-            ((file-in-directory-p path zenit-local-conf-dir)
+            ((string-match (concat "^" (regexp-quote zenit-local-conf-dir)) path)
              (cons :local-conf nil))))))
 
 (defun zenit-module-load-path (&optional module-dirs)

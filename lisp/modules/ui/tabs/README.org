@@ -1,0 +1,11 @@
+#+title: :ui tabs
+#+created: 2024-06-24
+
+* Description :unfold:
+Provides a basic setup for ~tab-bar-mode~.
+
+** Module flags
+/None/
+
+** Packages
+/None/

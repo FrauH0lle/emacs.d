@@ -1,0 +1,15 @@
+#+title: :tools direnv
+#+created: 2024-06-27
+
+* Description :unfold:
+~direnv~ integration and environment management.
+
+** Module flags
+/None/
+
+** Packages
+- [[https://github.com/purcell/envrc][envrc.el]]
+- [[https://github.com/purcell/inheritenv][inheritenv]]
+
+* Installation
+Make sure [[https://direnv.net][direnv]] is installed.

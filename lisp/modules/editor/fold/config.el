@@ -7,7 +7,7 @@
       [remap evil-toggle-fold]   #'+fold/toggle
       [remap evil-close-fold]    #'+fold/close
       [remap evil-open-fold]     #'+fold/open
-      [remap evil-open-fold-rec] #'+fold/open
+      [remap evil-open-fold-rec] #'+fold/open-rec
       [remap evil-close-folds]   #'+fold/close-all
       [remap evil-open-folds]    #'+fold/open-all)
     (evil-define-key* 'motion 'global
@@ -34,7 +34,8 @@
         hs-set-up-overlay #'+fold-hideshow-set-up-overlay-fn)
 
   (defadvice! +fold--hideshow-ensure-mode-a (&rest _)
-    "Ensure `hs-minor-mode' is enabled when we need it, no sooner or later."
+    "Ensure `hs-minor-mode' is enabled when we need it, no sooner or
+later."
     :before '(hs-toggle-hiding hs-hide-block hs-hide-level hs-show-all hs-hide-all)
     (unless (bound-and-true-p hs-minor-mode)
       (hs-minor-mode +1)))

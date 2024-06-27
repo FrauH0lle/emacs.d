@@ -2,14 +2,21 @@
 #+created: 2024-06-15
 
 * Description :unfold:
-Provides workspaces powered by bufferlo and tab-bar-mode.
+Provides workspaces powered by bufferlo and Tab Bars.
+
+Each tab represents a workspace and has a separate window configuration and
+buffer list. The workspaces are not shared among frames.
+
+All frames and their workspaces can be saved and restored between sessions.
+
+This module depends on ~:ui tabs~.
 
 ** Module flags
 /None/
 
 ** Packages
 - [[https://github.com/florommel/bufferlo][bufferlo]]
-- tab-bar-mode
+- [[https://www.gnu.org/software/emacs/manual/html_node/emacs/Tab-Bars.html][Tab Bar]]
 
 * Configuration
 #+begin_src elisp

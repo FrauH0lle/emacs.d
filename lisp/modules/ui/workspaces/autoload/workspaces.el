@@ -139,12 +139,14 @@ Returns t on success, nil otherwise."
 Returns t on success, nil otherwise."
   (let ((bookmark-alist nil)
         (bookmark-default-file file)
-        (current-ws (+workspace-current-name)))
-    (dolist (ws-name (+workspace-list-names))
-      (+workspace-switch ws-name)
+        (current-ws (+workspace-current-name))
+        (frames (visible-frame-list))
+        (i 1))
+    (dolist (f frames)
       (letf! ((#'bookmark-maybe-load-default-file #'ignore))
-        (bufferlo-bookmark-tab-save ws-name)))
-    (+workspace-switch current-ws)
+        (with-selected-frame f
+          (bufferlo-bookmark-frame-save (format "frame-%s" i)))
+        (cl-incf i)))
     (bookmark-write-file file)
     (setq +workspaces-bookmark-alist bookmark-alist))
   t)
@@ -167,7 +169,6 @@ Returns t on success, nil otherwise."
           (rename-file pf cf t))))
     (when (file-exists-p fname)
       (rename-file fname (concat fname (number-to-string 1)) t)))
-  (write-file fname nil)
   t)
 
 ;;;###autoload
@@ -207,10 +208,18 @@ name on success, nil otherwise."
 workspace's buffers."
   (when (+workspace--protected-p workspace)
     (error "Can't delete '%s' workspace" workspace))
+  ;; Error checking
+  (+workspace-get workspace)
+  (delete-other-windows)
   (unless inhibit-kill-p
     (bufferlo-kill-buffers nil nil (+workspaces--get-tabnum workspace)))
   (tab-bar-close-tab (1+ (+workspaces--get-tabnum workspace)))
-  (not (+workspace-exists-p workspace)))
+  ;; A little workaround if we only have one workspace left. Then we should
+  ;; simply return t.
+  (if (and (length= (+workspace-list-names) 1)
+           (string= (car (+workspace-list-names)) +workspaces-main))
+      t
+    (not (+workspace-exists-p workspace))))
 
 ;;;###autoload
 (defun +workspace-switch (name &optional auto-create-p)
@@ -227,7 +236,7 @@ throws an error."
       (setq +workspace--last
             (or old-name
                 +workspaces-main))
-      (tab-switch name))
+      (tab-bar-switch-to-tab name))
     (equal (+workspace-current-name) name)))
 
 
@@ -284,8 +293,8 @@ workspace."
 
 ;;;###autoload
 (defun +workspace/delete (name)
-  "Delete this workspace. If called with C-u, prompts you for the name of the
-workspace to delete."
+  "Delete this workspace. If called with C-u, prompts you for the
+name of the workspace to delete."
   (interactive
    (let ((current-name (+workspace-current-name)))
      (list
@@ -295,14 +304,10 @@ workspace to delete."
                            nil nil nil nil current-name)
         current-name))))
   (condition-case-unless-debug ex
-      ;; REVIEW refactor me
       (let ((workspaces (+workspace-list-names)))
         (if (not (member name workspaces))
             (+workspace-message (format "'%s' workspace doesn't exist" name) 'warn)
-          (cond ;; REVIEW 2024-06-15: Can this be used with `bufferlo'?
-                ;; ((delq (selected-frame) (persp-frames-with-persp (get-frame-persp)))
-                ;;  (user-error "Can't close workspace, it's visible in another frame"))
-                ((not (equal (+workspace-current-name) name))
+          (cond ((not (equal (+workspace-current-name) name))
                  (+workspace-delete name))
                 ((cdr workspaces)
                  (+workspace-delete name)
@@ -313,10 +318,7 @@ workspace to delete."
                  (unless (zenit-buffer-frame-predicate (window-buffer))
                    (switch-to-buffer (zenit-fallback-buffer))))
                 (t
-                 (+workspace-switch +workspaces-main t)
-                 (unless (string= (car workspaces) +workspaces-main)
-                   (+workspace-delete name))
-                 (zenit/kill-all-buffers (zenit-buffer-list))))
+                 (+workspace-delete name)))
           (+workspace-message (format "Deleted '%s' workspace" name) 'success)))
     ('error (+workspace-error ex t))))
 
@@ -324,16 +326,22 @@ workspace to delete."
 (defun +workspace/kill-session (&optional interactive)
   "Delete the current session, all workspaces, windows and their buffers."
   (interactive (list t))
-  (let ((windows (length (window-list)))
-        (persps (length (+workspace-list-names)))
-        (buffers 0))
-    (unless (cl-every #'+workspace-delete (+workspace-list-names))
-      (+workspace-error "Could not clear session"))
+  (let ((frames (visible-frame-list))
+        (num-frames (length (visible-frame-list)))
+        (num-windows 0)
+        (num-workspaces 0)
+        (num-buffers 0))
+    (dolist (f frames)
+      (with-selected-frame f
+        (setq num-windows (+ num-windows (length (window-list)))
+              num-workspaces (+ num-workspaces (length (+workspace-list-names))))
+        (unless (cl-every (zenit-rpartial #'+workspace-delete t) (+workspace-list-names))
+          (+workspace-error "Could not clear session"))))
     (+workspace-switch +workspaces-main t)
-    (setq buffers (zenit/kill-all-buffers (buffer-list)))
+    (setq num-buffers (zenit/kill-all-buffers (buffer-list)))
     (when interactive
-      (message "Killed %d workspace(s), %d window(s) & %d buffer(s)"
-               persps windows buffers))))
+      (message "Killed %d workspace(s), %d window(s) & %d buffer(s) in %d frame(s)"
+               num-workspaces num-windows num-buffers num-frames))))
 
 ;;;###autoload
 (defun +workspace/kill-session-and-quit ()
@@ -520,35 +528,6 @@ frame, if one exists) and move to the next."
 
 ;;
 ;;; Hooks
-
-;; REVIEW 2024-06-15: Remove?
-;; ;;;###autoload
-;; (defun +workspaces-delete-associated-workspace-h (&optional frame)
-;;   "Delete workspace associated with current frame.
-;; A workspace gets associated with a frame when a new frame is interactively
-;; created."
-;;   (when (and persp-mode (not (bound-and-true-p with-editor-mode)))
-;;     (unless frame
-;;       (setq frame (selected-frame)))
-;;     (let ((frame-persp (frame-parameter frame 'workspace)))
-;;       (when (string= frame-persp (+workspace-current-name))
-;;         (+workspace/delete frame-persp)))))
-
-;; REVIEW 2024-06-15: Remove?
-;; ;;;###autoload
-;; (defun +workspaces-associate-frame-fn (frame &optional _new-frame-p)
-;;   "Create a blank, new perspective and associate it with FRAME."
-;;   (when persp-mode
-;;     (if (not (persp-frame-list-without-daemon))
-;;         (+workspace-switch +workspaces-main t)
-;;       (with-selected-frame frame
-;;         (+workspace-switch (format "#%s" (+workspace--generate-id)) t)
-;;         (unless (doom-real-buffer-p (current-buffer))
-;;           (switch-to-buffer (doom-fallback-buffer)))
-;;         (set-frame-parameter frame 'workspace (+workspace-current-name))
-;;         ;; ensure every buffer has a buffer-predicate
-;;         (persp-set-frame-buffer-predicate frame))
-;;       (run-at-time 0.1 nil #'+workspace/display))))
 
 (defvar +workspaces--project-dir nil)
 ;;;###autoload

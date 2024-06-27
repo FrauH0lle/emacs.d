@@ -336,6 +336,7 @@ other windows. Ugh, such an ugly hack."
 (defadvice! +popup--bufferlo-mode-restore-popups-a (&rest _)
   "Restore popup windows when loading a perspective from file."
   :after #'bufferlo-bookmark-tab-load
+  :after #'bufferlo-bookmark-frame-load
   (dolist (window (window-list))
     (when (+popup-parameter 'popup window)
       (+popup--init window nil))))

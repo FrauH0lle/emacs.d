@@ -76,8 +76,9 @@ Buffers matching `bufferlo-include-buffer-filters' are not removed."
   (setq! bufferlo-include-buffer-filters '("^\\*\\Messages" "^\\*Warnings"))
 
   ;; Toggle `tab-bar-mode'
-  (defhook! +workspaces-toggle-tab-bar-mode-h ()
-    "Toggle `tab-bar-mode' together with `bufferlo-moder'."
+  (defhook! +workspaces-init-bufferlo-mode-h ()
+    "Toggle `tab-bar-mode' together with `bufferlo-mode' and apply
+our settings."
     'bufferlo-mode-hook
     (cond
      (bufferlo-mode
@@ -85,11 +86,23 @@ Buffers matching `bufferlo-include-buffer-filters' are not removed."
       (let ((bufferlo-exclude-buffer-filters nil)
             (bufferlo-include-buffer-filters '(".*")))
         (bufferlo--include-exclude-buffers nil)
-        (tab-bar-mode +1)))
-     (t (tab-bar-mode -1))))
+        (tab-bar-mode +1))
+      ;; Restrict buffer list to workspace
+      (advice-add #'zenit-buffer-list :override #'+workspace-buffer-list))
+     (t
+      (tab-bar-mode -1)
+      (advice-remove #'zenit-buffer-list #'+workspace-buffer-list))))
 
-  ;; Give the first tab the name specified in `+workspaces-main'
   (after! tab-bar
+    (setq! tab-bar-close-button-show nil
+           tab-bar-new-button-show nil
+           ;; Delete frame or fall back to `+workspaces-main'
+           tab-bar-close-last-tab-choice (lambda (tab)
+                                           (let ((old-frame (selected-frame)))
+                                             (ignore-errors (delete-frame))
+                                             (when (eq (selected-frame) old-frame)
+                                               (tab-bar-rename-tab +workspaces-main)))))
+    ;; Give the first tab the name specified in `+workspaces-main'
     (tab-bar-rename-tab +workspaces-main))
 
   ;; `consult' integration

@@ -158,15 +158,6 @@ global, so..."
     :after-until #'evil-global-marker-p
     (and (>= char ?2) (<= char ?9)))
 
-  (defadvice! +evil--fix-local-vars-a (&rest _)
-    "REVIEW Fix #2493: dir-locals cannot target
-fundamental-mode when evil-mode is active. See URL
-`https://github.com/hlissner/doom-emacs/issues/2493'. Revert this
-if this is ever fixed upstream."
-    :before #'turn-on-evil-mode
-    (when (eq major-mode 'fundamental-mode)
-      (hack-local-variables)))
-
   (defadvice! +evil--fix-helpful-key-in-evil-ex-a (key-sequence)
     "HACK Invoking helpful from evil-ex throws a \"No recursive
 edit is in progress\" error because, between evil-ex and

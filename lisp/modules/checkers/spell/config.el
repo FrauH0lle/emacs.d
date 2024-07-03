@@ -60,7 +60,9 @@
     (`enchant
      (setq ispell-program-name "enchant-2"))
 
-    (_ (zenit-log "Spell checker not found. Either install `aspell', `hunspell' or `enchant'"))))
+    (_ (zenit-log "Spell checker not found. Either install `aspell', `hunspell' or `enchant'")))
+
+  (ispell-check-version))
 
 
 ;;

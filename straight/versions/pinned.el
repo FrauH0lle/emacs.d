@@ -1,3 +1,3 @@
 (("org-contrib" . "351c71397d893d896a47ad7e280607b4d59b84e4")
- ("org" . "ab730145ba67596151f60cdc30a7963520832d7d"))
+ ("org" . "eafa479069687d87d81c11ddf655c181dd57f8b5"))
 :gamma

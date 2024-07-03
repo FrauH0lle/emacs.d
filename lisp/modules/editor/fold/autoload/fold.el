@@ -41,34 +41,21 @@
   (and (bound-and-true-p tree-sitter-mode)
        (featurep 'ts-fold)))
 
-;; HACK: Modified this function so it finds `outline-mode' headers (e.g. in
-;; `org-mode' or `oushine-mode').
 (defun +fold--invisible-points (count)
   (let (points)
     (save-excursion
       (catch 'abort
         (if (< count 0) (beginning-of-line))
-        (let ((fold-regexp (cond ((and (or (bound-and-true-p outline-minor-mode)
-                                           (derived-mode-p 'outline-mode))
-                                       (bound-and-true-p hs-block-start-regexp))
-                                  (rx (or (regexp outline-regexp) (regexp hs-block-start-regexp))))
-                                 ((bound-and-true-p hs-block-start-regexp) hs-block-start-regexp)
-                                 ((or (bound-and-true-p outline-minor-mode)
-                                      (derived-mode-p 'outline-mode)) outline-regexp))))
-          (while (re-search-forward fold-regexp nil t
-                                    (if (> count 0) 1 -1))
-            (unless (invisible-p (point))
-              (end-of-line)
-              (cond ((+fold--outline-fold-p)
-                     (push (point) points)
-                     (when (>= (length points) count)
-                       (throw 'abort nil)))
-                    ((ignore-errors (hs-already-hidden-p))
-                     (push (point) points)
-                     (when (>= (length points) count)
-                       (throw 'abort nil)))))
-            (forward-line (if (> count 0) 1 -1)))))
-      points)))
+        (while (re-search-forward hs-block-start-regexp nil t
+                                  (if (> count 0) 1 -1))
+          (unless (invisible-p (point))
+            (end-of-line)
+            (when (hs-already-hidden-p)
+              (push (point) points)
+              (when (>= (length points) count)
+                (throw 'abort nil))))
+          (forward-line (if (> count 0) 1 -1)))))
+    points))
 
 (defmacro +fold-from-eol (&rest body)
   "Perform action after moving to the end of the line."
@@ -99,8 +86,8 @@
               (end (progn (outline-end-of-subtree) (point))))
           (list (cons beg end)))))
     (when-let ((start (+fold--hideshow-fold-p)))
-      ;; `start' could be start of the block, or 't' if that wasn't found.
-      ;; In either case, we know the fold is on the same line.
+      ;; `start' could be start of the block, or 't' if that wasn't found. In
+      ;; either case, we know the fold is on the same line.
       (let* ((start (or (and (numberp start) start)
                         (line-beginning-position)))
              (end (line-end-position))
@@ -148,7 +135,8 @@
 (defun +fold/toggle ()
   "Toggle the fold at point.
 
-Targets `vimmish-fold', `hideshow', `ts-fold' and `outline' folds."
+Targets `vimmish-fold', `hideshow', `ts-fold' and `outline'
+folds."
   (interactive)
   (save-excursion
     (cond ((+fold--vimish-fold-p) (vimish-fold-toggle))
@@ -156,8 +144,8 @@ Targets `vimmish-fold', `hideshow', `ts-fold' and `outline' folds."
            (cl-letf (((symbol-function #'outline-hide-subtree)
                       (symbol-function #'outline-hide-entry)))
              (outline-toggle-children)))
-          ((+fold--ts-fold-p) (ts-fold-toggle))
-          ((+fold--hideshow-fold-p) (+fold-from-eol (hs-toggle-hiding))))))
+          ((+fold--hideshow-fold-p) (+fold-from-eol (hs-toggle-hiding)))
+          ((+fold--ts-fold-p) (ts-fold-toggle)))))
 
 ;;;###autoload
 (defun +fold/open-rec ()
@@ -173,27 +161,29 @@ folds."
 (defun +fold/open ()
   "Open the folded region at point.
 
-Targets `vimmish-fold', `hideshow', `ts-fold' and `outline' folds."
+Targets `vimmish-fold', `hideshow', `ts-fold' and `outline'
+folds."
   (interactive)
   (save-excursion
     (cond ((+fold--vimish-fold-p) (vimish-fold-unfold))
           ((+fold--outline-fold-p)
-           (outline-show-children)
+           (outline-show-branches)
            (outline-show-entry))
-          ((+fold--ts-fold-p) (ts-fold-open))
-          ((+fold--hideshow-fold-p) (+fold-from-eol (hs-show-block))))))
+          ((+fold--hideshow-fold-p) (+fold-from-eol (hs-show-block)))
+          ((+fold--ts-fold-p) (ts-fold-open)))))
 
 ;;;###autoload
 (defun +fold/close ()
   "Close the folded region at point.
 
-Targets `vimmish-fold', `hideshow', `ts-fold' and `outline' folds."
+Targets `vimmish-fold', `hideshow', `ts-fold' and `outline'
+folds."
   (interactive)
   (save-excursion
     (cond ((+fold--vimish-fold-p) (vimish-fold-refold))
-          ((+fold--ts-fold-p) (ts-fold-close))
+          ((+fold--outline-fold-p) (outline-hide-subtree))
           ((+fold--hideshow-fold-p) (+fold-from-eol (hs-hide-block)))
-          ((+fold--outline-fold-p) (outline-hide-subtree)))))
+          ((+fold--ts-fold-p) (ts-fold-close)))))
 
 ;;;###autoload
 (defun +fold/open-all (&optional level)
@@ -202,15 +192,15 @@ Targets `vimmish-fold', `hideshow', `ts-fold' and `outline' folds."
    (list (if current-prefix-arg (prefix-numeric-value current-prefix-arg))))
   (cond ((+fold--ts-fold-p)
          (ts-fold-open-all))
-        ((featurep 'vimish-fold)
+        ((and (featurep 'vimish-fold) (+fold--vimish-fold-p))
          (vimish-fold-unfold-all))
         ((save-excursion
            (+fold--ensure-hideshow-mode)
            (if (integerp level)
                (progn
-                 (outline-hide-sublevels (max 1 (1- level)))
+                 (outline-hide-sublevels (max 1 level))
                  (hs-life-goes-on
-                  (hs-hide-level-recursive (1- level) (point-min) (point-max))))
+                  (hs-hide-level-recursive level (point-min) (point-max))))
              (hs-show-all)
              (when (fboundp 'outline-show-all)
                (outline-show-all)))))))
@@ -229,44 +219,67 @@ Targets `vimmish-fold', `hideshow', `ts-fold' and `outline' folds."
         (+fold--ensure-hideshow-mode)
         (hs-life-goes-on
          (if (integerp level)
-             (hs-hide-level-recursive (1- level) (point-min) (point-max))
-           (hs-hide-all)))))))
+             (progn
+               (outline--show-headings-up-to-level level)
+               (hs-hide-level-recursive level (point-min) (point-max)))
+           (hs-hide-all)
+           (when (fboundp 'outline-hide-sublevels)
+             (outline-show-only-headings))))))))
 
 ;;;###autoload
 (defun +fold/next (count)
-  "Jump to the next vimish fold, outline heading or folded region."
+  "Jump to the next vimish fold, folded outline heading or folded
+region."
   (interactive "p")
   (cl-loop with orig-pt = (point)
            for fn
            in (list (lambda ()
-                      (when (or (or (bound-and-true-p outline-minor-mode)
-                                    (derived-mode-p 'outline-mode))
-                                (bound-and-true-p hs-block-start-regexp))
-                        (line-move count)
+                      (when (bound-and-true-p hs-block-start-regexp)
                         (car (+fold--invisible-points count))))
                     (lambda ()
                       (when (featurep 'vimish-fold)
-                        (line-move count)
                         (if (> count 0)
                             (dotimes (_ count) (vimish-fold-next-fold))
                           (dotimes (_ count)
                             (vimish-fold-previous-fold (- count)))))
                       (if (/= (point) orig-pt) (point)))
                     (lambda ()
-                      ;; ts-fold does not define movement functions so we need to do it ourselves
+                      (when (or (bound-and-true-p outline-minor-mode)
+                                (derived-mode-p 'outline-mode))
+                        (cl-destructuring-bind
+                            (count fn bound-fn)
+                            (if (> count 0)
+                                (list count
+                                      #'outline-next-visible-heading #'eobp)
+                              (list (- count)
+                                    #'outline-previous-visible-heading #'bobp))
+                          (dotimes (_ count)
+                            (funcall fn 1)
+                            (outline-end-of-heading))
+                          (if (and (/= (point) orig-pt)
+                                 (not (funcall bound-fn)))
+                            (point)))))
+                    (lambda ()
+                      ;; ts-fold does not define movement functions so we need
+                      ;; to do it ourselves
                       (when (+fold--ts-fold-p)
-                        (line-move count)
-                        (let* ((arg-list (if (> count 0) ;; depending on direction we need to change the ranges
+                        (let* ((arg-list (if ;; Depending on direction we need
+                                             ;; to change the ranges
+                                             (> count 0)
                                              (list (point) (point-max))
                                            (list (point-min) (point))))
-                               (comp-fun (if (> count 0) ;; also depending on direction we need to change how we sort the list
+                               ;; Also depending on direction we need to change
+                               ;; how we sort the list
+                               (comp-fun (if (> count 0)
                                              #'<
                                            #'>))
                                (ovs (cl-remove-if-not
                                      (lambda (ov)
                                        (eq (overlay-get ov 'creator) 'ts-fold))
-                                     ;; `overlays-in' does not provide a list that is sorted
-                                     ;; (in the way we need it atleast) so we need to sort it based on direction
+                                     ;; `overlays-in' does not provide a list
+                                     ;; that is sorted (in the way we need it
+                                     ;; atleast) so we need to sort it based on
+                                     ;; direction
                                      (cl-sort (apply #'overlays-in arg-list) comp-fun :key #'overlay-start))))
                           (if (and ovs (<= (abs count) (length ovs)))
                               (goto-char (overlay-start (nth (- (abs count) 1) ovs))))))))
@@ -280,7 +293,8 @@ Targets `vimmish-fold', `hideshow', `ts-fold' and `outline' folds."
 
 ;;;###autoload
 (defun +fold/previous (count)
-  "Jump to the previous vimish fold, outline heading or folded region."
+  "Jump to the previous vimish fold, outline heading or folded
+region."
   (interactive "p")
   (+fold/next (- count)))
 

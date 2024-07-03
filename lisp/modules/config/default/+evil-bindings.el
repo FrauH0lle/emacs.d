@@ -38,12 +38,16 @@
 ;;; Global keybindings
 
 ;; Smart tab, these will only work in GUI Emacs
-(map! :m [tab] (general-predicate-dispatch nil
+(map! :i [tab] (general-predicate-dispatch nil
+                 (and (bound-and-true-p corfu-mode)
+                      (modulep! :completion corfu))
+                 #'completion-at-point)
+      :m [tab] (general-predicate-dispatch nil
                  (and (modulep! :editor snippets)
                       (evil-visual-state-p)
                       (or (eq evil-visual-selection 'line)
                           (not (memq (char-after) (list ?\( ?\[ ?\{ ?\} ?\] ?\))))))
-                 #'yas-insert-snippet
+                 #'tempel-insert
                  (and (modulep! :editor fold)
                       (or
                        (save-excursion (end-of-line) (invisible-p (point)))

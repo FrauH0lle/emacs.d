@@ -165,9 +165,13 @@ If DERIVED-P, test with `derived-mode-p', otherwise use `eq'."
            collect window))
 
 ;;;###autoload
-(defun zenit-visible-buffers (&optional buffer-list)
+(defun zenit-visible-buffers (&optional buffer-list all-frames)
   "Return a list of visible buffers (i.e. not buried)."
-  (let ((buffers (delete-dups (mapcar #'window-buffer (window-list)))))
+  (let ((buffers
+         (delete-dups
+          (cl-loop for frame in (if all-frames (visible-frame-list) (list (selected-frame)))
+                   if (window-list frame)
+                   nconc (mapcar #'window-buffer it)))))
     (if buffer-list
         (cl-delete-if (lambda (b) (memq b buffer-list))
                       buffers)

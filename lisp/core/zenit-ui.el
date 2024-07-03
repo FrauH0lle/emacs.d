@@ -274,12 +274,13 @@ buffers are visible in other windows, switch to
                  (user-error "Aborted")))
              (let ((inhibit-redisplay t)
                    buffer-list-update-hook)
-               (when (or ;; if there aren't more real buffers than visible buffers,
+               (when (or
+                      ;; If there aren't more real buffers than visible buffers,
                       ;; then there are no real, non-visible buffers left.
                       (not (cl-set-difference (zenit-real-buffer-list)
-                                              (zenit-visible-buffers)))
-                      ;; if we end up back where we start (or previous-buffer
-                      ;; returns nil), we have nowhere left to go
+                                              (zenit-visible-buffers nil t)))
+                      ;; If we end up back where we start (or previous-buffer
+                      ;; returns nil), we have nowhere left to go.
                       (memq (switch-to-prev-buffer nil t) (list buf 'nil)))
                  (switch-to-buffer (zenit-fallback-buffer)))
                (unless visible-p

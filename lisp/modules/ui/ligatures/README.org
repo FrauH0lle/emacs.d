@@ -1,0 +1,115 @@
+#+title: :ui ligatures
+#+created: 2024-07-03
+
+* Description :unfold:
+This module enables ligature support.
+
+** Module flags
+- +auto ::
+  Enables ligatures automatically in all supported modes.
+
+- +extra ::
+  Enables extra symbol substitutions.
+
+** Packages
+- [[https://github.com/mickeynp/ligature.el][ligature.el]]
+
+* Installation
+A version of Emacs with Harfbuzz support is required.
+
+* Configuration
+#+begin_src elisp
+(defvar +ligatures-extra-symbols
+  '(;; org
+    :name          "»"
+    :src_block     "»"
+    :src_block_end "«"
+    :quote         "“"
+    :quote_end     "”"
+    ;; Functional
+    :lambda        "λ"
+    :def           "ƒ"
+    :composition   "∘"
+    :map           "↦"
+    ;; Types
+    :null          "∅"
+    :true          "𝕋"
+    :false         "𝔽"
+    :int           "ℤ"
+    :float         "ℝ"
+    :str           "𝕊"
+    :bool          "𝔹"
+    :list          "𝕃"
+    ;; Flow
+    :not           "￢"
+    :in            "∈"
+    :not-in        "∉"
+    :and           "∧"
+    :or            "∨"
+    :for           "∀"
+    :some          "∃"
+    :return        "⟼"
+    :yield         "⟻"
+    ;; Other
+    :union         "⋃"
+    :intersect     "∩"
+    :diff          "∖"
+    :tuple         "⨂"
+    :pipe          "" ;; FIXME: find a non-private char
+    :dot           "•")
+  "Maps identifiers to symbols, recognized by `set-ligatures'.
+
+This should not contain any symbols from the Unicode Private
+Area! There is no universal way of getting the correct symbol as
+that area varies from font to font.")
+
+(defvar +ligatures-extra-alist '((t))
+  "A map of major modes to symbol lists (for
+ `prettify-symbols-alist').")
+
+(defvar +ligatures-prog-mode-list
+  '("|||>" "<|||" "<==>" "<!--" "####" "~~>" "***" "||=" "||>"
+    ":::" "::=" "=:=" "===" "==>" "=!=" "=>>" "=<<" "=/=" "!=="
+    "!!." ">=>" ">>=" ">>>" ">>-" ">->" "->>" "-->" "---" "-<<"
+    "<~~" "<~>" "<*>" "<||" "<|>" "<$>" "<==" "<=>" "<=<" "<->"
+    "<--" "<-<" "<<=" "<<-" "<<<" "<+>" "</>" "###" "#_(" "..<"
+    "..." "+++" "/==" "///" "_|_" "www" "&&" "^=" "~~" "~@" "~="
+    "~>" "~-" "**" "*>" "*/" "||" "|}" "|]" "|=" "|>" "|-" "{|"
+    "[|" "]#" "::" ":=" ":>" ":<" "$>" "==" "=>" "!=" "!!" ">:"
+    ">=" ">>" ">-" "-~" "-|" "->" "--" "-<" "<~" "<*" "<|" "<:"
+    "<$" "<=" "<>" "<-" "<<" "<+" "</" "#{" "#[" "#:" "#=" "#!"
+    "##" "#(" "#?" "#_" "%%" ".=" ".-" ".." ".?" "+>" "++" "?:"
+    "?=" "?." "??" ";;" "/*" "/=" "/>" "//" "__" "~~" "(*" "*)"
+    "\\\\" "://")
+  "A list of ligatures to enable in all `prog-mode' buffers.")
+
+(defvar +ligatures-all-modes-list
+  '()
+  "A list of ligatures to enable in all buffers.")
+
+(defvar +ligatures-in-modes
+  '(not special-mode comint-mode eshell-mode term-mode vterm-mode Info-mode
+    elfeed-search-mode elfeed-show-mode)
+  "List of major modes where ligatures should be enabled.
+
+  If t, enable it everywhere (except `fundamental-mode'). If the
+  first element is 'not, enable it in any mode besides what is
+  listed. If nil, don't enable ligatures anywhere.")
+
+(defvar +ligatures-extras-in-modes t
+  "List of major modes where extra ligatures should be enabled.
+
+Extra ligatures are mode-specific substituions, defined in
+`+ligatures-extra-symbols' and assigned with `set-ligatures!'.
+This variable controls where these are enabled.
+
+  If t, enable it everywhere (except `fundamental-mode').
+  If the first element is 'not, enable it in any mode besides
+  what is listed.
+  If nil, don't enable these extra ligatures anywhere (though
+  it's more efficient to remove the `+extra' flag from the :ui
+  ligatures module instead).")
+#+end_src
+
+- [[help:set-ligatures!]]
+- [[help:set-font-ligatures!]]

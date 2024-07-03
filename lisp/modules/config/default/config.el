@@ -68,7 +68,7 @@
 
 
 ;;;###package tramp
-(unless IS-WINDOWS
+(eval-unless! zenit--system-windows-p
   (setq tramp-default-method "ssh")) ; faster than the default scp
 
 
@@ -413,7 +413,7 @@ Continues comments if executed from a commented line. Consults
         :gi "C-S-RET"       #'+default/newline-above
         :gn [C-S-return]    #'+default/newline-above
 
-        (:when IS-MAC
+        (:when zenit--system-macos-p
           :gn "s-RET"        #'+default/newline-below
           :gn [s-return]     #'+default/newline-below
           :gn "S-s-RET"      #'+default/newline-above

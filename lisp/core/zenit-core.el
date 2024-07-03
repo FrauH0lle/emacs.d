@@ -36,14 +36,35 @@
 
 
 ;;
-;;; Custom features
+;;; Custom features & Global constants
 
-;; `system-configuration-features's documentation says it should not be used to
-;; detect features.
+(defconst zenit-operating-system
+  (pcase system-type
+    ('darwin                           '(macos unix))
+    ((or 'cygwin 'windows-nt 'ms-dos)  '(windows))
+    ((or 'gnu 'gnu/linux)              '(linux unix))
+    ((or 'gnu/kfreebsd 'berkeley-unix) '(bsd unix)))
+  "A list of symbols denoting the current operating system.")
+
+;; Make the operating system available to `featurep'
+(push :system features)
+(put :system 'subfeatures zenit-operating-system)
+
+;; Convenience aliases for internal use
+(defconst zenit-system            (car zenit-operating-system))
+(defconst zenit--system-windows-p (featurep :system 'windows))
+(defconst zenit--system-macos-p   (featurep :system 'macos))
+(defconst zenit--system-linux-p   (featurep :system 'linux))
+(defconst zenit--system-unix-p    (featurep :system 'unix))
+(defconst zenit--system-bsd-p     (featurep :system 'bsd))
+
+;; Add build features to `features' so they can be checked via `featurep'
 (if (bound-and-true-p module-file-suffix)
     (push 'dynamic-modules features))
 (if (fboundp #'json-parse-string)
     (push 'jansson features))
+(if (string-match-p "HARFBUZZ" system-configuration-features)
+    (push 'harfbuzz features))
 
 ;; `native-compile' exists whether or not it is functional, so pretend it
 ;; doesn't exist if it isn't available.
@@ -51,18 +72,8 @@
     (if (not (native-comp-available-p))
         (delq 'native-compile features)))
 
-;;
-;;; Global constants
-
-(defconst IS-MAC      (eq system-type 'darwin))
-(defconst IS-LINUX    (memq system-type '(gnu gnu/linux gnu/kfreebsd berkeley-unix)))
-(defconst IS-WINDOWS  (memq system-type '(cygwin windows-nt ms-dos)))
-(defconst IS-BSD      (memq system-type '(darwin berkeley-unix gnu/kfreebsd)))
-(defconst MODULES     (featurep 'dynamic-modules))
-(defconst NATIVECOMP  (featurep 'native-compile))
-
 ;; $HOME isn't normally defined on Windows, but many unix tools expect it.
-(when IS-WINDOWS
+(when zenit--system-windows-p
   (when-let (realhome
              (and (null (getenv-internal "HOME"))
                   (getenv "USERPROFILE")))
@@ -281,9 +292,9 @@ handling encrypted or compressed files, among other things."
 
       ;; Unset a non-trivial list of command line options that aren't relevant
       ;; to our current OS, but `command-line-1' still processes.
-      (unless IS-MAC
+      (eval-unless! zenit--system-macos-p
         (setq command-line-ns-option-alist nil))
-      (unless (memq initial-window-system '(x pgtk))
+      (eval-unless! (memq initial-window-system '(x pgtk))
         (setq command-line-x-option-alist nil)))))
 
 
@@ -435,7 +446,7 @@ them otherwise."
       gnutls-algorithm-priority
       (when (boundp 'libgnutls-version)
         (concat "SECURE128:+SECURE192:-VERS-ALL"
-                (if (and (not IS-WINDOWS)
+                (if (and (not zenit--system-windows-p)
                          (>= libgnutls-version 30605))
                     ":+VERS-TLS1.3")
                 ":+VERS-TLS1.2"))

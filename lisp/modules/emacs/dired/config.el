@@ -30,7 +30,7 @@
   (set-evil-initial-state! 'image-dired-display-image-mode 'emacs)
 
   (let ((args (list "-ahl" "-v" "--group-directories-first")))
-    (when IS-BSD
+    (eval-when! zenit--system-bsd-p
       ;; Use GNU ls as `gls' from `coreutils' if available. Add `(setq
       ;; dired-use-ls-dired nil)' to your config to suppress the Dired warning
       ;; when not using GNU ls.

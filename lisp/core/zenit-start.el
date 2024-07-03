@@ -104,7 +104,7 @@ buffer."
 (setq default-input-method nil)
 ;; ...And the clipboard on Windows could be in a wider encoding (UTF-16), so
 ;; leave Emacs to its own devices.
-(eval-when! IS-WINDOWS
+(eval-when! zenit--system-windows-p
   (setq selection-coding-system 'utf-8))
 
 ;; Add support for additional file extensions.

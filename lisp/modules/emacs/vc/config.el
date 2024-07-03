@@ -4,7 +4,7 @@
 ;; check them all (especially in TRAMP buffers).
 (setq-default vc-handled-backends '(SVN Git Hg))
 
-(when IS-WINDOWS
+(eval-when! zenit--system-windows-p
   (setenv "GIT_ASKPASS" "git-gui--askpass"))
 
 ;; In case the user is using `bug-reference-mode'

@@ -11,7 +11,7 @@
               langtool-language-tool-jar
               langtool-java-classpath)
     (cond ((setq langtool-bin (executable-find "languagetool")))
-          (IS-MAC
+          (zenit--system-macos-p
            (cond
             ;; is user using home brew?
             ((file-directory-p "/usr/local/Cellar/languagetool")
@@ -23,5 +23,5 @@
             ;; macports compatibility
             ((file-directory-p "/opt/local/share/java/LanguageTool")
              (setq langtool-java-classpath "/opt/local/share/java/LanguageTool/*"))))
-          (IS-LINUX
+          (zenit--system-linux-p
            (setq langtool-java-classpath "/usr/share/languagetool:/usr/share/java/languagetool/*")))))

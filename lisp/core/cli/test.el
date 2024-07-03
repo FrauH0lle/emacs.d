@@ -2,7 +2,7 @@
 
 (defun zenit--emacs-binary ()
   (let ((emacs-binary-path (zenit-path invocation-directory invocation-name))
-        (runemacs-binary-path (if IS-WINDOWS (zenit-path invocation-directory "runemacs.exe"))))
+        (runemacs-binary-path (if zenit--system-windows-p (zenit-path invocation-directory "runemacs.exe"))))
     (if (and runemacs-binary-path (file-exists-p runemacs-binary-path))
         runemacs-binary-path
       emacs-binary-path)))

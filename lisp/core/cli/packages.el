@@ -230,7 +230,7 @@ already been."
                           ;;   errors when installing them (see
                           ;;   hlissner/zenit-emacs#2637), so have git handle
                           ;;   conversion by force.
-                          (when (and IS-WINDOWS (stringp local-repo))
+                          (when (and zenit--system-windows-p (stringp local-repo))
                             (let ((default-directory (straight--repos-dir local-repo)))
                               (when (file-in-directory-p default-directory straight-base-dir)
                                 (straight--process-run "git" "config" "core.autocrlf" "true"))))
@@ -238,7 +238,7 @@ already been."
                           ;; Remove any existing .eln files. Compilation is done
                           ;; in async mode and thus, remaining .eln files can
                           ;; trigger rebuilds.
-                          (when NATIVECOMP
+                          (when (featurep 'native-compile)
                             (zenit--remove-eln-files build-dir)))
                       (error
                        (signal 'zenit-package-error (list package e))))))))
@@ -292,7 +292,7 @@ already been."
                     (and (eq (car-safe build) :not)
                          (setq want-byte-compile (not want-byte-compile)
                                want-native-compile (not want-native-compile)))
-                    (unless NATIVECOMP
+                    (unless (featurep 'native-compile)
                       (setq want-native-compile nil))
                     (and (or want-byte-compile want-native-compile)
                          (or (when (file-newer-than-file-p repo-dir build-dir)
@@ -320,11 +320,11 @@ already been."
                          (progn (zenit-log "%s is outdated, rebuilding" package)
                                 (zenit-log "Reason: %s" rebuild-reason)
                                 (puthash package t straight--packages-to-rebuild)
-                                (when NATIVECOMP
+                                (when (featurep 'native-compile)
                                   (zenit--remove-eln-files build-dir))))))
                 (if force-p
                     (progn
-                      (when NATIVECOMP
+                      (when (featurep 'native-compile)
                         (zenit--remove-eln-files t 'all))
                       ;; NOTE 2024-05-02: This is the same as what
                       ;;   `straight-rebuild-all' does but we reverse the order
@@ -626,7 +626,7 @@ package-install)."
     (print-group!
      (delq
       nil (list
-           (when NATIVECOMP
+           (when (featurep 'native-compile)
              (zenit--packages-purge-eln))
            (if (not builds-p)
                (ignore (print! (info "Skipping builds")))

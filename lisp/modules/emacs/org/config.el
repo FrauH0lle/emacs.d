@@ -498,7 +498,7 @@ to `default-directory'. This changes it to be relative to
    "file" :face (lambda (path)
                   (if (or (file-remote-p path)
                           ;; filter out network shares on windows (slow)
-                          (if IS-WINDOWS (string-prefix-p "\\\\" path))
+                          (eval-if! zenit--system-windows-p (string-prefix-p "\\\\" path))
                           (file-exists-p path))
                       'org-link
                     '(warning org-link))))
@@ -1104,7 +1104,7 @@ regenerated."
     "Advise `server-visit-files' to load `org-protocol' lazily."
     :around #'server-visit-files
     (if (not (cl-loop with protocol =
-                      (if IS-WINDOWS
+                      (eval-if! zenit--system-windows-p
                           ;; On Windows, the file arguments for `emacsclient'
                           ;; get funnelled through `expand-file-path' by
                           ;; `server-process-filter'. This substitutes

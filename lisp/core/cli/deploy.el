@@ -26,8 +26,8 @@
   (when (or zenit-auto-accept
             (y-or-n-p "Download and install nerd-icon's fonts?"))
     (require 'nerd-icons)
-    (let ((window-system (cond (IS-MAC 'ns)
-                               (IS-LINUX 'x))))
+    (let ((window-system (cond (zenit--system-macos-p 'ns)
+                               (zenit--system-linux-p 'x))))
       (nerd-icons-install-fonts 'yes)))
 
   (when (file-exists-p "~/.emacs")

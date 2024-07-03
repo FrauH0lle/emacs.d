@@ -223,7 +223,7 @@ You should use `set-eshell-alias!' to change this.")
 
 
 (use-package! fish-completion
-  :unless IS-WINDOWS
+  :unless zenit--system-windows-p
   :hook (eshell-mode . fish-completion-mode)
   :init (setq fish-completion-fallback-on-bash-p t
               fish-completion-inhibit-missing-fish-command-warning t))

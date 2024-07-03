@@ -38,10 +38,10 @@
 ;;; Global keybindings
 
 ;; Smart tab, these will only work in GUI Emacs
-(map! :i [tab] (general-predicate-dispatch nil
-                 (and (bound-and-true-p corfu-mode)
-                      (modulep! :completion corfu))
-                 #'completion-at-point)
+(map! ;; :i [tab] (general-predicate-dispatch nil
+      ;;            (and (bound-and-true-p corfu-mode)
+      ;;                 (modulep! :completion corfu))
+      ;;            #'completion-at-point)
       :m [tab] (general-predicate-dispatch nil
                  (and (modulep! :editor snippets)
                       (evil-visual-state-p)
@@ -175,7 +175,7 @@
         :g "M-8"   #'+workspace/switch-to-7
         :g "M-9"   #'+workspace/switch-to-8
         :g "M-0"   #'+workspace/switch-to-final
-        (:when IS-MAC
+        (:when zenit--system-macos-p
           :g "s-t"   #'+workspace/new
           :g "s-T"   #'+workspace/display
           :n "s-1"   #'+workspace/switch-to-0
@@ -693,8 +693,8 @@
          :desc "Spell checker"              "s" #'spell-fu-mode)
        (:when (modulep! :checkers spell +flyspell)
          :desc "Spell checker"              "s" #'flyspell-mode)
-       (:when (modulep! :lang org +pomodoro)
-         :desc "Pomodoro timer"             "t" #'org-pomodoro)
+       (:when (modulep! :ui ligatures)
+         :desc "Code ligatures"             "t" #'+ligatures/toggle)
        :desc "Soft line wrapping"           "w" #'visual-line-mode
        (:when (modulep! :editor word-wrap)
          :desc "Soft line wrapping"         "w" #'+word-wrap-mode)

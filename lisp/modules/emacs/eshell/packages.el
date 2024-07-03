@@ -8,6 +8,6 @@
 (package! eshell-did-you-mean :lockfile emacs-eshell)
 (package! eshell-syntax-highlighting :lockfile emacs-eshell)
 
-(unless IS-WINDOWS
+(unless zenit--system-windows-p
   (package! fish-completion :lockfile emacs-eshell)
   (package! bash-completion :lockfile emacs-eshell))

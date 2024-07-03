@@ -144,7 +144,7 @@
           (if zenit-projectile-fd-binary
               (format "%s --color=never -i -H -E .git --regex %s"
                       zenit-projectile-fd-binary
-                      (if IS-WINDOWS "--path-separator=/" ""))
+                      (eval-if! zenit--system-windows-p "--path-separator=/" ""))
             consult-find-args)))
 
   (protect-macros!

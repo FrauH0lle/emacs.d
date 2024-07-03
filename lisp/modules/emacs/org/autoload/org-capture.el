@@ -15,13 +15,13 @@
     (width . 70)
     (height . 25)
     (transient . t)
-    ,@(when IS-LINUX
+    ,@(when zenit--system-linux-p
         `((window-system . ,(if (boundp 'pgtk-initialized) 'pgtk 'x))
           ;; NOTE 2023-02-01: This results in "display not found"
           (display . ,(or ;; (getenv "WAYLAND_DISPLAY")
                           (getenv "DISPLAY")
                           ":0"))))
-    ,(if IS-MAC '(menu-bar-lines . 1)))
+    ,(if zenit--system-macos-p '(menu-bar-lines . 1)))
   "TODO")
 
 ;;;###autoload

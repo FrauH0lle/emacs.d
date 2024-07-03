@@ -28,7 +28,17 @@ Used for Insert and Emacs states, and for non-evil users.")
 ;;; Global keybind settings
 
 (cond
- (IS-WINDOWS
+ (zenit--system-macos-p
+  ;; mac-* variables are used by the special emacs-mac build of Emacs by
+  ;; Yamamoto Mitsuharu, while other builds use ns-*.
+  (setq mac-command-modifier      'super
+        ns-command-modifier       'super
+        mac-option-modifier       'meta
+        ns-option-modifier        'meta
+        ;; Free up the right option for character composition
+        mac-right-option-modifier 'none
+        ns-right-option-modifier  'none))
+ (zenit--system-windows-p
   (setq w32-lwindow-modifier 'super
         w32-rwindow-modifier 'super)))
 

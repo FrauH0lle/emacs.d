@@ -390,14 +390,14 @@ buffers are visible in other windows, switch to
   (defvar zenit--ediff-saved-wconf nil)
   ;; Restore window config after quitting ediff
 
-  (defhook! zenit-ediff-save-wconf-h ()
-    'ediff-before-setup-hook
-    (setq zenit--ediff-saved-wconf (current-window-configuration)))
+  (add-hook! 'ediff-before-setup-hook
+    (defun zenit-ediff-save-wconf-h ()
+      (setq zenit--ediff-saved-wconf (current-window-configuration))))
 
-  (defhook! zenit-ediff-restore-wconf-h ()
-    '(ediff-quit-hook ediff-suspend-hook) :append
-    (when (window-configuration-p zenit--ediff-saved-wconf)
-      (set-window-configuration zenit--ediff-saved-wconf))))
+  (add-hook! '(ediff-quit-hook ediff-suspend-hook) :append
+    (defun zenit-ediff-restore-wconf-h ()
+      (when (window-configuration-p zenit--ediff-saved-wconf)
+        (set-window-configuration zenit--ediff-saved-wconf)))))
 
 
 (use-package! goto-addr
@@ -420,12 +420,12 @@ buffers are visible in other windows, switch to
   (defun +hl-line--turn-on-global-hl-line-mode ()
     "Turn on global `hl-line-mode' if conditions are met."
     (and (cond (hl-line-mode nil)
-                 ((null global-hl-line-modes) nil)
-                 ((eq global-hl-line-modes t))
-                 ((eq (car global-hl-line-modes) 'not)
-                  (not (derived-mode-p global-hl-line-modes)))
-                 ((apply #'derived-mode-p global-hl-line-modes)))
-           (hl-line-mode +1)))
+               ((null global-hl-line-modes) nil)
+               ((eq global-hl-line-modes t))
+               ((eq (car global-hl-line-modes) 'not)
+                (not (derived-mode-p global-hl-line-modes)))
+               ((apply #'derived-mode-p global-hl-line-modes)))
+         (hl-line-mode +1)))
   (define-globalized-minor-mode global-hl-line-mode hl-line-mode
     (lambda ()
       (+hl-line--turn-on-global-hl-line-mode))
@@ -435,21 +435,21 @@ buffers are visible in other windows, switch to
   ;; serve much purpose when the selection is so much more visible.
   (defvar zenit--hl-line-mode nil)
 
-  (defhook! zenit-truly-disable-hl-line-h ()
-    'hl-line-mode-hook
-    (unless hl-line-mode
-      (setq-local zenit--hl-line-mode nil)))
+  (add-hook! 'hl-line-mode-hook
+    (defun zenit-truly-disable-hl-line-h ()
+      (unless hl-line-mode
+        (setq-local zenit--hl-line-mode nil))))
 
-  (defhook! zenit-disable-hl-line-h ()
-    '(evil-visual-state-entry-hook activate-mark-hook)
-    (when hl-line-mode
-      (hl-line-mode -1)
-      (setq-local zenit--hl-line-mode t)))
+  (add-hook! '(evil-visual-state-entry-hook activate-mark-hook)
+    (defun zenit-disable-hl-line-h ()
+      (when hl-line-mode
+        (hl-line-mode -1)
+        (setq-local zenit--hl-line-mode t))))
 
-  (defhook! zenit-enable-hl-line-maybe-h ()
-    '(evil-visual-state-exit-hook deactivate-mark-hook)
-    (when zenit--hl-line-mode
-      (hl-line-mode +1))))
+  (add-hook! '(evil-visual-state-exit-hook deactivate-mark-hook)
+    (defun zenit-enable-hl-line-maybe-h ()
+      (when zenit--hl-line-mode
+        (hl-line-mode +1)))))
 
 
 (use-package! winner

@@ -143,12 +143,12 @@ can be specified as a description for the menu item.")
                                      defs)
                            (t ,fallback-def))))))))
 
-(defhook! +general-predicate-dispatch-fix-load-history-h ()
-  "Add `general-predicate-dispatch' explicitly to load-history so
+(add-hook! 'zenit-first-input-hook
+  (defun +general-predicate-dispatch-fix-load-history-h ()
+    "Add `general-predicate-dispatch' explicitly to load-history so
 the patch can be validated."
-  'zenit-first-input-hook
-  (push
-   `(,(locate-library "general") (defun . general-predicate-dispatch)) load-history))
+    (push
+     `(,(locate-library "general") (defun . general-predicate-dispatch)) load-history)))
 
 ;; Convenience aliases
 (defalias 'define-key! #'general-def)
@@ -243,21 +243,21 @@ change the localleader prefix."
 
 ;; Bind `zenit-leader-key' and `zenit-leader-alt-key' as late as possible to give
 ;; the user a chance to modify them.
-(defhook! zenit-init-leader-keys-h ()
-  "Bind `zenit-leader-key' and `zenit-leader-alt-key'."
-  'zenit-after-init-hook
-  (let ((map general-override-mode-map))
-    (if (not (modulep! :editor evil))
-        (progn
-          (cond ((equal zenit-leader-alt-key "C-c")
-                 (set-keymap-parent zenit-leader-map mode-specific-map))
-                ((equal zenit-leader-alt-key "C-x")
-                 (set-keymap-parent zenit-leader-map ctl-x-map)))
-          (define-key map (kbd zenit-leader-alt-key) 'zenit/leader))
-      (after! evil
-        (evil-define-key* '(normal visual motion) map (kbd zenit-leader-key) 'zenit/leader)
-        (evil-define-key* '(emacs insert) map (kbd zenit-leader-alt-key) 'zenit/leader)))
-    (general-override-mode +1)))
+(add-hook! 'zenit-after-init-hook
+  (defun zenit-init-leader-keys-h ()
+    "Bind `zenit-leader-key' and `zenit-leader-alt-key'."
+    (let ((map general-override-mode-map))
+      (if (not (modulep! :editor evil))
+          (progn
+            (cond ((equal zenit-leader-alt-key "C-c")
+                   (set-keymap-parent zenit-leader-map mode-specific-map))
+                  ((equal zenit-leader-alt-key "C-x")
+                   (set-keymap-parent zenit-leader-map ctl-x-map)))
+            (define-key map (kbd zenit-leader-alt-key) 'zenit/leader))
+        (after! evil
+          (evil-define-key* '(normal visual motion) map (kbd zenit-leader-key) 'zenit/leader)
+          (evil-define-key* '(emacs insert) map (kbd zenit-leader-alt-key) 'zenit/leader)))
+      (general-override-mode +1))))
 
 
 ;;

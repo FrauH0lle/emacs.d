@@ -55,16 +55,16 @@ themselves) to ensure the buffer is as fast as possible."
                               #'string-match-p))))
        (setq-local zenit-large-file-p size)))
 
-(defhook! zenit-optimize-for-large-files-h ()
-  "Trigger `so-long-minor-mode' if the file is large."
-  'find-file-hook
-  (when (and zenit-large-file-p buffer-file-name)
-    (if (or zenit-inhibit-large-file-detection
-            (memq major-mode zenit-large-file-excluded-modes))
-        (kill-local-variable 'zenit-large-file-p)
-      (when (fboundp 'so-long-minor-mode) ; in case the user disabled it
-        (so-long-minor-mode +1))
-      (message "Large file detected! Cutting a few corners to improve performance..."))))
+(add-hook! 'find-file-hook
+  (defun zenit-optimize-for-large-files-h ()
+    "Trigger `so-long-minor-mode' if the file is large."
+    (when (and zenit-large-file-p buffer-file-name)
+      (if (or zenit-inhibit-large-file-detection
+              (memq major-mode zenit-large-file-excluded-modes))
+          (kill-local-variable 'zenit-large-file-p)
+        (when (fboundp 'so-long-minor-mode) ; in case the user disabled it
+          (so-long-minor-mode +1))
+        (message "Large file detected! Cutting a few corners to improve performance...")))))
 
 
 ;; Usually we do not want to follow symlinks, as it changes `default-directory'
@@ -90,16 +90,16 @@ themselves) to ensure the buffer is as fast as possible."
 
 ;; Create missing directories when we open a file that doesn't exist under a
 ;; directory tree that may not exist.
-(defhook! zenit-create-missing-directories-h ()
-  "Automatically create missing directories when creating new files."
-  'find-file-not-found-functions
-  (unless (file-remote-p buffer-file-name)
-    (let ((parent-directory (file-name-directory buffer-file-name)))
-      (and (not (file-directory-p parent-directory))
-           (y-or-n-p (format "Directory `%s' does not exist! Create it?"
-                             parent-directory))
-           (progn (make-directory parent-directory 'parents)
-                  t)))))
+(add-hook! 'find-file-not-found-functions
+  (defun zenit-create-missing-directories-h ()
+    "Automatically create missing directories when creating new files."
+    (unless (file-remote-p buffer-file-name)
+      (let ((parent-directory (file-name-directory buffer-file-name)))
+        (and (not (file-directory-p parent-directory))
+             (y-or-n-p (format "Directory `%s' does not exist! Create it?"
+                               parent-directory))
+             (progn (make-directory parent-directory 'parents)
+                    t))))))
 
 ;; Backups and lockfiles
 (setq make-backup-files t ; Activate backups
@@ -130,17 +130,17 @@ themselves) to ensure the buffer is as fast as possible."
                   (concat auto-save-list-file-prefix "tramp-\\2") t)
             (list ".*" auto-save-list-file-prefix t)))
 
-(defhook! zenit-guess-mode-h ()
-  "Guess major mode when saving a file in `fundamental-mode'.
+(add-hook! 'after-save-hook
+  (defun zenit-guess-mode-h ()
+    "Guess major mode when saving a file in `fundamental-mode'.
 
 Likely, something has changed since the buffer was opened. e.g. A
 shebang line or file path may exist now."
-  'after-save-hook
-  (when (eq major-mode 'fundamental-mode)
-    (let ((buffer (or (buffer-base-buffer) (current-buffer))))
-      (and (buffer-file-name buffer)
-           (eq buffer (window-buffer (selected-window))) ; only visible buffers
-           (set-auto-mode)))))
+    (when (eq major-mode 'fundamental-mode)
+      (let ((buffer (or (buffer-base-buffer) (current-buffer))))
+        (and (buffer-file-name buffer)
+             (eq buffer (window-buffer (selected-window))) ; only visible buffers
+             (set-auto-mode))))))
 
 (defadvice! zenit--shut-up-autosave-a (fn &rest args)
   "If a file has autosaved data, `after-find-file' will pause for 1
@@ -360,18 +360,18 @@ system."
   ;; purpose in persisting them (Must be first in the list!)
   (add-to-list 'recentf-filename-handlers #'substring-no-properties)
 
-  (defhook! zenit--recentf-touch-buffer-h ()
-    "Bump file in recent file list when it is switched or written to."
-    '(zenit-switch-window-hook write-file-functions)
-    (when buffer-file-name
-      (recentf-add-file buffer-file-name))
-    ;; Return nil for `write-file-functions'
-    nil)
+  (add-hook! '(zenit-switch-window-hook write-file-functions)
+    (defun zenit--recentf-touch-buffer-h ()
+      "Bump file in recent file list when it is switched or written to."
+      (when buffer-file-name
+        (recentf-add-file buffer-file-name))
+      ;; Return nil for `write-file-functions'
+      nil))
 
-  (defhook! zenit--recentf-add-dired-directory-h ()
-    "Add dired directories to recentf file list."
-    'dired-mode-hook
-    (recentf-add-file default-directory))
+  (add-hook!'dired-mode-hook
+   (defun zenit--recentf-add-dired-directory-h ()
+     "Add dired directories to recentf file list."
+     (recentf-add-file default-directory)))
 
   ;; The most sensible time to clean up your recent files list is when you quit
   ;; Emacs (unless this is a long-running daemon session).
@@ -397,30 +397,31 @@ system."
           mark-ring global-mark-ring       ; persist marks
           search-ring regexp-search-ring)) ; persist searches
 
-  (defhook! zenit-savehist-unpropertize-variables-h ()
-    "Remove text properties from `kill-ring' to reduce savehist cache
+  (add-hook! 'savehist-save-hook
+    (defun zenit-savehist-unpropertize-variables-h ()
+      "Remove text properties from `kill-ring' to reduce savehist cache
 size."
-    'savehist-save-hook
-    (setq kill-ring
-          (mapcar #'substring-no-properties
-                  (cl-remove-if-not #'stringp kill-ring))
-          register-alist
-          (cl-loop for (reg . item) in register-alist
-                   if (stringp item)
-                   collect (cons reg (substring-no-properties item))
-                   else collect (cons reg item))))
+      (setq kill-ring
+            (mapcar #'substring-no-properties
+                    (cl-remove-if-not #'stringp kill-ring))
+            register-alist
+            (cl-loop for (reg . item) in register-alist
+                     if (stringp item)
+                     collect (cons reg (substring-no-properties item))
+                     else collect (cons reg item)))))
 
-  (defhook! zenit-savehist-remove-unprintable-registers-h ()
-    "Remove unwriteable registers (e.g. containing window
+  (add-hook! 'savehist-save-hook
+    (defun zenit-savehist-remove-unprintable-registers-h ()
+      "Remove unwriteable registers (e.g. containing window
 configurations). Otherwise, `savehist' would discard
 `register-alist' entirely if we don't omit the unwritable
 tidbits."
-    'savehist-save-hook
-    ;; Save new value in the temp buffer savehist is running
-    ;; `savehist-save-hook' in. We don't want to actually remove the
-    ;; unserializable registers in the current session!
-    (setq-local register-alist
-                (cl-remove-if-not #'savehist-printable register-alist))))
+
+      ;; Save new value in the temp buffer savehist is running
+      ;; `savehist-save-hook' in. We don't want to actually remove the
+      ;; unserializable registers in the current session!
+      (setq-local register-alist
+                  (cl-remove-if-not #'savehist-printable register-alist)))))
 
 
 (use-package! saveplace
@@ -701,21 +702,21 @@ bizarre reason."
   (dolist (key '(:unmatched-expression :no-matching-tag))
     (setf (alist-get key sp-message-alist) nil))
 
-  (defhook! zenit-init-smartparens-in-eval-expression-h ()
-    "Enable `smartparens-mode' in the minibuffer for `eval-expression'.
+  (add-hook! 'eval-expression-minibuffer-setup-hook
+    (defun zenit-init-smartparens-in-eval-expression-h ()
+      "Enable `smartparens-mode' in the minibuffer for `eval-expression'.
 This includes everything that calls `read--expression', e.g.
 `edebug-eval-expression' Only enable it if
 `smartparens-global-mode' is on."
-    'eval-expression-minibuffer-setup-hook
-    (when smartparens-global-mode (smartparens-mode +1)))
+      (when smartparens-global-mode (smartparens-mode +1))))
 
-  (defhook! zenit-init-smartparens-in-minibuffer-maybe-h ()
-    "Enable `smartparens' for non-`eval-expression' commands.
+  (add-hook! 'minibuffer-setup-hook
+    (defun zenit-init-smartparens-in-minibuffer-maybe-h ()
+      "Enable `smartparens' for non-`eval-expression' commands.
 Only enable `smartparens-mode' if `smartparens-global-mode' is
 on."
-    'minibuffer-setup-hook
-    (when (and smartparens-global-mode (memq this-command '(evil-ex)))
-      (smartparens-mode +1)))
+      (when (and smartparens-global-mode (memq this-command '(evil-ex)))
+        (smartparens-mode +1))))
 
   ;; You're likely writing lisp in the minibuffer, therefore, disable these
   ;; quote pairs, which lisps doesn't use for strings:
@@ -726,18 +727,18 @@ on."
   (defvar zenit-buffer-smartparens-mode nil
     "Variable indicating whether smartparens mode is active in the
 current buffer.")
-  (defhook! zenit-enable-smartparens-mode-maybe-h ()
-    "Enable `smartparens-mode' after exiting `evil-replace-state'."
-    'evil-replace-state-exit-hook
-    (when zenit-buffer-smartparens-mode
-      (turn-on-smartparens-mode)
-      (kill-local-variable 'zenit-buffer-smartparens-mode)))
-  (defhook! zenit-disable-smartparens-mode-maybe-h ()
-    "Disable `smartparens-mode' upon entering `evil-replace-state'."
-    'evil-replace-state-entry-hook
-    (when smartparens-mode
-      (setq-local zenit-buffer-smartparens-mode t)
-      (smartparens-mode -1))))
+  (add-hook! 'evil-replace-state-exit-hook
+    (defun zenit-enable-smartparens-mode-maybe-h ()
+      "Enable `smartparens-mode' after exiting `evil-replace-state'."
+      (when zenit-buffer-smartparens-mode
+        (turn-on-smartparens-mode)
+        (kill-local-variable 'zenit-buffer-smartparens-mode))))
+  (add-hook! 'evil-replace-state-entry-hook
+    (defun zenit-disable-smartparens-mode-maybe-h ()
+      "Disable `smartparens-mode' upon entering `evil-replace-state'."
+      (when smartparens-mode
+        (setq-local zenit-buffer-smartparens-mode t)
+        (smartparens-mode -1)))))
 
 
 (use-package! so-long

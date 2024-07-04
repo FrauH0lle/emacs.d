@@ -283,19 +283,19 @@ indentation."
 
   ;; Refresh inline images after executing src blocks (useful for plantuml or
   ;; ipython, where the result could be an image)
-  (defhook! +org-redisplay-inline-images-in-babel-result-h ()
-    'org-babel-after-execute-hook
-    (unless (or
-             ;; ...but not while Emacs is exporting an org buffer (where
-             ;; `org-display-inline-images' can be awfully slow).
-             (bound-and-true-p org-export-current-backend)
-             ;; ...and not while tangling org buffers (which happens in a temp
-             ;; buffer where `buffer-file-name' is nil).
-             (string-match-p "^ \\*temp" (buffer-name)))
-      (save-excursion
-        (when-let ((beg (org-babel-where-is-src-block-result))
-                   (end (progn (goto-char beg) (forward-line) (org-babel-result-end))))
-          (org-display-inline-images nil nil (min beg end) (max beg end))))))
+  (add-hook! 'org-babel-after-execute-hook
+    (defun +org-redisplay-inline-images-in-babel-result-h ()
+      (unless (or
+               ;; ...but not while Emacs is exporting an org buffer (where
+               ;; `org-display-inline-images' can be awfully slow).
+               (bound-and-true-p org-export-current-backend)
+               ;; ...and not while tangling org buffers (which happens in a temp
+               ;; buffer where `buffer-file-name' is nil).
+               (string-match-p "^ \\*temp" (buffer-name)))
+        (save-excursion
+          (when-let ((beg (org-babel-where-is-src-block-result))
+                     (end (progn (goto-char beg) (forward-line) (org-babel-result-end))))
+            (org-display-inline-images nil nil (min beg end) (max beg end)))))))
 
   (after! python
     (unless (bound-and-true-p org-babel-python-command)
@@ -442,15 +442,15 @@ to `default-directory'. This changes it to be relative to
         (expand-file-name (symbol-value file) org-directory)
       file))
 
-  (defhook! +org-show-target-in-capture-header-h ()
-    "Show target in capture header."
-    'org-capture-mode-hook
-    (setq header-line-format
-          (format "%s%s%s"
-                  (propertize (abbreviate-file-name (buffer-file-name (buffer-base-buffer)))
-                              'face 'font-lock-string-face)
-                  org-eldoc-breadcrumb-separator
-                  header-line-format)))
+  (add-hook! 'org-capture-mode-hook
+    (defun +org-show-target-in-capture-header-h ()
+      "Show target in capture header."
+      (setq header-line-format
+            (format "%s%s%s"
+                    (propertize (abbreviate-file-name (buffer-file-name (buffer-base-buffer)))
+                                'face 'font-lock-string-face)
+                    org-eldoc-breadcrumb-separator
+                    header-line-format))))
 
   (eval-when! (modulep! :editor evil)
     (add-hook 'org-capture-mode-hook #'evil-insert-state)))
@@ -599,10 +599,10 @@ inadvertantly change the exported output (i.e. formatters)."
   (add-to-list 'org-file-apps '(directory . emacs))
   (add-to-list 'org-file-apps '(remote . emacs))
 
-    ;; Open help:* links with helpful-* instead of describe-*
+  ;; Open help:* links with helpful-* instead of describe-*
   (advice-add #'org-link--open-help :around #'zenit-use-helpful-a)
 
-    ;; Unlike the stock showNlevels options, these will also show the parents of
+  ;; Unlike the stock showNlevels options, these will also show the parents of
   ;; the target level, recursively.
   (pushnew! org-startup-options
             '("show2levels*" org-startup-folded show2levels*)
@@ -670,7 +670,7 @@ links."
                               :weight bold))))
       (apply orig-fn args)))
 
-    (after! org-eldoc
+  (after! org-eldoc
     ;; HACK Fix #2972: infinite recursion when eldoc kicks in in 'org' or
     ;;      'python' src blocks.
     (puthash "org" #'ignore org-eldoc-local-functions-cache)
@@ -685,28 +685,28 @@ links."
                  'local)
     (run-hooks 'find-file-hook))
 
-  (defhook! +org-exclude-agenda-buffers-from-workspace-h ()
-    "Prevent temporary agenda buffers being associated with
+  (add-hook! 'org-agenda-finalize-hook
+    (defun +org-exclude-agenda-buffers-from-workspace-h ()
+      "Prevent temporary agenda buffers being associated with
 current workspace."
-    'org-agenda-finalize-hook
-    (when (and org-agenda-new-buffers
-               (bound-and-true-p bufferlo-mode)
-               (not org-agenda-sticky))
-      (dolist (buf org-agenda-new-buffers)
-          (bufferlo-remove buf))))
+      (when (and org-agenda-new-buffers
+                 (bound-and-true-p bufferlo-mode)
+                 (not org-agenda-sticky))
+        (dolist (buf org-agenda-new-buffers)
+          (bufferlo-remove buf)))))
 
-  (defhook! +org-defer-mode-in-agenda-buffers-h ()
-    "Org agenda opens temporary agenda incomplete org-mode buffers.
+  (add-hook! 'org-agenda-finalize-hook
+    (defun +org-defer-mode-in-agenda-buffers-h ()
+      "Org agenda opens temporary agenda incomplete org-mode buffers.
 These are great for extracting agenda information from, but what
 if the user tries to visit one of these buffers? Then we remove
 it from the to-be-cleaned queue and restart `org-mode' so they
 can grow up to be full-fledged org-mode buffers."
-    'org-agenda-finalize-hook
-    (dolist (buffer org-agenda-new-buffers)
-      (when (buffer-live-p buffer)
-        (with-current-buffer buffer
-          (add-hook 'zenit-switch-buffer-hook #'+org--restart-mode-h
-                    nil 'local)))))
+      (dolist (buffer org-agenda-new-buffers)
+        (when (buffer-live-p buffer)
+          (with-current-buffer buffer
+            (add-hook 'zenit-switch-buffer-hook #'+org--restart-mode-h
+                      nil 'local))))))
 
   (defvar recentf-exclude)
   (defadvice! +org--exclude-agenda-buffers-from-recentf-a (orig-fn file)
@@ -722,7 +722,7 @@ recentf."
           find-file-hook)
       (funcall orig-fn file)))
 
-    ;; HACK With https://code.orgmode.org/bzg/org-mode/commit/48da60f4, inline
+  ;; HACK With https://code.orgmode.org/bzg/org-mode/commit/48da60f4, inline
   ;;      image previews broke for users with imagemagick support built in. This
   ;;      reverses the problem, but should be removed once it is addressed
   ;;      upstream (if ever).
@@ -758,10 +758,10 @@ recentf."
 
   (map!
    :map org-mode-map
-        ;; Recently, a [tab] keybind in `outline-mode-cycle-map' has begun
-        ;; overriding org's [tab] keybind in GUI Emacs. This is needed to undo
-        ;; that, and should probably be PRed to org.
-        [tab]        #'org-cycle
+   ;; Recently, a [tab] keybind in `outline-mode-cycle-map' has begun
+   ;; overriding org's [tab] keybind in GUI Emacs. This is needed to undo
+   ;; that, and should probably be PRed to org.
+   [tab]        #'org-cycle
 
    "C-c C-S-l"  #'+org/remove-link
    "C-c C-i"    #'org-toggle-inline-images
@@ -778,13 +778,13 @@ recentf."
    [remap zenit/forward-to-last-non-comment-or-eol] #'org-end-of-line
 
    :localleader
-        "#" #'org-update-statistics-cookies
-        "'" #'org-edit-special
-        "*" #'org-ctrl-c-star
-        "+" #'org-ctrl-c-minus
-        "," #'org-switchb
-        "." #'org-goto
-        "@" #'org-cite-insert
+   "#" #'org-update-statistics-cookies
+   "'" #'org-edit-special
+   "*" #'org-ctrl-c-star
+   "+" #'org-ctrl-c-minus
+   "," #'org-switchb
+   "." #'org-goto
+   "@" #'org-cite-insert
    (:when (modulep! :completion vertico)
      "." #'consult-org-heading
      "/" #'consult-org-agenda)
@@ -800,19 +800,19 @@ recentf."
    "T" #'org-todo-list
    "X" #'org-toggle-checkbox
    (:prefix ("a" . "attachments")
-         "a" #'org-attach
-         "d" #'org-attach-delete-one
-         "D" #'org-attach-delete-all
-         "f" #'+org/find-file-in-attachments
-         "l" #'+org/attach-file-and-insert-link
-         "n" #'org-attach-new
-         "o" #'org-attach-open
-         "O" #'org-attach-open-in-emacs
-         "r" #'org-attach-reveal
-         "R" #'org-attach-reveal-in-emacs
-         "u" #'org-attach-url
-         "s" #'org-attach-set-directory
-         "S" #'org-attach-sync
+            "a" #'org-attach
+            "d" #'org-attach-delete-one
+            "D" #'org-attach-delete-all
+            "f" #'+org/find-file-in-attachments
+            "l" #'+org/attach-file-and-insert-link
+            "n" #'org-attach-new
+            "o" #'org-attach-open
+            "O" #'org-attach-open-in-emacs
+            "r" #'org-attach-reveal
+            "R" #'org-attach-reveal-in-emacs
+            "u" #'org-attach-url
+            "s" #'org-attach-set-directory
+            "S" #'org-attach-sync
             (:when (modulep! :org org +dragndrop)
               "c" #'org-download-screenshot
               "p" #'org-download-clipboard
@@ -925,15 +925,15 @@ recentf."
 
 (defun +org-init-popup-rules-h ()
   (set-popup-rules!
-   '(("^\\*Org Links" :slot -1 :vslot -1 :size 2 :ttl 0)
-     ("^ ?\\*\\(?:Agenda Com\\|Calendar\\|Org Export Dispatcher\\)"
-      :slot -1 :vslot -1 :size #'+popup-shrink-to-fit :ttl 0 :side right)
-     ("^\\*Org \\(?:Select\\|Attach\\)" :slot -1 :vslot -2 :ttl 0 :size 0.25)
-     ("^\\*Org Agenda" :ignore t)
-     ;; ("^\\*Org Src"        :size 0.42  :quit nil :select t :autosave t :modeline t :ttl nil)
-     ("^\\*Org Src" :ignore t)
-     ("^\\*Org-Babel")
-     ("^\\*Capture\\*$\\|CAPTURE-.*$" :size 0.42 :quit nil :select t :autosave ignore))))
+    '(("^\\*Org Links" :slot -1 :vslot -1 :size 2 :ttl 0)
+      ("^ ?\\*\\(?:Agenda Com\\|Calendar\\|Org Export Dispatcher\\)"
+       :slot -1 :vslot -1 :size #'+popup-shrink-to-fit :ttl 0 :side right)
+      ("^\\*Org \\(?:Select\\|Attach\\)" :slot -1 :vslot -2 :ttl 0 :size 0.25)
+      ("^\\*Org Agenda" :ignore t)
+      ;; ("^\\*Org Src"        :size 0.42  :quit nil :select t :autosave t :modeline t :ttl nil)
+      ("^\\*Org Src" :ignore t)
+      ("^\\*Org-Babel")
+      ("^\\*Capture\\*$\\|CAPTURE-.*$" :size 0.42 :quit nil :select t :autosave ignore))))
 
 
 ;;

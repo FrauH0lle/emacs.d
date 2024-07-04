@@ -84,10 +84,11 @@
     ;; Smartparens' navigation feature is neat, but does not justify how
     ;; expensive it is. It's also less useful for evil users. This may need to
     ;; be reactivated for non-evil users though. Needs more testing!
-    (defhook! zenit--hool-disable-smartparens-navigate-skip-match ()
-      'after-change-major-mode-hook
-      (setq sp-navigate-skip-match nil
-            sp-navigate-consider-sgml-tags nil))
+    (add-hook! 'after-change-major-mode-hook
+      (defun zenit--hool-disable-smartparens-navigate-skip-match-h ()
+        "Disable `smartparens' navigation features."
+        (setq sp-navigate-skip-match nil
+              sp-navigate-consider-sgml-tags nil)))
 
     ;; Autopair quotes more conservatively; if I'm next to a word/before another
     ;; quote, I don't want to open a new pair or it would unbalance them.

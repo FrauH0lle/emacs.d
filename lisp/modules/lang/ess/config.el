@@ -338,11 +338,11 @@ variable.")
   ;; LSP
   (eval-when! (and (modulep! :tools lsp)
                    (modulep! :lang ess +lsp))
-    (defhook! +ess-lsp-init-maybe-h ()
-      "Use LSP mode if the buffer is not a remote."
-      'ess-r-mode-local-vars-hook
-      (unless (file-remote-p default-directory)
-        (lsp!))))
+    (add-hook! 'ess-r-mode-local-vars-hook
+      (defun +ess-lsp-init-maybe-h ()
+        "Use LSP mode if the buffer is not a remote."
+        (unless (file-remote-p default-directory)
+          (lsp!)))))
 
   ;; Popup rules
   (eval-when! (modulep! :ui popup)
@@ -393,12 +393,12 @@ variable.")
     (after! ess-r-mode
       (set-evil-initial-state! 'inferior-ess-mode 'insert)))
 
-  (defhook! +ess-fix-read-only-inferior-ess-mode-h ()
-    "Fixes a bug when `comint-prompt-read-only' in non-nil.
+  (add-hook! 'inferior-ess-mode-hook
+    (defun +ess-fix-read-only-inferior-ess-mode-h ()
+      "Fixes a bug when `comint-prompt-read-only' in non-nil.
 See URL `https://github.com/emacs-ess/ESS/issues/300'."
-    'inferior-ess-mode-hook
-    (setq-local comint-use-prompt-regexp nil)
-    (setq-local inhibit-field-text-motion nil))
+      (setq-local comint-use-prompt-regexp nil)
+      (setq-local inhibit-field-text-motion nil)))
 
   ;; Make the REPL buffer more responsive.
   (setq-hook! 'inferior-ess-mode-hook
@@ -406,10 +406,10 @@ See URL `https://github.com/emacs-ess/ESS/issues/300'."
     comint-scroll-to-bottom-on-output t
     comint-move-point-for-output t)
 
-  (defhook! +ess-inferior-buffer-p (buf)
-    "Returns non-nil if BUF is a `inferior-ess' buffer."
-    '+emacs-real-buffer-functions
-    (with-current-buffer buf (derived-mode-p 'inferior-ess-mode)))
+  (add-hook! 'zenit-real-buffer-functions
+    (defun +ess-inferior-buffer-p (buf)
+      "Returns non-nil if BUF is a `inferior-ess' buffer."
+      (with-current-buffer buf (derived-mode-p 'inferior-ess-mode))))
 
   ;; Save history when killing the ess inferior buffer. See
   ;; https://github.com/emacs-ess/ESS/issues/970
@@ -550,14 +550,4 @@ See URL `https://github.com/emacs-ess/ESS/issues/300'."
   :mode ("\\.[rR]md$" . poly-markdown+r-mode)
   :config
   (eval-when! (modulep! :editor snippets)
-    (set-tempel-minor-mode! 'poly-markdown+r-mode))
-
-  ;;     (defhook! +poly-r--mardown-code-face-h ()
-  ;;       "Fix unreadable highlighting of code blocks in
-  ;; `poly-markdown+r-mode' buffers"
-  ;;       #'poly-markdown+r-mode
-  ;;       (face-remap-add-relative 'markdown-code-face '(:background nil)))
-
-  ;; (defvar +poly-r-template-dir (concat +file-templates-dirs "Rmd-templates"))
-  ;; (setq poly-r-rmarkdown-template-dirs (list +poly-r-template-dir))
-  )
+    (set-tempel-minor-mode! 'poly-markdown+r-mode)))

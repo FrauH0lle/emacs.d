@@ -977,40 +977,6 @@ BODY\)"
        (dolist (target (cdr targets))
          (advice-remove target #',symbol)))))
 
-(defmacro defhook! (name arglist &optional docstring &rest body)
-  "Define a function called NAME and add it to a hook.
-
-ARGLIST is as in `defun'. HOOK is the same as in `add-hook!',
-e.g. either an unquoted mode, an unquoted list of modes, a quoted
-hook variable or a quoted list of hook variables. If unquoted,
-'-hook' will be appended to each symbol. DOCSTRING and BODY are
-as in `defun'.
-
-\(fn NAME ARGLIST &optional DOCSTRING &rest HOOKS [:append :local
-[:depth N]] FUNCTIONS-OR-FORMS...)"
-  (declare (indent defun)
-           (doc-string 3))
-  (unless (stringp docstring)
-    (push docstring body)
-    (setq docstring nil))
-  (let (local-p depth hook forms)
-    (while body
-      (cond ((keywordp (car body))
-             (pcase (pop body)
-               (:append (setq depth '(:depth 90)))
-               (:depth (setq depth `(:depth ,(pop body))))
-               (:local (setq local-p :local))))
-            (t (push (pop body) forms))))
-    (setq body (nreverse forms)
-          hook (pop body))
-    `(progn
-       (defun ,name ,arglist ,docstring ,@body)
-       ,@(if (or depth local-p)
-             (cond ((and depth local-p) `((add-hook! ,hook ,@depth ,local-p ',name)))
-                   (depth `((add-hook! ,hook ,@depth ',name)))
-                   (local-p `((add-hook! ,hook ,local-p ',name))))
-           `((add-hook! ,hook ',name))))))
-
 
 ;;
 ;;; Eval/compilation

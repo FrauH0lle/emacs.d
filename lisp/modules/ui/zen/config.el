@@ -23,27 +23,27 @@
   (setq writeroom-global-effects nil)
   (setq writeroom-maximize-window nil)
 
-  (defhook! +zen-enable-text-scaling-mode-h ()
-    "Enable `mixed-pitch-mode' when in `+zen-mixed-pitch-modes'."
-    'writeroom-mode-hook :append
-    (when (/= +zen-text-scale 0)
-      (text-scale-set (if writeroom-mode +zen-text-scale 0))
-      (visual-fill-column-adjust)))
+  (add-hook! 'writeroom-mode-hook :append
+    (defun +zen-enable-text-scaling-mode-h ()
+      "Enable `mixed-pitch-mode' when in `+zen-mixed-pitch-modes'."
+      (when (/= +zen-text-scale 0)
+        (text-scale-set (if writeroom-mode +zen-text-scale 0))
+        (visual-fill-column-adjust))))
 
-  (defhook! +zen-toggle-large-window-dividers-h ()
-    "Make window dividers larger and easier to see."
-    'global-writeroom-mode-hook
-    (when (bound-and-true-p window-divider-mode)
-      (if writeroom-mode
-          (setq +zen--old-window-divider-size
-                (cons window-divider-default-bottom-width
-                      window-divider-default-right-width)
-                window-divider-default-bottom-width +zen-window-divider-size
-                window-divider-default-right-width +zen-window-divider-size)
-        (when +zen--old-window-divider-size
-          (setq window-divider-default-bottom-width (car +zen--old-window-divider-size)
-                window-divider-default-right-width (cdr +zen--old-window-divider-size))))
-      (window-divider-mode +1)))
+  (add-hook! 'global-writeroom-mode-hook
+    (defun +zen-toggle-large-window-dividers-h ()
+      "Make window dividers larger and easier to see."
+      (when (bound-and-true-p window-divider-mode)
+        (if writeroom-mode
+            (setq +zen--old-window-divider-size
+                  (cons window-divider-default-bottom-width
+                        window-divider-default-right-width)
+                  window-divider-default-bottom-width +zen-window-divider-size
+                  window-divider-default-right-width +zen-window-divider-size)
+          (when +zen--old-window-divider-size
+            (setq window-divider-default-bottom-width (car +zen--old-window-divider-size)
+                  window-divider-default-right-width (cdr +zen--old-window-divider-size))))
+        (window-divider-mode +1))))
 
   ;; Adjust margins when text size is changed
   (advice-add #'text-scale-adjust :after #'visual-fill-column-adjust))

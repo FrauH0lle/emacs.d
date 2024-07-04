@@ -12,10 +12,10 @@
 ;;;###autoload
 (defconst zenit-customize-theme-hook nil)
 
-(defhook! zenit-apply-customized-faces-h ()
-  "TODO"
-  'zenit-load-theme-hook
-  (run-hooks 'zenit-customize-theme-hook))
+(add-hook! 'zenit-load-theme-hook
+  (defun zenit-apply-customized-faces-h ()
+    "TODO"
+    (run-hooks 'zenit-customize-theme-hook)))
 
 ;;;###autoload
 (defmacro custom-theme-set-faces! (theme &rest specs)

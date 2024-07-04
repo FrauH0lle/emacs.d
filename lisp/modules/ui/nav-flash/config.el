@@ -55,9 +55,9 @@
              #'pulsar-pulse-line)
 
   ;; `org'
-  (defhook! +nav-flash-delayed-blink-cursor-h (&rest _)
-    "Like `+nav-flash-blink-cursor', but links after a tiny pause, in
+  (add-hook! 'org-follow-link-hook
+    (defun +nav-flash-delayed-blink-cursor-h (&rest _)
+      "Like `+nav-flash-blink-cursor', but links after a tiny pause in
 case it isn't clear at run-time if the point will be in the
 correct window/buffer (like for `org-follow-link-hook')."
-    'org-follow-link-hook
-    (run-at-time 0.1 nil #'pulsar-pulse-line)))
+      (run-at-time 0.1 nil #'pulsar-pulse-line))))

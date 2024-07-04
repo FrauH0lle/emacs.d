@@ -39,15 +39,15 @@
 
   ;; Use a more primitive todo-keyword detection method in major modes that
   ;; don't use/have a valid syntax table entry for comments.
-  (defhook! +hl-todo--use-face-detection-h ()
-    "Use a different, more primitive method of locating todo keywords."
-    '(pug-mode-hook haml-mode-hook)
-    (set (make-local-variable 'hl-todo-keywords)
-         '(((lambda (limit)
-              (let (case-fold-search)
-                (and (re-search-forward hl-todo-regexp limit t)
-                     (memq 'font-lock-comment-face (ensure-list (get-text-property (point) 'face))))))
-            (1 (hl-todo-get-face) t t))))
-    (when hl-todo-mode
-      (hl-todo-mode -1)
-      (hl-todo-mode +1))))
+  (add-hook! '(pug-mode-hook haml-mode-hook)
+    (defun +hl-todo--use-face-detection-h ()
+      "Use a different, more primitive method of locating todo keywords."
+      (set (make-local-variable 'hl-todo-keywords)
+           '(((lambda (limit)
+                (let (case-fold-search)
+                  (and (re-search-forward hl-todo-regexp limit t)
+                       (memq 'font-lock-comment-face (ensure-list (get-text-property (point) 'face))))))
+              (1 (hl-todo-get-face) t t))))
+      (when hl-todo-mode
+        (hl-todo-mode -1)
+        (hl-todo-mode +1)))))

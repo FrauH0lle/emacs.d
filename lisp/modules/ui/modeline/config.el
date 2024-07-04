@@ -30,13 +30,13 @@
   (add-hook 'zenit-load-theme-hook #'doom-modeline-refresh-bars)
 
   (add-to-list 'doom-modeline-mode-alist '(+doom-dashboard-mode . dashboard))
-  (defhook! +modeline-hide-in-non-status-buffer-h ()
-    "Show minimal modeline in magit-status buffer, no modeline
+  (add-hook! 'magit-mode-hook
+    (defun +modeline-hide-in-non-status-buffer-h ()
+      "Show minimal modeline in magit-status buffer, no modeline
 elsewhere."
-    'magit-mode-hook
-    (if (eq major-mode 'magit-status-mode)
-        (doom-modeline-set-modeline 'magit)
-      (hide-mode-line-mode)))
+      (if (eq major-mode 'magit-status-mode)
+          (doom-modeline-set-modeline 'magit)
+        (hide-mode-line-mode))))
 
   ;; Some functions modify the buffer, causing the modeline to show a false
   ;; modified state, so force them to behave.

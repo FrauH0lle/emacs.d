@@ -62,13 +62,13 @@ preserves it."
   ;; Layz-load evil
   :defer-incrementally t
   :init
-  (defhook! +evil-init-evil-h ()
-    "Initialize `evil' on `zenit-first-input-hook'.
+  (add-hook! 'zenit-first-input-hook :depth -105
+    (defun +evil-init-evil-h ()
+      "Initialize `evil' on `zenit-first-input-hook'.
 The package should be loaded as early as possible."
-    'zenit-first-input-hook :depth -105
-    (require 'evil)
-    (delq! 'evil-ex features)
-    (add-transient-hook! 'evil-ex (provide 'evil-ex)))
+      (require 'evil)
+      (delq! 'evil-ex features)
+      (add-transient-hook! 'evil-ex (provide 'evil-ex))))
   :config
   (evil-mode +1)
 
@@ -89,19 +89,19 @@ The package should be loaded as early as possible."
 
   ;; Load popup rules as late as possible
   (eval-when! (modulep! :ui popup)
-    (defhook! +evil--init-popup-rules-h ()
-      "Initialize popop rules."
-      'zenit-init-modules-hook
-      (set-popup-rules!
-       '(("^\\*evil-registers" :size 0.3)
-         ("^\\*Command Line"   :size 8)))))
+    (add-hook! 'zenit-after-modules-config-hook
+      (defun +evil--init-popup-rules-h ()
+        "Initialize popop rules."
+        (set-popup-rules!
+          '(("^\\*evil-registers" :size 0.3)
+            ("^\\*Command Line"   :size 8))))))
 
   ;; Change the cursor color in emacs mode
-  (defhook! +evil-update-cursor-color-h ()
-    "Update cursor color."
-    'zenit-load-theme-hook
-    (put 'cursor 'evil-normal-color (face-background 'cursor))
-    (put 'cursor 'evil-emacs-color (face-foreground 'warning)))
+  (add-hook! 'zenit-load-theme-hook
+    (defun +evil-update-cursor-color-h ()
+      "Update cursor color."
+      (put 'cursor 'evil-normal-color (face-background 'cursor))
+      (put 'cursor 'evil-emacs-color (face-foreground 'warning))))
 
   (defun +evil-default-cursor-fn ()
     (evil-set-cursor-color (get 'cursor 'evil-normal-color)))
@@ -117,12 +117,12 @@ The package should be loaded as early as possible."
     ;; `evil-delete' in wgrep buffers.
     (define-key wgrep-mode-map [remap evil-delete] #'+evil-delete))
 
-  (defhook! +evil-disable-ex-highlights-h ()
-    "Disable ex search buffer highlights."
-    'zenit-escape-hook
-    (when (evil-ex-hl-active-p 'evil-ex-search)
-      (evil-ex-nohighlight)
-      t))
+  (add-hook! 'zenit-escape-hook
+    (defun +evil-disable-ex-highlights-h ()
+      "Disable ex search buffer highlights."
+      (when (evil-ex-hl-active-p 'evil-ex-search)
+        (evil-ex-nohighlight)
+        t)))
 
   (after! eldoc
     ;; Allow eldoc to trigger directly after changing modes
@@ -134,15 +134,15 @@ The package should be loaded as early as possible."
 
   (unless noninteractive
     (setq save-silently t)
-    (defhook! +evil-display-vimlike-save-message-h ()
-      "Shorter, vim-esque save messages."
-      'after-save-hook
-      (message "\"%s\" %dL, %dC written"
-               (if buffer-file-name
-                   (file-relative-name (file-truename buffer-file-name) (zenit-project-root))
-                 (buffer-name))
-               (count-lines (point-min) (point-max))
-               (buffer-size))))
+    (add-hook! 'after-save-hook
+      (defun +evil-display-vimlike-save-message-h ()
+        "Shorter, vim-esque save messages."
+        (message "\"%s\" %dL, %dC written"
+                 (if buffer-file-name
+                     (file-relative-name (file-truename buffer-file-name) (zenit-project-root))
+                   (buffer-name))
+                 (count-lines (point-min) (point-max))
+                 (buffer-size)))))
 
 
   ;; HACK '=' moves the cursor to the beginning of selection. Disable this,

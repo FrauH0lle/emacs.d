@@ -64,18 +64,18 @@ Only has an effect in GUI Emacs.")
   ;; hunks in `magit-status-mode' buffers. It's disorienting, especially on
   ;; larger projects.
   (defvar +magit--pos nil)
-  (defhook! +magit--set-window-state-h ()
-    "Prevent scrolling when manipulating magit-status hunks."
-    'magit-pre-refresh-hook
-    (setq-local +magit--pos (list (current-buffer) (point) (window-start))))
+  (add-hook! 'magit-pre-refresh-hook
+    (defun +magit--set-window-state-h ()
+      "Prevent scrolling when manipulating magit-status hunks."
+      (setq-local +magit--pos (list (current-buffer) (point) (window-start)))))
 
-  (defhook! +magit--restore-window-state-h ()
-    "Prevent scrolling when manipulating magit-status hunks."
-    'magit-post-refresh-hook
-    (when (and +magit--pos (eq (current-buffer) (car +magit--pos)))
-      (goto-char (cadr +magit--pos))
-      (set-window-start nil (caddr +magit--pos) t)
-      (kill-local-variable '+magit--pos)))
+  (add-hook! 'magit-post-refresh-hook
+    (defun +magit--restore-window-state-h ()
+      "Prevent scrolling when manipulating magit-status hunks."
+      (when (and +magit--pos (eq (current-buffer) (car +magit--pos)))
+        (goto-char (cadr +magit--pos))
+        (set-window-start nil (caddr +magit--pos) t)
+        (kill-local-variable '+magit--pos))))
 
   (setq transient-display-buffer-action '(display-buffer-below-selected)
         magit-display-buffer-function #'+magit-display-buffer
@@ -106,34 +106,34 @@ Only has an effect in GUI Emacs.")
   ;; Close transient with ESC
   (define-key transient-map [escape] #'transient-quit-one)
 
-  (defhook! +magit-enlargen-fringe-h ()
-    "Make fringe larger in magit."
-    'magit-mode-hook
+  (add-hook! 'magit-section-mode-hook
     (add-hook! 'window-configuration-change-hook :local
-      (and (display-graphic-p)
-           (derived-mode-p 'magit-mode)
-           +magit-fringe-size
-           (let ((left  (or (car-safe +magit-fringe-size) +magit-fringe-size))
-                 (right (or (cdr-safe +magit-fringe-size) +magit-fringe-size)))
-             (set-window-fringes nil left right)))))
+      (defun +magit-enlargen-fringe-h ()
+        "Make fringe larger in magit."
+        (and (display-graphic-p)
+             (derived-mode-p 'magit-section-mode)
+             +magit-fringe-size
+             (let ((left  (or (car-safe +magit-fringe-size) +magit-fringe-size))
+                   (right (or (cdr-safe +magit-fringe-size) +magit-fringe-size)))
+               (set-window-fringes nil left right))))))
 
   ;; An optimization that particularly affects macOS and Windows users: by
   ;; resolving `magit-git-executable' Emacs does less work to find the
   ;; executable in your PATH, which is great because it is called so frequently.
   ;; However, absolute paths will break magit in TRAMP/remote projects if the
   ;; git executable isn't in the exact same location.
-  (defhook! +magit-optimize-process-calls-h ()
-    'magit-status-mode-hook
-    (when-let (path (executable-find magit-git-executable t))
-      (setq-local magit-git-executable path)))
+  (add-hook! 'magit-status-mode-hook
+    (defun +magit-optimize-process-calls-h ()
+      (when-let (path (executable-find magit-git-executable t))
+        (setq-local magit-git-executable path))))
 
-  (defhook! +magit-reveal-point-if-invisible-h ()
-    "Reveal the point if in an invisible region."
-    'magit-diff-visit-file-hook
-    (if (derived-mode-p 'org-mode)
-        (org-reveal '(4))
-      (require 'reveal)
-      (reveal-post-command))))
+  (add-hook! 'magit-diff-visit-file-hook
+    (defun +magit-reveal-point-if-invisible-h ()
+      "Reveal the point if in an invisible region."
+      (if (derived-mode-p 'org-mode)
+          (org-reveal '(4))
+        (require 'reveal)
+        (reveal-post-command)))))
 
 ;; (after! magit
 ;;   (set-evil-initial-state! 'magit-mode 'emacs))

@@ -122,7 +122,7 @@ buffer."
 ;; have run. If you want hook functions to be aware of these customizations, add
 ;; them to MODE-local-vars-hook instead.
 (defvar zenit-inhibit-local-var-hooks nil
-"If `zenit-inhibit-local-var-hooks` is
+  "If `zenit-inhibit-local-var-hooks` is
 non-nil,`zenit-run-local-var-hooks-h' will not run these hooks.
 Default value is nil, allowing the hooks to run.")
 
@@ -279,12 +279,12 @@ it."
 
 ;; Activate these later, otherwise they'll fire for every buffer created between
 ;; now and the end of startup.
-(defhook! zenit-init-local-var-hooks-h ()
-  "These fire `MAJOR-MODE-local-vars-hook' hooks. See the
+(add-hook! 'after-init-hook
+  (defun zenit-init-local-var-hooks-h ()
+    "These fire `MAJOR-MODE-local-vars-hook' hooks. See the
 `MODE-local-vars-hook' section above."
-  'after-init-hook
-  (add-hook 'after-change-major-mode-hook #'zenit-run-local-var-hooks-maybe-h 100)
-  (add-hook 'hack-local-variables-hook #'zenit-run-local-var-hooks-h))
+    (add-hook 'after-change-major-mode-hook #'zenit-run-local-var-hooks-maybe-h 100)
+    (add-hook 'hack-local-variables-hook #'zenit-run-local-var-hooks-h)))
 
 ;; Load site-lisp/init.el early, but only when not in CLI mode.
 (when (not (zenit-context-p 'cli))

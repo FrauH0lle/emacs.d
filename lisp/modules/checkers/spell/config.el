@@ -43,9 +43,9 @@
              (expand-file-name (concat "ispell/" ispell-dictionary ".pws")
                                zenit-data-dir)))
 
-     (defhook! +spell-remove-run-together-switch-for-aspell-h ()
-       'text-mode-hook
-       (setq-local ispell-extra-args (remove "--run-together" ispell-extra-args)))
+     (add-hook! 'text-mode-hook
+       (defun +spell-remove-run-together-switch-for-aspell-h ()
+         (setq-local ispell-extra-args (remove "--run-together" ispell-extra-args))))
 
      (defadvice! +spell-init-ispell-extra-args-a (orig-fun &rest args)
        :around '(ispell-word flyspell-auto-correct-word)
@@ -126,14 +126,14 @@
           ;; messages for every word when checking the entire buffer
           flyspell-issue-message-flag nil)
 
-    (defhook! +spell-inhibit-duplicate-detection-maybe-h ()
-      "Don't mark duplicates when style/grammar linters are present.
-e.g. proselint and langtool."
-      'flyspell-mode-hook
-      (and (or (and (bound-and-true-p flycheck-mode)
-                    (executable-find "proselint"))
-               (featurep 'langtool))
-           (setq-local flyspell-mark-duplications-flag nil)))
+    (add-hook! 'flyspell-mode-hook
+      (defun +spell-inhibit-duplicate-detection-maybe-h ()
+        "Don't mark duplicates when style/grammar linters are present e.g.
+proselint and langtool."
+        (and (or (and (bound-and-true-p flycheck-mode)
+                      (executable-find "proselint"))
+                 (featurep 'langtool))
+             (setq-local flyspell-mark-duplications-flag nil))))
 
     ;; Ensure mode-local predicates declared with `set-flyspell-predicate!' are
     ;; used in their respective major modes.

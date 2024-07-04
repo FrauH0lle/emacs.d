@@ -29,12 +29,12 @@
      '(("^\\*Flycheck error messages\\*" :select nil)
        ("^\\*Flycheck errors\\*" :size 0.25))))
 
-  (defhook! +syntax-check-buffer-h ()
-    "Flycheck buffer on ESC in normal mode."
-    'zenit-escape-hook :append
-    (when flycheck-mode
-      (ignore-errors (flycheck-buffer))
-      nil))
+  (add-hook! 'zenit-escape-hook :append
+    (defun +syntax-check-buffer-h ()
+      "Flycheck buffer on ESC in normal mode."
+      (when flycheck-mode
+        (ignore-errors (flycheck-buffer))
+        nil)))
 
   (map! :map flycheck-error-list-mode-map
         :n "C-n"    #'flycheck-error-list-next-error

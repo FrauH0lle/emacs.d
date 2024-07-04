@@ -118,36 +118,36 @@ quitting Emacs.")
   ;; projectile's cache (into the hundreds of MBs). This purges those entries
   ;; when exiting Emacs to prevent slowdowns/freezing when cache files are
   ;; loaded or written to.
-  (defhook! zenit-cleanup-project-cache-h ()
-    "Purge projectile cache entries that:
+  (add-hook! 'kill-emacs-hook
+    (defun zenit-cleanup-project-cache-h ()
+      "Purge projectile cache entries that:
 
 a) have too many files (see `zenit-projectile-cache-limit'),
 b) represent blacklisted directories that are too big, change too
    often or are private. (see
    `zenit-projectile-cache-blacklist'),
 c) are not valid projectile projects."
-    'kill-emacs-hook
-    (when (and (bound-and-true-p projectile-projects-cache)
-               projectile-enable-caching)
-      (setq projectile-known-projects
-            (cl-remove-if #'projectile-ignored-project-p
-                          projectile-known-projects))
-      (projectile-cleanup-known-projects)
-      (cl-loop with blacklist = (mapcar #'file-truename zenit-projectile-cache-blacklist)
-               for proot in (hash-table-keys projectile-projects-cache)
-               if (or (not (stringp proot))
-                      (string-empty-p proot)
-                      (>= (length (gethash proot projectile-projects-cache))
-                          zenit-projectile-cache-limit)
-                      (member (substring proot 0 -1) blacklist)
-                      (and zenit-projectile-cache-purge-non-projects
-                           (not (zenit-project-p proot)))
-                      (projectile-ignored-project-p proot))
-               do (zenit-log "Removed %S from projectile cache" proot)
-               and do (remhash proot projectile-projects-cache)
-               and do (remhash proot projectile-projects-cache-time)
-               and do (remhash proot projectile-project-type-cache))
-      (projectile-serialize-cache)))
+      (when (and (bound-and-true-p projectile-projects-cache)
+                 projectile-enable-caching)
+        (setq projectile-known-projects
+              (cl-remove-if #'projectile-ignored-project-p
+                            projectile-known-projects))
+        (projectile-cleanup-known-projects)
+        (cl-loop with blacklist = (mapcar #'file-truename zenit-projectile-cache-blacklist)
+                 for proot in (hash-table-keys projectile-projects-cache)
+                 if (or (not (stringp proot))
+                        (string-empty-p proot)
+                        (>= (length (gethash proot projectile-projects-cache))
+                            zenit-projectile-cache-limit)
+                        (member (substring proot 0 -1) blacklist)
+                        (and zenit-projectile-cache-purge-non-projects
+                             (not (zenit-project-p proot)))
+                        (projectile-ignored-project-p proot))
+                 do (zenit-log "Removed %S from projectile cache" proot)
+                 and do (remhash proot projectile-projects-cache)
+                 and do (remhash proot projectile-projects-cache-time)
+                 and do (remhash proot projectile-project-type-cache))
+        (projectile-serialize-cache))))
 
   ;; Some MSYS utilities auto expanded the `/' path separator, so we need to prevent it.
   (eval-when! zenit--system-windows-p

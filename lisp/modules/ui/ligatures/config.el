@@ -166,10 +166,10 @@ function can and cannot run in."
 (setq prettify-symbols-unprettify-at-point 'right-edge)
 
 (eval-when! (modulep! +auto)
-  (defhook! +ligatures-init-h ()
-    "Initialize ligatures on `after-change-major-mode-hook'."
-    'zenit-init-ui-hook :append
-    (add-hook 'after-change-major-mode-hook #'+ligatures-init-buffer-h)))
+  (add-hook! 'zenit-init-ui-hook :append
+    (defun +ligatures-init-h ()
+      "Initialize ligatures on `after-change-major-mode-hook'."
+      (add-hook 'after-change-major-mode-hook #'+ligatures-init-buffer-h))))
 
 (cond
  ;; The emacs-mac build of Emacs appears to have built-in support for ligatures,
@@ -196,8 +196,8 @@ function can and cannot run in."
     (ligature-set-ligatures 't +ligatures-all-modes-list))
 
   (eval-when! (modulep! +auto)
-    (defhook! +ligature-enable-globally-h ()
-      "Enables ligature checks globally in all buffers.
+    (add-hook! 'zenit-init-ui-hook :append
+      (defun +ligature-enable-globally-h ()
+        "Enables ligature checks globally in all buffers.
 You can also do it per mode with `ligature-mode'."
-      'zenit-init-ui-hook :append
-      (global-ligature-mode t)))))
+        (global-ligature-mode t))))))

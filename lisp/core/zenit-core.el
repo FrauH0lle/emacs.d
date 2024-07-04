@@ -186,14 +186,14 @@ autoloaded functions.")
     (set-default-toplevel-value 'file-name-handler-alist file-name-handler-alist)
     ;; Remember it so it can be reset where needed.
     (put 'file-name-handler-alist 'initial-value old-value)
-    (defhook! zenit--reset-file-handler-alist-h ()
-      "Restore `file-name-handler-alist', because it is needed for
+    (add-hook! 'emacs-startup-hook :depth 101
+      (defun zenit--reset-file-handler-alist-h ()
+        "Restore `file-name-handler-alist', because it is needed for
 handling encrypted or compressed files, among other things."
-      'emacs-startup-hook :depth 101
-      (setq file-name-handler-alist
+        (setq file-name-handler-alist
               ;; Merge instead of overwrite because there may have been changes
               ;; to `file-name-handler-alist' since startup we want to preserve.
-              (delete-dups (append file-name-handler-alist old-value)))))
+              (delete-dups (append file-name-handler-alist old-value))))))
 
   (unless noninteractive
     ;; Resizing the Emacs frame (to accommodate fonts that are smaller or larger
@@ -244,17 +244,17 @@ handling encrypted or compressed files, among other things."
       (set-default-toplevel-value 'load-suffixes '(".elc" ".el"))
       (set-default-toplevel-value 'load-file-rep-suffixes '(""))
 
-      (defhook! zenit--reset-load-suffixes-h ()
+      (add-hook! 'zenit-before-init-hook
+        (defun zenit--reset-load-suffixes-h ()
           "Undo any problematic startup optimizations."
-          'zenit-before-init-hook
           (setq load-suffixes (get 'load-suffixes 'initial-value)
-                load-file-rep-suffixes (get 'load-file-rep-suffixes 'initial-value)))
+                load-file-rep-suffixes (get 'load-file-rep-suffixes 'initial-value))))
 
       ;; Defer the initialization of `defcustom'.
       (setq custom-dont-initialize t)
-      (defhook! zenit--reset-custom-dont-initialize-h ()
-        'zenit-before-init-hook
-        (setq custom-dont-initialize nil))
+      (add-hook! 'zenit-before-init-hook
+        (defun zenit--reset-custom-dont-initialize-h ()
+          (setq custom-dont-initialize nil)))
 
       ;; The mode-line procs a couple dozen times during startup. This is
       ;; normally quite fast, but disabling the default mode-line and reducing
@@ -496,20 +496,20 @@ sessions, so guard hooks appropriately against `noninteractive'."
 ;;
 ;;; Last minute initialization
 
-(defhook! zenit--begin-init-h ()
-  "Begin the startup process."
-  'zenit-before-init-hook :depth -105
-  (when (zenit-context-push 'init)
-    ;; Remember these variables' initial values, so we can safely reset them at
-    ;; a later time, or consult them without fear of contamination.
-    (dolist (var '(exec-path load-path process-environment))
-      (put var 'initial-value (default-toplevel-value var)))))
+(add-hook! 'zenit-before-init-hook :depth -105
+  (defun zenit--begin-init-h ()
+    "Begin the startup process."
+    (when (zenit-context-push 'init)
+      ;; Remember these variables' initial values, so we can safely reset them at
+      ;; a later time, or consult them without fear of contamination.
+      (dolist (var '(exec-path load-path process-environment))
+        (put var 'initial-value (default-toplevel-value var))))))
 
-(defhook! zenit--end-init-h ()
-  "Set `zenit-init-time'."
-  'zenit-after-init-hook :depth 105
-  (when (zenit-context-pop 'init)
-    (setq zenit-init-time (float-time (time-subtract (current-time) before-init-time)))))
+(add-hook! 'zenit-after-init-hook :depth 105
+  (defun zenit--end-init-h ()
+    "Set `zenit-init-time'."
+    (when (zenit-context-pop 'init)
+      (setq zenit-init-time (float-time (time-subtract (current-time) before-init-time))))))
 
 (unless noninteractive
   ;; This is the absolute latest a hook can run in Emacs' startup process.

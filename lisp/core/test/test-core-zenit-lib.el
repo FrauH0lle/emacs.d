@@ -189,7 +189,7 @@
       (expect foo :to-be 43)))
 
 
-    (describe "include!"
+  (describe "include!"
     :var (temp-file-1 temp-file-2 temp-file-3)
 
     (before-each
@@ -981,19 +981,6 @@
               '(dolist (targets (list (cons :before (ensure-list (function test-function)))))
                  (dolist (target (cdr targets))
                    (advice-remove target (function test-advice)))))))
-
-
-  (describe "defhook!"
-    (it "expands into an `add-hook!' form"
-      (expect '(defhook! test-hook ()
-                 "Teststring"
-                 'test-hook
-                 (message "Hello World!"))
-              :to-expand-into
-              '(progn
-                 (defun test-hook nil "Teststring"
-                        (message "Hello World!"))
-                 (add-hook! 'test-hook 'test-hook)))))
 
 
   (describe "protect-macros!"

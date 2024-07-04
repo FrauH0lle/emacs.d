@@ -32,7 +32,8 @@ disable margin adjustment.")
 (defvar +popup--inhibit-transient nil
   "If non-nil, do not kill popup buffer (window parameter ttl).")
 (defvar +popup--inhibit-select nil
-  "If non-nil, do not select popup buffer (window parameter select).")
+  "If non-nil, do not select popup buffer (window parameter
+ select).")
 (defvar +popup--old-display-buffer-alist nil
   "Alist storing old `display-buffer-alist'.")
 (defvar +popup--old-reference-buffers nil
@@ -64,27 +65,27 @@ disable margin adjustment.")
             popper-reference-buffers +popup--reference-buffers))
     (apply fn args))
 
-  (defhook! +popup-init-h ()
-    "Initialize our modifications."
-    'popper-mode-hook
-    (cond (;; Turning ON
-           popper-mode
-           (add-hook 'zenit-escape-hook #'+popup-close-on-escape-h 'append)
-           (setq +popup--old-display-buffer-alist display-buffer-alist
-                 display-buffer-alist +popup--display-buffer-alist
-                 window--sides-inhibit-check t)
-           (dolist (prop +popup-window-parameters)
-             (push (cons prop 'writable) window-persistent-parameters)))
-          (;; Turning OFF
-           t
-           (remove-hook 'zenit-escape-hook #'+popup-close-on-escape-h)
-           (setq display-buffer-alist +popup--old-display-buffer-alist
-                 popper-reference-buffers +popup--old-reference-buffers
-                 window--sides-inhibit-check nil)
-           (+popup-cleanup-rules-h)
-           (dolist (prop +popup-window-parameters)
-             (delq (assq prop window-persistent-parameters)
-                   window-persistent-parameters))))))
+  (add-hook! 'popper-mode-hook
+    (defun +popup-init-h ()
+      "Initialize our modifications."
+      (cond (;; Turning ON
+             popper-mode
+             (add-hook 'zenit-escape-hook #'+popup-close-on-escape-h 'append)
+             (setq +popup--old-display-buffer-alist display-buffer-alist
+                   display-buffer-alist +popup--display-buffer-alist
+                   window--sides-inhibit-check t)
+             (dolist (prop +popup-window-parameters)
+               (push (cons prop 'writable) window-persistent-parameters)))
+            (;; Turning OFF
+             t
+             (remove-hook 'zenit-escape-hook #'+popup-close-on-escape-h)
+             (setq display-buffer-alist +popup--old-display-buffer-alist
+                   popper-reference-buffers +popup--old-reference-buffers
+                   window--sides-inhibit-check nil)
+             (+popup-cleanup-rules-h)
+             (dolist (prop +popup-window-parameters)
+               (delq (assq prop window-persistent-parameters)
+                     window-persistent-parameters)))))))
 
 
 ;;

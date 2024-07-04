@@ -136,13 +136,13 @@
             ;; is fine though.
             'lispy-mode)
 
-  (defhook! +multiple-cursors-escape-multiple-cursors-h ()
-    "Clear evil-mc cursors and restore state."
-    'zenit-escape-hook
-    (when (evil-mc-has-cursors-p)
-      (evil-mc-undo-all-cursors)
-      (evil-mc-resume-cursors)
-      t))
+  (add-hook! 'zenit-escape-hook
+    (defun +multiple-cursors-escape-multiple-cursors-h ()
+      "Clear evil-mc cursors and restore state."
+      (when (evil-mc-has-cursors-p)
+        (evil-mc-undo-all-cursors)
+        (evil-mc-resume-cursors)
+        t)))
 
   ;; Forward declare these so that ex completion and evil-mc support is
   ;; recognized before the autoloaded functions are loaded.

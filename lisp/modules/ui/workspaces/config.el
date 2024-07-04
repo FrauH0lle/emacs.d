@@ -76,22 +76,22 @@ Buffers matching `bufferlo-include-buffer-filters' are not removed."
   (setq! bufferlo-include-buffer-filters '("^\\*\\Messages" "^\\*Warnings"))
 
   ;; Toggle `tab-bar-mode'
-  (defhook! +workspaces-init-bufferlo-mode-h ()
-    "Toggle `tab-bar-mode' together with `bufferlo-mode' and apply
-our settings."
-    'bufferlo-mode-hook
-    (cond
-     (bufferlo-mode
-      ;; We include all present buffers in the first workspace
-      (let ((bufferlo-exclude-buffer-filters nil)
-            (bufferlo-include-buffer-filters '(".*")))
-        (bufferlo--include-exclude-buffers nil)
-        (tab-bar-mode +1))
-      ;; Restrict buffer list to workspace
-      (advice-add #'zenit-buffer-list :override #'+workspace-buffer-list))
-     (t
-      (tab-bar-mode -1)
-      (advice-remove #'zenit-buffer-list #'+workspace-buffer-list))))
+  (add-hook! 'bufferlo-mode-hook
+    (defun +workspaces-init-bufferlo-mode-h ()
+      "Toggle `tab-bar-mode' together with `bufferlo-mode' and apply our
+settings."
+      (cond
+       (bufferlo-mode
+        ;; We include all present buffers in the first workspace
+        (let ((bufferlo-exclude-buffer-filters nil)
+              (bufferlo-include-buffer-filters '(".*")))
+          (bufferlo--include-exclude-buffers nil)
+          (tab-bar-mode +1))
+        ;; Restrict buffer list to workspace
+        (advice-add #'zenit-buffer-list :override #'+workspace-buffer-list))
+       (t
+        (tab-bar-mode -1)
+        (advice-remove #'zenit-buffer-list #'+workspace-buffer-list)))))
 
   (after! tab-bar
     (setq! tab-bar-close-button-show nil

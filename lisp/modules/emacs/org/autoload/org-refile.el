@@ -1,7 +1,5 @@
 ;; lang/org/autoload/org-refile.el -*- lexical-binding: t; -*-
 
-;; REVIEW These are all proof-of-concept. Refactor me!
-
 ;;;###autoload
 (defun +org/refile-to-current-file (arg &optional file)
   "Refile current heading to elsewhere in the current buffer.
@@ -28,8 +26,8 @@ If prefix ARG, copy instead of move."
 
 ;;;###autoload
 (defun +org/refile-to-other-window (arg)
-  "Refile current heading to an org buffer visible in another window.
-If prefix ARG, copy instead of move."
+  "Refile current heading to an org buffer visible in another
+window. If prefix ARG, copy instead of move."
   (interactive "P")
   (let ((org-refile-keep arg)
         org-refile-targets
@@ -85,7 +83,8 @@ If prefix ARG, copy instead of move."
 ;; Inspired by org-teleport and alphapapa/alpha-org
 ;;;###autoload
 (defun +org/refile-to-visible ()
-  "Refile current heading as first child of visible heading selected with Avy."
+  "Refile current heading as first child of visible heading selected
+with Avy."
   (interactive)
   (when-let (marker (+org-headline-avy))
     (let* ((buffer (marker-buffer marker))

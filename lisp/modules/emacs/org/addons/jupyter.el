@@ -1,4 +1,4 @@
-;;; lang/org/contrib/jupyter.el -*- lexical-binding: t; -*-
+;; lang/org/contrib/jupyter.el -*- lexical-binding: t; -*-
 ;;;###if (modulep! +jupyter)
 
 (use-package! ob-jupyter

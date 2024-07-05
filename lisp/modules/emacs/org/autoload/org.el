@@ -272,12 +272,11 @@ If on a:
                 (org-element-property :end lineage))
              (org-open-at-point arg))))
 
+        ((guard (org-element-property :checkbox (org-element-lineage context '(item) t)))
+         (org-toggle-checkbox))
+
         (`paragraph
          (+org--toggle-inline-images-in-subtree))
-
-        ((guard (org-element-property :checkbox (org-element-lineage context '(item) t)))
-         (let ((match (and (org-at-item-checkbox-p) (match-string 1))))
-           (org-toggle-checkbox (if (equal match "[ ]") '(16)))))
 
         (_
          (if (or (org-in-regexp org-ts-regexp-both nil t)
@@ -371,7 +370,9 @@ see how ARG affects this command."
         (goto-char (point-min))
         (while (not (eobp))
           (org-next-visible-heading 1)
-          (when (outline-invisible-p (line-end-position))
+          (when (memq (get-char-property (line-end-position)
+                                         'invisible)
+                      '(outline org-fold-outline))
             (let ((level (org-outline-level)))
               (when (> level max)
                 (setq max level))))))
@@ -437,13 +438,15 @@ Made for `org-tab-first-hook' in evil-mode."
 ;;;###autoload
 (defun +org-cycle-only-current-subtree-h (&optional arg)
   "Toggle the local fold at the point, and no deeper.
-`org-cycle's standard behavior is to cycle between three levels: collapsed,
-subtree and whole document. This is slow, especially in larger org buffer. Most
-of the time I just want to peek into the current subtree -- at most, expand
-*only* the current subtree.
+`org-cycle's standard behavior is to cycle between three levels:
+collapsed, subtree and whole document. This is slow, especially
+in larger org buffer. Most of the time I just want to peek into
+the current subtree -- at most, expand *only* the current
+subtree.
 
-All my (performant) foldings needs are met between this and `org-show-subtree'
-(on zO for evil users), and `org-cycle' on shift-TAB if I need it."
+All my (performant) foldings needs are met between this and
+`org-show-subtree'(on zO for evil users), and `org-cycle' on
+shift-TAB if I need it."
   (interactive "P")
   (unless (or (eq this-command 'org-shifttab)
               (and (bound-and-true-p org-cdlatex-mode)
@@ -456,7 +459,10 @@ All my (performant) foldings needs are met between this and `org-show-subtree'
                    (or org-cycle-open-archived-trees
                        (not (member org-archive-tag (org-get-tags))))
                    (or (not arg)
-                       (setq invisible-p (outline-invisible-p (line-end-position)))))
+                       (setq invisible-p
+                             (memq (get-char-property (line-end-position)
+                                                      'invisible)
+                                   '(outline org-fold-outline)))))
           (unless invisible-p
             (setq org-cycle-subtree-status 'subtree))
           (org-cycle-internal-local)
@@ -464,13 +470,19 @@ All my (performant) foldings needs are met between this and `org-show-subtree'
 
 ;;;###autoload
 (defun +org-make-last-point-visible-h ()
-  "Unfold subtree around point if saveplace places us in a folded region."
+  "Unfold subtree around point if saveplace places us in a folded
+region."
   (and (not org-inhibit-startup)
        (not org-inhibit-startup-visibility-stuff)
        ;; Must be done on a timer because `org-show-set-visibility' (used by
        ;; `org-reveal') relies on overlays that aren't immediately available
        ;; when `org-mode' first initializes.
-       (run-at-time 0.1 nil #'org-reveal '(4))))
+       (let ((buf (current-buffer)))
+         (unless (zenit-temp-buffer-p buf)
+           (run-at-time 0.1 nil (lambda ()
+                                  (when (buffer-live-p buf)
+                                    (with-current-buffer buf
+                                      (org-reveal '(4))))))))))
 
 ;;;###autoload
 (defun +org-remove-occur-highlights-h ()
@@ -481,7 +493,8 @@ All my (performant) foldings needs are met between this and `org-show-subtree'
 
 ;;;###autoload
 (defun +org-enable-auto-update-cookies-h ()
-  "Update statistics cookies when saving or exiting insert mode (`evil-mode')."
+  "Update statistics cookies when saving or exiting insert
+mode (`evil-mode')."
   (when (bound-and-true-p evil-local-mode)
     (add-hook 'evil-insert-state-exit-hook #'org-update-parent-todo-statistics nil t))
   (add-hook 'before-save-hook #'org-update-parent-todo-statistics nil t))

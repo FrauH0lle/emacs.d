@@ -21,6 +21,7 @@ specified by editorconfig."
                  (or (gethash 'indent_style props)
                      (gethash 'indent_size props)))
         (setq zenit-inhibit-indent-detection 'editorconfig)))
+
     ;; Use a hook over `editorconfig-exclude-modes' because the option inhibits
     ;; all settings, and I only want to inhibit indent_size. Plus modes in that
     ;; option won't apply to derived modes, so we'd have to add *all* possible

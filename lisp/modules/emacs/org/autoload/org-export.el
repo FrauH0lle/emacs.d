@@ -3,13 +3,14 @@
 (defun +org--yank-html-buffer (buffer)
   (with-current-buffer buffer
     (require 'ox-clip)
-    (cond ((or zenit--system-windows-p zenit--system-macos-p)
+    (cond ((or (featurep :system 'windows)
+               (featurep :system 'macos))
            (shell-command-on-region
             (point-min)
             (point-max)
-            (cond (zenit--system-windows-p ox-clip-w32-cmd)
-                  (zenit--system-macos-p ox-clip-osx-cmd))))
-          (zenit--system-linux-p
+            (cond ((featurep :system 'windows) ox-clip-w32-cmd)
+                  ((featurep :system 'macos)   ox-clip-osx-cmd))))
+          ((featurep :system 'linux)
            (let ((html (buffer-string)))
              (with-temp-file (make-temp-file "ox-clip-md" nil ".html")
                (insert html))
@@ -24,7 +25,8 @@
 (defun +org/export-to-clipboard (backend)
   "Exports the current buffer/selection to the clipboard.
 
-Prompts for what BACKEND to use. See `org-export-backends' for options."
+Prompts for what BACKEND to use. See `org-export-backends' for
+options."
   (interactive
    (list (intern (completing-read "Export to: " (progn (require 'ox) org-export-backends)))))
   (require 'ox)
@@ -37,17 +39,18 @@ Prompts for what BACKEND to use. See `org-export-backends' for options."
 
 ;;;###autoload
 (defun +org/export-to-clipboard-as-rich-text (beg end)
-  "Export the current buffer to HTML then copies it to clipboard as rich text.
+  "Export the current buffer to HTML then copies it to clipboard
+ as rich text.
 
-Supports org-mode, markdown-mode, and gfm-mode buffers. In any other mode,
-htmlize is used (takes what you see in Emacs and converts it to html, text
-properties and font-locking et all)."
+Supports org-mode, markdown-mode, and gfm-mode buffers. In any
+other mode, htmlize is used (takes what you see in Emacs and
+converts it to html, text properties and font-locking et all)."
   (interactive "r")
   (pcase major-mode
     ((or `markdown-mode `gfm-mode)
      (+org--yank-html-buffer (markdown)))
     (_
      ;; Omit after/before-string overlay properties in htmlized regions, so we
-     ;; don't get fringe characters for things like flycheck or diff-hl.
+     ;; don't get fringe characters for things like flycheck or diff-hl
      (letf! (defun htmlize-add-before-after-strings (_beg _end text) text)
        (ox-clip-formatted-copy beg end)))))

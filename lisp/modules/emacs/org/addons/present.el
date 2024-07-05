@@ -1,4 +1,4 @@
-;;; lang/org/contrib/present.el -*- lexical-binding: t; -*-
+;; lang/org/contrib/present.el -*- lexical-binding: t; -*-
 ;;;###if (modulep! +present)
 
 (defvar +org-present-text-scale 5
@@ -7,9 +7,10 @@
 (defvar +org-present-hide-first-heading nil
   "If non-nil, hide the top-level heading for the current slide.
 
-Some presenters think the first level heading takes up too much space, or use
-them as slide names, rather than titles. Instead, you can use second level
-headings as titles, and you have more freedom to place them wherever you like.")
+Some presenters think the first level heading takes up too much
+space, or use them as slide names, rather than titles. Instead,
+you can use second level headings as titles, and you have more
+freedom to place them wherever you like.")
 
 
 (after! ox

@@ -15,13 +15,12 @@
     (width . 70)
     (height . 25)
     (transient . t)
-    ,@(when zenit--system-linux-p
+    ,@(when (featurep :system 'linux)
         `((window-system . ,(if (boundp 'pgtk-initialized) 'pgtk 'x))
-          ;; NOTE 2023-02-01: This results in "display not found"
-          (display . ,(or ;; (getenv "WAYLAND_DISPLAY")
+          (display . ,(or (getenv "WAYLAND_DISPLAY")
                           (getenv "DISPLAY")
                           ":0"))))
-    ,(if zenit--system-macos-p '(menu-bar-lines . 1)))
+    ,(if (featurep :system 'macos) '(menu-bar-lines . 1)))
   "TODO")
 
 ;;;###autoload
@@ -54,7 +53,6 @@ you're done. This can be called from an external shell script."
                   (make-frame +org-capture-frame-parameters))))
     (select-frame-set-input-focus frame)  ; fix MacOS not focusing new frames
     (with-selected-frame frame
-          (zenit-run-hooks 'window-setup-hook)
       (require 'org-capture)
       (condition-case ex
           (letf! ((#'pop-to-buffer #'switch-to-buffer))
@@ -86,7 +84,7 @@ If it is an absolute path return `+org-capture-todo-file' verbatim."
 ;;;###autoload
 (defun +org-capture-notes-file ()
   "Expand `+org-capture-notes-file' from `org-directory'.
-If it is an absolute path return `+org-capture-todo-file' verbatim."
+If it is an absolute path return `+org-capture-notes-file' verbatim."
   (expand-file-name +org-capture-notes-file org-directory))
 
 (defun +org--capture-local-root (path)

@@ -5,9 +5,10 @@
 
 ;;;###autoload
 (defun +org/table-previous-row ()
-  "Go to the previous row (same column) in the current table. Before doing so,
-re-align the table if necessary. (Necessary because org-mode has a
-`org-table-next-row', but not `org-table-previous-row')"
+  "Go to the previous row (same column) in the current table.
+ Before doing so,re-align the table if necessary. (Necessary
+because org-mode has a `org-table-next-row', but not
+`org-table-previous-row')"
   (interactive)
   (org-table-maybe-eval-formula)
   (org-table-maybe-recalculate-line)
@@ -55,8 +56,8 @@ re-align the table if necessary. (Necessary because org-mode has a
 
 ;;;###autoload
 (defun +org-enable-auto-reformat-tables-h ()
-  "Realign tables & update formulas when exiting insert mode (`evil-mode').
-Meant for `org-mode-hook'."
+  "Realign tables & update formulas when exiting insert
+mode (`evil-mode'). Meant for `org-mode-hook'."
   (when (featurep 'evil)
     (add-hook 'evil-insert-state-exit-hook #'+org-realign-table-maybe-h nil t)
     (add-hook 'evil-replace-state-exit-hook #'+org-realign-table-maybe-h nil t)
@@ -64,7 +65,8 @@ Meant for `org-mode-hook'."
 
 ;;;###autoload
 (defun +org-delete-backward-char-and-realign-table-maybe-h ()
-  "Ensure deleting characters with backspace doesn't deform the table cell."
+  "Ensure deleting characters with backspace doesn't deform the
+table cell."
   (when (eq major-mode 'org-mode)
     (org-check-before-invisible-edit 'delete-backward)
     (save-match-data

@@ -1,9 +1,15 @@
 ;; lisp/core/zenit-editor.el -*- lexical-binding: t; -*-
 
 
-(defvar zenit-detect-indentation-excluded-modes '(pascal-mode so-long-mode)
-  "A list of major modes in which indentation should be
-automatically detected.")
+(defvar zenit-detect-indentation-excluded-modes
+  '(pascal-mode
+    so-long-mode
+    ;; Automatic indent detection in org files is meaningless. Not to mention, a
+    ;; non-standard `tab-width' causes an error in org-mode.
+    org-mode)
+  "A list of major modes where indentation shouldn't be
+ auto-detected.")
+
 
 (defvar-local zenit-inhibit-indent-detection nil
   "A buffer-local flag that indicates whether `dtrt-indent' should

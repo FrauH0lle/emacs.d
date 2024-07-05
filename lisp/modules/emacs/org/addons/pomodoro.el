@@ -1,4 +1,4 @@
-;;; lang/org/contrib/pomodoro.el -*- lexical-binding: t; -*-
+;; lang/org/contrib/pomodoro.el -*- lexical-binding: t; -*-
 ;;;###if (modulep! +pomodoro)
 
 (after! org-pomodoro

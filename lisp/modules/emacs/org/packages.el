@@ -3,57 +3,77 @@
 
 (package! org
   :recipe (:host github
-           ;; REVIEW I intentionally avoid git.savannah.gnu.org because of SSL
-           ;;   issues (see #5655), uptime issues, download time, and lack of
-           ;;   shallow clone support.
+           ;; The mirror is a bit faster.
            :repo "emacs-straight/org-mode")
   :lockfile 'pinned
-  :pin "eafa479069687d87d81c11ddf655c181dd57f8b5")
+  :lockfile emacs-org)
 (package! org-contrib
   :recipe (:host github
            :repo "emacsmirror/org-contrib")
   :lockfile 'pinned
-  :pin "351c71397d893d896a47ad7e280607b4d59b84e4")
+  :lockfile emacs-org)
 
 (package! avy :lockfile emacs-org)
 (package! htmlize :lockfile emacs-org)
-
-(package! avy :lockfile emacs-org)
-(package! htmlize :lockfile emacs-org)
-(package! org-superstar :lockfile emacs-org)
 (package! ox-clip :lockfile emacs-org)
 (package! toc-org :lockfile emacs-org)
+(package! org-cliplink :lockfile emacs-org)
+
 (when (modulep! :editor evil)
   (package! evil-org
     :recipe (:host github :repo "hlissner/evil-org-mode")
     :lockfile emacs-org-evil))
 
-;; babel
-(package! ob-async :lockfile emacs-org)
+(when (modulep! :tools pdf)
+  (package! org-pdftools :lockfile emacs-org))
+(when (modulep! :tools magit)
+  (package! orgit :lockfile emacs-org)
+  (when (modulep! :tools magit +forge)
+    (package! orgit-forge :lockfile emacs-org)))
 
-;; dragndrop
-(when (modulep! :org org +dragndrop)
+(when (modulep! +dragndrop)
   (package! org-download :lockfile emacs-org-dragndrop))
-;; journal
-(when (modulep! :org org +journal)
-  (package! org-journal :lockfile emacs-org-journal))
-;; jupyter
-(when (modulep! :org org +jupyter)
+
+(when (modulep! +gnuplot)
+  (package! gnuplot :lockfile emacs-org-gnuplot)
+  (package! gnuplot-mode :lockfile emacs-org-gnuplot))
+
+(when (modulep! +jupyter)
   (package! jupyter :lockfile emacs-org-jupyter))
-;; pomodoro
-(when (modulep! :org org +pomodoro)
+
+(when (modulep! +pomodoro)
   (package! org-pomodoro :lockfile emacs-org-pomodoro))
-;; present
-(when (modulep! :org org +present)
+
+(when (modulep! +pretty)
+  (package! org-appear :lockfile emacs-org-pretty)
+  (package! org-superstar :lockfile emacs-org-pretty)
+  (package! org-fancy-priorities :lockfile emacs-org-pretty))
+
+(when (modulep! +present)
   (package! centered-window
     :recipe (:host github :repo "anler/centered-window-mode")
     :lockfile emacs-org-present)
   (package! org-tree-slide :lockfile emacs-org-present)
-  (package! ox-reveal :lockfile emacs-org-present))
-;; tufte
-(when (modulep! :org org +tufte)
-  (package! ox-gfm :lockfile emacs-org-tufte)
-  (package! ox-tufte-latex
-    :recipe (:host github :repo "tsdye/tufte-org-mode"
-             :fork (:host github :repo "DonHugo69/tufte-org-mode"))
-    :lockfile emacs-org-tufte))
+  (package! org-re-reveal :lockfile emacs-org-present)
+  (package! revealjs
+    :recipe (:host github :repo "hakimel/reveal.js"
+             :files ("css" "dist" "js" "plugin"))
+    :lockfile emacs-org-present))
+
+
+;;
+;;; Babel
+(package! ob-async :lockfile emacs-org)
+
+
+;;
+;;; Export
+(when (modulep! +pandoc)
+  (package! ox-pandoc :lockfile emacs-org-pandoc))
+
+(when (modulep! +hugo)
+  (package! ox-hugo
+    :recipe (:host github :repo "kaushalmodi/ox-hugo" :nonrecursive t)
+    :lockfile emacs-org))
+(when (modulep! :lang rst)
+  (package! ox-rst :lockfile emacs-org-hugo))

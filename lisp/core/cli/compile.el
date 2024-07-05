@@ -23,13 +23,13 @@
     (load (file-name-concat zenit-local-dir cache-file) nil (not init-file-debug)))
   ;; Setup environment for compilation
   (require 'zenit-start)
-  ;; (require 'zenit-use-package)
-  ;; (require 'use-package)
-  ;; (require 'zenit-el-patch)
-  ;; (require 'zenit-keybinds)
-  ;; (require 'zenit-ui)
-  ;; (require 'zenit-projects)
-  ;; (require 'zenit-editor)
+  (require 'zenit-use-package)
+  (require 'use-package)
+  (require 'zenit-el-patch)
+  (require 'zenit-keybinds)
+  (require 'zenit-ui)
+  (require 'zenit-projects)
+  (require 'zenit-editor)
 
   ;; Prevent packages from being loaded at compile time if they
   ;; don't meet their own predicates.

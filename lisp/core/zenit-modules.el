@@ -431,8 +431,8 @@ This vector is used as a placeholder and represents a context
 where no module specifics have been defined.")
 
 (eval-and-compile
-  (setplist 'zenit-module-context '(index 0 initdepth 1 configdepth 2
-                                    group 3 name 4 flags 5 features 6)))
+  (put 'zenit-module-context 'keys '(:index 0 :initdepth 1 :configdepth 2
+                                     :group 3 :name 4 :flags 5 :features 6)))
 (defvar zenit-module-context zenit--empty-module-context
   "A vector describing the module associated it with the active context.
 Contains the following: [INDEX INITDEPTH CONFIGDEPTH :GROUP
@@ -445,15 +445,18 @@ let-bind it.")
 Note that FIELD is evaluated at macro-expansion time, and it
 should be a valid symbol that matches a key within the
 `zenit-module-context' property list."
-  (get 'zenit-module-context field))
+  (plist-get (get 'zenit-module-context 'keys) field))
 
 (defun zenit-module-context-get (field &optional context)
   "Return the FIELD of CONTEXT.
+
 FIELD should be one of `index', `initdepth', `configdepth',
 `group', `name', `flags', or `features'. CONTEXT should be a
 `zenit-module-context' vector. If omitted, defaults to
 `zenit-module-context'."
-  (aref (or context zenit-module-context) (get 'zenit-module-context field)))
+  (aref (or context zenit-module-context)
+        (plist-get (get 'zenit-module-context 'keys)
+                   field)))
 
 (defun zenit-module-context (group &optional name)
   "Create a `zenit-module-context' from a module by GROUP and NAME.
@@ -470,8 +473,8 @@ cell: (GROUP . NAME)."
 module key."
   (declare (side-effect-free t))
   (let ((context (or context zenit-module-context)))
-    (cons (aref context (zenit-module--context-field group))
-          (aref context (zenit-module--context-field name)))))
+    (cons (aref context (zenit-module--context-field :group))
+          (aref context (zenit-module--context-field :name)))))
 
 (defmacro zenit-module-context-with (module-key &rest body)
   "Evaluate BODY with `zenit-module-context' informed by
@@ -495,11 +498,11 @@ For more about modules and flags, see `modules!'."
   ;; This macro bypasses the module API to spare startup their runtime cost, as
   ;; `modulep!' gets called *a lot* during startup.
   (and (cond (flag (memq flag (aref (or (get category module) zenit--empty-module-context)
-                                    (zenit-module--context-field flags))))
+                                    (zenit-module--context-field :flags))))
              (module (get category module))
              ((aref zenit-module-context 0)
               (memq category (aref zenit-module-context
-                                   (zenit-module--context-field flags))))
+                                   (zenit-module--context-field :flags))))
              ((let ((file
                      ;; This must be expanded at the call site, not in
                      ;; `modulep!'s definition, to get the file we want.
@@ -507,7 +510,7 @@ For more about modules and flags, see `modules!'."
                 (if-let (module (zenit-module-from-path file))
                     (memq category (aref (or (get (car module) (cdr module))
                                              zenit--empty-module-context)
-                                         (zenit-module--context-field flags)))
+                                         (zenit-module--context-field :flags)))
                   (error "(modulep! %s %s %s) couldn't figure out what module it was called from (in %s)"
                          category module flag file)))))
        t))

@@ -116,3 +116,11 @@ kill all magit buffers for this repo."
               (run-with-timer 5 nil #'+magit--kill-buffer buf)
             (kill-process process)
             (kill-buffer buf)))))))
+
+;;;###autoload
+(defun +magit/start-code-review (arg)
+  (interactive "P")
+  (call-interactively
+    (if (or arg (not (featurep 'forge)))
+        #'code-review-start
+      #'code-review-forge-pr-at-point)))

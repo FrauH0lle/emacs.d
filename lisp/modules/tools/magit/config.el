@@ -14,7 +14,7 @@ Only has an effect in GUI Emacs.")
 
 (use-package! magit
   :commands magit-file-delete
-  :defer-incrementally dash f s with-editor git-commit package eieio transient
+  :defer-incrementally (dash f s with-editor git-commit package eieio transient)
   :init
   (setq magit-auto-revert-mode nil)  ; we do this ourselves further down
   ;; Must be set early to prevent ~/.emacs.d/transient from being created
@@ -135,8 +135,49 @@ Only has an effect in GUI Emacs.")
         (require 'reveal)
         (reveal-post-command)))))
 
-;; (after! magit
-;;   (set-evil-initial-state! 'magit-mode 'emacs))
+
+(use-package! forge
+  :when (modulep! +forge)
+  ;; We defer loading even further because forge's dependencies will try to
+  ;; compile emacsql, which is a slow and blocking operation.
+  :after-call magit-status
+  :commands forge-create-pullreq forge-create-issue
+  :preface
+  (setq forge-database-file (concat zenit-data-dir "forge/forge-database.sqlite"))
+  (setq forge-add-default-bindings (not (modulep! :editor evil)))
+  :config
+  ;; All forge list modes are derived from `forge-topic-list-mode'
+  (map! :map forge-topic-list-mode-map :n "q" #'kill-current-buffer)
+  (when (not forge-add-default-bindings)
+    (map! :map magit-mode-map [remap magit-browse-thing] #'forge-browse
+          :map magit-remote-section-map [remap magit-browse-thing] #'forge-browse-remote
+          :map magit-branch-section-map [remap magit-browse-thing] #'forge-browse-branch))
+  (set-popup-rule! "^\\*?[0-9]+:\\(?:new-\\|[0-9]+$\\)" :size 0.45 :modeline t :ttl 0 :quit nil)
+  (set-popup-rule! "^\\*\\(?:[^/]+/[^ ]+ #[0-9]+\\*$\\|Issues\\|Pull-Requests\\|forge\\)" :ignore t))
+
+
+(use-package! code-review
+  :when (modulep! +forge)
+  :after magit
+  :init
+  ;; TODO This needs to either a) be cleaned up or better b) better map things
+  ;; to fit
+  (after! evil-collection-magit
+    (dolist (binding evil-collection-magit-mode-map-bindings)
+      (pcase-let* ((`(,states _ ,evil-binding ,fn) binding))
+        (dolist (state states)
+          (evil-collection-define-key state 'code-review-mode-map evil-binding fn))))
+    (evil-set-initial-state 'code-review-mode evil-default-state))
+  (setq code-review-db-database-file (file-name-concat zenit-data-dir "code-review/code-review-db-file.sqlite")
+        code-review-log-file (file-name-concat zenit-data-dir "code-review/code-review-error.log")
+        code-review-download-dir (file-name-concat zenit-data-dir "code-review/"))
+  :config
+  (transient-append-suffix 'magit-merge "i"
+    '("y" "Review pull request" +magit/start-code-review))
+  (after! forge
+    (transient-append-suffix 'forge-dispatch "c u"
+      '("c r" "Review pull request" +magit/start-code-review))))
+
 
 (use-package! magit-todos
   :after magit

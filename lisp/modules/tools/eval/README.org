@@ -1,0 +1,26 @@
+#+title: :tools eval
+#+created: 2024-07-04
+
+* Description :unfold:
+Provides an interface for code evaluation and REPL interaction.
+
+** Module flags
+Flags should be in alphanumerical order.
+- +overlay ::
+  Result of code evaluation will be displayed in an overlay. If the result is
+  too long, the minibuffer will be used.
+
+** Packages
+- [[https://github.com/emacsorphanage/quickrun][quickrun.el]]
+- [[https://github.com/xiongtx/eros][Eros]] if ~+overlay~
+
+* Configuration
+#+begin_src elisp
+(defvar +eval-popup-min-lines 4
+  "The output height threshold (inclusive) before output is
+displayed in a popup buffer rather than an overlay on the line at
+point or the minibuffer.")
+#+end_src
+
+- [[help:set-repl-handler!]] 
+- [[help:set-eval-handler!]]

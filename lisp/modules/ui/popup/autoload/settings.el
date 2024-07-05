@@ -49,16 +49,16 @@
 (defun set-popup-rule! (predicate &rest plist)
   "Define a popup rule.
 
-These rules affect buffers displayed with `pop-to-buffer' and `display-buffer'
-(or their siblings). Buffers displayed with
+These rules affect buffers displayed with `pop-to-buffer' and
+`display-buffer'(or their siblings). Buffers displayed with
 `switch-to-buffer' (and its variants) will not be affected by
 these rules (as they are unaffected by `display-buffer-alist',
 which powers the popup management system).
 
 PREDICATE can be either a) a regexp string (matched against the
-buffer's name), b) a function that takes two arguments (a
-buffer name and the ACTION argument of `display-buffer') and
-returns a boolean or c) a `major-mode' symbol.
+buffer's name), b) a function that takes two arguments (a buffer
+name and the ACTION argument of `display-buffer' which needs to
+be optional) and returns a boolean or c) a `major-mode' symbol.
 
 Some buffers might require a regexp and major mode rule due to
 the way they are created.

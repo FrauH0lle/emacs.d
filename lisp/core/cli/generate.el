@@ -45,9 +45,9 @@
                    ,@(if (or (not (modulep! :config compile))
                              no-include)
                          `((zenit-load ,(abbreviate-file-name (file-name-sans-extension file))))
-                       `((eval-when-compile (setq zenit-include--current-file ,file))
+                       `((cl-eval-when (compile) (setq zenit-include--current-file ,file))
                          (zenit-include ,file)
-                         (eval-when-compile (setq zenit-include--current-file nil)))))))
+                         (cl-eval-when (compile) (setq zenit-include--current-file nil)))))))
             (defun module-list-loader (modules file &optional noerror no-include)
               (cl-loop for (cat . mod) in modules
                        if (zenit-module-locate-path cat mod file)

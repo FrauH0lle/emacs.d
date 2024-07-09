@@ -238,20 +238,19 @@ for more information.
 
 If NOERROR is non-nil, don't throw an error if the file doesn't
 exist."
-  (let ((file (file-name-concat
-               (or path (protect-macros! (dir!)))
-               (if (string-suffix-p ".el" filename)
-                   filename
-                 (concat filename ".el")))))
+  (let* ((dir (or path (protect-macros! (dir!))))
+         (file (expand-file-name
+                (file-name-with-extension filename ".el")
+                dir)))
     `(progn
-       (eval-when-compile
-         ;; Set `zenit-include--current-file' only during compilation
+       ;; Set `zenit-include--current-file' only during compilation
+       (cl-eval-when (compile)
          (setq zenit-include--previous-file ,zenit-include--current-file
                zenit-include--current-file ,file))
        ;; Include the file
        (zenit-include ,file ,noerror)
        ;; Reset `zenit-include--current-file' to the previous one
-       (eval-when-compile
+       (cl-eval-when (compile)
          (setq zenit-include--current-file zenit-include--previous-file)))))
 
 (defun zenit-load-envvars-file (file &optional noerror)
@@ -452,23 +451,23 @@ accept anything `cl-defun' will. Implicitly adds
   `(cl-function
     (lambda
       ,(letf! (defun* allow-other-keys (args)
-                (mapcar
-                 (lambda (arg)
-                   (cond ((nlistp (cdr-safe arg)) arg)
-                         ((listp arg) (allow-other-keys arg))
-                         (arg)))
-                 (if (and (memq '&key args)
-                          (not (memq '&allow-other-keys args)))
-                     (if (memq '&aux args)
-                         (let (newargs arg)
-                           (while args
-                             (setq arg (pop args))
-                             (when (eq arg '&aux)
-                               (push '&allow-other-keys newargs))
-                             (push arg newargs))
-                           (nreverse newargs))
-                       (append args (list '&allow-other-keys)))
-                   args)))
+                      (mapcar
+                       (lambda (arg)
+                         (cond ((nlistp (cdr-safe arg)) arg)
+                               ((listp arg) (allow-other-keys arg))
+                               (arg)))
+                       (if (and (memq '&key args)
+                                (not (memq '&allow-other-keys args)))
+                           (if (memq '&aux args)
+                               (let (newargs arg)
+                                 (while args
+                                   (setq arg (pop args))
+                                   (when (eq arg '&aux)
+                                     (push '&allow-other-keys newargs))
+                                   (push arg newargs))
+                                 (nreverse newargs))
+                             (append args (list '&allow-other-keys)))
+                         args)))
          (allow-other-keys arglist))
       ,@body)))
 
@@ -534,19 +533,19 @@ This macro was adapted from llama.el (see URL
 `https://git.sr.ht/~tarsius/llama'), minus font-locking and the
 outer function call, plus some minor optimizations."
   `(lambda ,(let ((argv (make-vector 10 nil)))
-         (zenit--fn-crawl args argv)
-         `(,@(let ((i (1- (length argv)))
-                   (n -1)
-                   sym arglist)
-               (while (> i 0)
-                 (setq sym (aref argv i))
-                 (unless (and (= n -1) (null sym))
-                   (cl-incf n)
-                   (push (or sym (intern (format "_%%%d" i)))
-                         arglist))
-                 (cl-decf i))
-               arglist)
-           ,@(and (aref argv 0) '(&rest %*))))
+              (zenit--fn-crawl args argv)
+              `(,@(let ((i (1- (length argv)))
+                        (n -1)
+                        sym arglist)
+                    (while (> i 0)
+                      (setq sym (aref argv i))
+                      (unless (and (= n -1) (null sym))
+                        (cl-incf n)
+                        (push (or sym (intern (format "_%%%d" i)))
+                              arglist))
+                      (cl-decf i))
+                    arglist)
+                ,@(and (aref argv 0) '(&rest %*))))
      ,@args))
 
 (defmacro cmd! (&rest body)
@@ -611,7 +610,7 @@ in dependencies."
   (macroexp-progn
    (cl-loop for (var val) on settings by 'cddr
             collect `(funcall (or (get ',var 'custom-set) #'set-default-toplevel-value)
-                              ',var ,val))))
+                      ',var ,val))))
 
 (defmacro setq-local! (&rest settings)
   "A more sensible `setopt' for setting the local value of
@@ -623,7 +622,7 @@ buffer-local variable"
   (macroexp-progn
    (cl-loop for (var val) on settings by 'cddr
             collect `(funcall (or (get ',var 'custom-set) #'set)
-                              ',var ,val))))
+                      ',var ,val))))
 
 (defmacro delq! (elt list &optional fetcher)
   "`delq' ELT from LIST in-place.
@@ -743,7 +742,7 @@ alternative to `after!'."
            (add-hook 'after-load-functions #',fn)))))
 
 (defmacro after-call! (feature &rest hooks-or-functions)
-"Load FEATURE (e.g. a package) after any of the hooks or functions
+  "Load FEATURE (e.g. a package) after any of the hooks or functions
 in HOOKS-OR-FUNCTIONS are executed.
 
 See also `use-package!'."
@@ -1057,9 +1056,9 @@ BODY is only compiled if COND evaluates to non-nil. See
                       (byte-code-function-p fn)
                       (let (byte-compile-warnings)
                         (byte-compile fn))))
-             (unless fns
-               (cancel-timer (get 'zenit-compile-function 'timer))
-               (put 'zenit-compile-function 'timer nil))))))
+                (unless fns
+                  (cancel-timer (get 'zenit-compile-function 'timer))
+                  (put 'zenit-compile-function 'timer nil))))))
 
 
 ;;

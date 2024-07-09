@@ -1079,6 +1079,7 @@ missing-epdfinfo errors whenever storing or exporting links."
   :when (modulep! :editor evil)
   :hook (org-mode . evil-org-mode)
   :hook (org-capture-mode . evil-insert-state)
+  :after evil
   :init
   (defvar evil-org-retain-visual-state-on-shift t)
   (defvar evil-org-special-o/O '(table-row))
@@ -1173,10 +1174,11 @@ missing-epdfinfo errors whenever storing or exporting links."
 ;;; Bootstrap
 
 (use-package! org
-  :defer-incrementally
-  calendar find-func format-spec org-macs org-compat org-faces org-entities
-  org-list org-pcomplete org-src org-footnote org-macro ob org org-agenda
-  org-capture
+  ;; :defer-incrementally
+  ;; calendar find-func format-spec org-macs org-compat org-faces org-entities
+  ;; org-list org-pcomplete org-src org-footnote org-macro ob org org-agenda
+  ;; org-capture
+  :defer t
   :preface
   ;; Set to nil so we can detect user changes to them later (and fall back on
   ;; defaults otherwise).
@@ -1205,10 +1207,6 @@ missing-epdfinfo errors whenever storing or exporting links."
       ;; ol-rmail
       ;; ol-eww
       ))
-
-  ;;; Custom org modules
-  (dolist (flag (zenit-module-context-get :flags))
-    (load! (file-name-concat "addons/" (substring (symbol-name flag) 1)) nil t))
 
   ;; Add our general hooks after the submodules, so that any hooks the
   ;; submodules add run after them, and can overwrite any defaults if necessary.
@@ -1278,6 +1276,18 @@ missing-epdfinfo errors whenever storing or exporting links."
     (run-hooks 'org-load-hook))
 
   :config
+  ;; Custom org modules
+  (eval-when! (modulep! +dragndrop)
+    (load-and-compile! "addons/dragndrop"))
+  (eval-when! (modulep! +pomodoro)
+    (load-and-compile! "addons/present"))
+  (eval-when! (modulep! +present)
+    (load-and-compile! "addons/present"))
+  (eval-when! (modulep! +pretty)
+    (load-and-compile! "addons/pretty"))
+  (eval-when! (modulep! +jupyter)
+    (load-and-compile! "addons/jupyter"))
+
   (add-to-list 'zenit-debug-variables 'org-export-async-debug)
 
   (set-eval-handler! 'org-mode #'+org-eval-handler)

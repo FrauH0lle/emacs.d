@@ -67,6 +67,7 @@ preserves it."
       "Initialize `evil' on `zenit-first-input-hook'.
 The package should be loaded as early as possible."
       (require 'evil)
+      ;; Lazy load evil ex commands, part I
       (delq! 'evil-ex features)
       (add-transient-hook! 'evil-ex (provide 'evil-ex))))
   :config
@@ -146,7 +147,7 @@ The package should be loaded as early as possible."
 
 
   ;; HACK '=' moves the cursor to the beginning of selection. Disable this,
-  ;;      since it's more disruptive than helpful.
+  ;;   since it's more disruptive than helpful.
   (defadvice! +evil--dont-move-cursor-a (orig-fn &rest args)
     "Don't move cursor on indent."
     :around #'evil-indent
@@ -229,8 +230,8 @@ helpful,`abort-recursive-edit' gets called one time too many."
   (evil-add-command-properties '+evil:align-right :ex-arg 'regexp-match)
   (evil-add-command-properties '+multiple-cursors:evil-mc :ex-arg 'regexp-global-match)
 
-  ;; Lazy load evil ex commands
-  (after! evil-ex (load! "+commands")))
+  ;; Lazy load evil ex commands, part II
+  (after! evil-ex (load-and-compile! "+commands")))
 
 (use-package! evil-nerd-commenter
   :commands (evilnc-comment-operator
@@ -290,4 +291,4 @@ helpful,`abort-recursive-edit' gets called one time too many."
 ;;; Keybinds
 
 (after! evil
-  (load! "+keybinds.el"))
+  (load-and-compile! "+keybinds"))

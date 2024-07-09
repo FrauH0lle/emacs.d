@@ -719,9 +719,42 @@ that order).
 
 If NOERROR is non-nil, don't throw an error if the file doesn't
 exist."
-  `(zenit-load
-    (file-name-concat ,(or path `(dir!)) ,filename)
-    ,noerror))
+  `(zenit-load (file-name-concat ,(or path `(dir!)) ,filename) ,noerror))
+
+(defmacro load-and-compile! (filename &optional path noerror)
+  "Load FILENAME and compile it beforehand.
+
+See `load!' for details on the arguments.
+
+The file will be compiled along the file the macro was called
+from."
+  (declare (indent defun))
+  `(progn
+     (cl-eval-when (compile)
+       (byte-compile-file
+        (file-name-concat
+         ,(or path `(dir!))
+         (file-name-with-extension ,filename ".el"))))
+     (zenit-load (file-name-concat ,(or path `(dir!)) ,filename) ,noerror)))
+
+(defmacro autoload-and-compile! (file &rest fns)
+  "Generate autoloads for FNS from FILE.
+
+This macro is intended to used for long configuration code which
+runs on demand, for example on a hook. The configuration can be
+put into a separate file and still profit from compilation.
+
+FILE needs to be given without extension and will be compiled
+along the file the macro was called from."
+  (declare (indent defun))
+  (let ((autoloads ()))
+    (while fns
+      (let ((fn (pop fns)))
+        (push `(autoload ,fn ,file) autoloads)))
+    `(progn
+       ,@autoloads
+       (cl-eval-when (compile)
+         (byte-compile-file (concat ,file ".el"))))))
 
 (defmacro defer-until! (condition &rest body)
   "Run BODY when CONDITION is true (checks on

@@ -111,7 +111,7 @@ signals an error."
                  (bufferlo-bookmark-frame-load frame)
                  (cl-loop for name in (+workspace-list-names)
                           unless (member name allowed)
-                          do (+workspace-delete name)))))))
+                          do (+workspace-kill name)))))))
         ((and (require 'frameset nil t)
               (require 'restart-emacs nil t))
          (restart-emacs--restore-frames-using-desktop file))

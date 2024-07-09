@@ -202,8 +202,8 @@ name on success, nil otherwise."
     name))
 
 ;;;###autoload
-(defun +workspace-delete (workspace &optional inhibit-kill-p)
-  "Delete the workspace denoted by WORKSPACE, which is the name
+(defun +workspace-kill (workspace &optional inhibit-kill-p)
+  "Kill the workspace denoted by WORKSPACE, which is the name
  of a tab. If INHIBIT-KILL-P is non-nil, don't kill this
 workspace's buffers."
   (when (+workspace--protected-p workspace)
@@ -292,14 +292,14 @@ workspace."
     ('error (+workspace-error ex t))))
 
 ;;;###autoload
-(defun +workspace/delete (name)
-  "Delete this workspace. If called with C-u, prompts you for the
+(defun +workspace/kill (name)
+  "Kill this workspace. If called with C-u, prompts you for the
 name of the workspace to delete."
   (interactive
    (let ((current-name (+workspace-current-name)))
      (list
       (if current-prefix-arg
-          (completing-read (format "Delete workspace (default: %s): " current-name)
+          (completing-read (format "Kill workspace (default: %s): " current-name)
                            (+workspace-list-names)
                            nil nil nil nil current-name)
         current-name))))
@@ -308,9 +308,9 @@ name of the workspace to delete."
         (if (not (member name workspaces))
             (+workspace-message (format "'%s' workspace doesn't exist" name) 'warn)
           (cond ((not (equal (+workspace-current-name) name))
-                 (+workspace-delete name))
+                 (+workspace-kill name))
                 ((cdr workspaces)
-                 (+workspace-delete name)
+                 (+workspace-kill name)
                  (+workspace-switch
                   (if (+workspace-exists-p +workspace--last)
                       +workspace--last
@@ -318,7 +318,7 @@ name of the workspace to delete."
                  (unless (zenit-buffer-frame-predicate (window-buffer))
                    (switch-to-buffer (zenit-fallback-buffer))))
                 (t
-                 (+workspace-delete name)))
+                 (+workspace-kill name)))
           (+workspace-message (format "Deleted '%s' workspace" name) 'success)))
     ('error (+workspace-error ex t))))
 
@@ -335,7 +335,7 @@ name of the workspace to delete."
       (with-selected-frame f
         (setq num-windows (+ num-windows (length (window-list)))
               num-workspaces (+ num-workspaces (length (+workspace-list-names))))
-        (unless (cl-every (zenit-rpartial #'+workspace-delete t) (+workspace-list-names))
+        (unless (cl-every (zenit-rpartial #'+workspace-kill t) (+workspace-list-names))
           (+workspace-error "Could not clear session"))))
     (+workspace-switch +workspaces-main t)
     (setq num-buffers (zenit/kill-all-buffers (buffer-list)))
@@ -459,7 +459,7 @@ frame, if one exists) and move to the next."
                (let ((frame-persp (frame-parameter nil 'workspace)))
                  (if (string= frame-persp (+workspace-current-name))
                      (delete-frame)
-                   (+workspace/delete current-workspace-name))))
+                   (+workspace/kill current-workspace-name))))
 
               ((+workspace-error "Can't delete last workspace" t)))))))
 

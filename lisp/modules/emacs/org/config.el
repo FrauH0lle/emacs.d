@@ -677,10 +677,9 @@ mutating hooks on exported output, like formatters."
 
   (defun +org--restart-mode-h ()
     "Restart `org-mode', but only once."
+    (remove-hook 'zenit-switch-buffer-hook #'+org--restart-mode-h 'local)
     (quiet! (org-mode-restart))
     (delq! (current-buffer) org-agenda-new-buffers)
-    (remove-hook 'zenit-switch-buffer-hook #'+org--restart-mode-h
-                 'local)
     (run-hooks 'find-file-hook))
 
   (add-hook! 'org-agenda-finalize-hook
@@ -708,15 +707,15 @@ org-mode buffers."
             (add-hook 'zenit-switch-buffer-hook #'+org--restart-mode-h
                       nil 'local))))))
 
-  (defadvice! +org--restart-mode-before-indirect-buffer-a (base-buffer &rest _)
+  (defadvice! +org--restart-mode-before-indirect-buffer-a (&optional buffer _)
     "Restart `org-mode' in buffers in which the mode has been
 deferred (see `+org-defer-mode-in-agenda-buffers-h') before they
 become the base buffer for an indirect buffer. This ensures that
 the buffer is fully functional not only when the *user* visits
 it, but also when some code interacts with it via an indirect
 buffer as done, e.g., by `org-capture'."
-    :before #'make-indirect-buffer
-    (with-current-buffer base-buffer
+    :before #'org-capture-get-indirect-buffer
+    (with-current-buffer (or buffer (current-buffer))
       (when (memq #'+org--restart-mode-h zenit-switch-buffer-hook)
         (+org--restart-mode-h))))
 
@@ -784,6 +783,9 @@ between the two."
         ;; Org-aware C-a/C-e
         [remap zenit/backward-to-bol-or-indent]          #'org-beginning-of-line
         [remap zenit/forward-to-last-non-comment-or-eol] #'org-end-of-line
+
+        (:when (modulep! :completion vertico)
+          [remap imenu] #'consult-outline)
 
         :localleader
         "#" #'org-update-statistics-cookies
@@ -1135,7 +1137,7 @@ missing-epdfinfo errors whenever storing or exporting links."
             :m "[l"  #'org-previous-link
             :m "]c"  #'org-babel-next-src-block
             :m "[c"  #'org-babel-previous-src-block
-            :n "gQ"  #'org-fill-paragraph
+            :n "gQ"  #'+org/reformat-at-point
             ;; sensible vim-esque folding keybinds
             :n "za"  #'+org/toggle-fold
             :n "zA"  #'org-shifttab
@@ -1215,10 +1217,7 @@ missing-epdfinfo errors whenever storing or exporting links."
              ;; `org-indent-mode', so we turn off show-paren-mode altogether
              #'zenit-disable-show-paren-mode-h
              ;; disable `show-trailing-whitespace'; shows a lot of false positives
-             #'zenit-disable-show-trailing-whitespace-h
-             ;; #'+org-enable-auto-reformat-tables-h
-             ;; #'+org-enable-auto-update-cookies-h
-             )
+             #'zenit-disable-show-trailing-whitespace-h)
 
   (add-hook! 'org-load-hook
              #'+org-init-org-directory-h

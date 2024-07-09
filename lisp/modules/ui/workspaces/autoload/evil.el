@@ -22,9 +22,9 @@
   (interactive "<a>") (+workspace/rename new-name))
 
 ;;;###autoload (autoload '+workspace:delete "ui/workspaces/autoload/evil" nil t)
-(evil-define-command +workspace:delete ()
-  "Ex wrapper around `+workspace/delete'."
-  (interactive) (+workspace/delete (+workspace-current-name)))
+(evil-define-command +workspace:kill ()
+  "Ex wrapper around `+workspace/kill'."
+  (interactive) (+workspace/kill (+workspace-current-name)))
 
 ;;;###autoload (autoload '+workspace:switch-next "ui/workspaces/autoload/evil" nil t)
 (evil-define-command +workspace:switch-next (&optional count)

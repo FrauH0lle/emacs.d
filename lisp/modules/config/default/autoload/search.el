@@ -1,4 +1,4 @@
-;;; config/default/autoload/search.el -*- lexical-binding: t; -*-
+;; config/default/autoload/search.el -*- lexical-binding: t; -*-
 
 ;;;###autoload
 (defun +default/search-cwd (&optional arg)
@@ -53,7 +53,7 @@ the initial input and search the whole buffer for it."
                  (consult-line
                   (replace-regexp-in-string
                    " " "\\\\ "
-                   (rxt-quote-pcre
+                   (zenit-pcre-quote
                     (buffer-substring-no-properties start end))))
                (call-interactively #'consult-line)))))))
 
@@ -86,7 +86,7 @@ If prefix ARG is set, include ignored/hidden files."
   "Search current project for symbol at point.
 If prefix ARG is set, prompt for a known project to search from."
   (interactive
-   (list (rxt-quote-pcre (or (zenit-thing-at-point-or-region) ""))
+   (list (zenit-pcre-quote (or (zenit-thing-at-point-or-region) ""))
          (let ((projectile-project-root nil))
            (if current-prefix-arg
                (if-let (projects (projectile-relevant-known-projects))
@@ -106,7 +106,7 @@ If prefix ARG is set, prompt for a known project to search from."
   "Conduct a text search in the current project for symbol at point. If prefix
 ARG is set, prompt for a known project to search from."
   (interactive
-   (list (rxt-quote-pcre (or (zenit-thing-at-point-or-region) ""))))
+   (list (zenit-pcre-quote (or (zenit-thing-at-point-or-region) ""))))
   (require 'org)
   (+default/search-project-for-symbol-at-point
    symbol org-directory))

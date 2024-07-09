@@ -264,7 +264,7 @@
          :desc "Load workspace from file"  "l"   #'+workspace/load
          :desc "Save workspace to file"    "s"   #'+workspace/save
          :desc "Delete session"            "x"   #'+workspace/kill-session
-         :desc "Delete this workspace"     "d"   #'+workspace/delete
+         :desc "Kill this workspace"       "d"   #'+workspace/kill
          :desc "Rename workspace"          "r"   #'+workspace/rename
          :desc "Restore last session"      "R"   #'+workspace/restore-last-session
          :desc "Next workspace"            "]"   #'+workspace/switch-right
@@ -433,8 +433,8 @@
          :desc "Magit clone"               "C"   #'magit-clone
          :desc "Magit fetch"               "F"   #'magit-fetch
          :desc "Magit buffer log"          "L"   #'magit-log-buffer-file
-         :desc "Git stage file"            "S"   #'magit-stage-file
-         :desc "Git unstage file"          "U"   #'magit-unstage-file
+         :desc "Git stage this file"       "S"   #'magit-stage-buffer-file
+         :desc "Git unstage this file"     "U"   #'magit-unstage-buffer-file
          (:prefix ("f" . "find")
           :desc "Find file"                 "f"   #'magit-find-file
           :desc "Find gitconfig file"       "g"   #'magit-find-git-config-file

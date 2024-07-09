@@ -171,4 +171,6 @@ font). Also resizees `zenit-variable-pitch-font' and
          (font-get (zenit-normalize-font zenit-big-font) :size))
        t `((zenit-font . ,zenit-big-font)))
     ;; Resize the current font
-    (zenit-adjust-font-size (if zenit-big-font-mode zenit-big-font-increment))))
+    (zenit-adjust-font-size nil)
+    (when zenit-big-font-mode
+      (zenit-adjust-font-size zenit-big-font-increment))))

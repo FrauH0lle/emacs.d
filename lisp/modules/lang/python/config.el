@@ -29,29 +29,29 @@
   (when (modulep! +tree-sitter)
     (add-hook 'python-mode-local-vars-hook #'tree-sitter! 'append))
   :config
-  ;; (set-repl-handler! 'python-mode #'+python/open-repl
-  ;;   :persist t
-  ;;   :send-region #'python-shell-send-region
-  ;;   :send-buffer #'python-shell-send-buffer)
+  (set-repl-handler! 'python-mode #'+python/open-repl
+    :persist t
+    :send-region #'python-shell-send-region
+    :send-buffer #'python-shell-send-buffer)
   ;; (set-docsets! '(python-mode inferior-python-mode) "Python 3" "NumPy" "SciPy" "Pandas")
 
-  ;; (set-ligatures! 'python-mode
-  ;;   ;; Functional
-  ;;   :def "def"
-  ;;   :lambda "lambda"
-  ;;   ;; Types
-  ;;   :null "None"
-  ;;   :true "True" :false "False"
-  ;;   :int "int" :str "str"
-  ;;   :float "float"
-  ;;   :bool "bool"
-  ;;   :tuple "tuple"
-  ;;   ;; Flow
-  ;;   :not "not"
-  ;;   :in "in" :not-in "not in"
-  ;;   :and "and" :or "or"
-  ;;   :for "for"
-  ;;   :return "return" :yield "yield")
+  (set-ligatures! 'python-mode
+    ;; Functional
+    :def "def"
+    :lambda "lambda"
+    ;; Types
+    :null "None"
+    :true "True" :false "False"
+    :int "int" :str "str"
+    :float "float"
+    :bool "bool"
+    :tuple "tuple"
+    ;; Flow
+    :not "not"
+    :in "in" :not-in "not in"
+    :and "and" :or "or"
+    :for "for"
+    :return "return" :yield "yield")
 
   ;; Stop the spam!
   (setq python-indent-guess-indent-offset-verbose nil)
@@ -142,9 +142,9 @@
         :map python-mode-map
         :localleader
         (:prefix ("i" . "imports")
-          :desc "Insert missing imports" "i" #'pyimport-insert-missing
-          :desc "Remove unused imports"  "R" #'pyimport-remove-unused
-          :desc "Optimize imports"       "o" #'+python/optimize-imports)))
+         :desc "Insert missing imports" "i" #'pyimport-insert-missing
+         :desc "Remove unused imports"  "R" #'pyimport-remove-unused
+         :desc "Optimize imports"       "o" #'+python/optimize-imports)))
 
 
 (use-package! py-isort
@@ -154,8 +154,8 @@
         :map python-mode-map
         :localleader
         (:prefix ("i" . "imports")
-          :desc "Sort imports"      "s" #'py-isort-buffer
-          :desc "Sort region"       "r" #'py-isort-region)))
+         :desc "Sort imports"      "s" #'py-isort-buffer
+         :desc "Sort region"       "r" #'py-isort-region)))
 
 (use-package! nose
   :commands nose-mode
@@ -169,7 +169,7 @@
 
   (map! :localleader
         :map nose-mode-map
-        :prefix "t"
+        :prefix ("t" . "test")
         "r" #'nosetests-again
         "a" #'nosetests-all
         "s" #'nosetests-one
@@ -335,16 +335,8 @@
 ;;
 ;;; LSP
 
-(eval-when! (and (modulep! +lsp)
-                 (not (modulep! :tools lsp +eglot)))
-
-  (use-package! lsp-python-ms
-    :unless (modulep! +pyright)
-    :after lsp-mode
-    :preface
-    (after! python
-      (setq lsp-python-ms-python-executable-cmd python-shell-interpreter)))
-
-  (use-package! lsp-pyright
-    :when (modulep! +pyright)
-    :after lsp-mode))
+(use-package! lsp-pyright
+  :when (modulep! +lsp)
+  :when (modulep! +pyright)
+  :when (not (modulep! :tools lsp +eglot))
+  :after lsp-mode)

@@ -334,8 +334,30 @@ see how ARG affects this command."
          (org-clock-in))
         ((org-clock-in-last arg))))
 
+;;;###autoload
+(defun +org/reformat-at-point ()
+  "Reformat the element at point.
 
+If in an org src block, invokes `+format/org-block' if the
+  ':editor format' module is enabled.
+If in an org table, realign the cells with `org-table-align'.
+
+Otherwise, falls back to `org-fill-paragraph' to reflow
+paragraphs."
+  (interactive)
+  (let ((element (org-element-at-point)))
+    (cond ((org-in-src-block-p nil element)
+           (unless (modulep! :editor format)
+             (user-error ":editor format module is disabled, ignoring reformat..."))
+           (call-interactively #'+format/org-block))
+          ((org-at-table-p)
+           (save-excursion (org-table-align)))
+          ((call-interactively #'org-fill-paragraph)))))
+
+
+;;
 ;;; Folds
+
 ;;;###autoload
 (defalias #'+org/toggle-fold #'+org-cycle-only-current-subtree-h)
 
@@ -490,11 +512,3 @@ region."
   (when org-occur-highlights
     (org-remove-occur-highlights)
     t))
-
-;;;###autoload
-(defun +org-enable-auto-update-cookies-h ()
-  "Update statistics cookies when saving or exiting insert
-mode (`evil-mode')."
-  (when (bound-and-true-p evil-local-mode)
-    (add-hook 'evil-insert-state-exit-hook #'org-update-parent-todo-statistics nil t))
-  (add-hook 'before-save-hook #'org-update-parent-todo-statistics nil t))

@@ -1,4 +1,4 @@
-;;; ui/zen/autoload.el -*- lexical-binding: t; -*-
+;; ui/zen/autoload.el -*- lexical-binding: t; -*-
 
 ;;;###autoload
 (defalias '+zen/toggle #'writeroom-mode)

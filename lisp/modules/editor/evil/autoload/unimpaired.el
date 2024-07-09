@@ -1,4 +1,4 @@
-;;; editor/evil/autoload/unimpaired.el -*- lexical-binding: t; -*-
+;; editor/evil/autoload/unimpaired.el -*- lexical-binding: t; -*-
 
 ;; These are ported from vim-unimpaired https://github.com/tpope/vim-unimpaired
 ;; and bound in the :config default module (in +evil-bindings.el).

@@ -1,4 +1,4 @@
-;;; editor/evil/autoload/textobjects.el -*- lexical-binding: t; -*-
+;; editor/evil/autoload/textobjects.el -*- lexical-binding: t; -*-
 
 ;;;###autoload (autoload '+evil:whole-buffer-txtobj "editor/evil/autoload/textobjects" nil nil)
 (evil-define-text-object +evil:whole-buffer-txtobj (count &optional _beg _end type)

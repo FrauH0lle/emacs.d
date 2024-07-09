@@ -1,4 +1,4 @@
-;;; config/default/autoload/text.el -*- lexical-binding: t; -*-
+;; config/default/autoload/text.el -*- lexical-binding: t; -*-
 
 ;;;###autoload
 (defalias '+default/newline #'electric-indent-just-newline)

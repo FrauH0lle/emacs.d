@@ -3,8 +3,8 @@
 ;;;###autoload
 (defun +python-executable-find (exe)
   "Resolve the path to the EXE executable.
-Tries to be aware of your active conda/pipenv/virtualenv environment, before
-falling back on searching your PATH."
+Tries to be aware of your active conda/pipenv/virtualenv
+environment, before falling back on searching your PATH."
   (if (file-name-absolute-p exe)
       (and (file-executable-p exe)
            exe)

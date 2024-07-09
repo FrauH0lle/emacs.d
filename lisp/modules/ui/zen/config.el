@@ -1,4 +1,4 @@
-;;; ui/zen/config.el -*- lexical-binding: t; -*-
+;; ui/zen/config.el -*- lexical-binding: t; -*-
 
 (defvar +zen-mixed-pitch-modes '(adoc-mode rst-mode markdown-mode org-mode)
   "What major-modes to enable `mixed-pitch-mode' in with `writeroom-mode'.")

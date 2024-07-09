@@ -18,7 +18,6 @@
 (package! dtrt-indent :lockfile core)
 (package! expand-region :lockfile core)
 (package! helpful :lockfile core)
-(package! pcre2el :lockfile core)
 (package! smartparens :lockfile core)
 (package! undo-tree :lockfile core)
 (package! ws-butler :lockfile core)

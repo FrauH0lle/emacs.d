@@ -11,9 +11,8 @@
 ;; LSP
 (when (modulep! +lsp)
   (unless (modulep! :tools lsp +eglot)
-    (if (modulep! +pyright)
-        (package! lsp-pyright :lockfile lang-python)
-      (package! lsp-python-ms :lockfile lang-python))))
+    (when (modulep! +pyright)
+      (package! lsp-pyright :lockfile lang-python))))
 
 ;; Programming environment
 (package! anaconda-mode)

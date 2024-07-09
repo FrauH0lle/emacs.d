@@ -1,4 +1,4 @@
-;;; config/default/autoload/files.el -*- lexical-binding: t; -*-
+;; config/default/autoload/files.el -*- lexical-binding: t; -*-
 
 ;;;###autoload
 (defun +default/browse-project ()

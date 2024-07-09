@@ -128,14 +128,12 @@ If DIR is not a project, it will be indexed (but not cached)."
              ;; cache beyond reason.
              (setq projectile-enable-caching nil))
            (call-interactively
-            ;; Intentionally avoid `helm-projectile-find-file', because it runs
-            ;; asynchronously, and thus doesn't see the lexical
-            ;; `default-directory'
             #'projectile-find-file))
           ((and (bound-and-true-p vertico-mode)
                 (fboundp '+vertico/find-file-in))
            (+vertico/find-file-in default-directory))
-          ((when-let ((pr (project-current nil dir)))
+          ((when-let ((project-current-directory-override t)
+                      (pr (project-current t dir)))
              (project-find-file-in nil nil pr)))
           ((call-interactively #'find-file)))))
 

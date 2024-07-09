@@ -1,4 +1,4 @@
-;;; config/default/autoload/deferred.el -*- lexical-binding: t; -*-
+;; config/default/autoload/deferred.el -*- lexical-binding: t; -*-
 
 ;; TODO generalize this
 ;;;###autoload

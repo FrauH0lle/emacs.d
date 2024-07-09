@@ -119,6 +119,7 @@ display a message."
                                                                          invocation-directory)
                                                       "-no-comp-spawn" "-Q" "--batch"
                                                       ,@(when (or (file-in-directory-p source-file (file-name-concat user-emacs-directory "lisp" "core/"))
+                                                                  (file-in-directory-p source-file (file-name-concat user-emacs-directory "lisp" "modules/"))
                                                                   (equal source-file (file-name-concat user-emacs-directory "init.el")))
                                                           `("--eval" ,(concat "(message \"Zenit Emacs file %s detected! Loading compiler setup!\" \"" source-file "\")")
                                                             "--load" ,(file-name-concat user-emacs-directory "early-init.el")

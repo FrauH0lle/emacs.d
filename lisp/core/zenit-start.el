@@ -157,7 +157,7 @@ recommended you break them up into sub-packages. For example,
      org-footnote org-macro ob org org-clock org-agenda
      org-capture))
 
-This is already done by the lang/org module, however.
+This is already done by the emacs/org module, however.
 
 If you want to disable incremental loading altogether, either
 remove `zenit-load-packages-incrementally-h' from

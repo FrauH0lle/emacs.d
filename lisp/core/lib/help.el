@@ -12,7 +12,7 @@
     (LaTeX-mode      :lang latex)
     (markdown-mode   :lang markdown)
     (gfm-mode        :lang markdown)
-    (org-mode        :lang org)
+    (org-mode        :emacs org)
     (python-mode     :lang python)
     (scheme-mode     :lang scheme)
     (sh-mode         :lang sh))

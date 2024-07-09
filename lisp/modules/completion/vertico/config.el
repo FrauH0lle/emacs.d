@@ -161,7 +161,7 @@
     (consult-customize
      consult-theme
      :preview-key (list "C-SPC" :debounce 0.5 'any)))
-  (when (modulep! :lang org)
+  (when (modulep! :emacs org)
     (defvar +vertico--consult-org-source
       (list :name     "Org Buffer"
             :category 'buffer

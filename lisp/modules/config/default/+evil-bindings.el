@@ -503,7 +503,7 @@
        :desc "Org export to clipboard"        "y" #'+org/export-to-clipboard
        :desc "Org export to clipboard as RTF" "Y" #'+org/export-to-clipboard-as-rich-text
 
-       (:when (modulep! :lang org +roam)
+       (:when (modulep! :emacs org +roam)
          (:prefix ("r" . "roam")
           :desc "Switch to buffer"              "b" #'org-roam-switch-to-buffer
           :desc "Org Roam Capture"              "c" #'org-roam-capture
@@ -518,7 +518,7 @@
            :desc "Tomorrow"       "m" #'org-roam-dailies-find-tomorrow
            :desc "Yesterday"      "y" #'org-roam-dailies-find-yesterday)))
 
-       (:when (modulep! :lang org +roam2)
+       (:when (modulep! :emacs org +roam2)
          (:prefix ("r" . "roam")
           :desc "Open random node"           "a" #'org-roam-node-random
           :desc "Find node"                  "f" #'org-roam-node-find
@@ -686,7 +686,7 @@
        :desc "Line numbers"                 "l" #'zenit/toggle-line-numbers
        (:when (modulep! :ui minimap)
          :desc "Minimap"                      "m" #'minimap-mode)
-       (:when (modulep! :lang org +present)
+       (:when (modulep! :emacs org +present)
          :desc "org-tree-slide mode"        "p" #'org-tree-slide-mode)
        :desc "Read-only mode"               "r" #'read-only-mode
        (:when (and (modulep! :checkers spell) (not (modulep! :checkers spell +flyspell)))

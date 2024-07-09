@@ -17,7 +17,7 @@ the dashboard buffer is current while they run.")
 path is relative to `+doom-dashboard-banner-dir'. If nil, always
 use the ASCII banner.")
 
-(defvar +doom-dashboard-banner-dir (concat (dir!) "/banners/")
+(defvar +doom-dashboard-banner-dir (file-name-concat (dir!) "banners/")
   "Where to look for `+doom-dashboard-banner-file'.")
 
 (defvar +doom-dashboard-ascii-banner-fn #'doom-dashboard-draw-ascii-banner-fn

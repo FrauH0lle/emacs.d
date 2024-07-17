@@ -509,12 +509,14 @@ frame, if one exists) and move to the next."
 
 ;;;###autoload
 (defun +workspace-message (message &optional type)
-  "Show an 'elegant' message in the echo area next to a listing of workspaces."
+  "Show an \\='elegant' message in the echo area next to a listing
+ of workspaces."
   (message "%s" (+workspace--message-body message type)))
 
 ;;;###autoload
 (defun +workspace-error (message &optional noerror)
-  "Show an 'elegant' error in the echo area next to a listing of workspaces."
+  "Show an \\='elegant' error in the echo area next to a listing of
+workspaces."
   (funcall (if noerror #'message #'error)
            "%s" (+workspace--message-body message 'error)))
 

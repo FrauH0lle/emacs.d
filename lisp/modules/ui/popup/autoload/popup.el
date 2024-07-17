@@ -409,8 +409,8 @@ will be ignored."
   "Close WINDOW, if it's a popup window.
 
 This will do nothing if the popup's `quit' window parameter is
-either nil or 'other. This window parameter is ignored if FORCE-P
-is non-nil."
+either nil or \\='other. This window parameter is ignored if
+FORCE-P is non-nil."
   (interactive
    (list (selected-window)
          current-prefix-arg))
@@ -430,8 +430,8 @@ is non-nil."
   "Close all open popup windows.
 
 This will ignore popups with an `quit' parameter that is either
-nil or 'current. This window parameter is ignored if FORCE-P is
-non-nil."
+nil or \\='current. This window parameter is ignored if FORCE-P
+is non-nil."
   (interactive "P")
   (let (targets +popup--remember-last)
     (dolist (window (+popup-windows))

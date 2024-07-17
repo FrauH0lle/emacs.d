@@ -72,11 +72,11 @@ PLIST can be made up of any of the following properties:
 
 :actions ACTIONS
   ACTIONS is a list of functions or an alist containing (FUNCTION
-  . ALIST). See `display-buffer''s second argument for more
+  . ALIST). See `display-buffer'\\='s second argument for more
   information on its format and what it accepts. If omitted,
   `+popup-default-display-buffer-actions' is used.
 
-:side 'bottom|'top|'left|'right
+:side \\='bottom|\\='top|\\='left|\\='right
   Which side of the frame to open the popup on. This is only
   respected if `+popup-display-buffer-stacked-side-window-fn' or
   `display-buffer-in-side-window' is in :actions or
@@ -138,18 +138,18 @@ PLIST can be made up of any of the following properties:
     The popup system does nothing else and ignores the function's
     return value.
 
-:quit FN|BOOL|'other|'current
-  Can be t, 'other, 'current, nil, or a function. This determines
-  the behavior of the ESC/C-g keys in or outside of popup
-  windows.
+:quit FN|BOOL|\\='other|\\='current
+  Can be t, \\='other, \\='current, nil, or a function. This
+  determines the behavior of the ESC/C-g keys in or outside of
+  popup windows.
 
   If t, close the popup if ESC/C-g is pressed anywhere.
-  If 'other, close this popup if ESC/C-g is pressed outside of
+  If \\='other, close this popup if ESC/C-g is pressed outside of
     any popup. This is great for popups you may press ESC/C-g a
     lot in.
-  If 'current, close the current popup if ESC/C-g is pressed from
-    inside of the popup. This makes it harder to accidentally
-    close a popup until you really want to.
+  If \\='current, close the current popup if ESC/C-g is pressed
+    from inside of the popup. This makes it harder to
+    accidentally close a popup until you really want to.
   If nil, pressing ESC/C-g will never close this popup.
   If a function, it takes one argument: the to-be-closed popup
     window, and is run when ESC/C-g is pressed while that popup
@@ -174,18 +174,15 @@ PLIST can be made up of any of the following properties:
 
 :autosave BOOL|FN
   This parameter determines what to do with modified buffers when
-  closing popup windows. It accepts t, 'ignore, a function or
+  closing popup windows. It accepts t, \\='ignore, a function or
   nil.
 
   If t, no prompts. Just save them automatically (if they're
-    file-visiting buffers). Same as 'ignore for non-file-visiting
-    buffers.
-
+    file-visiting buffers). Same as \\='ignore for
+    non-file-visiting buffers.
   If nil (the default), prompt the user what to do if the buffer
     is file-visiting and modified.
-
-  If 'ignore, no prompts, no saving. Just silently kill it.
-
+  If \\='ignore, no prompts, no saving. Just silently kill it.
   If a function, it is run with one argument: the popup buffer,
     and must return non-nil to save or nil to do nothing (but no
     prompts).
@@ -221,9 +218,9 @@ details on the predicate and plist.
 Example:
 
   (set-popup-rules!
-    '((\"^ \\*\" :slot 1 :vslot -1 :size #'+popup-shrink-to-fit)
+    \\='((\"^ \\*\" :slot 1 :vslot -1 :size #'+popup-shrink-to-fit)
       (\"^\\*\"  :slot 1 :vslot -1 :select t))
-    '((\"^\\*Completions\" :slot -1 :vslot -2 :ttl 0)
+    \\='((\"^\\*Completions\" :slot -1 :vslot -2 :ttl 0)
       (\"^\\*Compil\\(?:ation\\|e-Log\\)\" :size 0.3 :ttl 0 :quit t)))"
   (declare (indent 0))
   (dolist (rules rulesets)

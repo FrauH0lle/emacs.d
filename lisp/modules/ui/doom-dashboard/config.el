@@ -41,14 +41,19 @@ dashboard.
 
 Possible values:
 
-  'last-project  The `zenit-project-root' of the last open buffer.
-                 Falls back to `default-directory' if not in a
-                 project.
-  'last          The `default-directory' of the last open buffer
-  a FUNCTION     A function run with the `default-directory' of the
-                 last open buffer, that returns a directory path
-  a STRING       A fixed path
-  nil            `default-directory' will never change")
+  \\='last-project The `zenit-project-root' of the last open
+                   buffer. Falls back to `default-directory' if
+                   not in a project.
+
+  \\='last         The `default-directory' of the last open
+                   buffer
+
+  a FUNCTION       A function run with the `default-directory' of
+                   the last open buffer, that returns a directory
+                   path
+
+  a STRING         A fixed path
+  nil              `default-directory' will never change")
 
 (defvar +doom-dashboard-menu-sections
   '(("Recently opened files"
@@ -248,7 +253,8 @@ PLIST can have the following properties:
 
 If this isn't a dashboard buffer, move along, but record its
 `default-directory' if the buffer is real. See
-`zenit-real-buffer-p' for an explanation for what 'real' means.
+`zenit-real-buffer-p' for an explanation for what \\='real'
+means.
 
 If this is the dashboard buffer, reload it completely."
   (cond ((+doom-dashboard-p (current-buffer))

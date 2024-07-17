@@ -3,7 +3,7 @@
 ;;
 ;;; Default styles
 
-(when (modulep! +pretty)
+(eval-when! (modulep! +pretty)
   ;; Make the fringe small enough that the diff bars aren't too domineering,
   ;; while leaving enough room for other indicators.
   (if (fboundp 'fringe-mode) (fringe-mode '8))
@@ -14,21 +14,36 @@
   ;; fringe. This way we avoid overbearingly large diff bars without having to
   ;; shrink the fringe and sacrifice precious space for other fringe indicators
   ;; (like flycheck or flyspell).
-  (defadvice! +vc-gutter-define-thin-bitmaps-a (&rest args)
-    :override #'diff-hl-define-bitmaps
-    (define-fringe-bitmap 'diff-hl-bmp-middle [224] nil nil '(center repeated))
-    (define-fringe-bitmap 'diff-hl-bmp-delete [240 224 192 128] nil nil 'top))
-  (defun +vc-gutter-type-face-fn (type _pos)
-    (intern (format "diff-hl-%s" type)))
+  (defadvice! +vc-gutter-define-thin-bitmaps-a (&rest _)
+    :after #'diff-hl-define-bitmaps
+    (let* ((scale (if (and (boundp 'text-scale-mode-amount)
+                           (numberp text-scale-mode-amount))
+                      (expt text-scale-mode-step text-scale-mode-amount)
+                    1))
+           (spacing (or (and (display-graphic-p) (default-value 'line-spacing)) 0))
+           (h (+ (ceiling (* (frame-char-height) scale))
+                 (if (floatp spacing)
+                     (truncate (* (frame-char-height) spacing))
+                   spacing)))
+           (w (min (frame-parameter nil (intern (format "%s-fringe" diff-hl-side)))
+                   16))
+           (_ (if (zerop w) (setq w 16))))
+      (define-fringe-bitmap 'diff-hl-bmp-middle
+        (make-vector
+         h (string-to-number (let ((half-w (1- (/ w 2))))
+                               (concat (make-string half-w ?1)
+                                       (make-string (- w half-w) ?0)))
+                             2))
+        nil nil 'center)))
   (defun +vc-gutter-type-at-pos-fn (type _pos)
     (if (eq type 'delete)
         'diff-hl-bmp-delete
       'diff-hl-bmp-middle))
-  (advice-add #'diff-hl-fringe-bmp-from-pos  :override #'+vc-gutter-type-at-pos-fn)
-  (advice-add #'diff-hl-fringe-bmp-from-type :override #'+vc-gutter-type-at-pos-fn)
+  (setq diff-hl-fringe-bmp-function #'+vc-gutter-type-at-pos-fn)
   (setq diff-hl-draw-borders nil)
+  
   (add-hook! 'diff-hl-mode-hook
-    (defun +vc-gutter-fix-diff-hl-faces-h ()
+    (defun +vc-gutter-make-diff-hl-faces-transparent-h ()
       (mapc (zenit-rpartial #'set-face-background nil)
             '(diff-hl-insert
               diff-hl-delete
@@ -67,7 +82,7 @@
   (setq diff-hl-show-staged-changes nil)
 
   ;; Update diffs when it makes sense too, without being too slow
-  (when (modulep! :editor evil)
+  (eval-when! (modulep! :editor evil)
     (map! :after diff-hl-show-hunk
           :map diff-hl-show-hunk-map
           :n "p" #'diff-hl-show-hunk-previous
@@ -88,7 +103,7 @@
                            (bound-and-true-p diff-hl-dir-mode))
                        (diff-hl-update-once))))))
   ;; Update diff-hl when magit alters git state.
-  (when (modulep! :tools magit)
+  (eval-when! (modulep! :tools magit)
     (add-hook 'magit-pre-refresh-hook  #'diff-hl-magit-pre-refresh)
     (add-hook 'magit-post-refresh-hook #'diff-hl-magit-post-refresh))
 
@@ -105,12 +120,12 @@
       (apply fn args)))
 
   ;; Don't delete the current hunk's indicators while we're editing
-  (when (modulep! :editor evil)
+  (eval-when! (modulep! :editor evil)
     (add-hook! 'diff-hl-flydiff-mode-hook
       (defun +vc-gutter-init-flydiff-mode-h ()
-        (if (not diff-hl-flydiff-mode)
-            (remove-hook 'evil-insert-state-exit-hook #'diff-hl-flydiff-update)
-          (add-hook 'evil-insert-state-exit-hook #'diff-hl-flydiff-update)))))
+        (if diff-hl-flydiff-mode
+            (add-hook 'evil-insert-state-exit-hook #'diff-hl-flydiff-update)
+          (remove-hook 'evil-insert-state-exit-hook #'diff-hl-flydiff-update)))))
 
   ;; Reverting a hunk causes the cursor to be moved to an unexpected place,
   ;; often far from the target hunk.

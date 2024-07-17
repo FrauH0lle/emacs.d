@@ -128,9 +128,20 @@ Default value is nil, allowing the hooks to run.")
 
 (defun zenit-run-local-var-hooks-h ()
   "Run MODE-local-vars-hook after local variables are initialized."
-  (unless (or zenit-inhibit-local-var-hooks delay-mode-hooks)
+  (unless (or zenit-inhibit-local-var-hooks
+              delay-mode-hooks
+              ;; Don't trigger local-vars hooks in temporary (internal) buffers
+              (string-prefix-p
+               " " (buffer-name (or (buffer-base-buffer)
+                                    (current-buffer)))))
     (setq-local zenit-inhibit-local-var-hooks t)
-    (zenit-run-hooks (intern-soft (format "%s-local-vars-hook" major-mode)))))
+    ;; The tree-sitter supported modes are usually derived from a common base
+    ;; mode. Thus, instead of having to add to the non-ts-mode and normal-mode
+    ;; hooks, we run the parent hooks as well.
+    (let ((parent (get major-mode 'derived-mode-parent)))
+      (when (string-suffix-p "base-mode" (symbol-name parent))
+        (zenit-run-hooks (intern-soft (format "%s-local-vars-hook" parent))))
+      (zenit-run-hooks (intern-soft (format "%s-local-vars-hook" major-mode))))))
 
 ;; If the user has disabled `enable-local-variables', then
 ;; `hack-local-variables-hook' is never triggered, so we trigger it at the end
@@ -369,6 +380,6 @@ the `--debug-init' option to view a complete error backtrace."
           (setq debug-on-error-should-be-set t
                 debug-on-error-from-init-file debug-on-error)))
     (when debug-on-error-should-be-set
-      (setq debug-on-error debug-on-error-from-init-file))))
+      (setq debug-on-error debug-on-error-from-init-file)))))
 
 (provide 'zenit-start)

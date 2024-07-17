@@ -202,9 +202,8 @@ front. Returns an alist."
 
 (defun zenit--help-current-module-str ()
   (cond ((save-excursion
-           (require 'smartparens)
            (ignore-errors
-             (sp-beginning-of-sexp)
+             (thing-at-point--beginning-of-sexp)
              (unless (eq (char-after) ?\()
                (backward-char))
              (let ((sexp (sexp-at-point)))

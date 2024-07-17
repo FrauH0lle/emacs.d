@@ -210,6 +210,9 @@ animate it!")
         ;; Our :lang common-lisp module uses sly, so...
         org-babel-lisp-eval-fn #'sly-eval)
 
+  ;; A shorter alias for markdown code blocks.
+  (add-to-list 'org-src-lang-modes '("md" . markdown))
+
   ;; I prefer C-c C-c over C-c ' (more consistent)
   (define-key org-src-mode-map (kbd "C-c C-c") #'org-edit-src-exit)
 
@@ -657,15 +660,6 @@ mutating hooks on exported output, like formatters."
     :before-while #'org-fix-tags-on-the-fly
     org-auto-align-tags)
 
-  (defadvice! +org--recenter-after-follow-link-a (&rest _args)
-    "Recenter after following a link, but only internal or file links."
-    :after '(org-footnote-action
-             org-follow-timestamp-link
-             org-link-open-as-file
-             org-link-search)
-    (when (get-buffer-window)
-      (recenter)))
-
   (defadvice! +org--strip-properties-from-outline-a (fn &rest args)
     "Fix variable height faces in eldoc breadcrumbs."
     :around #'org-format-outline-path
@@ -692,657 +686,657 @@ mutating hooks on exported output, like formatters."
         (dolist (buf org-agenda-new-buffers)
           (bufferlo-remove buf))))
 
-    (defun +org-defer-mode-in-agenda-buffers-h ()
-      "`org-agenda' opens temporary, incomplete org-mode buffers.
-I've disabled a lot of org-mode's startup processes for these
-invisible buffers to speed them up (in
-`+org--exclude-agenda-buffers-from-recentf-a'). However, if the
-user tries to visit one of these buffers they'll see a gimped,
-half-broken org buffer. To avoid that, restart `org-mode' when
-they're switched to so they can grow up to be fully-fledged
-org-mode buffers."
-      (dolist (buffer org-agenda-new-buffers)
-        (when (buffer-live-p buffer)      ; Ensure buffer is not killed
-          (with-current-buffer buffer
-            (add-hook 'zenit-switch-buffer-hook #'+org--restart-mode-h
-                      nil 'local))))))
-
-  (defadvice! +org--restart-mode-before-indirect-buffer-a (&optional buffer _)
-    "Restart `org-mode' in buffers in which the mode has been
+    (defadvice! +org--restart-mode-before-indirect-buffer-a (&optional buffer _)
+      "Restart `org-mode' in buffers in which the mode has been
 deferred (see `+org-defer-mode-in-agenda-buffers-h') before they
-become the base buffer for an indirect buffer. This ensures that
-the buffer is fully functional not only when the *user* visits
-it, but also when some code interacts with it via an indirect
-buffer as done, e.g., by `org-capture'."
-    :before #'org-capture-get-indirect-buffer
-    (with-current-buffer (or buffer (current-buffer))
-      (when (memq #'+org--restart-mode-h zenit-switch-buffer-hook)
-        (+org--restart-mode-h))))
+become the base buffer for an indirect org-cpature buffer. This
+ensures that the buffer is fully functional not only when the
+*user* visits it, but also when org-capture interacts with it via
+an indirect buffer."
+      :before #'org-capture-get-indirect-buffer
+      (with-current-buffer (or buffer (current-buffer))
+        (when (memq #'+org--restart-mode-h zenit-switch-buffer-hook)
+          (+org--restart-mode-h))))
 
-  (defvar recentf-exclude)
-  (defadvice! +org--optimize-backgrounded-agenda-buffers-a (fn file)
-    "Prevent temporarily opened agenda buffers from polluting
- recentf."
-    :around #'org-get-agenda-file-buffer
-    (let ((recentf-exclude (list (lambda (_file) t)))
-          (zenit-inhibit-large-file-detection t)
-          org-startup-indented
-          org-startup-folded
-          vc-handled-backends
-          org-mode-hook
-          find-file-hook)
-      (funcall fn file)))
+    (defvar recentf-exclude)
+    (defadvice! +org--optimize-backgrounded-agenda-buffers-a (fn file)
+      "Disable a lot of org-mode's startup processes for temporary
+ agenda buffers.
 
-  (defadvice! +org--fix-inconsistent-uuidgen-case-a (uuid)
-    "Ensure uuidgen is always lowercase (consistent) regardless of system."
-    :filter-return #'org-id-new
-    (if (eq org-id-method 'uuid)
-        (downcase uuid)
-      uuid)))
+This includes preventing them from polluting recentf.
+
+However, if the user tries to visit one of these buffers they'll
+see a gimped, half-broken org buffer. To avoid that, install a
+hook to restart `org-mode' when they're switched to so they can
+grow up to be fully-fledged org-mode buffers."
+      :around #'org-get-agenda-file-buffer
+      (let ((recentf-exclude (list (lambda (_file) t)))
+            (zenit-inhibit-large-file-detection t)
+            org-startup-indented
+            org-startup-folded
+            vc-handled-backends
+            org-mode-hook
+            find-file-hook)
+        (let ((buf (funcall fn file)))
+          (if buf
+              (with-current-buffer buf
+                (add-hook 'zenit-switch-buffer-hook #'+org--restart-mode-h
+                          nil 'local)))
+          buf)))
+
+    (defadvice! +org--fix-inconsistent-uuidgen-case-a (uuid)
+      "Ensure uuidgen is always lowercase (consistent) regardless of
+system.
+See https://lists.gnu.org/archive/html/emacs-orgmode/2019-07/msg00081.html."
+      :filter-return #'org-id-new
+      (if (eq org-id-method 'uuid)
+          (downcase uuid)
+        uuid)))
 
 
-(defun +org-init-keybinds-h ()
-  "Sets up org-mode and evil keybindings. Tries to fix the idiosyncrasies
+  (defun +org-init-keybinds-h ()
+    "Sets up org-mode and evil keybindings. Tries to fix the idiosyncrasies
 between the two."
-  (add-hook 'zenit-escape-hook #'+org-remove-occur-highlights-h)
+    (add-hook 'zenit-escape-hook #'+org-remove-occur-highlights-h)
 
-  ;; C-a & C-e act like `zenit/backward-to-bol-or-indent' and
-  ;; `zenit/forward-to-last-non-comment-or-eol', but with more org awareness.
-  (setq org-special-ctrl-a/e t)
+    ;; C-a & C-e act like `zenit/backward-to-bol-or-indent' and
+    ;; `zenit/forward-to-last-non-comment-or-eol', but with more org awareness.
+    (setq org-special-ctrl-a/e t)
 
-  (setq org-M-RET-may-split-line nil
-        ;; insert new headings after current subtree rather than inside it
-        org-insert-heading-respect-content t)
+    (setq org-M-RET-may-split-line nil
+          ;; insert new headings after current subtree rather than inside it
+          org-insert-heading-respect-content t)
 
-  (add-hook! 'org-tab-first-hook
-             #'+org-indent-maybe-h)
+    (add-hook! 'org-tab-first-hook
+               #'+org-indent-maybe-h)
 
-  (add-hook 'zenit-delete-backward-functions
-            #'+org-delete-backward-char-and-realign-table-maybe-h)
+    (add-hook 'zenit-delete-backward-functions
+              #'+org-delete-backward-char-and-realign-table-maybe-h)
 
-  (map! :map org-mode-map
-        ;; Recently, a [tab] keybind in `outline-mode-cycle-map' has begun
-        ;; overriding org's [tab] keybind in GUI Emacs. This is needed to undo
-        ;; that, and should probably be PRed to org.
-        [tab]        #'org-cycle
+    (map! :map org-mode-map
+          ;; Recently, a [tab] keybind in `outline-mode-cycle-map' has begun
+          ;; overriding org's [tab] keybind in GUI Emacs. This is needed to undo
+          ;; that, and should probably be PRed to org.
+          :ie [tab]    #'org-cycle
 
-        "C-c C-S-l"  #'+org/remove-link
-        "C-c C-i"    #'org-toggle-inline-images
-        ;; textmate-esque newline insertion
-        "S-RET"      #'+org/shift-return
-        "C-RET"      #'+org/insert-item-below
-        "C-S-RET"    #'+org/insert-item-above
-        "C-M-RET"    #'org-insert-subheading
-        [C-return]   #'+org/insert-item-below
-        [C-S-return] #'+org/insert-item-above
-        [C-M-return] #'org-insert-subheading
-        (:when (featurep :system 'macos)
-          [s-return]   #'+org/insert-item-below
-          [s-S-return] #'+org/insert-item-above
-          [s-M-return] #'org-insert-subheading)
-        ;; Org-aware C-a/C-e
-        [remap zenit/backward-to-bol-or-indent]          #'org-beginning-of-line
-        [remap zenit/forward-to-last-non-comment-or-eol] #'org-end-of-line
+          "C-c C-S-l"  #'+org/remove-link
+          "C-c C-i"    #'org-toggle-inline-images
+          ;; textmate-esque newline insertion
+          "S-RET"      #'+org/shift-return
+          "C-RET"      #'+org/insert-item-below
+          "C-S-RET"    #'+org/insert-item-above
+          "C-M-RET"    #'org-insert-subheading
+          [C-return]   #'+org/insert-item-below
+          [C-S-return] #'+org/insert-item-above
+          [C-M-return] #'org-insert-subheading
+          (:when (featurep :system 'macos)
+            [s-return]   #'+org/insert-item-below
+            [s-S-return] #'+org/insert-item-above
+            [s-M-return] #'org-insert-subheading)
+          ;; Org-aware C-a/C-e
+          [remap zenit/backward-to-bol-or-indent]          #'org-beginning-of-line
+          [remap zenit/forward-to-last-non-comment-or-eol] #'org-end-of-line
 
-        (:when (modulep! :completion vertico)
-          [remap imenu] #'consult-outline)
+          (:when (modulep! :completion vertico)
+            [remap imenu] #'consult-outline)
 
-        :localleader
-        "#" #'org-update-statistics-cookies
-        "'" #'org-edit-special
-        "*" #'org-ctrl-c-star
-        "+" #'org-ctrl-c-minus
-        "," #'org-switchb
-        "." #'org-goto
-        "@" #'org-cite-insert
-        (:when (modulep! :completion vertico)
-          "." #'consult-org-heading
-          "/" #'consult-org-agenda)
-        "A" #'org-archive-subtree-default
-        "e" #'org-export-dispatch
-        "f" #'org-footnote-action
-        "h" #'org-toggle-heading
-        "i" #'org-toggle-item
-        "I" #'org-id-get-create
-        "k" #'org-babel-remove-result
-        "K" #'+org/remove-result-blocks
-        "n" #'org-store-link
-        "o" #'org-set-property
-        "q" #'org-set-tags-command
-        "t" #'org-todo
-        "T" #'org-todo-list
-        "x" #'org-toggle-checkbox
-        (:prefix ("a" . "attachments")
-                 "a" #'org-attach
-                 "d" #'org-attach-delete-one
-                 "D" #'org-attach-delete-all
-                 "f" #'+org/find-file-in-attachments
-                 "l" #'+org/attach-file-and-insert-link
-                 "n" #'org-attach-new
-                 "o" #'org-attach-open
-                 "O" #'org-attach-open-in-emacs
-                 "r" #'org-attach-reveal
-                 "R" #'org-attach-reveal-in-emacs
-                 "u" #'org-attach-url
-                 "s" #'org-attach-set-directory
-                 "S" #'org-attach-sync
-                 (:when (modulep! +dragndrop)
-                   "c" #'org-download-screenshot
-                   "p" #'org-download-clipboard
-                   "P" #'org-download-yank))
-        (:prefix ("b" . "tables")
-                 "-" #'org-table-insert-hline
-                 "a" #'org-table-align
-                 "b" #'org-table-blank-field
-                 "c" #'org-table-create-or-convert-from-region
-                 "e" #'org-table-edit-field
-                 "f" #'org-table-edit-formulas
-                 "h" #'org-table-field-info
-                 "s" #'org-table-sort-lines
-                 "r" #'org-table-recalculate
-                 "R" #'org-table-recalculate-buffer-tables
-                 (:prefix ("d" . "delete")
-                          "c" #'org-table-delete-column
-                          "r" #'org-table-kill-row)
-                 (:prefix ("i" . "insert")
-                          "c" #'org-table-insert-column
-                          "h" #'org-table-insert-hline
-                          "r" #'org-table-insert-row
-                          "H" #'org-table-hline-and-move)
-                 (:prefix ("t" . "toggle")
-                          "f" #'org-table-toggle-formula-debugger
-                          "o" #'org-table-toggle-coordinate-overlays)
-                 (:when (modulep! +gnuplot)
-                   "p" #'org-plot/gnuplot))
-        (:prefix ("c" . "clock")
-                 "c" #'org-clock-cancel
-                 "d" #'org-clock-mark-default-task
-                 "e" #'org-clock-modify-effort-estimate
-                 "E" #'org-set-effort
-                 "g" #'org-clock-goto
-                 "G" (cmd! (org-clock-goto 'select))
-                 "l" #'+org/toggle-last-clock
-                 "i" #'org-clock-in
-                 "I" #'org-clock-in-last
-                 "o" #'org-clock-out
-                 "r" #'org-resolve-clocks
-                 "R" #'org-clock-report
-                 "t" #'org-evaluate-time-range
-                 "=" #'org-clock-timestamps-up
-                 "-" #'org-clock-timestamps-down)
-        (:prefix ("d" . "date/deadline")
-                 "d" #'org-deadline
-                 "s" #'org-schedule
-                 "t" #'org-time-stamp
-                 "T" #'org-time-stamp-inactive)
-        (:prefix ("g" . "goto")
-                 "g" #'org-goto
-                 (:when (modulep! :completion vertico)
-                   "g" #'consult-org-heading
-                   "G" #'consult-org-agenda)
-                 "c" #'org-clock-goto
-                 "C" (cmd! (org-clock-goto 'select))
-                 "i" #'org-id-goto
-                 "r" #'org-refile-goto-last-stored
-                 "v" #'+org/goto-visible
-                 "x" #'org-capture-goto-last-stored)
-        (:prefix ("l" . "links")
-                 "c" #'org-cliplink
-                 "d" #'+org/remove-link
-                 "i" #'org-id-store-link
-                 "l" #'org-insert-link
-                 "L" #'org-insert-all-links
-                 "s" #'org-store-link
-                 "S" #'org-insert-last-stored-link
-                 "t" #'org-toggle-link-display
-                 (:when (modulep! :os macos)
-                   "g" #'org-mac-link-get-link))
-        (:prefix ("P" . "publish")
-                 "a" #'org-publish-all
-                 "f" #'org-publish-current-file
-                 "p" #'org-publish
-                 "P" #'org-publish-current-project
-                 "s" #'org-publish-sitemap)
-        (:prefix ("r" . "refile")
-                 "." #'+org/refile-to-current-file
-                 "c" #'+org/refile-to-running-clock
-                 "l" #'+org/refile-to-last-location
-                 "f" #'+org/refile-to-file
-                 "o" #'+org/refile-to-other-window
-                 "O" #'+org/refile-to-other-buffer
-                 "v" #'+org/refile-to-visible
-                 "r" #'org-refile
-                 "R" #'org-refile-reverse) ; to all `org-refile-targets'
-        (:prefix ("s" . "tree/subtree")
-                 "a" #'org-toggle-archive-tag
-                 "b" #'org-tree-to-indirect-buffer
-                 "c" #'org-clone-subtree-with-time-shift
-                 "d" #'org-cut-subtree
-                 "h" #'org-promote-subtree
-                 "j" #'org-move-subtree-down
-                 "k" #'org-move-subtree-up
-                 "l" #'org-demote-subtree
-                 "n" #'org-narrow-to-subtree
-                 "r" #'org-refile
-                 "s" #'org-sparse-tree
-                 "A" #'org-archive-subtree-default
-                 "N" #'widen
-                 "S" #'org-sort)
-        (:prefix ("p" . "priority")
-                 "d" #'org-priority-down
-                 "p" #'org-priority
-                 "u" #'org-priority-up)
-        (:prefix ("x" . "text")
-         :desc "bold"           "b" (cmd! (org-emphasize ?\*))
-         :desc "code"           "c" (cmd! (org-emphasize ?\~))
-         :desc "italic"         "i" (cmd! (org-emphasize ?\/))
-         :desc "clear"          "r" (cmd! (org-emphasize ?\ ))
-         :desc "strike through" "s" (cmd! (org-emphasize ?\+))
-         :desc "underline"      "u" (cmd! (org-emphasize ?\_))
-         :desc "verbatim"       "v" (cmd! (org-emphasize ?\=))))
+          :localleader
+          "#" #'org-update-statistics-cookies
+          "'" #'org-edit-special
+          "*" #'org-ctrl-c-star
+          "+" #'org-ctrl-c-minus
+          "," #'org-switchb
+          "." #'org-goto
+          "@" #'org-cite-insert
+          (:when (modulep! :completion vertico)
+            "." #'consult-org-heading
+            "/" #'consult-org-agenda)
+          "A" #'org-archive-subtree-default
+          "e" #'org-export-dispatch
+          "f" #'org-footnote-action
+          "h" #'org-toggle-heading
+          "i" #'org-toggle-item
+          "I" #'org-id-get-create
+          "k" #'org-babel-remove-result
+          "K" #'+org/remove-result-blocks
+          "n" #'org-store-link
+          "o" #'org-set-property
+          "q" #'org-set-tags-command
+          "t" #'org-todo
+          "T" #'org-todo-list
+          "x" #'org-toggle-checkbox
+          (:prefix ("a" . "attachments")
+                   "a" #'org-attach
+                   "d" #'org-attach-delete-one
+                   "D" #'org-attach-delete-all
+                   "f" #'+org/find-file-in-attachments
+                   "l" #'+org/attach-file-and-insert-link
+                   "n" #'org-attach-new
+                   "o" #'org-attach-open
+                   "O" #'org-attach-open-in-emacs
+                   "r" #'org-attach-reveal
+                   "R" #'org-attach-reveal-in-emacs
+                   "u" #'org-attach-url
+                   "s" #'org-attach-set-directory
+                   "S" #'org-attach-sync
+                   (:when (modulep! +dragndrop)
+                     "c" #'org-download-screenshot
+                     "p" #'org-download-clipboard
+                     "P" #'org-download-yank))
+          (:prefix ("b" . "tables")
+                   "-" #'org-table-insert-hline
+                   "a" #'org-table-align
+                   "b" #'org-table-blank-field
+                   "c" #'org-table-create-or-convert-from-region
+                   "e" #'org-table-edit-field
+                   "f" #'org-table-edit-formulas
+                   "h" #'org-table-field-info
+                   "s" #'org-table-sort-lines
+                   "r" #'org-table-recalculate
+                   "R" #'org-table-recalculate-buffer-tables
+                   (:prefix ("d" . "delete")
+                            "c" #'org-table-delete-column
+                            "r" #'org-table-kill-row)
+                   (:prefix ("i" . "insert")
+                            "c" #'org-table-insert-column
+                            "h" #'org-table-insert-hline
+                            "r" #'org-table-insert-row
+                            "H" #'org-table-hline-and-move)
+                   (:prefix ("t" . "toggle")
+                            "f" #'org-table-toggle-formula-debugger
+                            "o" #'org-table-toggle-coordinate-overlays)
+                   (:when (modulep! +gnuplot)
+                     "p" #'org-plot/gnuplot))
+          (:prefix ("c" . "clock")
+                   "c" #'org-clock-cancel
+                   "d" #'org-clock-mark-default-task
+                   "e" #'org-clock-modify-effort-estimate
+                   "E" #'org-set-effort
+                   "g" #'org-clock-goto
+                   "G" (cmd! (org-clock-goto 'select))
+                   "l" #'+org/toggle-last-clock
+                   "i" #'org-clock-in
+                   "I" #'org-clock-in-last
+                   "o" #'org-clock-out
+                   "r" #'org-resolve-clocks
+                   "R" #'org-clock-report
+                   "t" #'org-evaluate-time-range
+                   "=" #'org-clock-timestamps-up
+                   "-" #'org-clock-timestamps-down)
+          (:prefix ("d" . "date/deadline")
+                   "d" #'org-deadline
+                   "s" #'org-schedule
+                   "t" #'org-time-stamp
+                   "T" #'org-time-stamp-inactive)
+          (:prefix ("g" . "goto")
+                   "g" #'org-goto
+                   (:when (modulep! :completion vertico)
+                     "g" #'consult-org-heading
+                     "G" #'consult-org-agenda)
+                   "c" #'org-clock-goto
+                   "C" (cmd! (org-clock-goto 'select))
+                   "i" #'org-id-goto
+                   "r" #'org-refile-goto-last-stored
+                   "v" #'+org/goto-visible
+                   "x" #'org-capture-goto-last-stored)
+          (:prefix ("l" . "links")
+                   "c" #'org-cliplink
+                   "d" #'+org/remove-link
+                   "i" #'org-id-store-link
+                   "l" #'org-insert-link
+                   "L" #'org-insert-all-links
+                   "s" #'org-store-link
+                   "S" #'org-insert-last-stored-link
+                   "t" #'org-toggle-link-display
+                   "y" #'+org/yank-link
+                   (:when (modulep! :os macos)
+                     "g" #'org-mac-link-get-link))
+          (:prefix ("P" . "publish")
+                   "a" #'org-publish-all
+                   "f" #'org-publish-current-file
+                   "p" #'org-publish
+                   "P" #'org-publish-current-project
+                   "s" #'org-publish-sitemap)
+          (:prefix ("r" . "refile")
+                   "." #'+org/refile-to-current-file
+                   "c" #'+org/refile-to-running-clock
+                   "l" #'+org/refile-to-last-location
+                   "f" #'+org/refile-to-file
+                   "o" #'+org/refile-to-other-window
+                   "O" #'+org/refile-to-other-buffer
+                   "v" #'+org/refile-to-visible
+                   "r" #'org-refile
+                   "R" #'org-refile-reverse) ; to all `org-refile-targets'
+          (:prefix ("s" . "tree/subtree")
+                   "a" #'org-toggle-archive-tag
+                   "b" #'org-tree-to-indirect-buffer
+                   "c" #'org-clone-subtree-with-time-shift
+                   "d" #'org-cut-subtree
+                   "h" #'org-promote-subtree
+                   "j" #'org-move-subtree-down
+                   "k" #'org-move-subtree-up
+                   "l" #'org-demote-subtree
+                   "n" #'org-narrow-to-subtree
+                   "r" #'org-refile
+                   "s" #'org-sparse-tree
+                   "A" #'org-archive-subtree-default
+                   "N" #'widen
+                   "S" #'org-sort)
+          (:prefix ("p" . "priority")
+                   "d" #'org-priority-down
+                   "p" #'org-priority
+                   "u" #'org-priority-up)
+          (:prefix ("x" . "text")
+           :desc "bold"           "b" (cmd! (org-emphasize ?\*))
+           :desc "code"           "c" (cmd! (org-emphasize ?\~))
+           :desc "italic"         "i" (cmd! (org-emphasize ?\/))
+           :desc "clear"          "r" (cmd! (org-emphasize ?\ ))
+           :desc "strike through" "s" (cmd! (org-emphasize ?\+))
+           :desc "underline"      "u" (cmd! (org-emphasize ?\_))
+           :desc "verbatim"       "v" (cmd! (org-emphasize ?\=))))
 
-  (map! :after org-agenda
-        :map org-agenda-mode-map
-        :m "C-SPC" #'org-agenda-show-and-scroll-up
-        :localleader
-        (:prefix ("d" . "date/deadline")
-                 "d" #'org-agenda-deadline
-                 "s" #'org-agenda-schedule)
-        (:prefix ("c" . "clock")
-                 "c" #'org-agenda-clock-cancel
-                 "g" #'org-agenda-clock-goto
-                 "i" #'org-agenda-clock-in
-                 "o" #'org-agenda-clock-out
-                 "r" #'org-agenda-clockreport-mode
-                 "s" #'org-agenda-show-clocking-issues)
-        (:prefix ("p" . "priority")
-                 "d" #'org-agenda-priority-down
-                 "p" #'org-agenda-priority
-                 "u" #'org-agenda-priority-up)
-        "q" #'org-agenda-set-tags
-        "r" #'org-agenda-refile
-        "t" #'org-agenda-todo))
-
-
-(defun +org-init-popup-rules-h ()
-  (set-popup-rules!
-    '(("^\\*Org Links" :slot -1 :vslot -1 :size 2 :ttl 0)
-      ("^ ?\\*\\(?:Agenda Com\\|Calendar\\|Org Export Dispatcher\\)"
-       :slot -1 :vslot -1 :size #'+popup-shrink-to-fit :ttl 0)
-      ("^\\*Org \\(?:Select\\|Attach\\)" :slot -1 :vslot -2 :ttl 0 :size 0.25)
-      ("^\\*Org Agenda"     :ignore t)
-      ("^\\*Org Src"        :size 0.42  :quit nil :select t :autosave t :modeline t :ttl nil)
-      ("^\\*Org-Babel")
-      ("^\\*Capture\\*$\\|CAPTURE-.*$" :size 0.42 :quit nil :select t :autosave ignore))))
+    (map! :after org-agenda
+          :map org-agenda-mode-map
+          :m "C-SPC" #'org-agenda-show-and-scroll-up
+          :localleader
+          (:prefix ("d" . "date/deadline")
+                   "d" #'org-agenda-deadline
+                   "s" #'org-agenda-schedule)
+          (:prefix ("c" . "clock")
+                   "c" #'org-agenda-clock-cancel
+                   "g" #'org-agenda-clock-goto
+                   "i" #'org-agenda-clock-in
+                   "o" #'org-agenda-clock-out
+                   "r" #'org-agenda-clockreport-mode
+                   "s" #'org-agenda-show-clocking-issues)
+          (:prefix ("p" . "priority")
+                   "d" #'org-agenda-priority-down
+                   "p" #'org-agenda-priority
+                   "u" #'org-agenda-priority-up)
+          "q" #'org-agenda-set-tags
+          "r" #'org-agenda-refile
+          "t" #'org-agenda-todo))
 
 
-(defun +org-init-smartparens-h ()
-  ;; Disable the slow defaults
-  (provide 'smartparens-org))
+  (defun +org-init-popup-rules-h ()
+    (set-popup-rules!
+      '(("^\\*Org Links" :slot -1 :vslot -1 :size 2 :ttl 0)
+        ("^ ?\\*\\(?:Agenda Com\\|Calendar\\|Org Export Dispatcher\\)"
+         :slot -1 :vslot -1 :size #'+popup-shrink-to-fit :ttl 0)
+        ("^\\*Org \\(?:Select\\|Attach\\)" :slot -1 :vslot -2 :ttl 0 :size 0.25)
+        ("^\\*Org Agenda"     :ignore t)
+        ("^\\*Org Src"        :size 0.42  :quit nil :select t :autosave t :modeline t :ttl nil)
+        ("^\\*Org-Babel")
+        ("^\\*Capture\\*$\\|CAPTURE-.*$" :size 0.42 :quit nil :select t :autosave ignore))))
 
 
-;;
+  (defun +org-init-smartparens-h ()
+    ;; Disable the slow defaults
+    (provide 'smartparens-org))
+
+
+  ;;
 ;;; Packages
 
-(use-package! toc-org ; auto-table of contents
-  :hook (org-mode . toc-org-enable)
-  :config
-  (setq toc-org-hrefify-default "gh")
+  (use-package! toc-org ; auto-table of contents
+    :hook (org-mode . toc-org-enable)
+    :config
+    (setq toc-org-hrefify-default "gh")
 
-  (defadvice! +org-inhibit-scrolling-a (fn &rest args)
-    "Prevent the jarring scrolling that occurs when the-ToC is
+    (defadvice! +org-inhibit-scrolling-a (fn &rest args)
+      "Prevent the jarring scrolling that occurs when the-ToC is
 regenerated."
-    :around #'toc-org-insert-toc
-    (let ((p (set-marker (make-marker) (point)))
-          (s (window-start)))
-      (prog1 (apply fn args)
-        (goto-char p)
-        (set-window-start nil s t)
-        (set-marker p nil)))))
+      :around #'toc-org-insert-toc
+      (let ((p (set-marker (make-marker) (point)))
+            (s (window-start)))
+        (prog1 (apply fn args)
+          (goto-char p)
+          (set-window-start nil s t)
+          (set-marker p nil)))))
 
 
-(use-package! org-crypt ; built-in
-  :when (modulep! +crypt)
-  :commands org-encrypt-entries org-encrypt-entry org-decrypt-entries org-decrypt-entry
-  :hook (org-load . org-crypt-use-before-save-magic)
-  :preface
-  ;; org-crypt falls back to CRYPTKEY property then `epa-file-encrypt-to', which
-  ;; is a better default than the empty string `org-crypt-key' defaults to.
-  (defvar org-crypt-key nil)
-  (after! org (add-to-list 'org-tags-exclude-from-inheritance "crypt")))
+  (use-package! org-crypt ; built-in
+    :when (modulep! +crypt)
+    :commands org-encrypt-entries org-encrypt-entry org-decrypt-entries org-decrypt-entry
+    :hook (org-load . org-crypt-use-before-save-magic)
+    :preface
+    ;; org-crypt falls back to CRYPTKEY property then `epa-file-encrypt-to', which
+    ;; is a better default than the empty string `org-crypt-key' defaults to.
+    (defvar org-crypt-key nil)
+    (after! org (add-to-list 'org-tags-exclude-from-inheritance "crypt")))
 
 
-(use-package! org-clock ; built-in
-  :commands org-clock-save
-  :init
-  (setq org-clock-persist-file (concat zenit-data-dir "org-clock-save.el"))
-  (defadvice! +org--clock-load-a (&rest _)
-    "Lazy load org-clock until its commands are used."
-    :before '(org-clock-in
-              org-clock-out
-              org-clock-in-last
-              org-clock-goto
-              org-clock-cancel)
-    (org-clock-load))
-  :config
-  (setq org-clock-persist 'history
-        ;; Resume when clocking into task with open clock
-        org-clock-in-resume t
-        ;; Remove log if task was clocked for 0:00 (accidental clocking)
-        org-clock-out-remove-zero-time-clocks t
-        ;; The default value (5) is too conservative.
-        org-clock-history-length 20)
-  (add-hook 'kill-emacs-hook #'org-clock-save))
+  (use-package! org-clock ; built-in
+    :commands org-clock-save
+    :init
+    (setq org-clock-persist-file (concat zenit-data-dir "org-clock-save.el"))
+    (defadvice! +org--clock-load-a (&rest _)
+      "Lazy load org-clock until its commands are used."
+      :before '(org-clock-in
+                org-clock-out
+                org-clock-in-last
+                org-clock-goto
+                org-clock-cancel)
+      (org-clock-load))
+    :config
+    (setq org-clock-persist 'history
+          ;; Resume when clocking into task with open clock
+          org-clock-in-resume t
+          ;; Remove log if task was clocked for 0:00 (accidental clocking)
+          org-clock-out-remove-zero-time-clocks t
+          ;; The default value (5) is too conservative.
+          org-clock-history-length 20)
+    (add-hook 'kill-emacs-hook #'org-clock-save))
 
 
-(use-package! org-eldoc
-  :hook (org-mode . org-eldoc-load)
-  :init (setq org-eldoc-breadcrumb-separator " → ")
-  :config
-  ;; HACK Infinite recursion when eldoc kicks in 'org' or 'python' src blocks.
-  (puthash "org" #'ignore org-eldoc-local-functions-cache)
-  (puthash "plantuml" #'ignore org-eldoc-local-functions-cache)
-  (puthash "python" #'python-eldoc-function org-eldoc-local-functions-cache))
+  (use-package! org-eldoc
+    :hook (org-mode . org-eldoc-load)
+    :init (setq org-eldoc-breadcrumb-separator " → ")
+    :config
+    ;; HACK Infinite recursion when eldoc kicks in 'org' or 'python' src blocks.
+    (puthash "org" #'ignore org-eldoc-local-functions-cache)
+    (puthash "plantuml" #'ignore org-eldoc-local-functions-cache)
+    (puthash "python" #'python-eldoc-function org-eldoc-local-functions-cache))
 
 
-(use-package! org-pdftools
-  :when (modulep! :tools pdf)
-  :commands org-pdftools-export
-  :init
-  (after! org
-    ;; HACK Fixes an issue where org-pdftools link handlers will throw a
-    ;;   'pdf-info-epdfinfo-program is not executable' error whenever any link
-    ;;   is stored or exported (whether or not they're a pdf link). This error
-    ;;   gimps org until `pdf-tools-install' is run, but this is poor UX, so we
-    ;;   suppress it.
-    (defun +org--pdftools-link-handler (fn &rest args)
-      "Produces a link handler for org-pdftools that suppresses
+  (use-package! org-pdftools
+    :when (modulep! :tools pdf)
+    :commands org-pdftools-export
+    :init
+    (after! org
+      ;; HACK Fixes an issue where org-pdftools link handlers will throw a
+      ;;   'pdf-info-epdfinfo-program is not executable' error whenever any link
+      ;;   is stored or exported (whether or not they're a pdf link). This error
+      ;;   gimps org until `pdf-tools-install' is run, but this is poor UX, so we
+      ;;   suppress it.
+      (defun +org--pdftools-link-handler (fn &rest args)
+        "Produces a link handler for org-pdftools that suppresses
 missing-epdfinfo errors whenever storing or exporting links."
-      (lambda (&rest args)
-        (and (ignore-errors (require 'org-pdftools nil t))
-             (file-executable-p pdf-info-epdfinfo-program)
-             (apply fn args))))
-    (org-link-set-parameters (or (bound-and-true-p org-pdftools-link-prefix) "pdf")
-                             :follow   (+org--pdftools-link-handler #'org-pdftools-open)
-                             :complete (+org--pdftools-link-handler #'org-pdftools-complete-link)
-                             :store    (+org--pdftools-link-handler #'org-pdftools-store-link)
-                             :export   (+org--pdftools-link-handler #'org-pdftools-export))
-    (add-hook! 'org-open-link-functions
-      (defun +org-open-legacy-pdf-links-fn (link)
-        "Open pdftools:* and pdfviews:* links as if they were
+        (lambda (&rest args)
+          (and (ignore-errors (require 'org-pdftools nil t))
+               (file-executable-p pdf-info-epdfinfo-program)
+               (apply fn args))))
+      (org-link-set-parameters (or (bound-and-true-p org-pdftools-link-prefix) "pdf")
+                               :follow   (+org--pdftools-link-handler #'org-pdftools-open)
+                               :complete (+org--pdftools-link-handler #'org-pdftools-complete-link)
+                               :store    (+org--pdftools-link-handler #'org-pdftools-store-link)
+                               :export   (+org--pdftools-link-handler #'org-pdftools-export))
+      (add-hook! 'org-open-link-functions
+        (defun +org-open-legacy-pdf-links-fn (link)
+          "Open pdftools:* and pdfviews:* links as if they were
  pdf:* links."
-        (let ((regexp "^pdf\\(?:tools\\|view\\):"))
-          (when (string-match-p regexp link)
-            (org-pdftools-open (replace-regexp-in-string regexp "" link))
-            t))))))
+          (let ((regexp "^pdf\\(?:tools\\|view\\):"))
+            (when (string-match-p regexp link)
+              (org-pdftools-open (replace-regexp-in-string regexp "" link))
+              t))))))
 
 
-(use-package! evil-org
-  :when (modulep! :editor evil)
-  :hook (org-mode . evil-org-mode)
-  :hook (org-capture-mode . evil-insert-state)
-  :after evil
-  :init
-  (defvar evil-org-retain-visual-state-on-shift t)
-  (defvar evil-org-special-o/O '(table-row))
-  (defvar evil-org-use-additional-insert t)
-  :config
-  (add-hook 'evil-org-mode-hook #'evil-normalize-keymaps)
-  (evil-org-set-key-theme)
-  (add-hook! 'org-tab-first-hook :append
-             ;; Only fold the current tree, rather than recursively
-             #'+org-cycle-only-current-subtree-h
-             ;; Clear babel results if point is inside a src block
-             #'+org-clear-babel-results-h)
-  (let-alist evil-org-movement-bindings
-    (let ((Cright  (concat "C-" .right))
-          (Cleft   (concat "C-" .left))
-          (Cup     (concat "C-" .up))
-          (Cdown   (concat "C-" .down))
-          (CSright (concat "C-S-" .right))
-          (CSleft  (concat "C-S-" .left))
-          (CSup    (concat "C-S-" .up))
-          (CSdown  (concat "C-S-" .down)))
-      (map! :map evil-org-mode-map
-            :ni [C-return]   #'+org/insert-item-below
-            :ni [C-S-return] #'+org/insert-item-above
-            ;; navigate table cells (from insert-mode)
-            :i Cright (general-predicate-dispatch nil
-                        (org-at-table-p) #'org-table-next-field
-                        #'org-end-of-line)
-            :i Cleft  (general-predicate-dispatch nil
-                        (org-at-table-p) #'org-table-previous-field
-                        #'org-beginning-of-line)
-            :i Cup    (general-predicate-dispatch nil
-                        (org-at-table-p) #'+org/table-previous-row
-                        #'org-up-element)
-            :i Cdown  (general-predicate-dispatch nil
-                        (org-at-table-p) #'org-table-next-row
-                        #'org-down-element)
-            :ni CSright   #'org-shiftright
-            :ni CSleft    #'org-shiftleft
-            :ni CSup      #'org-shiftup
-            :ni CSdown    #'org-shiftdown
-            ;; more intuitive RET keybinds
-            :n [return]   #'+org/dwim-at-point
-            :n "RET"      #'+org/dwim-at-point
-            :i [return]   #'+org/return
-            :i "RET"      #'+org/return
-            :i [S-return] #'+org/shift-return
-            :i "S-RET"    #'+org/shift-return
-            ;; more vim-esque org motion keys (not covered by evil-org-mode)
-            :m "]h"  #'org-forward-heading-same-level
-            :m "[h"  #'org-backward-heading-same-level
-            :m "]l"  #'org-next-link
-            :m "[l"  #'org-previous-link
-            :m "]c"  #'org-babel-next-src-block
-            :m "[c"  #'org-babel-previous-src-block
-            :n "gQ"  #'+org/reformat-at-point
-            ;; sensible vim-esque folding keybinds
-            :n "za"  #'+org/toggle-fold
-            :n "zA"  #'org-shifttab
-            :n "zc"  #'+org/close-fold
-            :n "zC"  #'outline-hide-subtree
-            :n "zm"  #'+org/hide-next-fold-level
-            :n "zM"  #'+org/close-all-folds
-            :n "zn"  #'org-tree-to-indirect-buffer
-            :n "zo"  #'+org/open-fold
-            :n "zO"  #'outline-show-subtree
-            :n "zr"  #'+org/show-next-fold-level
-            :n "zR"  #'+org/open-all-folds
-            :n "zi"  #'org-toggle-inline-images
+  (use-package! evil-org
+    :when (modulep! :editor evil)
+    :hook (org-mode . evil-org-mode)
+    :hook (org-capture-mode . evil-insert-state)
+    :after evil
+    :init
+    (defvar evil-org-retain-visual-state-on-shift t)
+    (defvar evil-org-special-o/O '(table-row))
+    (defvar evil-org-use-additional-insert t)
+    :config
+    (add-hook 'evil-org-mode-hook #'evil-normalize-keymaps)
+    (evil-org-set-key-theme)
+    (add-hook! 'org-tab-first-hook :append
+               ;; Only fold the current tree, rather than recursively
+               #'+org-cycle-only-current-subtree-h
+               ;; Clear babel results if point is inside a src block
+               #'+org-clear-babel-results-h)
+    (let-alist evil-org-movement-bindings
+      (let ((Cright  (concat "C-" .right))
+            (Cleft   (concat "C-" .left))
+            (Cup     (concat "C-" .up))
+            (Cdown   (concat "C-" .down))
+            (CSright (concat "C-S-" .right))
+            (CSleft  (concat "C-S-" .left))
+            (CSup    (concat "C-S-" .up))
+            (CSdown  (concat "C-S-" .down)))
+        (map! :map evil-org-mode-map
+              :ni [C-return]   #'+org/insert-item-below
+              :ni [C-S-return] #'+org/insert-item-above
+              ;; navigate table cells (from insert-mode)
+              :i Cright (general-predicate-dispatch nil
+                          (org-at-table-p) #'org-table-next-field
+                          #'org-end-of-line)
+              :i Cleft  (general-predicate-dispatch nil
+                          (org-at-table-p) #'org-table-previous-field
+                          #'org-beginning-of-line)
+              :i Cup    (general-predicate-dispatch nil
+                          (org-at-table-p) #'+org/table-previous-row
+                          #'org-up-element)
+              :i Cdown  (general-predicate-dispatch nil
+                          (org-at-table-p) #'org-table-next-row
+                          #'org-down-element)
+              :ni CSright   #'org-shiftright
+              :ni CSleft    #'org-shiftleft
+              :ni CSup      #'org-shiftup
+              :ni CSdown    #'org-shiftdown
+              ;; more intuitive RET keybinds
+              :n [return]   #'+org/dwim-at-point
+              :n "RET"      #'+org/dwim-at-point
+              :i [return]   #'+org/return
+              :i "RET"      #'+org/return
+              :i [S-return] #'+org/shift-return
+              :i "S-RET"    #'+org/shift-return
+              ;; more vim-esque org motion keys (not covered by evil-org-mode)
+              :m "]h"  #'org-forward-heading-same-level
+              :m "[h"  #'org-backward-heading-same-level
+              :m "]l"  #'org-next-link
+              :m "[l"  #'org-previous-link
+              :m "]c"  #'org-babel-next-src-block
+              :m "[c"  #'org-babel-previous-src-block
+              :n "gQ"  #'+org/reformat-at-point
+              ;; sensible vim-esque folding keybinds
+              :n "za"  #'+org/toggle-fold
+              :n "zA"  #'org-shifttab
+              :n "zc"  #'+org/close-fold
+              :n "zC"  #'outline-hide-subtree
+              :n "zm"  #'+org/hide-next-fold-level
+              :n "zM"  #'+org/close-all-folds
+              :n "zn"  #'org-tree-to-indirect-buffer
+              :n "zo"  #'+org/open-fold
+              :n "zO"  #'outline-show-subtree
+              :n "zr"  #'+org/show-next-fold-level
+              :n "zR"  #'+org/open-all-folds
+              :n "zi"  #'org-toggle-inline-images
 
-            :map org-read-date-minibuffer-local-map
-            Cleft    (cmd! (org-eval-in-calendar '(calendar-backward-day 1)))
-            Cright   (cmd! (org-eval-in-calendar '(calendar-forward-day 1)))
-            Cup      (cmd! (org-eval-in-calendar '(calendar-backward-week 1)))
-            Cdown    (cmd! (org-eval-in-calendar '(calendar-forward-week 1)))
-            CSleft   (cmd! (org-eval-in-calendar '(calendar-backward-month 1)))
-            CSright  (cmd! (org-eval-in-calendar '(calendar-forward-month 1)))
-            CSup     (cmd! (org-eval-in-calendar '(calendar-backward-year 1)))
-            CSdown   (cmd! (org-eval-in-calendar '(calendar-forward-year 1)))))))
-
-
-(use-package! evil-org-agenda
-  :when (modulep! :editor evil)
-  :hook (org-agenda-mode . evil-org-agenda-mode)
-  :config
-  (evil-org-agenda-set-keys)
-  (evil-define-key* 'motion evil-org-agenda-mode-map
-    (kbd zenit-leader-key) nil))
+              :map org-read-date-minibuffer-local-map
+              Cleft    (cmd! (org-eval-in-calendar '(calendar-backward-day 1)))
+              Cright   (cmd! (org-eval-in-calendar '(calendar-forward-day 1)))
+              Cup      (cmd! (org-eval-in-calendar '(calendar-backward-week 1)))
+              Cdown    (cmd! (org-eval-in-calendar '(calendar-forward-week 1)))
+              CSleft   (cmd! (org-eval-in-calendar '(calendar-backward-month 1)))
+              CSright  (cmd! (org-eval-in-calendar '(calendar-forward-month 1)))
+              CSup     (cmd! (org-eval-in-calendar '(calendar-backward-year 1)))
+              CSdown   (cmd! (org-eval-in-calendar '(calendar-forward-year 1)))))))
 
 
-;;
+  (use-package! evil-org-agenda
+    :when (modulep! :editor evil)
+    :hook (org-agenda-mode . evil-org-agenda-mode)
+    :config
+    (evil-org-agenda-set-keys)
+    (evil-define-key* 'motion evil-org-agenda-mode-map
+      (kbd zenit-leader-key) nil))
+
+
+  ;;
 ;;; Bootstrap
 
-(use-package! org
-  ;; :defer-incrementally
-  ;; calendar find-func format-spec org-macs org-compat org-faces org-entities
-  ;; org-list org-pcomplete org-src org-footnote org-macro ob org org-agenda
-  ;; org-capture
-  :defer t
-  :preface
-  ;; Set to nil so we can detect user changes to them later (and fall back on
-  ;; defaults otherwise).
-  (defvar org-directory nil)
-  (defvar org-id-locations-file nil)
-  (defvar org-attach-id-dir nil)
-  (defvar org-babel-python-command nil)
+  (use-package! org
+    ;; :defer-incrementally
+    ;; calendar find-func format-spec org-macs org-compat org-faces org-entities
+    ;; org-list org-pcomplete org-src org-footnote org-macro ob org org-agenda
+    ;; org-capture
+    :defer t
+    :preface
+    ;; Set to nil so we can detect user changes to them later (and fall back on
+    ;; defaults otherwise).
+    (defvar org-directory nil)
+    (defvar org-id-locations-file nil)
+    (defvar org-attach-id-dir nil)
+    (defvar org-babel-python-command nil)
 
-  (setq org-persist-directory (concat zenit-cache-dir "org/persist/")
-        org-publish-timestamp-directory (concat zenit-cache-dir "org/timestamps/")
-        org-preview-latex-image-directory (concat zenit-cache-dir "org/latex/")
-        ;; Recognize a), A), a., A., etc -- must be set before org is loaded.
-        org-list-allow-alphabetical t)
+    (setq org-persist-directory (concat zenit-cache-dir "org/persist/")
+          org-publish-timestamp-directory (concat zenit-cache-dir "org/timestamps/")
+          org-preview-latex-image-directory (concat zenit-cache-dir "org/latex/")
+          ;; Recognize a), A), a., A., etc -- must be set before org is loaded.
+          org-list-allow-alphabetical t)
 
-  ;; Make most of the default modules opt-in to lighten its first-time load
-  ;; delay. I sincerely doubt most users use them all.
-  (defvar org-modules
-    '(;; ol-w3m
-      ;; ol-bbdb
-      ol-bibtex
-      ;; ol-docview
-      ;; ol-gnus
-      ;; ol-info
-      ;; ol-irc
-      ;; ol-mhe
-      ;; ol-rmail
-      ;; ol-eww
-      ))
+    ;; Make most of the default modules opt-in to lighten its first-time load
+    ;; delay. I sincerely doubt most users use them all.
+    (defvar org-modules
+      '(;; ol-w3m
+        ;; ol-bbdb
+        ol-bibtex
+        ;; ol-docview
+        ;; ol-gnus
+        ;; ol-info
+        ;; ol-irc
+        ;; ol-mhe
+        ;; ol-rmail
+        ;; ol-eww
+        ))
 
-  ;; Add our general hooks after the submodules, so that any hooks the
-  ;; submodules add run after them, and can overwrite any defaults if necessary.
-  (add-hook! 'org-mode-hook
-             ;; `show-paren-mode' causes flickering with indent overlays made by
-             ;; `org-indent-mode', so we turn off show-paren-mode altogether
-             #'zenit-disable-show-paren-mode-h
-             ;; disable `show-trailing-whitespace'; shows a lot of false positives
-             #'zenit-disable-show-trailing-whitespace-h)
+    ;; Add our general hooks after the submodules, so that any hooks the
+    ;; submodules add run after them, and can overwrite any defaults if necessary.
+    (add-hook! 'org-mode-hook
+               ;; `show-paren-mode' causes flickering with indent overlays made by
+               ;; `org-indent-mode', so we turn off show-paren-mode altogether
+               #'zenit-disable-show-paren-mode-h
+               ;; disable `show-trailing-whitespace'; shows a lot of false positives
+               #'zenit-disable-show-trailing-whitespace-h)
 
-  (add-hook! 'org-load-hook
-             #'+org-init-org-directory-h
-             #'+org-init-appearance-h
-             ;; #'+org-init-agenda-h
-             #'+org-init-attachments-h
-             #'+org-init-babel-h
-             #'+org-init-babel-lazy-loader-h
-             #'+org-init-capture-defaults-h
-             #'+org-init-capture-frame-h
-             #'+org-init-custom-links-h
-             #'+org-init-export-h
-             ;; #'+org-init-habit-h
-             #'+org-init-hacks-h
-             #'+org-init-keybinds-h
-             #'+org-init-popup-rules-h
-             #'+org-init-smartparens-h)
+    (add-hook! 'org-load-hook
+               #'+org-init-org-directory-h
+               #'+org-init-appearance-h
+               ;; #'+org-init-agenda-h
+               #'+org-init-attachments-h
+               #'+org-init-babel-h
+               #'+org-init-babel-lazy-loader-h
+               #'+org-init-capture-defaults-h
+               #'+org-init-capture-frame-h
+               #'+org-init-custom-links-h
+               #'+org-init-export-h
+               ;; #'+org-init-habit-h
+               #'+org-init-hacks-h
+               #'+org-init-keybinds-h
+               #'+org-init-popup-rules-h
+               #'+org-init-smartparens-h)
 
-  ;; Wait until an org-protocol link is opened via emacsclient to load
-  ;; `org-protocol'. Normally you'd simply require `org-protocol' and use it,
-  ;; but the package loads all of org for no compelling reason, so...
-  (defadvice! +org--server-visit-files-a (fn files &rest args)
-    "Advise `server-visit-files' to load `org-protocol' lazily."
-    :around #'server-visit-files
-    (if (not (cl-loop with protocol =
-                      (if (featurep :system 'windows)
-                          ;; On Windows, the file arguments for `emacsclient'
-                          ;; get funnelled through `expand-file-path' by
-                          ;; `server-process-filter'. This substitutes
-                          ;; backslashes with forward slashes and converts each
-                          ;; path to an absolute one. However, *all* absolute
-                          ;; paths on Windows will match the regexp ":/+", so we
-                          ;; need a more discerning regexp.
-                          (regexp-quote
-                           (or (bound-and-true-p org-protocol-the-protocol)
-                               "org-protocol"))
-                        ;; ...but since there is a miniscule possibility users
-                        ;; have changed `org-protocol-the-protocol' I don't want
-                        ;; this behavior for macOS/Linux users.
-                        "")
-                      for var in files
-                      if (string-match-p (format "%s:/+" protocol) (car var))
-                      return t))
-        (apply fn files args)
-      (require 'org-protocol)
-      (apply #'org--protocol-detect-protocol-server fn files args)))
-  (after! org-protocol
-    (advice-remove 'server-visit-files #'org--protocol-detect-protocol-server))
+    ;; Wait until an org-protocol link is opened via emacsclient to load
+    ;; `org-protocol'. Normally you'd simply require `org-protocol' and use it,
+    ;; but the package loads all of org for no compelling reason, so...
+    (defadvice! +org--server-visit-files-a (fn files &rest args)
+      "Advise `server-visit-files' to load `org-protocol' lazily."
+      :around #'server-visit-files
+      (if (not (cl-loop with protocol =
+                        (if (featurep :system 'windows)
+                            ;; On Windows, the file arguments for `emacsclient'
+                            ;; get funnelled through `expand-file-path' by
+                            ;; `server-process-filter'. This substitutes
+                            ;; backslashes with forward slashes and converts each
+                            ;; path to an absolute one. However, *all* absolute
+                            ;; paths on Windows will match the regexp ":/+", so we
+                            ;; need a more discerning regexp.
+                            (regexp-quote
+                             (or (bound-and-true-p org-protocol-the-protocol)
+                                 "org-protocol"))
+                          ;; ...but since there is a miniscule possibility users
+                          ;; have changed `org-protocol-the-protocol' I don't want
+                          ;; this behavior for macOS/Linux users.
+                          "")
+                        for var in files
+                        if (string-match-p (format "%s:/+" protocol) (car var))
+                        return t))
+          (apply fn files args)
+        (require 'org-protocol)
+        (apply #'org--protocol-detect-protocol-server fn files args)))
+    (after! org-protocol
+      (advice-remove 'server-visit-files #'org--protocol-detect-protocol-server))
 
-  ;; In case the user has eagerly loaded org from their configs
-  (when (and (featurep 'org)
-             (not byte-compile-current-file))
-    (unless (zenit-context-p 'reload)
-      (message "`org' was already loaded by the time emacs/org loaded, this may cause issues"))
-    (run-hooks 'org-load-hook))
+    ;; In case the user has eagerly loaded org from their configs
+    (when (and (featurep 'org)
+               (not byte-compile-current-file))
+      (unless (zenit-context-p 'reload)
+        (message "`org' was already loaded by the time emacs/org loaded, this may cause issues"))
+      (run-hooks 'org-load-hook))
 
-  :config
-  ;; Custom org modules
-  (eval-when! (modulep! +dragndrop)
-    (load-and-compile! "addons/dragndrop"))
-  (eval-when! (modulep! +pomodoro)
-    (load-and-compile! "addons/present"))
-  (eval-when! (modulep! +present)
-    (load-and-compile! "addons/present"))
-  (eval-when! (modulep! +pretty)
-    (load-and-compile! "addons/pretty"))
-  (eval-when! (modulep! +jupyter)
-    (load-and-compile! "addons/jupyter"))
+    :config
+    ;; Custom org modules
+    (eval-when! (modulep! +dragndrop)
+      (load-and-compile! "addons/dragndrop"))
+    (eval-when! (modulep! +pomodoro)
+      (load-and-compile! "addons/present"))
+    (eval-when! (modulep! +present)
+      (load-and-compile! "addons/present"))
+    (eval-when! (modulep! +pretty)
+      (load-and-compile! "addons/pretty"))
+    (eval-when! (modulep! +jupyter)
+      (load-and-compile! "addons/jupyter"))
 
-  (add-to-list 'zenit-debug-variables 'org-export-async-debug)
+    (add-to-list 'zenit-debug-variables 'org-export-async-debug)
 
-  (set-eval-handler! 'org-mode #'+org-eval-handler)
+    (set-eval-handler! 'org-mode #'+org-eval-handler)
 
-  (add-hook! 'org-mode-hook
-             ;; HACK: Somehow, users/packages still find a way to modify tab-width in
-             ;;   org-mode. Since org-mode treats a non-standerd tab-width as an error
-             ;;   state, I use this hook to makes it much harder to change by accident.
-             (add-hook! 'after-change-major-mode-hook :local
-                        ;; The second check is necessary, in case of `org-edit-src-code' which
-                        ;; clones a buffer and changes its major-mode.
-                        (when (derived-mode-p 'org-mode)
-                          (setq tab-width 8)))
+    (add-hook! 'org-mode-hook
+               ;; HACK: Somehow, users/packages still find a way to modify tab-width in
+               ;;   org-mode. Since org-mode treats a non-standerd tab-width as an error
+               ;;   state, I use this hook to makes it much harder to change by accident.
+               (add-hook! 'after-change-major-mode-hook :local
+                          ;; The second check is necessary, in case of `org-edit-src-code' which
+                          ;; clones a buffer and changes its major-mode.
+                          (when (derived-mode-p 'org-mode)
+                            (setq tab-width 8)))
 
-             ;; HACK: `save-place' can position the cursor in an invisible region. This
-             ;;   makes it visible unless `org-inhibit-startup' or
-             ;;   `org-inhibit-startup-visibility-stuff' is non-nil.
-             (add-hook 'save-place-after-find-file-hook #'+org-make-last-point-visible-h nil t))
+               ;; HACK: `save-place' can position the cursor in an invisible region. This
+               ;;   makes it visible unless `org-inhibit-startup' or
+               ;;   `org-inhibit-startup-visibility-stuff' is non-nil.
+               (add-hook 'save-place-after-find-file-hook #'+org-make-last-point-visible-h nil t))
 
-  ;; Save target buffer after archiving a node.
-  (setq org-archive-subtree-save-file-p t)
+    ;; Save target buffer after archiving a node.
+    (setq org-archive-subtree-save-file-p t)
 
-  ;; Don't number headings with these tags
-  (setq org-num-face '(:inherit org-special-keyword :underline nil :weight bold)
-        org-num-skip-tags '("noexport" "nonum"))
+    ;; Don't number headings with these tags
+    (setq org-num-face '(:inherit org-special-keyword :underline nil :weight bold)
+          org-num-skip-tags '("noexport" "nonum"))
 
-  ;; Other org properties are all-caps. Be consistent.
-  (setq org-effort-property "EFFORT")
+    ;; Other org properties are all-caps. Be consistent.
+    (setq org-effort-property "EFFORT")
 
-  ;; Global ID state means we can have ID links anywhere. This is required for
-  ;; `org-brain', however.
-  (setq org-id-locations-file-relative t)
+    ;; Global ID state means we can have ID links anywhere. This is required for
+    ;; `org-brain', however.
+    (setq org-id-locations-file-relative t)
 
-  ;; HACK `org-id' doesn't check if `org-id-locations-file' exists or is
-  ;;   writeable before trying to read/write to it.
-  (defadvice! +org--fail-gracefully-a (&rest _)
-    :before-while '(org-id-locations-save org-id-locations-load)
-    (file-writable-p org-id-locations-file))
+    ;; HACK `org-id' doesn't check if `org-id-locations-file' exists or is
+    ;;   writeable before trying to read/write to it.
+    (defadvice! +org--fail-gracefully-a (&rest _)
+      :before-while '(org-id-locations-save org-id-locations-load)
+      (file-writable-p org-id-locations-file))
 
-  (add-hook 'org-open-at-point-functions #'zenit-set-jump-h)
-  ;; HACK For functions that dodge `org-open-at-point-functions', like
-  ;;   `org-id-open', `org-goto', or roam: links.
-  (advice-add #'org-mark-ring-push :around #'zenit-set-jump-a)
+    (add-hook 'org-open-at-point-functions #'zenit-set-jump-h)
+    ;; HACK For functions that dodge `org-open-at-point-functions', like
+    ;;   `org-id-open', `org-goto', or roam: links.
+    (advice-add #'org-mark-ring-push :around #'zenit-set-jump-a)
 
-  ;; Allow shift selection
-  (setq org-support-shift-select t)
+    ;; Allow shift selection
+    (setq org-support-shift-select t)
 
-  ;; Add the ability to play gifs, at point or throughout the buffer. However,
-  ;; 'playgifs' is stupid slow and there's not much I can do to fix it; use at
-  ;; your own risk.
-  (add-to-list 'org-startup-options '("inlinegifs" +org-startup-with-animated-gifs at-point))
-  (add-to-list 'org-startup-options '("playgifs"   +org-startup-with-animated-gifs t))
-  (add-hook! 'org-mode-local-vars-hook
-    (defun +org-init-gifs-h ()
-      (remove-hook 'post-command-hook #'+org-play-gif-at-point-h t)
-      (remove-hook 'post-command-hook #'+org-play-all-gifs-h t)
-      (pcase +org-startup-with-animated-gifs
-        (`at-point (add-hook 'post-command-hook #'+org-play-gif-at-point-h nil t))
-        (`t (add-hook 'post-command-hook #'+org-play-all-gifs-h nil t))))))
+    ;; Add the ability to play gifs, at point or throughout the buffer. However,
+    ;; 'playgifs' is stupid slow and there's not much I can do to fix it; use at
+    ;; your own risk.
+    (add-to-list 'org-startup-options '("inlinegifs" +org-startup-with-animated-gifs at-point))
+    (add-to-list 'org-startup-options '("playgifs"   +org-startup-with-animated-gifs t))
+    (add-hook! 'org-mode-local-vars-hook
+      (defun +org-init-gifs-h ()
+        (remove-hook 'post-command-hook #'+org-play-gif-at-point-h t)
+        (remove-hook 'post-command-hook #'+org-play-all-gifs-h t)
+        (pcase +org-startup-with-animated-gifs
+          (`at-point (add-hook 'post-command-hook #'+org-play-gif-at-point-h nil t))
+          (`t (add-hook 'post-command-hook #'+org-play-all-gifs-h nil t))))))

@@ -25,10 +25,7 @@ capture, the end position, and the output buffer.")
         markdown-gfm-additional-languages '("sh")
         markdown-make-gfm-checkboxes-buttons t
         markdown-fontify-whole-heading-line t
-
-        ;; HACK Due to jrblevin/markdown-mode#578, invoking `imenu' throws a
-        ;;      'wrong-type-argument consp nil' error if you use native-comp.
-        markdown-nested-imenu-heading-index (not (ignore-errors (native-comp-available-p)))
+        markdown-fontify-code-blocks-natively t
 
         ;; `+markdown-compile' offers support for many transpilers (see
         ;; `+markdown-compile-functions'), which it tries until one succeeds.
@@ -64,17 +61,28 @@ capture, the end position, and the output buffer.")
   (sp-local-pair '(markdown-mode gfm-mode) "`" "`"
                  :unless '(:add sp-point-before-word-p sp-point-before-same-p))
 
+  ;; Highly rust blocks correctly
+  (eval-when! (modulep! :lang rust)
+    (add-to-list 'markdown-code-lang-modes '("rust" . rustic-mode)))
+
   ;; Don't trigger autofill in code blocks (see `auto-fill-mode')
   (setq-hook! 'markdown-mode-hook
     fill-nobreak-predicate (cons #'markdown-code-block-at-point-p
                                  fill-nobreak-predicate))
 
   ;; HACK Prevent mis-fontification of YAML metadata blocks in `markdown-mode'
-  ;;      which occurs when the first line contains a colon in it. See
-  ;;      jrblevin/markdown-mode#328.
+  ;;   which occurs when the first line contains a colon in it. See
+  ;;   jrblevin/markdown-mode#328.
   (defadvice! +markdown-disable-front-matter-fontification-a (&rest _)
     :override #'markdown-match-generic-metadata
     (ignore (goto-char (point-max))))
+
+  ;; HACK: markdown-mode calls a major mode without inhibiting its hooks, which
+  ;;   could contain expensive functionality. I suppress it to speed up their
+  ;;   fontification.
+  (defadvice! +markdown-optimize-src-buffer-modes-a (fn &rest args)
+    :around #'markdown-fontify-code-block-natively
+    (delay-mode-hooks (apply fn args)))
 
   (map! :map markdown-mode-map
         :localleader

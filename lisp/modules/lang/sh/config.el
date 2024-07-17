@@ -22,21 +22,21 @@
                            (unless indent-tabs-mode
                              (list "-i" (number-to-string tab-width)))))
 
-  ;; (set-repl-handler! 'sh-mode #'+sh/open-repl)
+  (set-repl-handler! 'sh-mode #'+sh/open-repl)
   ;; (set-lookup-handlers! 'sh-mode :documentation #'+sh-lookup-documentation-handler)
-  ;; (set-ligatures! 'sh-mode
-  ;;   ;; Functional
-  ;;   :def "function"
-  ;;   ;; Types
-  ;;   :true "true" :false "false"
-  ;;   ;; Flow
-  ;;   :not "!"
-  ;;   :and "&&" :or "||"
-  ;;   :in "in"
-  ;;   :for "for"
-  ;;   :return "return"
-  ;;   ;; Other
-  ;;   :dot "." :dot "source")
+  (set-ligatures! 'sh-mode
+    ;; Functional
+    :def "function"
+    ;; Types
+    :true "true" :false "false"
+    ;; Flow
+    :not "!"
+    :and "&&" :or "||"
+    :in "in"
+    :for "for"
+    :return "return"
+    ;; Other
+    :dot "." :dot "source")
 
   (when (modulep! +lsp)
     (add-hook 'sh-mode-local-vars-hook #'lsp! 'append))
@@ -48,9 +48,6 @@
     sh-indentation 2
     sh-basic-offset 2)
   (setq sh-indent-after-continuation 'always)
-
-  ;; [pedantry intensifies]
-  ;; (setq-hook! 'sh-mode-hook mode-name "sh")
 
   ;; recognize function names with dashes in them
   (add-to-list 'sh-imenu-generic-expression

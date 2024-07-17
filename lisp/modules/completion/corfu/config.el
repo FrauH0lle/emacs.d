@@ -62,8 +62,8 @@ use the minibuffer such as `query-replace'.")
         tab-always-indent 'complete)
   (add-to-list 'completion-category-overrides `(lsp-capf (styles ,@completion-styles)))
   (add-to-list 'corfu-auto-commands #'lispy-colon)
-  (add-to-list 'corfu-continue-commands #'+corfu-move-to-minibuffer)
-  (add-to-list 'corfu-continue-commands #'+corfu-smart-sep-toggle-escape)
+  (add-to-list 'corfu-continue-commands #'+corfu/move-to-minibuffer)
+  (add-to-list 'corfu-continue-commands #'+corfu/smart-sep-toggle-escape)
   (add-hook 'evil-insert-state-exit-hook #'corfu-quit)
 
   ;; HACK: If you want to update the visual hints after completing minibuffer

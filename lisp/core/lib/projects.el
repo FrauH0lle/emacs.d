@@ -71,7 +71,7 @@ if a parent of DIR is a valid project (which would mask DIR)."
       (message "%S was not a project; adding .project file to it"
                short-dir)
       (with-temp-file proj-file)
-        (setq proj-dir proj-file))
+      (setq proj-dir proj-file))
     (if (file-equal-p proj-dir dir)
         (user-error "Can't add %S as a project, because %S is already a project"
                     short-dir (abbreviate-file-name proj-dir))
@@ -129,12 +129,14 @@ If DIR is not a project, it will be indexed (but not cached)."
              (setq projectile-enable-caching nil))
            (call-interactively
             #'projectile-find-file))
-          ((and (bound-and-true-p vertico-mode)
-                (fboundp '+vertico/find-file-in))
-           (+vertico/find-file-in default-directory))
-          ((when-let ((project-current-directory-override t)
-                      (pr (project-current t dir)))
-             (project-find-file-in nil nil pr)))
+          ((when-let* ((project-current-directory-override t)
+                       (pr (project-current t dir)))
+             (condition-case _
+                 (project-find-file-in nil nil pr)
+               ;; project.el throws errors if DIR is an empty directory, which
+               ;; is poor UX.
+               (wrong-type-argument
+                (call-interactively #'find-file)))))
           ((call-interactively #'find-file)))))
 
 ;;;###autoload

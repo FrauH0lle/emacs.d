@@ -71,6 +71,7 @@
 (eval-if! (executable-find "enchant-2")
 
     (use-package! jinx
+      :commands jinx-next jinx-previous jinx-correct
       :hook (text-mode . jinx-mode)
       :general ([remap ispell-word] #'+spell/correct)
       :init

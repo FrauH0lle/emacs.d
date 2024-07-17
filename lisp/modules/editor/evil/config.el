@@ -179,7 +179,7 @@ helpful,`abort-recursive-edit' gets called one time too many."
              (funcall fill-region from to justify t to-eop))
       (apply orig-fn args)))
 
-  ;; Make ESC (from normal mode) the universal escaper. See `doom-escape-hook'.
+  ;; Make ESC (from normal mode) the universal escaper. See `zenit-escape-hook'.
   (advice-add #'evil-force-normal-state :after #'+evil-escape-a)
 
   ;; monkey patch `evil-ex-replace-special-filenames' to improve support for
@@ -233,11 +233,132 @@ helpful,`abort-recursive-edit' gets called one time too many."
   ;; Lazy load evil ex commands, part II
   (after! evil-ex (load-and-compile! "+commands")))
 
+
+;;
+;;; Packages
+
+(use-package! evil-easymotion
+  :after-call zenit-first-input-hook
+  :commands evilem-create evilem-default-keybindings evilem-motion-backward-word-end
+  :config
+  ;; Use evil-search backend, instead of isearch
+  (protect-macros!
+    (evilem-make-motion evilem-motion-search-next #'evil-ex-search-next
+                        :bind ((evil-ex-search-highlight-all nil)))
+    (evilem-make-motion evilem-motion-search-previous #'evil-ex-search-previous
+                        :bind ((evil-ex-search-highlight-all nil)))
+    (evilem-make-motion evilem-motion-search-word-forward #'evil-ex-search-word-forward
+                        :bind ((evil-ex-search-highlight-all nil)))
+    (evilem-make-motion evilem-motion-search-word-backward #'evil-ex-search-word-backward
+                        :bind ((evil-ex-search-highlight-all nil))))
+
+  ;; Rebind scope of w/W/e/E/ge/gE evil-easymotion motions to the visible
+  ;; buffer, rather than just the current line.
+  (put 'visible 'bounds-of-thing-at-point (lambda () (cons (window-start) (window-end))))
+  (protect-macros!
+    (evilem-make-motion evilem-motion-forward-word-begin #'evil-forward-word-begin :scope 'visible)
+    (evilem-make-motion evilem-motion-forward-WORD-begin #'evil-forward-WORD-begin :scope 'visible)
+    (evilem-make-motion evilem-motion-forward-word-end #'evil-forward-word-end :scope 'visible)
+    (evilem-make-motion evilem-motion-forward-WORD-end #'evil-forward-WORD-end :scope 'visible)
+    (evilem-make-motion evilem-motion-backward-word-begin #'evil-backward-word-begin :scope 'visible)
+    (evilem-make-motion evilem-motion-backward-WORD-begin #'evil-backward-WORD-begin :scope 'visible)
+    (evilem-make-motion evilem-motion-backward-word-end #'evil-backward-word-end :scope 'visible)
+    (evilem-make-motion evilem-motion-backward-WORD-end #'evil-backward-WORD-end :scope 'visible)))
+
+
+(use-package! evil-embrace
+  :commands embrace-add-pair embrace-add-pair-regexp
+  :hook (LaTeX-mode . embrace-LaTeX-mode-hook)
+  :hook (LaTeX-mode . +evil-embrace-latex-mode-hook-h)
+  :hook (org-mode . embrace-org-mode-hook)
+  :hook (ruby-mode . embrace-ruby-mode-hook)
+  :hook (emacs-lisp-mode . embrace-emacs-lisp-mode-hook)
+  :hook ((c++-mode c++-ts-mode rustic-mode csharp-mode java-mode swift-mode typescript-mode)
+         . +evil-embrace-angle-bracket-modes-hook-h)
+  :hook (scala-mode . +evil-embrace-scala-mode-hook-h)
+  :init
+  (after! evil-surround
+    (evil-embrace-enable-evil-surround-integration))
+
+  ;; HACK: This must be done ASAP, before embrace has a chance to
+  ;;   buffer-localize `embrace--pairs-list' (which happens right after it calls
+  ;;   `embrace--setup-defaults'), otherwise any new, global default pairs we
+  ;;   define won't be in scope.
+  (defadvice! +evil--embrace-init-escaped-pairs-a (&rest args)
+    "Add escaped-sequence support to embrace."
+    :after #'embrace--setup-defaults
+    (embrace-add-pair-regexp ?\\ "\\[[{(]" "\\[]})]" #'+evil--embrace-escaped
+                             (embrace-build-help "\\?" "\\?")))
+  :config
+  (setq evil-embrace-show-help-p nil)
+
+  (defun +evil-embrace-scala-mode-hook-h ()
+    (embrace-add-pair ?$ "${" "}"))
+
+  (defun +evil-embrace-latex-mode-hook-h ()
+    (dolist (pair '((?\' . ("`" . "\'"))
+                    (?\" . ("``" . "\'\'"))))
+      (delete (car pair) evil-embrace-evil-surround-keys)
+      ;; Avoid `embrace-add-pair' because it would overwrite the default
+      ;; rules, which we want for other modes
+      (push (cons (car pair) (make-embrace-pair-struct
+                              :key (car pair)
+                              :left (cadr pair)
+                              :right (cddr pair)
+                              :left-regexp (regexp-quote (cadr pair))
+                              :right-regexp (regexp-quote (cddr pair))))
+            embrace--pairs-list))
+    (embrace-add-pair-regexp ?l "\\[a-z]+{" "}" #'+evil--embrace-latex))
+
+  (defun +evil-embrace-angle-bracket-modes-hook-h ()
+    (let ((var (make-local-variable 'evil-embrace-evil-surround-keys)))
+      (set var (delq ?< evil-embrace-evil-surround-keys))
+      (set var (delq ?> evil-embrace-evil-surround-keys)))
+    (embrace-add-pair-regexp ?< "\\_<[a-z0-9-_]+<" ">" #'+evil--embrace-angle-brackets)
+    (embrace-add-pair ?> "<" ">")))
+
+
+(use-package! evil-escape
+  :commands evil-escape
+  :hook (zenit-first-input . evil-escape-mode)
+  :init
+  (setq evil-escape-excluded-states '(normal visual multiedit emacs motion)
+        evil-escape-excluded-major-modes '(neotree-mode treemacs-mode vterm-mode)
+        evil-escape-key-sequence "jk"
+        evil-escape-delay 0.15)
+  (after! evil
+    (evil-define-key* '(insert replace visual operator) 'global "\C-g" #'evil-escape))
+  :config
+  ;; `evil-escape' in the minibuffer is more disruptive than helpful. That is,
+  ;; unless we have `evil-collection-setup-minibuffer' enabled, in which case we
+  ;; want the same behavior in insert mode as we do in normal buffers.
+  (add-hook! 'evil-escape-inhibit-functions
+    (defun +evil-inhibit-escape-in-minibuffer-fn ()
+      (and (minibufferp)
+           (or (not (bound-and-true-p evil-collection-setup-minibuffer))
+               (evil-normal-state-p))))))
+
+
+(use-package! evil-exchange
+  :commands evil-exchange
+  :config
+  (add-hook! 'zenit-escape-hook
+    (defun +evil--escape-exchange-h ()
+      (when evil-exchange--overlays
+        (evil-exchange-cancel)
+        t))))
+
+
+(use-package! evil-quick-diff
+  :commands (evil-quick-diff evil-quick-diff-cancel))
+
+
 (use-package! evil-nerd-commenter
   :commands (evilnc-comment-operator
              evilnc-inner-comment
              evilnc-outer-commenter)
   :general ([remap comment-line] #'evilnc-comment-or-uncomment-lines))
+
 
 (use-package! evil-snipe
   :commands evil-snipe-local-mode evil-snipe-override-local-mode
@@ -249,12 +370,14 @@ helpful,`abort-recursive-edit' gets called one time too many."
         evil-snipe-repeat-scope 'visible
         evil-snipe-char-fold t))
 
+
 (use-package! evil-surround
   :commands (global-evil-surround-mode
              evil-surround-edit
              evil-Surround-edit
              evil-surround-region)
   :config (global-evil-surround-mode 1))
+
 
 (use-package! evil-textobj-anyblock
   :defer t
@@ -285,6 +408,10 @@ helpful,`abort-recursive-edit' gets called one time too many."
     (evil-define-key* 'visual 'global
       "*" #'evil-visualstar/begin-search-forward
       "#" #'evil-visualstar/begin-search-backward)))
+
+
+(use-package! exato
+  :commands evil-outer-xml-attr evil-inner-xml-attr)
 
 
 ;;

@@ -67,6 +67,14 @@ environment, before falling back on searching your PATH."
     (+python/open-repl)))
 
 ;;;###autoload
+(defun +python/goto-end-of-prompt ()
+  "Move cursor to the prompt when switching to insert mode (if point
+isn't already there)."
+  (interactive)
+  (goto-char (point-max))
+  (evil-append 1))
+
+;;;###autoload
 (defun +python/optimize-imports ()
   "organize imports"
   (interactive)

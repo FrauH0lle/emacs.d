@@ -662,17 +662,11 @@ bizarre reason."
         (zenit--clone-emacs-source-maybe)))))
 
 
-;;;###package imenu
-(add-hook 'imenu-after-jump-hook #'recenter)
-
-
 (use-package! smartparens
   ;; Auto-close delimiters and blocks as you type.
   :hook (zenit-first-buffer . smartparens-global-mode)
   :commands sp-pair sp-local-pair sp-with-modes sp-point-in-comment sp-point-in-string
   :config
-  (add-to-list 'zenit-point-in-string-functions 'sp-point-in-string)
-  (add-to-list 'zenit-point-in-comment-functions 'sp-point-in-comment)
   ;; smartparens recognizes `slime-mrepl-mode', but not `sly-mrepl-mode', so...
   (add-to-list 'sp-lisp-modes 'sly-mrepl-mode)
   ;; Load default smartparens rules for various languages

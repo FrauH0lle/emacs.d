@@ -24,6 +24,25 @@ during batch commands.")
               zenit-data-dir
               zenit-cache-dir))
 
+  (require 'cl-lib)
+
+  (quiet!
+   (require 'cl nil t)
+   (unless site-run-file
+     (let ((site-run-file "site-start")
+           (tail load-path)
+           (lispdir (expand-file-name "../lisp" data-directory))
+           dir)
+       (while tail
+         (setq dir (car tail))
+         (let ((default-directory dir))
+           (load (expand-file-name "subdirs.el") t inhibit-message t))
+         (unless (string-prefix-p lispdir dir)
+           (let ((default-directory dir))
+             (load (expand-file-name "leim-list.el") t inhibit-message t)))
+         (setq tail (cdr tail)))
+       (load site-run-file t inhibit-message))))
+
   (setq-default
    ;; Don't generate superfluous files when writing temp buffers.
    make-backup-files nil
@@ -34,14 +53,18 @@ during batch commands.")
    ;; Don't clog the user's trash with our CLI refuse.
    delete-by-moving-to-trash nil)
 
-  (require 'cl-lib)
   (require 'seq)
   (require 'map)
+
+  ;; Suppress any possible coding system prompts during CLI sessions.
+  (set-language-environment "UTF-8")
 
   ;; Eagerly load these libraries
   (mapc (zenit-rpartial #'load nil (not init-file-debug) 'nosuffix)
         (append (file-expand-wildcards (concat zenit-core-dir "lib/*.el"))
                 (file-expand-wildcards (concat zenit-core-dir "cli/*.el"))))
+
+  (if init-file-debug (zenit-debug-mode +1))
 
   ;; Ensure package management is ready
   (require 'zenit-modules)

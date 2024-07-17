@@ -44,7 +44,9 @@ freedom to place them wherever you like.")
   (when (modulep! :editor evil)
     (map! :map org-tree-slide-mode-map
           :n [C-right] #'org-tree-slide-move-next-tree
-          :n [C-left]  #'org-tree-slide-move-previous-tree)
+          :n [C-left]  #'org-tree-slide-move-previous-tree
+          :n [right] #'org-tree-slide-move-next-tree
+          :n [left]  #'org-tree-slide-move-previous-tree)
     (add-hook 'org-tree-slide-mode-hook #'evil-normalize-keymaps))
 
   (defadvice! +org-present--hide-first-heading-maybe-a (fn &rest args)

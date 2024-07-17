@@ -95,9 +95,6 @@ This checker tends to produce a lot of false positives in your
            (when +emacs-lisp-enable-extra-fontification
              `((+emacs-lisp-highlight-vars-and-faces . +emacs-lisp--face)))))
 
-  ;; Recenter window after following definition
-  (advice-add #'elisp-def :after #'zenit-recenter-a)
-
   (defadvice! +emacs-lisp-append-value-to-eldoc-a (fn sym)
     "Display variable value next to documentation in eldoc."
     :around #'elisp-get-var-docstring

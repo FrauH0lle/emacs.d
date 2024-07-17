@@ -92,7 +92,7 @@
        :m "gsh" #'+org/goto-visible)
 
       (:when (modulep! :editor multiple-cursors)
-        :prefix "gz"
+        :prefix ("gz" . "multiple-cursors")
         :nv "d" #'evil-mc-make-and-goto-next-match
         :nv "D" #'evil-mc-make-and-goto-prev-match
         :nv "s" #'evil-mc-skip-and-goto-next-match

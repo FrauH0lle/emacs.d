@@ -217,8 +217,10 @@ file-visiting."
       ;; cursor more than N lines past window edges (where N is the settings of
       ;; `scroll-conservatively'). This is especially slow in larger files
       ;; during large-scale scrolling commands. If kept over 100, the window is
-      ;; never automatically recentered.
-      scroll-conservatively 101
+      ;; never automatically recentered. The default (0) triggers this too
+      ;; aggressively, so I've set it to 10 to recenter if scrolling too far
+      ;; off-screen.
+      scroll-conservatively 10
       scroll-margin 0
       scroll-preserve-screen-position t
       ;; Reduce cursor lag by a tiny bit by not auto-adjusting `window-vscroll'
@@ -264,7 +266,8 @@ buffers are visible in other windows, switch to
           ((eq buf (zenit-fallback-buffer))
            (message "Can't kill the fallback buffer.")
            t)
-          ((zenit-real-buffer-p buf)
+          ((and (zenit-real-buffer-p buf)
+                (run-hook-with-args-until-failure 'kill-buffer-query-functions))
            (let ((visible-p (delq (selected-window) (get-buffer-window-list buf nil t))))
              (unless visible-p
                (when (and (buffer-modified-p buf)
@@ -273,9 +276,10 @@ buffers are visible in other windows, switch to
                                         buf))))
                  (user-error "Aborted")))
              (let ((inhibit-redisplay t)
-                   buffer-list-update-hook)
+                   buffer-list-update-hook
+                   kill-buffer-query-functions)
                (when (or
-                      ;; If there aren't more real buffers than visible buffers,
+                      ;; if there aren't more real buffers than visible buffers,
                       ;; then there are no real, non-visible buffers left.
                       (not (cl-set-difference (zenit-real-buffer-list)
                                               (zenit-visible-buffers nil t)))
@@ -351,6 +355,10 @@ buffers are visible in other windows, switch to
 ;; Typing yes/no is obnoxious when y/n will do
 (if (boundp 'use-short-answers)
     (setq use-short-answers t))
+;; HACK: By default, SPC = yes when `y-or-n-p' prompts you (and
+;;   `y-or-n-p-use-read-key' is off). This seems too easy to hit by accident,
+;;   especially with SPC as our default leader key.
+(define-key y-or-n-p-map " " nil)
 
 ;; Try to keep the cursor out of the read-only portions of the minibuffer.
 (setq minibuffer-prompt-properties '(read-only t intangible t cursor-intangible t face minibuffer-prompt))

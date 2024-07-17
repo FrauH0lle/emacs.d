@@ -169,49 +169,49 @@ autoloaded functions.")
   ;; We can get a noteable boost to startup time by unsetting or simplifying
   ;; `file-name-handler-alist's value.
   (let ((old-value (default-toplevel-value 'file-name-handler-alist)))
-    (setq file-name-handler-alist
-          ;; HACK: If the bundled elisp for this Emacs install isn't
-          ;;   byte-compiled (but is compressed), then leave the gzip file
-          ;;   handler there so Emacs won't forget how to read read them.
-          ;;
-          ;;   calc-loaddefs.el is our heuristic for this because it is built-in
-          ;;   to all supported versions of Emacs, and calc.el explicitly loads
-          ;;   it uncompiled. This ensures that the only other, possible
-          ;;   fallback would be calc-loaddefs.el.gz.
-          (if (eval-when-compile
-                (locate-file-internal "calc-loaddefs.el" load-path))
-              nil
-            (list (rassq 'jka-compr-handler old-value))))
+    (set-default-toplevel-value
+     'file-name-handler-alist
+     ;; HACK: If the bundled elisp for this Emacs install isn't
+     ;;   byte-compiled (but is compressed), then leave the gzip file
+     ;;   handler there so Emacs won't forget how to read read them.
+     ;;
+     ;;   calc-loaddefs.el is our heuristic for this because it is built-in
+     ;;   to all supported versions of Emacs, and calc.el explicitly loads
+     ;;   it uncompiled. This ensures that the only other, possible
+     ;;   fallback would be calc-loaddefs.el.gz.
+     (if (eval-when-compile
+           (locate-file-internal "calc-loaddefs.el" load-path))
+         nil
+       (list (rassq 'jka-compr-handler old-value))))
     ;; Make sure the new value survives any current let-binding.
     (set-default-toplevel-value 'file-name-handler-alist file-name-handler-alist)
-    ;; Remember it so it can be reset where needed.
+    ;; Remember it ...
     (put 'file-name-handler-alist 'initial-value old-value)
+    ;; ... so it can be reset where needed.
     (add-hook! 'emacs-startup-hook :depth 101
       (defun zenit--reset-file-handler-alist-h ()
         "Restore `file-name-handler-alist', because it is needed for
 handling encrypted or compressed files, among other things."
-        (setq file-name-handler-alist
-              ;; Merge instead of overwrite because there may have been changes
-              ;; to `file-name-handler-alist' since startup we want to preserve.
-              (delete-dups (append file-name-handler-alist old-value))))))
+        (set-default-toplevel-value 'file-name-handler-alist
+                                    ;; Merge instead of overwrite because there may have been changes
+                                    ;; to `file-name-handler-alist' since startup we want to preserve.
+                                    (delete-dups (append file-name-handler-alist old-value))))))
 
   (unless noninteractive
     ;; Resizing the Emacs frame (to accommodate fonts that are smaller or larger
     ;; than the system font) appears to impact startup time dramatically.
     (setq frame-inhibit-implied-resize t)
 
-    ;; Reduce *Message* noise at startup.
+    ;; Reduce *Message* noise at startup and shave seconds off startup time by
+    ;; starting the scratch buffer in `fundamental-mode'.
     (setq inhibit-startup-screen t
-          inhibit-startup-echo-area-message user-login-name)
+          inhibit-startup-echo-area-message user-login-name
+          initial-major-mode 'fundamental-mode
+          initial-scratch-message nil)
     ;; Remove "For information about GNU Emacs..." message at startup.
     (advice-add #'display-startup-echo-area-message :override #'ignore)
     ;; Suppress the vanilla startup screen completely.
     (advice-add #'display-startup-screen :override #'ignore)
-
-    ;; Shave seconds off startup time by starting the scratch buffer in
-    ;; `fundamental-mode'.
-    (setq initial-major-mode 'fundamental-mode
-          initial-scratch-message nil)
 
     (unless initial-window-system
       ;; Inexplicably, `tty-run-terminal-initialization' can sometimes take 2-3s
@@ -224,78 +224,92 @@ handling encrypted or compressed files, among other things."
                   (zenit-partial #'tty-run-terminal-initialization
                                  (selected-frame) nil t))))
 
-    (unless init-file-debug
-      ;; Site files tend to use `load-file', which emits "Loading X..." messages
-      ;; in the echo area. Writing to the echo-area triggers a redisplay, which
-      ;; can be expensive during startup. This may also cause an flash of white
-      ;; when creating the first frame.
-      (define-advice load-file (:override (file) silence)
-        (load file nil 'nomessage))
-      ;; But undo our `load-file' advice later, as to limit the scope of any
-      ;; edge cases it could induce.
-      (define-advice startup--load-user-init-file (:before (&rest _) undo-silence)
-        (advice-remove #'load-file #'load-file@silence))
+    ;; `load-suffixes' and `load-file-rep-suffixes' are consulted on each
+    ;; `require' and `load'. Removing .so gives a small boost. This is later
+    ;; restored in zenit-start.el.
+    (put 'load-suffixes 'initial-value (default-toplevel-value 'load-suffixes))
+    (put 'load-file-rep-suffixes 'initial-value (default-toplevel-value 'load-file-rep-suffixes))
+    (set-default-toplevel-value 'load-suffixes '(".elc" ".el"))
+    (set-default-toplevel-value 'load-file-rep-suffixes '(""))
 
-      ;; `load-suffixes' and `load-file-rep-suffixes' are consulted on each
-      ;; `require' and `load'. Removing .so gives a small boost. This is later
-      ;; restored in FIXME.
-      (put 'load-suffixes 'initial-value (default-toplevel-value 'load-suffixes))
-      (put 'load-file-rep-suffixes 'initial-value (default-toplevel-value 'load-file-rep-suffixes))
-      (set-default-toplevel-value 'load-suffixes '(".elc" ".el"))
-      (set-default-toplevel-value 'load-file-rep-suffixes '(""))
+    (add-hook! 'zenit-before-init-hook
+      (defun zenit--reset-load-suffixes-h ()
+        "Undo any problematic startup optimizations."
+        (setq load-suffixes (get 'load-suffixes 'initial-value)
+              load-file-rep-suffixes (get 'load-file-rep-suffixes 'initial-value))))
 
-      (add-hook! 'zenit-before-init-hook
-        (defun zenit--reset-load-suffixes-h ()
-          "Undo any problematic startup optimizations."
-          (setq load-suffixes (get 'load-suffixes 'initial-value)
-                load-file-rep-suffixes (get 'load-file-rep-suffixes 'initial-value))))
+    ;; Defer the initialization of `defcustom'.
+    (setq custom-dont-initialize t)
+    (add-hook! 'zenit-before-init-hook
+      (defun zenit--reset-custom-dont-initialize-h ()
+        (setq custom-dont-initialize nil)))
 
-      ;; Defer the initialization of `defcustom'.
-      (setq custom-dont-initialize t)
-      (add-hook! 'zenit-before-init-hook
-        (defun zenit--reset-custom-dont-initialize-h ()
-          (setq custom-dont-initialize nil)))
+    ;; The mode-line procs a couple dozen times during startup. This is
+    ;; normally quite fast, but disabling the default mode-line and reducing
+    ;; the update delay timer seems to stave off ~30-50ms.
+    (put 'mode-line-format 'initial-value (default-toplevel-value 'mode-line-format))
+    (setq-default mode-line-format nil)
+    (dolist (buf (buffer-list))
+      (with-current-buffer buf (setq mode-line-format nil)))
 
-      ;; The mode-line procs a couple dozen times during startup. This is
-      ;; normally quite fast, but disabling the default mode-line and reducing
-      ;; the update delay timer seems to stave off ~30-50ms.
-      (put 'mode-line-format 'initial-value (default-toplevel-value 'mode-line-format))
-      (setq-default mode-line-format nil)
-      (dolist (buf (buffer-list))
-        (with-current-buffer buf (setq mode-line-format nil)))
+    ;; Premature redisplays can substantially affect startup times and produce
+    ;; ugly flashes of unstyled Emacs.
+    (setq-default inhibit-redisplay t
+                  inhibit-message t)
 
-      ;; Premature redisplays can substantially affect startup times and produce
-      ;; ugly flashes of unstyled Emacs.
-      (setq-default inhibit-redisplay t
-                    inhibit-message t)
+    ;; If the above vars aren't reset, Emacs could appear frozen or garbled
+    ;; after startup (or in case of an startup error).
+    (defun zenit--reset-inhibited-vars-h ()
+      (setq-default inhibit-redisplay nil
+                    ;; Inhibiting `message' only prevents redraws and
+                    inhibit-message nil)
+      (redraw-frame))
+    (add-hook 'after-init-hook #'zenit--reset-inhibited-vars-h)
 
-      ;; Then reset it with advice, because `startup--load-user-init-file' will
-      ;; never be interrupted by errors. And if these settings are left set,
-      ;; Emacs could appear frozen or garbled.
-      (defun zenit--reset-inhibited-vars-h ()
-        (setq-default inhibit-redisplay nil
-                      ;; Inhibiting `message' only prevents redraws and
-                      inhibit-message nil)
-        (redraw-frame))
-      (add-hook 'after-init-hook #'zenit--reset-inhibited-vars-h)
-      (define-advice startup--load-user-init-file (:after (&rest _) undo-inhibit-vars)
-        (when init-file-had-error
-          (zenit--reset-inhibited-vars-h))
-        (unless (default-toplevel-value 'mode-line-format)
-          (setq-default mode-line-format (get 'mode-line-format 'initial-value))))
+    ;; Lazy load the toolbar until tool-bar-mode is actually used (see
+    ;; `startup--load-user-init-file@undo-hacks').
+    (advice-add #'tool-bar-setup :override #'ignore)
 
-      ;; Lazy load the toolbar until tool-bar-mode is actually used.
-      (advice-add #'tool-bar-setup :override #'ignore)
-      (define-advice startup--load-user-init-file (:before (&rest _) defer-tool-bar-setup)
-        (advice-remove #'tool-bar-setup #'ignore)
-        (add-transient-hook! 'tool-bar-mode (tool-bar-setup)))
+    ;; site-lisp files are often obnoxiously noisy (emitting output that isn't
+    ;; useful to end-users, like load messages, deprecation notices, and
+    ;; linter warnings. Displaying these in the minibuffer causes unnecessary
+    ;; redraws at startup which can impact startup time drastically and cause
+    ;; flashes of white. It also pollutes the logs. By suppressing it here, I
+    ;; load it myself, later, in a more controlled way (see
+    ;; `startup--load-user-init-file@undo-hacks').
+    (put 'site-run-file 'initial-value site-run-file)
+    (setq site-run-file nil)
 
-      ;; Unset a non-trivial list of command line options that aren't relevant
-      ;; to our current OS, but `command-line-1' still processes.
-      (eval-unless! zenit--system-macos-p
-        (setq command-line-ns-option-alist nil))
-      (eval-unless! (memq initial-window-system '(x pgtk))
-        (setq command-line-x-option-alist nil)))))
+    (define-advice startup--load-user-init-file (:around (fn &rest args) undo-hacks)
+      "Undo startup optimizations to prep for the user's session."
+      (let (init)
+        (unwind-protect
+            (progn
+              (when (setq site-run-file (get 'site-run-file 'initial-value))
+                (let ((inhibit-startup-screen inhibit-startup-screen))
+                  (letf! ((defun load-file (file) (load file nil 'nomessage))
+                          (defun load (file &optional noerror _nomessage &rest args)
+                            (apply load file noerror t args)))
+                    (load site-run-file t t))))
+              (apply fn args)  ; start up as normal
+              (setq init t))
+          (when (or (not init) init-file-had-error)
+            ;; If we don't undo our inhibit-{message,redisplay} and there's an
+            ;; error, we'll see nothing but a blank Emacs frame.
+            (zenit--reset-inhibited-vars-h))
+          ;; Once startup is sufficiently complete, undo our earlier
+          ;; optimizations to reduce the scope of potential edge cases.
+          (advice-remove #'tool-bar-setup #'ignore)
+          (add-transient-hook! 'tool-bar-mode (tool-bar-setup))
+          (unless (default-toplevel-value 'mode-line-format)
+            (setq-default mode-line-format (get 'mode-line-format 'initial-value))))))
+
+    ;; Unset a non-trivial list of command line options that aren't relevant
+    ;; to our current OS, but `command-line-1' still processes.
+    (eval-unless! zenit--system-macos-p
+      (setq command-line-ns-option-alist nil))
+    (eval-unless! (memq initial-window-system '(x pgtk))
+      (setq command-line-x-option-alist nil))))
 
 
 ;;

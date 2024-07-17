@@ -134,8 +134,8 @@
   (setq org-hide-emphasis-markers +org-pretty-mode)
   (org-toggle-pretty-entities)
   (with-silent-modifications
-   ;; In case the above un-align tables
-   (org-table-map-tables 'org-table-align t)))
+    ;; In case the above un-align tables
+    (org-table-map-tables 'org-table-align t)))
 
 
 ;;
@@ -346,7 +346,11 @@ Otherwise, falls back to `org-fill-paragraph' to reflow
 paragraphs."
   (interactive)
   (let ((element (org-element-at-point)))
-    (cond ((org-in-src-block-p nil element)
+    (cond ((zenit-region-active-p)
+           (if (modulep! :editor format)
+               (call-interactively #'+format/org-blocks-in-region)
+             (message ":editor format is disabled, skipping reformatting of org-blocks")))
+          ((org-in-src-block-p nil element)
            (unless (modulep! :editor format)
              (user-error ":editor format module is disabled, ignoring reformat..."))
            (call-interactively #'+format/org-block))

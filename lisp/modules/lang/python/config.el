@@ -21,7 +21,7 @@
         python-indent-guess-indent-offset-verbose nil)
 
   (when (modulep! +lsp)
-    (add-hook 'python-mode-local-vars-hook #'lsp! 'append)
+    (add-hook 'python-base-mode-local-vars-hook #'lsp! 'append)
     ;; Use "mspyls" in eglot if in PATH
     (when (executable-find "Microsoft.Python.LanguageServer")
       (set-eglot-client! 'python-mode '("Microsoft.Python.LanguageServer"))))
@@ -52,6 +52,8 @@
     :and "and" :or "or"
     :for "for"
     :return "return" :yield "yield")
+
+  (set-popup-rule! "^\\*Python" :side 'bottom :height 0.33 :width 0.5 :quit nil)
 
   ;; Stop the spam!
   (setq python-indent-guess-indent-offset-verbose nil)
@@ -86,7 +88,13 @@
     (advice-add #'pythonic-activate :after-while #'+modeline-update-env-in-all-windows-h)
     (advice-add #'pythonic-deactivate :after #'+modeline-clear-env-in-all-windows-h))
 
-  (setq-hook! 'python-mode-hook tab-width python-indent-offset))
+  (setq-hook! 'python-mode-hook tab-width python-indent-offset)
+
+    ;; Keybinds
+  (map!
+   ;; REPL
+   (:map inferior-python-mode-map
+    :n "RET" #'+python/goto-end-of-prompt)))
 
 
 (use-package! anaconda-mode

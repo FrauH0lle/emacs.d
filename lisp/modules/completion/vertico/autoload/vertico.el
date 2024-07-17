@@ -1,6 +1,7 @@
 ;; completion/vertico/autoload/vertico.el -*- lexical-binding: t; -*-
 
-;; To prevent "Defining as dynamic an already lexical var" from +vertico/embark-preview
+;; To prevent "Defining as dynamic an already lexical var" from
+;; +vertico/embark-preview
 ;;;###autoload
 (defvar embark-quit-after-action)
 
@@ -11,9 +12,11 @@
 :query STRING
   Determines the initial input to search for.
 :in PATH
-  Sets what directory to base the search out of. Defaults to the current project's root.
+  Sets what directory to base the search out of. Defaults to the
+  current project's root.
 :recursive BOOL
-  Whether or not to search files recursively from the base directory."
+  Whether or not to search files recursively from the base
+  directory."
   (declare (indent defun))
   (unless (executable-find "rg")
     (user-error "Couldn't find ripgrep in your PATH"))
@@ -67,7 +70,8 @@ in the search."
 ;;;###autoload
 (defun +vertico/project-search-from-cwd (&optional arg initial-query)
   "Performs a live project search from the current directory.
-If ARG (universal argument), include all files, even hidden or compressed ones."
+If ARG (universal argument), include all files, even hidden or
+compressed ones."
   (interactive "P")
   (+vertico/project-search arg initial-query default-directory))
 
@@ -90,9 +94,11 @@ If ARG (universal argument), include all files, even hidden or compressed ones."
 
 ;;;###autoload
 (defun +vertico/embark-export-write ()
-  "Export the current vertico results to a writable buffer if possible.
+  "Export the current vertico results to a writable buffer if
+possible.
 
-Supports exporting consult-grep to wgrep, file to wdeired, and consult-location to occur-edit"
+Supports exporting consult-grep to wgrep, file to wdeired, and
+consult-location to occur-edit"
   (interactive)
   (require 'embark)
   (require 'wgrep)
@@ -134,26 +140,6 @@ Supports exporting consult-grep to wgrep, file to wdeired, and consult-location 
     (condition-case _
         (+vertico/embark-preview)
       (user-error (vertico-directory-enter)))))
-
-(defvar +vertico/find-file-in--history nil)
-;;;###autoload
-(defun +vertico/find-file-in (&optional dir initial)
-  "Jump to file under DIR (recursive).
-If INITIAL is non-nil, use as initial input."
-  (interactive)
-  (require 'consult)
-  (let* ((default-directory (or dir default-directory))
-         (prompt-dir (consult--directory-prompt "Find" default-directory))
-         (cmd (split-string-and-unquote +vertico-consult-fd-args " ")))
-    (find-file
-     (consult--read
-      (split-string (cdr (apply #'zenit-call-process cmd)) "\n" t)
-      :prompt default-directory
-      :sort nil
-      :initial (if initial (shell-quote-argument initial))
-      :add-history (thing-at-point 'filename)
-      :category 'file
-      :history '(:input +vertico/find-file-in--history)))))
 
 ;;;###autoload
 (defun +vertico/jump-list (jump)
@@ -227,27 +213,26 @@ targets."
                    (not (string-suffix-p "-argument" (cdr binding))))))))
 
 ;;;###autoload
-(defun +vertico--consult--fd-make-builder ()
-  (let ((cmd (split-string-and-unquote +vertico-consult-fd-args)))
-    (lambda (input)
-      (pcase-let* ((`(,arg . ,opts) (consult--command-split input))
-                   (`(,re . ,hl) (funcall consult--regexp-compiler
-                                          arg 'extended t)))
-        (when re
-          (cons (append cmd
-                        (list (consult--join-regexps re 'extended))
-                        opts)
-                hl))))))
-
-(autoload #'consult--directory-prompt "consult")
-;;;###autoload
-(defun +vertico/consult-fd (&optional dir initial)
+(defun +vertico/consult-fd-or-find (&optional dir initial)
+  "Runs consult-fd if fd version > 8.6.0 exists, consult-find
+otherwise.
+See URL `https://github.com/minad/consult/issues/770'."
   (interactive "P")
-  (if zenit-projectile-fd-binary
-      (pcase-let* ((`(,prompt ,paths ,dir) (consult--directory-prompt "Fd" dir))
-                   (default-directory dir)
-                   (builder (consult--find-make-builder paths)))
-        (find-file (consult--find prompt builder initial)))
+  ;; TODO this condition was adapted from a similar one in
+  ;; lisp/zenit-projects.el, to be replaced with a more robust check post v3
+  (if (when-let*
+          ((bin (if (ignore-errors (file-remote-p default-directory nil t))
+                    (cl-find-if (zenit-rpartial #'executable-find t)
+                                (list "fdfind" "fd"))
+                  zenit-projectile-fd-binary))
+           (version (with-memoization zenit-projects--fd-version
+                      (cadr (split-string (cdr (zenit-call-process bin "--version"))
+                                          " " t))))
+           ((ignore-errors (version-to-list version))))
+        ;; TODO remove once fd 8.6.0 is widespread enough to be the minimum
+        ;; version for zenit
+        (version< "8.6.0" version))
+      (consult-fd dir initial)
     (consult-find dir initial)))
 
 ;;;###autoload

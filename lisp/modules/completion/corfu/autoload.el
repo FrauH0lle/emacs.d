@@ -1,7 +1,7 @@
 ;; completion/corfu/autoload.el -*- lexical-binding: t; -*-
 
 ;;;###autoload
-(defun +corfu-move-to-minibuffer ()
+(defun +corfu/move-to-minibuffer ()
   "Move the current list of candidates to your choice of minibuffer
 completion UI."
   (interactive)
@@ -15,7 +15,7 @@ completion UI."
              (t (error "No minibuffer completion UI available for moving to!")))))))
 
 ;;;###autoload
-(defun +corfu-smart-sep-toggle-escape ()
+(defun +corfu/smart-sep-toggle-escape ()
   "Insert `corfu-separator' or toggle escape if it's already there."
   (interactive)
   (cond ((and (char-equal (char-before) corfu-separator)
@@ -25,3 +25,11 @@ completion UI."
          (save-excursion (backward-char 1)
                          (insert-char ?\\)))
         (t (call-interactively #'corfu-insert-separator))))
+
+;;;###autoload
+(defun +corfu/dabbrev-this-buffer ()
+  "Like `cape-dabbrev', but only scans current buffer."
+  (interactive)
+  (require 'cape)
+  (let ((cape-dabbrev-check-other-buffers nil))
+    (cape-dabbrev t)))

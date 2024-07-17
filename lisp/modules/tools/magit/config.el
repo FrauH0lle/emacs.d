@@ -35,10 +35,6 @@ Only has an effect in GUI Emacs.")
         magit-revision-insert-related-refs nil)
   (add-hook 'magit-process-mode-hook #'goto-address-mode)
 
-  ;; Center the target file, because it's poor UX to have it at the bottom of
-  ;; the window after invoking `magit-status-here'.
-  (advice-add #'magit-status-here :after #'zenit-recenter-a)
-
   (defadvice! +magit-revert-repo-buffers-deferred-a (&rest _)
     "Revert repository buffers in a deferred fashion."
     :after '(magit-checkout magit-branch-and-checkout)

@@ -1,20 +1,31 @@
 ;; lisp/core/lib/text.el -*- lexical-binding: t; -*-
 
+(defvar-local zenit--sppss-memo-last-point nil)
+(defvar-local zenit--sppss-memo-last-result nil)
+
+(defun zenit--sppss-memo-reset-h (&rest _ignored)
+  "Reset memoization as a safety precaution.
+IGNORED is a dummy argument used to eat up arguments passed from
+the hook where this is executed."
+  (setq zenit--sppss-memo-last-point nil
+        zenit--sppss-memo-last-result nil))
+
 ;;;###autoload
-(defvar zenit-point-in-comment-functions ()
-  "List of functions to run to determine if point is in a comment.
+(defun zenit-syntax-ppss (&optional p)
+  "Memoize the last result of `syntax-ppss'.
 
-Each function takes one argument: the position of the point.
-Stops on the first function to return non-nil. Used by
-`zenit-point-in-comment-p'.")
-
-;;;###autoload
-(defvar zenit-point-in-string-functions ()
-  "List of functions to run to determine if point is in a string.
-
-Each function takes one argument: the position of the point.
-Stops on the first function to return non-nil. Used by
-`zenit-point-in-string-p'.")
+P is the point at which we run `syntax-ppss'"
+  (let ((p (or p (point)))
+        (mem-p zenit--sppss-memo-last-point))
+    (if (and (eq p (nth 0 mem-p))
+             (eq (point-min) (nth 1 mem-p))
+             (eq (point-max) (nth 2 mem-p)))
+        zenit--sppss-memo-last-result
+      ;; Add hook to reset memoization if necessary
+      (unless zenit--sppss-memo-last-point
+        (add-hook 'before-change-functions #'zenit--sppss-memo-reset-h t t))
+      (setq zenit--sppss-memo-last-point (list p (point-min) (point-max))
+            zenit--sppss-memo-last-result (syntax-ppss p)))))
 
 ;;;###autoload
 (defun zenit-surrounded-p (pair &optional inline balanced)
@@ -42,22 +53,50 @@ lines, above and below, with only whitespace in between."
                             (= (- pt nbeg) (- nend pt))))))))))))
 
 ;;;###autoload
-(defun zenit-point-in-comment-p (&optional pos)
-  "Return non-nil if POS is in a comment.
-POS defaults to the current position."
-  (let ((pos (or pos (point))))
-    (if zenit-point-in-comment-functions
-        (run-hook-with-args-until-success 'zenit-point-in-comment-functions pos)
-      (nth 4 (syntax-ppss pos)))))
+(defun zenit-point-in-comment-p (&optional pt)
+  "Return non-nil if point is in a comment.
+PT defaults to the current position."
+  (let ((pt (or pt (point))))
+    (ignore-errors
+      (save-excursion
+        ;; We cannot be in a comment if we are inside a string
+        (unless (nth 3 (zenit-syntax-ppss pt))
+          (or (nth 4 (zenit-syntax-ppss pt))
+              ;; this also test opening and closing comment delimiters... we
+              ;; need to chack that it is not newline, which is in "comment
+              ;; ender" class in elisp-mode, but we just want it to be treated
+              ;; as whitespace
+              (and (< pt (point-max))
+                   (memq (char-syntax (char-after pt)) '(?< ?>))
+                   (not (eq (char-after pt) ?\n)))
+              ;; we also need to test the special syntax flag for comment
+              ;; starters and enders, because `syntax-ppss' does not yet know if
+              ;; we are inside a comment or not (e.g. / can be a division or
+              ;; comment starter...).
+              (when-let ((s (car (syntax-after pt))))
+                (or (and (/= 0 (logand (ash 1 16) s))
+                         (nth 4 (syntax-ppss (+ pt 2))))
+                    (and (/= 0 (logand (ash 1 17) s))
+                         (nth 4 (syntax-ppss (+ pt 1))))
+                    (and (/= 0 (logand (ash 1 18) s))
+                         (nth 4 (syntax-ppss (- pt 1))))
+                    (and (/= 0 (logand (ash 1 19) s))
+                         (nth 4 (syntax-ppss (- pt 2))))))))))))
 
 ;;;###autoload
-(defun zenit-point-in-string-p (&optional pos)
-  "Return non-nil if POS is in a string."
-  ;; REVIEW Should we cache `syntax-ppss'?
-  (let ((pos (or pos (point))))
-    (if zenit-point-in-string-functions
-        (run-hook-with-args-until-success 'zenit-point-in-string-functions pos)
-      (nth 3 (syntax-ppss pos)))))
+(defun zenit-point-in-string-p (&optional pt)
+  "Return non-nil if point is inside string.
+
+This function actually returns the 3rd element of `syntax-ppss'
+which can be a number if the string is delimited by that
+character or t if the string is delimited by general string
+fences.
+
+If optional argument PT is present test this instead of point."
+  (ignore-errors
+    (save-excursion
+      (nth 3 (zenit-syntax-ppss pt)))))
+
 
 ;;;###autoload
 (defun zenit-point-in-string-or-comment-p (&optional pos)
@@ -92,6 +131,19 @@ Uses `evil-visual-end' if available."
   (if (bound-and-true-p evil-local-mode)
       evil-visual-end
     (region-end)))
+
+;;;###autoload
+(defun zenit-region (&optional as-list)
+  "Return the bounds of the current seelction.
+
+If AS-LIST is non-nil, returns (BEG END). Otherwise returns a
+cons cell (BEG . END)."
+  (let* ((active (zenit-region-active-p))
+         (beg (if active (zenit-region-beginning)))
+         (end (if active (zenit-region-end))))
+    (if as-list
+        (list beg end)
+      (cons beg end))))
 
 ;;;###autoload
 (defun zenit-thing-at-point-or-region (&optional thing prompt)

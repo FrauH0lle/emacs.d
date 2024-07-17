@@ -380,6 +380,6 @@ the `--debug-init' option to view a complete error backtrace."
           (setq debug-on-error-should-be-set t
                 debug-on-error-from-init-file debug-on-error)))
     (when debug-on-error-should-be-set
-      (setq debug-on-error debug-on-error-from-init-file)))))
+      (setq debug-on-error debug-on-error-from-init-file))))
 
 (provide 'zenit-start)

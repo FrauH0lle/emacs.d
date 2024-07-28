@@ -63,11 +63,18 @@
 ;;; Packages
 
 (use-package! diff-hl
-  :hook (find-file    . diff-hl-mode)
-  :hook (vc-dir-mode  . diff-hl-dir-mode)
-  :hook (dired-mode   . diff-hl-dired-mode)
+  :hook (zenit-first-file . global-diff-hl-mode)
+  :hook (vc-dir-mode . turn-on-diff-hl-mode)
   :hook (diff-hl-mode . diff-hl-flydiff-mode)
   :commands diff-hl-stage-current-hunk diff-hl-revert-hunk diff-hl-next-hunk diff-hl-previous-hunk
+  :init
+  (add-hook! 'dired-mode-hook
+    (defun +vc-gutter-enable-maybe-h ()
+      "Conditionally enable `diff-hl-dired-mode' in dired buffers.
+Respects `diff-hl-disable-on-remote'."
+      (unless (and (bound-and-true-p diff-hl-disable-on-remote)
+                   (file-remote-p default-directory))
+        (diff-hl-dired-mode +1))))
   :config
   (set-popup-rule! "^\\*diff-hl" :select nil :size '+popup-shrink-to-fit)
 

@@ -6,6 +6,7 @@
 :after-call `use-package' keyword.")
 
 (autoload 'use-package "use-package-core" nil nil t)
+(autoload 'use-package-statistics-gather "use-package-core" nil nil t)
 
 
 ;;

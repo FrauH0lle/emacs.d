@@ -1,8 +1,9 @@
 ;; ui/popup/config.el -*- lexical-binding: t; -*-
 
-;; Load display buffer function
 (defvar +popup--internal nil)
-(include! "+popup-display-func")
+
+;; Customized display buffer function
+(compile-along! "+popup-display-func")
 
 (defconst +popup-window-parameters '(ttl quit select modeline popup)
   "A list of custom parameters to be added to
@@ -180,4 +181,7 @@ disabled when that window has been changed or closed."
 ;;
 ;;; Hacks
 
-(include! "+hacks")
+(compile-along! "+hacks")
+(add-hook! 'popper-mode-hook :append
+  (load! "+hacks")
+  (load! "+popup-display-func"))

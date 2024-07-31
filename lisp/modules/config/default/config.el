@@ -425,5 +425,6 @@ Continues comments if executed from a commented line. Consults
 ;;; Bootstrap configs
 
   (eval-when! (modulep! :editor evil)
+    (compile-along! "+evil")
     (after! evil
-      (include! "+evil"))))
+      (load! "+evil"))))

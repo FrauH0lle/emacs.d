@@ -231,7 +231,9 @@ helpful,`abort-recursive-edit' gets called one time too many."
   (evil-add-command-properties '+multiple-cursors:evil-mc :ex-arg 'regexp-global-match)
 
   ;; Lazy load evil ex commands, part II
-  (after! evil-ex (load-and-compile! "+commands")))
+  (compile-along! "+commands")
+  (after! evil-ex
+    (load! "+commands")))
 
 
 ;;
@@ -417,5 +419,6 @@ helpful,`abort-recursive-edit' gets called one time too many."
 ;;
 ;;; Keybinds
 
+(compile-along! "+keybinds")
 (after! evil
-  (load-and-compile! "+keybinds"))
+  (load! "+keybinds"))

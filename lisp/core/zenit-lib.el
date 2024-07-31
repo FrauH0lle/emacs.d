@@ -582,14 +582,26 @@ Comparison is done via `equal'. Returns the modified list.
 ELEMENT will be inserted directly after AFTER or before BEFORE.
 If both AFTER and BEFORE are given, it will be inserted directly
 after AFTER."
-  (let ((after-position (and after (cl-position after seq :test #'equal)))
+  (let (;; Find the position of AFTER in SEQ, if it exists
+        (after-position (and after (cl-position after seq :test #'equal)))
+        ;; Find the position of BEFORE in SEQ, if it exists
         (before-position (and before (cl-position before seq :test #'equal))))
-    (append (and after-position (cl-subseq seq 0 (1+ after-position)))
-            (and (not after-position) (cl-subseq seq 0 before-position))
-            (ensure-list element)
-            (and before-position after-position (cl-subseq seq (1+ after-position) before-position))
-            (and before-position (cl-subseq seq before-position))
-            (and (not before-position) (cl-subseq seq (1+ after-position))))))
+    ;; Combine the following parts to create the new sequence:
+    (append
+     ;; 1. If AFTER exists, include all elements up to and including AFTER
+     (and after-position (cl-subseq seq 0 (1+ after-position)))
+     ;; 2. If AFTER doesn't exist but BEFORE does, include all elements before
+     ;; BEFORE
+     (and (not after-position) (cl-subseq seq 0 before-position))
+     ;; 3. Insert the new ELEMENT (ensuring it's a list)
+     (ensure-list element)
+     ;; 4. If both AFTER and BEFORE exist, include elements between them
+     (and before-position after-position (cl-subseq seq (1+ after-position) before-position))
+     ;; 5. If BEFORE exists, include all elements from BEFORE onwards
+     (and before-position (cl-subseq seq before-position))
+     ;; 6. If BEFORE doesn't exist but AFTER does, include all elements after
+     ;; AFTER
+     (and (not before-position) (cl-subseq seq (1+ after-position))))))
 
 (defmacro spliceq! (seq element after &optional before)
   "Splice ELEMENT into SEQ in place.
@@ -731,40 +743,32 @@ If NOERROR is non-nil, don't throw an error if the file doesn't
 exist."
   `(zenit-load (file-name-concat ,(or path `(dir!)) ,filename) ,noerror))
 
-(defmacro load-and-compile! (filename &optional path noerror)
-  "Load FILENAME and compile it beforehand.
+(defmacro compile-along! (filename &optional path)
+  "Compile FILENAME along the file this macro was called from.
 
-See `load!' for details on the arguments.
+PATH is where to look for the file (a string representing a
+directory path). This macro will not do anything if the file it
+is used in is not getting compiled."
+  `(cl-eval-when (compile)
+     (byte-compile-file
+      (file-name-concat
+       ,(or path `(dir!))
+       (file-name-with-extension ,filename ".el")))))
 
-The file will be compiled along the file the macro was called
-from."
-  (declare (indent defun))
-  `(progn
-     (cl-eval-when (compile)
-       (byte-compile-file
-        (file-name-concat
-         ,(or path `(dir!))
-         (file-name-with-extension ,filename ".el"))))
-     (zenit-load (file-name-concat ,(or path `(dir!)) ,filename) ,noerror)))
-
-(defmacro autoload-and-compile! (file &rest fns)
+(defmacro autoload! (file &rest fns)
   "Generate autoloads for FNS from FILE.
 
-This macro is intended to used for long configuration code which
-runs on demand, for example on a hook. The configuration can be
-put into a separate file and still profit from compilation.
+FILE needs to be given without extension.
 
-FILE needs to be given without extension and will be compiled
-along the file the macro was called from."
+Can/should be used in conjunction with `compile-along!' so you
+can profit from compilation. "
   (declare (indent defun))
   (let ((autoloads ()))
     (while fns
       (let ((fn (pop fns)))
         (push `(autoload ,fn ,file) autoloads)))
     `(progn
-       ,@autoloads
-       (cl-eval-when (compile)
-         (byte-compile-file (concat ,file ".el"))))))
+       ,@autoloads)))
 
 (defmacro defer-until! (condition &rest body)
   "Run BODY when CONDITION is true (checks on

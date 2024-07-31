@@ -90,7 +90,7 @@ You should use `set-eshell-alias!' to change this.")
 
   ;; Workspaces integration
   (eval-when! (modulep! :ui workspaces)
-    (eval-when-compile
+    (cl-eval-when (compile)
       (require 'el-patch)
       (require 'esh-mode))
 

@@ -17,7 +17,7 @@
 ;; files. Thus, we patch this function so it loads our config environment
 ;; beforehand in case the file to be compiled is part of `zenit-core-dir'.
 
-(eval-when-compile
+(cl-eval-when (compile)
   (require 'el-patch))
 
 (el-patch-feature comp)

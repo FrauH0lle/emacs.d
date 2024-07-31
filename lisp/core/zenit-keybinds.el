@@ -104,7 +104,7 @@ returns non-nil, all hooks after it are ignored.")
 
 (require 'general)
 
-(eval-when-compile
+(cl-eval-when (compile)
   (require 'el-patch))
 
 ;; PATCH `general-predicate-dispatch' Each branch binds 'it' to the return value

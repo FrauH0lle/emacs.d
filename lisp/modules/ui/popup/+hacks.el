@@ -114,7 +114,7 @@ time they were followed."
     (spliceq! consult-buffer-sources '+consult--source-popup-buffer nil 'consult--source-buffer))
 
   ;; PATCH Refine integration of `consult' and the popup system.
-  (eval-when-compile
+  (cl-eval-when (compile)
     (require 'el-patch)
     (require 'consult))
 

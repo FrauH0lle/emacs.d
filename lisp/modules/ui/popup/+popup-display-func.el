@@ -2,7 +2,7 @@
 
 ;; PATCH We create `+popup-display-buffer-stacked-side-window-fn' by creating a
 ;;   fork of `display-buffer-in-side-window'
-(eval-when-compile
+(cl-eval-when (compile)
   (require 'el-patch)
   (require 'window))
 

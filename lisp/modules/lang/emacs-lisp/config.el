@@ -9,12 +9,18 @@ variables.")
 This marks a foldable marker for `outline-minor-mode' in elisp
 buffers.")
 
-(defvar +emacs-lisp-disable-flycheck-in-dirs
-  (list zenit-emacs-dir zenit-local-conf-dir)
-  "List of directories to disable `emacs-lisp-checkdoc' in.
+(defvar +emacs-lisp-linter-warnings
+  '(not free-vars    ; don't complain about unknown variables
+        noruntime    ; don't complain about unknown function calls
+        unresolved)  ; don't complain about undefined functions
+  "The value for `byte-compile-warnings' in non-packages.
 
-This checker tends to produce a lot of false positives in your
-.emacs.d and private config, so it is mostly useless there.")
+This reduces the verbosity of flycheck in Emacs configs and
+scripts, which are so stateful that the deluge of false
+positives (from the byte-compiler, package-lint, and checkdoc)
+can be more overwhelming than helpful.
+
+See `+emacs-lisp-non-package-mode' for details.")
 
 
 ;; `elisp-mode' is loaded at startup. In order to lazy load its config we need
@@ -84,7 +90,14 @@ This checker tends to produce a lot of false positives in your
 
   ;; Flycheck produces a *lot* of false positives in emacs configs, so disable
   ;; it when you're editing them
-  (add-hook 'flycheck-mode-hook #'+emacs-lisp-disable-flycheck-maybe-h)
+  (add-hook! '(flycheck-mode-hook flymake-mode-hook) #'+emacs-lisp-non-package-mode)
+
+  (defadvice! +syntax--fix-elisp-flymake-load-path (orig-fn &rest args)
+    "Set load path for elisp byte compilation Flymake backend"
+    :around #'elisp-flymake-byte-compile
+    (let ((elisp-flymake-byte-compile-load-path
+           (append elisp-flymake-byte-compile-load-path load-path)))
+      (apply orig-fn args)))
 
   ;; Special syntax highlighting for elisp
   (font-lock-add-keywords

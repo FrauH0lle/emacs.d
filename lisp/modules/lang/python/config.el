@@ -20,13 +20,13 @@
   (setq python-environment-directory zenit-cache-dir
         python-indent-guess-indent-offset-verbose nil)
 
-  (when (modulep! +lsp)
-    (add-hook 'python-base-mode-local-vars-hook #'lsp! 'append)
+  (eval-when! (modulep! +lsp)
+    (add-hook 'python-mode-local-vars-hook #'lsp! 'append)
     ;; Use "mspyls" in eglot if in PATH
     (when (executable-find "Microsoft.Python.LanguageServer")
       (set-eglot-client! 'python-mode '("Microsoft.Python.LanguageServer"))))
 
-  (when (modulep! +tree-sitter)
+  (eval-when! (modulep! +tree-sitter)
     (add-hook 'python-mode-local-vars-hook #'tree-sitter! 'append))
   :config
   (set-repl-handler! 'python-mode #'+python/open-repl
@@ -55,6 +55,8 @@
 
   (set-popup-rule! "^\\*Python" :side 'bottom :height 0.33 :width 0.5 :quit nil)
 
+  (eval-when! (modulep! :ui indent-guides)
+    (add-hook! 'python-mode-hook (indent-bars-mode +1)))
   ;; Stop the spam!
   (setq python-indent-guess-indent-offset-verbose nil)
 
@@ -84,13 +86,19 @@
         (setq-local flycheck-python-flake8-executable "flake8"))))
 
   ;; Affects pyenv and conda
-  (when (modulep! :ui modeline)
+  (eval-when! (modulep! :ui modeline)
     (advice-add #'pythonic-activate :after-while #'+modeline-update-env-in-all-windows-h)
     (advice-add #'pythonic-deactivate :after #'+modeline-clear-env-in-all-windows-h))
 
   (setq-hook! 'python-mode-hook tab-width python-indent-offset)
 
-    ;; Keybinds
+  ;; Make the REPL buffer more responsive.
+  (setq-hook! 'inferior-python-mode-hook
+    comint-scroll-to-bottom-on-input t
+    comint-scroll-to-bottom-on-output t
+    comint-move-point-for-output t)
+
+  ;; Keybinds
   (map!
    ;; REPL
    (:map inferior-python-mode-map

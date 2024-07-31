@@ -55,10 +55,8 @@ These rules affect buffers displayed with `pop-to-buffer' and
 these rules (as they are unaffected by `display-buffer-alist',
 which powers the popup management system).
 
-PREDICATE can be either a) a regexp string (matched against the
-buffer's name), b) a function that takes two arguments (a buffer
-name and the ACTION argument of `display-buffer' which needs to
-be optional) and returns a boolean or c) a `major-mode' symbol.
+PREDICATE accepts anything that the CONDITION argument in
+`buffer-match-p' takes (Emacs 29 or newer)
 
 Some buffers might require a regexp and major mode rule due to
 the way they are created.
@@ -111,7 +109,8 @@ PLIST can be made up of any of the following properties:
   :vslot controls popup stacking (from the edge of the frame
     toward the center).
 
-  Let's assume popup A and B are opened with :side 'bottom, in that order.
+  Let's assume popup A and B are opened with :side \\='bottom, in
+  that order.
 
     If they possess the same :slot and :vslot, popup B will
       replace popup A.

@@ -26,8 +26,8 @@
   ;; Make breadcrumbs opt-in; they're redundant with the modeline and imenu
   (setq lsp-headerline-breadcrumb-enable nil)
 
-  ;; Let zenit bind the lsp keymap.
-  (when (modulep! :config default +bindings)
+  ;; Let us bind the lsp keymap.
+  (eval-when! (modulep! :config default +bindings)
     (setq lsp-keymap-prefix nil))
 
   :config
@@ -51,9 +51,9 @@
         (lsp-signature-stop)
         t)))
 
-  (when (modulep! :ui popup)
+  (eval-when! (modulep! :ui popup)
     (set-popup-rule! "^\\*lsp-\\(help\\|install\\)" :size 0.35 :quit t :select t))
-  (when (modulep! :tools lookup)
+  (eval-when! (modulep! :tools lookup)
     (set-lookup-handlers! 'lsp-mode
                           :definition #'+lsp-lookup-definition-handler
                           :references #'+lsp-lookup-references-handler
@@ -102,13 +102,13 @@ restarted when reverting buffers."
              (if (numberp +lsp-defer-shutdown) +lsp-defer-shutdown 3)
              nil (lambda (workspace)
                    (with-lsp-workspace workspace
-                                       (unless (lsp--workspace-buffers workspace)
-                                         (let ((lsp-restart 'ignore))
-                                           (funcall fn))
-                                         (+lsp-optimization-mode -1))))
+                     (unless (lsp--workspace-buffers workspace)
+                       (let ((lsp-restart 'ignore))
+                         (funcall fn))
+                       (+lsp-optimization-mode -1))))
              lsp--cur-workspace))))
 
-  (when (modulep! :ui modeline +light)
+  (eval-when! (modulep! :ui modeline +light)
     (defvar-local lsp-modeline-icon nil)
 
     (add-hook! '(lsp-before-initialize-hook
@@ -129,7 +129,7 @@ restarted when reverting buffers."
                        '(t (:eval lsp-modeline-icon))
                        'append)))))
 
-  (when (modulep! :completion corfu)
+  (eval-when! (modulep! :completion corfu)
     (setq lsp-completion-provider :none)
     (add-hook 'lsp-mode-hook #'lsp-completion-mode)))
 
@@ -145,8 +145,8 @@ instead is more sensible."
       (apply fn args)))
 
   :config
-  (when (modulep! +peek)
-    (when (modulep! :tools lookup)
+  (eval-when! (modulep! +peek)
+    (eval-when! (modulep! :tools lookup)
       (set-lookup-handlers! 'lsp-ui-mode
                             :definition 'lsp-ui-peek-find-definitions
                             :implementations 'lsp-ui-peek-find-implementation

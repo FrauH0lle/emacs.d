@@ -30,16 +30,17 @@
 
 (after! vc-annotate
   (eval-when! (modulep! :ui popup)
-  (set-popup-rules!
-    '(("^\\*vc-diff" :select nil)   ; *vc-diff*
-      ("^\\*vc-change" :select t)))) ; *vc-change-log*
-  (set-evil-initial-state! 'vc-annotate-mode 'normal)
+    (set-popup-rules!
+      '(("^\\*vc-diff" :select nil)   ; *vc-diff*
+        ("^\\*vc-change" :select t)))) ; *vc-change-log*
+  (after! evil
+    (set-evil-initial-state! 'vc-annotate-mode 'normal))
 
   ;; Clean up after itself
   (define-key vc-annotate-mode-map [remap quit-window] #'kill-current-buffer))
 
 
-(after! vc-dir
+(after! (vc-dir evil)
   (set-evil-initial-state! 'vc-dir-mode 'emacs))
 
 

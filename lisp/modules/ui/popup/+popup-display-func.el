@@ -7,7 +7,8 @@
   (require 'window))
 
 (el-patch-feature window)
-(with-eval-after-load 'window
+
+(after! window
   (el-patch-defun (el-patch-swap display-buffer-in-side-window +popup-display-buffer-stacked-side-window-fn) (buffer alist)
     (el-patch-concat
       "Display BUFFER in a side window of the selected frame.\n"

@@ -21,7 +21,7 @@
   (require 'el-patch))
 
 (el-patch-feature comp)
-(with-eval-after-load 'comp
+(after! comp
 
   ;; Add our generated "init.el" manually to the native-comp queue
   (pushnew! comp-files-queue `(,(file-name-concat user-emacs-directory "init.el") . late))

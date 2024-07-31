@@ -204,7 +204,7 @@ in `zenit-local-conf-dir' take precedence.")
 (use-package! lsp-snippet-tempel
   :hook (lsp-mode . lsp-snippet-tempel-lsp-mode-init)
   :init
-  (with-eval-after-load 'lsp-mode
+  (after! lsp-mode
     ;; Fool `lsp-mode'
     (defadvice! +snippets-fake-yas-minor-mode (fn &rest args)
       :around #'lsp--client-capabilities
@@ -218,7 +218,7 @@ in `zenit-local-conf-dir' take precedence.")
   (defun lsp-snippet-tempel-lsp-mode-init ()
     (lsp-snippet-tempel--init)
     (advice-add 'lsp--expand-snippet :override #'lsp-snippet-tempel--lsp-mode-expand-snippet)
-    ;; HACK `lsp-mode' enables snippet based on `(feature 'yasnippet)'
+    ;; HACK `lsp-mode' enables snippet based on `(featurep 'yasnippet)'
     (el-patch-remove
       (provide 'yasnippet)))
 

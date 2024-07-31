@@ -120,7 +120,7 @@ time they were followed."
 
   (el-patch-feature consult)
 
-  (with-eval-after-load 'consult
+  (after! consult
     ;; Let `switch-to-buffer' obey `display-buffer-alist' when switching to a
     ;; buffer.
     (el-patch-defun consult--buffer-action (buffer &optional norecord)

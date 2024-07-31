@@ -661,9 +661,9 @@ used."
 (defmacro after! (package &rest body)
   "Evaluate BODY after PACKAGE have loaded.
 
-PACKAGE is a symbol (or list of them) referring to Emacs
-features (aka packages). PACKAGE may use :or/:any and :and/:all
-operators. The precise format is:
+PACKAGE is a symbol or filename as a string (or list of them)
+referring to Emacs features (aka packages). PACKAGE may use
+:or/:any and :and/:all operators. The precise format is:
 
 - An unquoted package symbol (the name of a package)
     (after! helm BODY...)
@@ -683,28 +683,38 @@ This emulates `eval-after-load' with a few key differences:
 1. No-ops for package that are disabled by the user (via
    `package!') or not installed yet.
 2. Supports compound package statements (see :or/:any and
-:and/:all above).
+   :and/:all above).
+3. If a package is already loaded, execute the body immediately
+   and don't always to `after-load-alist'.
 
 Since the contents of these blocks will never by byte-compiled,
 avoid putting things you want byte-compiled in them! Like
 function/macro definitions."
   (declare (indent defun) (debug t))
-  (if (symbolp package)
-      (unless (memq package (bound-and-true-p zenit-disabled-packages))
-        (list (if (or (not (bound-and-true-p byte-compile-current-file))
-                      (require package nil 'noerror))
-                  #'progn
-                #'with-no-warnings)
-              `(with-eval-after-load ',package ,@body)))
-    (let ((p (car package)))
-      (cond ((memq p '(:or :any))
-             (macroexp-progn
-              (cl-loop for next in (cdr package)
-                       collect `(after! ,next ,@body))))
-            ((memq p '(:and :all))
-             (dolist (next (reverse (cdr package)) (car body))
-               (setq body `((after! ,next ,@body)))))
-            (`(after! (:and ,@package) ,@body))))))
+  (cond ((symbolp package)
+         (unless (memq package (bound-and-true-p zenit-disabled-packages))
+           (list (if (or (not (bound-and-true-p byte-compile-current-file))
+                         (require package nil 'noerror))
+                     #'progn
+                   #'with-no-warnings)
+                 `(if (featurep ',package)
+                      (progn ,@body)
+                    (eval-after-load ',package (lambda () ,@body))))))
+        ((stringp package)
+         `(if (load-history-filename-element
+               (purecopy (load-history-regexp ,package)))
+              (progn ,@body)
+            (eval-after-load ,package (lambda () ,@body))))
+        (t
+         (let ((p (car package)))
+           (cond ((memq p '(:or :any))
+                  (macroexp-progn
+                   (cl-loop for next in (cdr package)
+                            collect `(after! ,next ,@body))))
+                 ((memq p '(:and :all))
+                  (dolist (next (reverse (cdr package)) (car body))
+                    (setq body `((after! ,next ,@body)))))
+                 (`(after! (:and ,@package) ,@body)))))))
 
 (defmacro load! (filename &optional path noerror)
   "Load a file relative to the current executing

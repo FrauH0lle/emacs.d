@@ -95,7 +95,7 @@ You should use `set-eshell-alias!' to change this.")
       (require 'esh-mode))
 
     (el-patch-feature esh-mode)
-    (with-eval-after-load 'esh-mode
+    (after! esh-mode
       ;; PATCH Use `+eshell/toggle' instead of `eshell' to launch the shell
       (el-patch-defun eshell-bookmark-jump (bookmark)
         "Default bookmark handler for Eshell buffers."

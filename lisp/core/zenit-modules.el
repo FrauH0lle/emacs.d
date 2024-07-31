@@ -408,7 +408,7 @@ Order defines precedence (from most to least)."
        (zenit-module-resolve module))
      (print-group!
       (dolist (msg zenit--module-dependencies)
-          (print! (info "%s" msg)))
+          (print! (item "%s" msg)))
       (print! (success "Dependencies resolved")))
      ;; Check for conflicts
      (dolist (module (zenit-module-list))
@@ -417,7 +417,7 @@ Order defines precedence (from most to least)."
        (print! (error "Module conflicts detected"))
        (print-group!
         (dolist (msg zenit--module-conflicts)
-          (print! (info "%s" msg))))
+          (print! (item "%s" msg))))
        (signal 'zenit-module-error (list "Module conflicts detected")))
      zenit-modules))
 

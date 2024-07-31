@@ -7,7 +7,7 @@
   (print! (green "Deploying Emacs config!\n"))
   ;; Env file
   (if (file-exists-p zenit-env-file)
-      (print! (info "Envvar file already exists, skipping"))
+      (print! (item "Envvar file already exists, skipping"))
     (when (or zenit-auto-accept
               (y-or-n-p "Generate an envvar file?"))
       (zenit-cli-reload-env-file 'force-p)))

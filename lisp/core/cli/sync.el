@@ -37,7 +37,7 @@
        (when (zenit-autoloads-reload)
          (when (modulep! :config compile)
            (zenit-cli-compile))
-         (print! (info "Restart Emacs for changes to take effect")))
+         (print! (item "Restart Emacs for changes to take effect")))
        t)))
 
 (defun zenit-cli-sync (&optional no-envvar-p debug-p force-p)
@@ -71,5 +71,5 @@
        (when (zenit-autoloads-reload)
          (when (modulep! :config compile)
            (zenit-cli-compile))
-         (print! (info "Restart Emacs for changes to take effect")))
+         (print! (item "Restart Emacs for changes to take effect")))
        t)))

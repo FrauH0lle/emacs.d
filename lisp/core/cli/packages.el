@@ -73,21 +73,21 @@
           nil (mapcar (zenit-rpartial #'gethash straight--repo-cache)
                       (mapcar #'symbol-name straight-recipe-repositories)))
          (recipe package type local-repo)
-       (let ((esc (unless init-file-debug "\033[1A"))
+       (let ((esc (if init-file-debug "" "\033[1A"))
              (ref (straight-vc-get-commit type local-repo))
              newref output)
-         (print! (start "\033[KUpdating recipes for %s...%s") package esc)
+         (print! (start "\rUpdating recipes for %s...%s") package esc)
          (zenit--straight-with (straight-vc-fetch-from-remote recipe)
            (when .it
              (setq output .output)
              (straight-merge-package package)
              (unless (equal ref (setq newref (straight-vc-get-commit type local-repo)))
-               (print! (success "\033[K%s updated (%s -> %s)")
+               (print! (success "\r%s updated (%s -> %s)")
                        package
                        (zenit--abbrev-commit ref)
                        (zenit--abbrev-commit newref))
                (unless (string-empty-p output)
-                 (print-group! (print! (info "%s" output))))))))))
+                 (print-group! (print! (item "%s" output))))))))))
     (setq straight--recipe-lookup-cache (make-hash-table :test #'eq)
           zenit--cli-updated-recipes t)))
 
@@ -221,7 +221,7 @@ already been."
                         (let ((straight-use-package-pre-build-functions
                                (cons (lambda (pkg &rest _)
                                        (when-let (commit (cdr (assoc pkg pinned)))
-                                         (print! (info "Checked out %s: %s") pkg commit)))
+                                         (print! (item "Checked out %s: %s") pkg commit)))
                                      straight-use-package-pre-build-functions)))
                           (straight-use-package (intern package))
                           ;; HACK Line encoding issues can plague repos with
@@ -243,8 +243,8 @@ already been."
                       (error
                        (signal 'zenit-package-error (list package e))))))))
          (progn
-           (print! (success "\033[KInstalled %d packages") (length built)))
-       (print! (info "No packages need to be installed"))
+           (print! (success "\rInstalled %d packages") (length built)))
+       (print! (item "No packages need to be installed"))
        nil))))
 
 
@@ -344,8 +344,8 @@ already been."
            ;;   rebuild of those packages each time `sync' or similar is run, so
            ;;   we clean it up ourselves:
            (delete-directory (straight--modified-dir) 'recursive)
-           (print! (success "\033[KRebuilt %d package(s)") (length built)))
-       (print! (info "No packages need rebuilding"))
+           (print! (success "\rRebuilt %d package(s)") (length built)))
+       (print! (item "No packages need rebuilding"))
        nil))))
 
 
@@ -362,7 +362,7 @@ already been."
          (packages-to-rebuild (make-hash-table :test 'equal))
          (repos-to-rebuild (make-hash-table :test 'equal))
          (total (length recipes))
-         (esc (unless init-file-debug "\033[1A"))
+         (esc (if init-file-debug "" "\033[1A"))
          (i 0)
          errors)
     (print! (start "Updating packages (this may take a while)..."))
@@ -397,7 +397,7 @@ already been."
                (or (cond
                     ;; When force-p is non-nil, re-clone every repo
                     (force-p
-                     (print! (start "\033[K(%d/%d) Re-cloning %s...") i total local-repo esc)
+                     (print! (start "\r(%d/%d) Re-cloning %s...") i total local-repo esc)
                      (let ((repo (straight--repos-dir local-repo))
                            (straight-vc-git-default-clone-depth 'full))
                        (delete-directory repo 'recursive)
@@ -409,7 +409,7 @@ already been."
                                    commits (length (split-string output "\n" t)))))))
                     ;; No target commit found, simply pull
                     ((not (stringp target-ref))
-                     (print! (start "\033[K(%d/%d) Fetching %s...%s") i total package esc)
+                     (print! (start "\r(%d/%d) Fetching %s...%s") i total package esc)
                      (zenit--straight-with (straight-vc-fetch-from-remote recipe)
                        (when .it
                          (straight-merge-package package)
@@ -421,15 +421,15 @@ already been."
 
                     ;; Target commit and local commit are the same, do nothing
                     ((zenit--same-commit-p target-ref ref)
-                     (print! (info "\033[K(%d/%d) %s is up-to-date...%s") i total package esc)
+                     (print! (item "\r(%d/%d) %s is up-to-date...%s") i total package esc)
                      (cl-return))
 
                     ;; Target commit present but not checked out, check out
                     ;; target commit
                     ((if (straight-vc-commit-present-p recipe target-ref)
-                         (print! (start "\033[K(%d/%d) Checking out %s (%s)...%s")
+                         (print! (start "\r(%d/%d) Checking out %s (%s)...%s")
                                  i total package (zenit--abbrev-commit target-ref) esc)
-                       (print! (start "\033[K(%d/%d) Fetching %s...%s") i total package esc)
+                       (print! (start "\r(%d/%d) Fetching %s...%s") i total package esc)
                        ;; Otherwiese fetch and checkout target commit
                        (and (straight-vc-fetch-from-remote recipe)
                             (straight-vc-commit-present-p recipe target-ref)))
@@ -441,7 +441,7 @@ already been."
                      (zenit--same-commit-p target-ref (straight-vc-get-commit type local-repo)))
 
                     ;; Otherwise delete local repo and clone it again
-                    ((print! (start "\033[K(%d/%d) Re-cloning %s...") i total local-repo esc)
+                    ((print! (start "\r(%d/%d) Re-cloning %s...") i total local-repo esc)
                      (let ((repo (straight--repos-dir local-repo))
                            (straight-vc-git-default-clone-depth 'full))
                        (delete-directory repo 'recursive)
@@ -454,14 +454,14 @@ already been."
 
                    ;; Something went wrong
                    (progn
-                     (print! (warn "\033[K(%d/%d) Failed to fetch %s")
+                     (print! (warn "\r(%d/%d) Failed to fetch %s")
                              i total local-repo)
                      (unless (string-empty-p output)
-                       (print-group! (print! (info "%s" output))))
+                       (print-group! (print! (item "%s" output))))
                      (cl-return)))
                (puthash local-repo t repos-to-rebuild)
                (puthash package t packages-to-rebuild)
-               (print! (success "\033[K(%d/%d) %s: %s -> %s%s")
+               (print! (success "\r(%d/%d) %s: %s -> %s%s")
                        i total local-repo
                        (zenit--abbrev-commit ref)
                        (zenit--abbrev-commit target-ref)
@@ -481,14 +481,13 @@ already been."
            (error
             (signal 'zenit-package-error (list package e)))))))
     (print-group!
-     (princ "\033[K")
      (if (hash-table-empty-p packages-to-rebuild)
-         (ignore (print! (success "All %d packages are up-to-date") total))
+         (ignore (print! (success "\rAll %d packages are up-to-date") total))
        (straight--transaction-finalize)
        (let ((default-directory (straight--build-dir)))
          (mapc (zenit-rpartial #'delete-directory 'recursive)
                (hash-table-keys packages-to-rebuild)))
-       (print! (success "Updated %d package(s)")
+       (print! (success "\rUpdated %d package(s)")
                (hash-table-count packages-to-rebuild))
        (zenit-cli-packages-build force-p)
        t))))
@@ -508,7 +507,7 @@ already been."
 (defun zenit--packages-purge-builds (builds)
   (if (not builds)
       (prog1 0
-        (print! (info "No builds to purge")))
+        (print! (item "No builds to purge")))
     (print! (start "Purging straight builds..." (length builds)))
     (print-group!
      (length
@@ -517,34 +516,34 @@ already been."
 (cl-defun zenit--packages-regraft-repo (repo)
   (let ((default-directory (straight--repos-dir repo)))
     (unless (file-directory-p ".git")
-      (print! (warn "\033[Krepos/%s is not a git repo, skipping" repo))
+      (print! (warn "\rrepos/%s is not a git repo, skipping" repo))
       (cl-return))
     (unless (file-in-directory-p default-directory straight-base-dir)
-      (print! (warn "\033[KSkipping repos/%s because it is local" repo))
+      (print! (warn "\rSkipping repos/%s because it is local" repo))
       (cl-return))
     (let ((before-size (zenit-directory-size default-directory)))
       (zenit-call-process "git" "reset" "--hard")
       (zenit-call-process "git" "clean" "-ffd")
       (if (not (zerop (car (zenit-call-process "git" "replace" "--graft" "HEAD"))))
-          (print! (info "\033[Krepos/%s is already compact\033[1A" repo))
+          (print! (item "\rrepos/%s is already compact\033[1A" repo))
         (zenit-call-process "git" "reflog" "expire" "--expire=all" "--all")
         (zenit-call-process "git" "gc" "--prune=now")
         (let ((after-size (zenit-directory-size default-directory)))
           (if (equal after-size before-size)
-              (print! (success "\033[Krepos/%s cannot be compacted further" repo))
-            (print! (success "\033[KRegrafted repos/%s (from %0.1fKB to %0.1fKB)")
+              (print! (success "\rrepos/%s cannot be compacted further" repo))
+            (print! (success "\rRegrafted repos/%s (from %0.1fKB to %0.1fKB)")
                     repo before-size after-size)))))
     t))
 
 (defun zenit--packages-regraft-repos (repos)
   (if (not repos)
       (prog1 0
-        (print! (info "No repos to regraft")))
+        (print! (item "No repos to regraft")))
     (print! (start "Regrafting %d repos..." (length repos)))
     (let ((before-size (zenit-directory-size (straight--repos-dir))))
       (print-group!
        (prog1 (delq nil (mapcar #'zenit--packages-regraft-repo repos))
-         (princ "\033[K")
+         ;; (princ "\033[K")
          (let ((after-size (zenit-directory-size (straight--repos-dir))))
            (print! (success "Finished regrafting. Size before: %0.1fKB and after: %0.1fKB (%0.1fKB)")
                    before-size after-size
@@ -563,7 +562,7 @@ already been."
 (defun zenit--packages-purge-repos (repos)
   (if (not repos)
       (prog1 0
-        (print! (info "No repos to purge")))
+        (print! (item "No repos to purge")))
     (print! (start "Purging straight repositories..."))
     (print-group!
      (length
@@ -574,7 +573,7 @@ already been."
   (let ((dirs (zenit-files-in package-user-dir :type t :depth 0)))
     (if (not dirs)
         (prog1 0
-          (print! (info "No ELPA packages to purge")))
+          (print! (item "No ELPA packages to purge")))
       (print! (start "Purging ELPA packages..."))
       (dolist (path dirs (length dirs))
         (condition-case e
@@ -590,7 +589,7 @@ already been."
 
 (defun zenit--packages-purge-eln ()
   (dolist (dir (zenit-files-in zenit--eln-output-path :type 'dirs))
-    (print! (info "Purging ELN cache %s" dir))
+    (print! (item "Purging ELN cache %s" dir))
     (delete-directory dir t)))
 
 (defun zenit-packages-purge (&optional elpa-p builds-p repos-p regraft-repos-p)
@@ -629,14 +628,14 @@ package-install)."
            (when (featurep 'native-compile)
              (zenit--packages-purge-eln))
            (if (not builds-p)
-               (ignore (print! (info "Skipping builds")))
+               (ignore (print! (item "Skipping builds")))
              (/= 0 (zenit--packages-purge-builds builds-to-purge)))
            (if (not elpa-p)
-               (ignore (print! (info "Skipping elpa packages")))
+               (ignore (print! (item "Skipping elpa packages")))
              (/= 0 (zenit--packages-purge-elpa)))
            (if (not repos-p)
-               (ignore (print! (info "Skipping repos")))
+               (ignore (print! (item "Skipping repos")))
              (/= 0 (zenit--packages-purge-repos repos-to-purge)))
            (if (not regraft-repos-p)
-               (ignore (print! (info "Skipping regrafting")))
+               (ignore (print! (item "Skipping regrafting")))
              (zenit--packages-regraft-repos repos-to-regraft)))))))

@@ -80,11 +80,11 @@
       (print!
        (if targets
            (warn "Couldn't find any valid targets")
-         (info "No targets to compile")))
+         (item "No targets to compile")))
       (cl-return nil))
 
     (print!
-     (info "Compiling your config (may take a while)..."))
+     (item "Compiling your config (may take a while)..."))
     (print-group!
      (condition-case e
          (let ((total-ok   0)
@@ -102,7 +102,7 @@
                   total-noop
                 (pcase (byte-compile-file target)
                   (`no-byte-compile
-                   (print! (info "Ignored %s") (relpath target))
+                   (print! (item "Ignored %s") (relpath target))
                    total-noop)
                   (`nil
                    (print! (error "Failed to compile %s") (relpath target))
@@ -145,4 +145,4 @@ This does not include third party packages.'"
             finally do
             (print! (if success
                         (success "All elc and eln files deleted")
-                      (info "No files to clean"))))))
+                      (item "No files to clean"))))))

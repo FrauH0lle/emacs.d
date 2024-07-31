@@ -12,16 +12,13 @@
 ;;; Packages
 
 (use-package! sh-script ; built-in
+  :defer t
   :mode ("\\.bats\\'" . sh-mode)
   :mode ("\\.\\(?:zunit\\|env\\)\\'" . sh-mode)
   :mode ("/bspwmrc\\'" . sh-mode)
   :config
   ;; (set-docsets! 'sh-mode "Bash")
   (set-electric! 'sh-mode :words '("else" "elif" "fi" "done" "then" "do" "esac" ";;"))
-  (set-formatter! 'shfmt '("shfmt" "-ci"
-                           (unless indent-tabs-mode
-                             (list "-i" (number-to-string tab-width)))))
-
   (set-repl-handler! 'sh-mode #'+sh/open-repl)
   ;; (set-lookup-handlers! 'sh-mode :documentation #'+sh-lookup-documentation-handler)
   (set-ligatures! 'sh-mode
@@ -38,10 +35,10 @@
     ;; Other
     :dot "." :dot "source")
 
-  (when (modulep! +lsp)
+  (eval-when! (modulep! +lsp)
     (add-hook 'sh-mode-local-vars-hook #'lsp! 'append))
 
-  (when (modulep! +tree-sitter)
+  (eval-when! (modulep! +tree-sitter)
     (add-hook 'sh-mode-local-vars-hook #'tree-sitter! 'append))
 
   (setq-hook! 'sh-mode-hook

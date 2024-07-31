@@ -4,7 +4,8 @@
 (package! org
   :recipe (:host github
            ;; The mirror is a bit faster.
-           :repo "emacs-straight/org-mode")
+           :repo "emacs-straight/org-mode"
+           :depth 1)
   :lockfile 'pinned
   :lockfile emacs-org)
 (package! org-contrib

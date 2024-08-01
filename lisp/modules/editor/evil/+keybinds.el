@@ -200,7 +200,7 @@
                  :i "C-f"  #'cape-file
                  :i "C-]"  #'complete-tag
                  :i "s"    #'cape-dict
-                 :i "C-s"  #'yasnippet-capf
+                 :i "C-s"  #'tempel-complete
                  :i "C-o"  #'completion-at-point
                  :i "C-n"  #'cape-dabbrev
                  :i "C-p"  #'+corfu/dabbrev-this-buffer)))

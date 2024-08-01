@@ -1,32 +1,14 @@
 ;; config/compilation/config.el -*- lexical-binding: t; -*-
 
-;; WIP module for byte- and native-compilation of the emacs config.
-
-;; IDEA: Instead of compiling each init.el and config.el file separately, use a
-;;       similar mechanism as radian emacs and embed the content of these files
-;;       into the init.el file which is created dynamically anyways.
-
-;; - DONE Solve the issue with the modulep! and load! macros. Both of them try to
-;;   figure out the path of the file they run in, which would be wrong if called
-;;   in init.el
-;; - DONE Similar as above, load-history will record defuns etc. from init.el, but
-;;   this is not where the actual source is.
-
 ;; A bit of a rough hack, however, the async native compiler does its work in a
 ;; pristine emacs process. This is good for packages, but not for our config
 ;; files. Thus, we patch this function so it loads our config environment
 ;; beforehand in case the file to be compiled is part of `zenit-core-dir'.
 
-(cl-eval-when (compile)
-  (require 'el-patch))
-
-(el-patch-feature comp)
-(after! comp
-
-  ;; Add our generated "init.el" manually to the native-comp queue
-  (pushnew! comp-files-queue `(,(file-name-concat user-emacs-directory "init.el") . late))
-
-  (el-patch-defun comp-run-async-workers ()
+(use-package! comp
+  :defer t
+  :config/el-patch
+  (defun comp-run-async-workers ()
     "Start compiling files from `comp-files-queue' asynchronously.
 When compilation is finished, run `native-comp-async-all-done-hook' and
 display a message."
@@ -157,4 +139,9 @@ display a message."
             (insert "Compilation finished.\n"))))
       ;; `comp-deferred-pending-h' should be empty at this stage.
       ;; Reset it anyway.
-      (clrhash comp-deferred-pending-h))))
+      (clrhash comp-deferred-pending-h)))
+  :config
+  ;; Add our generated "init.el" manually to the native-comp queue
+  (let ((fname (file-name-concat user-emacs-directory "init.el")))
+    (when (file-newer-than-file-p fname (comp-el-to-eln-filename fname))
+      (pushnew! comp-files-queue `(,fname . late)))))

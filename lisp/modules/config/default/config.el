@@ -419,7 +419,7 @@ Continues comments if executed from a commented line. Consults
           :gn [s-return]     #'+default/newline-below
           :gn "S-s-RET"      #'+default/newline-above
           :gn [S-s-return]   #'+default/newline-above))
-  ;; )
+
 
 ;;
 ;;; Bootstrap configs
@@ -427,4 +427,6 @@ Continues comments if executed from a commented line. Consults
   (eval-when! (modulep! :editor evil)
     (compile-along! "+evil")
     (after! evil
-      (load! "+evil"))))
+      ;; (include! "+evil")
+      (load! "+evil")
+      )))

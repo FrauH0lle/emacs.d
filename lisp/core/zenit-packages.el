@@ -4,7 +4,7 @@
   "If non-nil, the package management system has been
 initialized.")
 
-(defvar zenit-mandatory-packages '(straight)
+(defvar zenit-mandatory-packages '(straight compat)
   "A list of packages that must be installed (and will be
 auto-installed if missing) and shouldn't be deleted.")
 
@@ -73,13 +73,12 @@ auto-installed if missing) and shouldn't be deleted.")
 
 (with-eval-after-load 'straight
   ;; HACK: We want to defer the compilation of the .elc files in order to save
-  ;; some minutes during config creation. To complete this, straight.el needs to
-  ;; be told not to do native-compilation, but it won't obey
-  ;; `straight-disable-native-compile', but `straight--native-comp-available',
-  ;; though. Trouble is: it's a constant; it resets itself when straight is
-  ;; loaded, so it must be changed afterwards.
-  (setq straight--native-comp-available nil
-        comp-enable-subr-trampolines nil)
+  ;;   some minutes during config creation. To complete this, straight.el needs
+  ;;   to be told not to do native-compilation, but it won't obey
+  ;;   `straight-disable-native-compile', but `straight--native-comp-available',
+  ;;   though. Trouble is: it's a constant; it resets itself when straight is
+  ;;   loaded, so it must be changed afterwards.
+  (setq straight--native-comp-available nil)
   ;; `let-alist' is built into Emacs 26 and onwards
   (add-to-list 'straight-built-in-pseudo-packages 'let-alist))
 

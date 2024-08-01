@@ -19,6 +19,7 @@
 
 (defun zenit-cli-compile-setup-env ()
   "Load required files for the byte-compilation."
+  ;; Make sure the cached definitions are loaded for the byte-compiler
   (dolist (cache-file (butlast (mapcar #'car zenit-cache-generators) 1))
     (load (file-name-concat zenit-local-dir cache-file) nil (not init-file-debug)))
   ;; Setup environment for compilation
@@ -30,6 +31,9 @@
   (require 'zenit-ui)
   (require 'zenit-projects)
   (require 'zenit-editor)
+
+  (when (modulep! :editor evil)
+    (require 'evil))
 
   ;; Prevent packages from being loaded at compile time if they
   ;; don't meet their own predicates.

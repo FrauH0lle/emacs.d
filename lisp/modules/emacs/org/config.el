@@ -1170,11 +1170,11 @@ missing-epdfinfo errors whenever storing or exporting links."
 ;;; Bootstrap
 
 (use-package! org
-  ;; :defer-incrementally
-  ;; calendar find-func format-spec org-macs org-compat org-faces org-entities
-  ;; org-list org-pcomplete org-src org-footnote org-macro ob org org-agenda
-  ;; org-capture
-  :defer t
+  :defer-incrementally
+  calendar find-func format-spec org-macs org-compat org-faces org-entities
+  org-list org-pcomplete org-src org-footnote org-macro ob org org-agenda
+  org-capture
+  ;; :defer t
   :preface
   ;; Set to nil so we can detect user changes to them later (and fall back on
   ;; defaults otherwise).
@@ -1270,21 +1270,21 @@ missing-epdfinfo errors whenever storing or exporting links."
 
   :config
   ;; Custom org modules
-  (eval-when! (modulep! +dragndrop)
-    (compile-along! "addons/dragndrop")
-    (load! "addons/dragndrop"))
-  (eval-when! (modulep! +pomodoro)
-    (compile-along! "addons/pomodoro")
-    (load! "addons/pomodoro"))
-  (eval-when! (modulep! +present)
-    (compile-along! "addons/present")
-    (load! "addons/present"))
-  (eval-when! (modulep! +pretty)
-    (compile-along! "addons/pretty")
-    (load! "addons/pretty"))
-  (eval-when! (modulep! +jupyter)
-    (compile-along! "addons/jupyter")
-    (load! "addons/jupyter"))
+  ;; (eval-when! (modulep! +dragndrop)
+  ;;   (compile-along! "addons/dragndrop")
+  ;;   (load! "addons/dragndrop"))
+  ;; (eval-when! (modulep! +pomodoro)
+  ;;   (compile-along! "addons/pomodoro")
+  ;;   (load! "addons/pomodoro"))
+  ;; (eval-when! (modulep! +present)
+  ;;   (compile-along! "addons/present")
+  ;;   (load! "addons/present"))
+  ;; (eval-when! (modulep! +pretty)
+  ;;   (compile-along! "addons/pretty")
+  ;;   (load! "addons/pretty"))
+  ;; (eval-when! (modulep! +jupyter)
+  ;;   (compile-along! "addons/jupyter")
+  ;;   (load! "addons/jupyter"))
 
   (add-to-list 'zenit-debug-variables 'org-export-async-debug)
 

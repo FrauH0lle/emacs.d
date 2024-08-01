@@ -120,7 +120,7 @@
        (let ((file (file-name-concat zenit-local-dir file)))
          (zenit-file-read file :by 'insert))))
    (print! (start "Byte-compiling autoloads file..."))
-   (quiet! (zenit-autoloads--compile-file file))
+   (zenit-autoloads--compile-file file)
    (print! (success "Generated %s")
            (relpath (byte-compile-dest-file file)
                     zenit-emacs-dir))))

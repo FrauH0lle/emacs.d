@@ -209,12 +209,7 @@
                 (:map evil-multiedit-mode-map
                  :nv "M-d" #'evil-multiedit-match-and-next
                  :nv "M-D" #'evil-multiedit-match-and-prev
-                 [return]  #'evil-multiedit-toggle-or-restrict-region)))
-
-      (:when (modulep! :editor snippets)
-        ;; auto-yasnippet
-        :i  [C-tab] #'aya-expand
-        :nv [C-tab] #'aya-create))
+                 [return]  #'evil-multiedit-toggle-or-restrict-region))))
 
 ;;; :tools
 (when (modulep! :tools eval)
@@ -225,8 +220,30 @@
 ;;; <leader>
 
 ;; Make "," in normal and visual mode the localleader key
-(map!
- :nv "," (general-simulate-key "SPC m"))
+(map! :nv "," (general-simulate-key "SPC m"))
+;; (autoload 'evil-set-command-property "evil")
+;;   (require 'evil)
+
+;; (eval-when-compile
+;;   (require 'evil)
+;;   (message "oh hey :)")
+;;   (autoload 'evil-set-command-property "evil"))
+;; (map! :nv "," (progn
+;;                 (eval-after-load 'evil
+
+;;                   '(evil-set-command-property
+;;                     (function general-simulate-SPC_m)
+;;                     :repeat 'general--simulate-repeat))
+;;                 (when nil
+;;                   (general-with-eval-after-load 'which-key
+;;                     (push
+;;                      '((nil . "general-simulate-SPC_m")
+;;                        nil)
+;;                      which-key-replacement-alist)))
+;;                 (defun general-simulate-SPC_m nil "Simulate 'SPC m' in the current context."
+;;                        (interactive)
+;;                        (general--simulate-keys nil "SPC m" 'nil nil t t))
+;;                 (function general-simulate-SPC_m)))
 
 (map! :leader
       :desc "Eval expression"       ":"    #'pp-eval-expression
@@ -472,7 +489,7 @@
        :desc "Current file path"             "F"   (cmd!! #'+default/insert-file-path t)
        :desc "Evil ex path"                  "p"   (cmd! (evil-ex "R!echo "))
        :desc "From evil register"            "r"   #'evil-show-registers
-       :desc "Snippet"                       "s"   #'yas-insert-snippet
+       :desc "Snippet"                       "s"   #'tempel-insert
        :desc "Unicode"                       "u"   #'insert-char
        :desc "From clipboard"                "y"   #'+default/yank-pop)
 

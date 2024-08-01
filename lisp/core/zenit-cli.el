@@ -26,7 +26,7 @@ during batch commands.")
 
   (require 'cl-lib)
 
-  (quiet!
+  ;; (quiet!
    (require 'cl nil t)
    (unless site-run-file
      (let ((site-run-file "site-start")
@@ -41,7 +41,8 @@ during batch commands.")
            (let ((default-directory dir))
              (load (expand-file-name "leim-list.el") t inhibit-message t)))
          (setq tail (cdr tail)))
-       (load site-run-file t inhibit-message))))
+       (load site-run-file t inhibit-message)))
+   ;; )
 
   (setq-default
    ;; Don't generate superfluous files when writing temp buffers.

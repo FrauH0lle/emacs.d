@@ -192,67 +192,6 @@ If NOERROR, don't throw an error if PATH doesn't exist."
                    ('zenit-error))
              (list path e)))))
 
-(defmacro zenit--with-local-load-history (file &rest body)
-  "Evaluate BODY as part of FILE.
-
-FILE is either a file path string or a form that should evaluate
-to such a string.
-
-This macro ensures that defined functions and variables show up
-as being defined in FILE, instead of whatever file they are being
-loaded from."
-  (declare (indent 0))
-  (let ((file (if (stringp file)
-                  file
-                (apply (car file) (cdr file)))))
-    `(let ((current-load-list nil))
-       ,@body
-       (push (cons ',file current-load-list) load-history))))
-
-(defvar zenit-include--current-file nil
-  "Stores the filename of the file to be included.")
-(defmacro zenit-include (file &optional noerror)
-  "Include file contents from FILE when byte-compiling.
-
-Otherwise it delegates to `zenit-load'. If NOERROR, don't throw
-an error if FILE doesn't exist."
-  (if (not (bound-and-true-p byte-compile-current-file))
-      `(zenit-load ,file ,noerror)
-    (zenit-log "include: %s %s" (abbreviate-file-name file) noerror)
-    (let ((forms (zenit-file-read file :by 'read*)))
-      `(zenit--with-local-load-history ,file ,@forms))))
-
-(defvar zenit-include--previous-file nil
-  "Stores the filename of the previously included file.")
-(defmacro include! (filename &optional path noerror)
-  "Include a file relative to the current executing
-file (`load-file-name').
-
-Embeds file contents directly when byte-compiling, otherwise it
-delegates to `zenit-load'.
-
-FILENAME is either a file path string or a form that should
-evaluate to such a string at run time. PATH is where to look for
-the file (a string representing a directory path). See `load!'
-for more information.
-
-If NOERROR is non-nil, don't throw an error if the file doesn't
-exist."
-  (let* ((dir (or path (protect-macros! (dir!))))
-         (file (expand-file-name
-                (file-name-with-extension filename ".el")
-                dir)))
-    `(progn
-       ;; Set `zenit-include--current-file' only during compilation
-       (cl-eval-when (compile)
-         (setq zenit-include--previous-file ,zenit-include--current-file
-               zenit-include--current-file ,file))
-       ;; Include the file
-       (zenit-include ,file ,noerror)
-       ;; Reset `zenit-include--current-file' to the previous one
-       (cl-eval-when (compile)
-         (setq zenit-include--current-file zenit-include--previous-file)))))
-
 (defun zenit-load-envvars-file (file &optional noerror)
   "Read and set envvars from FILE.
 If NOERROR is non-nil, don't throw an error if the file doesn't
@@ -673,15 +612,14 @@ used."
 (defmacro after! (package &rest body)
   "Evaluate BODY after PACKAGE have loaded.
 
-PACKAGE is a symbol or filename as a string (or list of them)
-referring to Emacs features (aka packages). PACKAGE may use
-:or/:any and :and/:all operators. The precise format is:
+PACKAGE is a symbol (or list of them) referring to Emacs
+features (aka packages). PACKAGE may use :or/:any and :and/:all
+operators. The precise format is:
 
 - An unquoted package symbol (the name of a package)
     (after! helm BODY...)
 - An unquoted, nested list of compound package lists, using any
-  combination of
-  :or/:any and :and/:all
+  combination of :or/:any and :and/:all
     (after! (:or package-a package-b ...)  BODY...)
     (after! (:and package-a package-b ...) BODY...)
     (after! (:and package-a (:or package-b package-c) ...) BODY...)
@@ -694,39 +632,30 @@ This emulates `eval-after-load' with a few key differences:
 
 1. No-ops for package that are disabled by the user (via
    `package!') or not installed yet.
+
 2. Supports compound package statements (see :or/:any and
    :and/:all above).
-3. If a package is already loaded, execute the body immediately
-   and don't always to `after-load-alist'.
 
 Since the contents of these blocks will never by byte-compiled,
 avoid putting things you want byte-compiled in them! Like
 function/macro definitions."
   (declare (indent defun) (debug t))
-  (cond ((symbolp package)
-         (unless (memq package (bound-and-true-p zenit-disabled-packages))
-           (list (if (or (not (bound-and-true-p byte-compile-current-file))
-                         (require package nil 'noerror))
-                     #'progn
-                   #'with-no-warnings)
-                 `(if (featurep ',package)
-                      (progn ,@body)
-                    (eval-after-load ',package (lambda () ,@body))))))
-        ((stringp package)
-         `(if (load-history-filename-element
-               (purecopy (load-history-regexp ,package)))
-              (progn ,@body)
-            (eval-after-load ,package (lambda () ,@body))))
-        (t
-         (let ((p (car package)))
-           (cond ((memq p '(:or :any))
-                  (macroexp-progn
-                   (cl-loop for next in (cdr package)
-                            collect `(after! ,next ,@body))))
-                 ((memq p '(:and :all))
-                  (dolist (next (reverse (cdr package)) (car body))
-                    (setq body `((after! ,next ,@body)))))
-                 (`(after! (:and ,@package) ,@body)))))))
+  (if (symbolp package)
+      (unless (memq package (bound-and-true-p zenit-disabled-packages))
+        (list (if (or (not (bound-and-true-p byte-compile-current-file))
+                      (require package nil 'noerror))
+                  #'progn
+                #'with-no-warnings)
+              `(with-eval-after-load ',package ,@body)))
+    (let ((p (car package)))
+      (cond ((memq p '(:or :any))
+             (macroexp-progn
+              (cl-loop for next in (cdr package)
+                       collect `(after! ,next ,@body))))
+            ((memq p '(:and :all))
+             (dolist (next (reverse (cdr package)) (car body))
+               (setq body `((after! ,next ,@body)))))
+            (`(after! (:and ,@package) ,@body))))))
 
 (defmacro load! (filename &optional path noerror)
   "Load a file relative to the current executing
@@ -743,17 +672,102 @@ If NOERROR is non-nil, don't throw an error if the file doesn't
 exist."
   `(zenit-load (file-name-concat ,(or path `(dir!)) ,filename) ,noerror))
 
+(defmacro zenit--with-local-load-history (file &rest body)
+  "Evaluate BODY as part of FILE.
+
+FILE is either a file path string or a form that should evaluate
+to such a string.
+
+This macro ensures that defined functions and variables show up
+as being defined in FILE, instead of whatever file they are being
+loaded from."
+  (declare (indent 0))
+  (let ((file (if (stringp file)
+                  file
+                (apply (car file) (cdr file)))))
+    `(let ((current-load-list nil))
+       ,@body
+       (push (cons ',file current-load-list) load-history))))
+
+(defvar zenit-include--current-file nil
+  "Stores the filename of the file to be included.")
+(defmacro zenit-include (file &optional noerror)
+  "Include file contents from FILE when byte-compiling.
+
+Otherwise it delegates to `zenit-load'. If NOERROR, don't throw
+an error if FILE doesn't exist."
+  (if (not (bound-and-true-p byte-compile-current-file))
+      `(zenit-load ,file ,noerror)
+    (zenit-log "include: %s %s" (abbreviate-file-name file) noerror)
+    (let ((forms (zenit-file-read file :by 'read*)))
+      `(zenit--with-local-load-history ,file ,@forms))))
+
+(defvar zenit-include--previous-file nil
+  "Stores the filename of the previously included file.")
+(defmacro include! (filename &optional path noerror)
+  "Include a file relative to the current executing
+file (`load-file-name').
+
+Embeds file contents directly when byte-compiling, otherwise it
+delegates to `zenit-load'.
+
+FILENAME is either a file path string or a form that should
+evaluate to such a string at run time. PATH is where to look for
+the file (a string representing a directory path). See `load!'
+for more information.
+
+If NOERROR is non-nil, don't throw an error if the file doesn't
+exist."
+  (let* ((dir (or path (dir!)))
+         (file (expand-file-name
+                (file-name-with-extension filename ".el")
+                dir)))
+    `(progn
+       ;; Set `zenit-include--current-file' only during compilation
+       (cl-eval-when (compile)
+         (setq zenit-include--previous-file ,zenit-include--current-file
+               zenit-include--current-file ,file))
+       ;; Include the file
+       (zenit-include ,file ,noerror)
+       ;; Reset `zenit-include--current-file' to the previous one
+       (cl-eval-when (compile)
+         (setq zenit-include--current-file zenit-include--previous-file)))))
+  ;; `(progn
+  ;;    ;; Set `zenit-include--current-file' only during compilation
+  ;;    ,@(when t ;;(bound-and-true-p byte-compile-current-file)
+  ;;        `((eval-when-compile
+  ;;            (setq zenit-include--previous-file ,zenit-include--current-file
+  ;;                  zenit-include--current-file (file-name-concat
+  ;;                                               ,(or path (protect-macros! (dir!)))
+  ;;                                               (file-name-with-extension ,filename ".el"))))))
+  ;;    ;; Include the file
+  ;;    (zenit-include (file-name-concat
+  ;;                    ,(or path (protect-macros! (dir!)))
+  ;;                    (file-name-with-extension ,filename ".el")) ,noerror)
+  ;;    ;; Reset `zenit-include--current-file' to the previous one
+  ;;    ,@(when t ;; (bound-and-true-p byte-compile-current-file)
+  ;;        `((eval-when-compile
+  ;;            (setq zenit-include--current-file zenit-include--previous-file))))))
+
 (defmacro compile-along! (filename &optional path)
   "Compile FILENAME along the file this macro was called from.
 
 PATH is where to look for the file (a string representing a
 directory path). This macro will not do anything if the file it
 is used in is not getting compiled."
-  `(cl-eval-when (compile)
-     (byte-compile-file
-      (file-name-concat
-       ,(or path `(dir!))
-       (file-name-with-extension ,filename ".el")))))
+  (when (macroexp-compiling-p)
+    `(eval-when-compile
+       (byte-compile-file
+        (file-name-concat
+         ,(or path `(dir!))
+         (file-name-with-extension ,filename ".el")))))
+
+  ;; `(cl-eval-when (compile)
+  ;;    (byte-compile-file
+  ;;     (file-name-concat
+  ;;      ,(or path `(dir!))
+  ;;      (file-name-with-extension ,filename ".el"))))
+  )
 
 (defmacro autoload! (file &rest fns)
   "Generate autoloads for FNS from FILE.
@@ -997,8 +1011,8 @@ BODY\)"
             where-alist))
     `(progn
        (defun ,symbol ,arglist ,docstring ,@body)
-       (eval-when-compile
-         (declare-function ,symbol nil))
+       ;; (eval-when-compile
+       ;;   (declare-function ,symbol nil))
        (dolist (targets (list ,@(nreverse where-alist)))
          (dolist (target (cdr targets))
            (advice-add target (car targets) #',symbol))))))

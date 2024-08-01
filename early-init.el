@@ -24,6 +24,41 @@
 (when (featurep 'native-compile)
   (startup-redirect-eln-cache ".local/cache/eln/"))
 
+(when (member "--benchmark-init" command-line-args)
+  (delete "--benchmark-init" command-line-args)
+
+  (defvar zenit-tracked-loads nil
+    "Alist of feature to `load-file-name' when it was first
+ required. Start Emacs with --benchmark-init to populate.")
+
+  (defun noct-require-advice (feature &optional filename &rest _)
+    "For every `require', record the current `load-file-name'."
+    (unless (cond (feature
+                   (featurep feature))
+                  (filename
+                   (load-history-filename-element
+                    (purecopy (load-history-regexp filename))))
+                  (t t))
+      (setf (alist-get (or feature filename) zenit-tracked-loads) load-file-name)))
+
+  (defun noct-load-advice (file &rest _)
+    "For every `load', record the current `load-file-name' if not
+already recorded."
+    (unless (alist-get file zenit-tracked-loads)
+      (setf (alist-get file zenit-tracked-loads) load-file-name)))
+
+  (advice-add 'require :before #'noct-require-advice)
+  (advice-add 'load :before #'noct-load-advice)
+
+  (require 'benchmark-init
+           ;; Point to the file manually as `load-path' is not initialized yet
+           (expand-file-name
+            "benchmark-init"
+            (file-name-concat user-emacs-directory "straight" "build" "benchmark-init")))
+  ;; To disable collection of benchmark data after init is done.
+  ;; (add-hook 'zenit-after-init-hook 'benchmark-init/deactivate)
+  )
+
 (or
  ;; Unsetting `file-name-handler-alist' offers a reduction of startup time. Will
  ;; be used in lisp/core/zenit-core.el again.

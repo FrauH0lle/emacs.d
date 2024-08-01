@@ -299,7 +299,11 @@ it."
 
 ;; Load site-lisp/init.el early, but only when not in CLI mode.
 (when (not (zenit-context-p 'cli))
-  (load! (string-remove-suffix ".el" zenit-module-init-file) zenit-local-conf-dir t))
+  (zenit-load (file-name-sans-extension (file-truename (file-name-concat zenit-local-conf-dir zenit-module-init-file))) t)
+  ;; (let ((vc-handled-backends nil)
+  ;;       (vc-follow-symlinks nil))
+  ;; (load! (string-remove-suffix ".el" zenit-module-init-file) zenit-local-conf-dir t))
+  )
 
 ;; Load the rest of site-lisp/ + modules if noninteractive and not in CLI mode.
 ;; The idea is to be able to use this file in Emacs' batch mode and initialize
@@ -322,6 +326,7 @@ it."
 ;;      and ~/_emacs) and spare us the IO of searching for them.
 ;;   3. Cut down on unnecessary logic in Emacs' bootstrapper.
 ;;   4. Offer a more user-friendly error state/screen.
+(unless (bound-and-true-p +esup-active-p)
 (define-advice startup--load-user-init-file (:override (&rest _) init-zenit 100)
   (let ((debug-on-error-from-init-file nil)
         (debug-on-error-should-be-set nil)
@@ -342,7 +347,7 @@ it."
                    ;; Compiling them in one place is a big reduction in startup
                    ;; time, and by keeping a history of them, you get a snapshot
                    ;; of your config in time.
-                   (file-name-concat zenit-emacs-dir "init.elc")))
+                   (file-name-concat zenit-emacs-dir (if (bound-and-true-p +esup-active-p) "init.el" "init.elc"))))
               ;; If `user-init-file' is t, then `load' will store the name of
               ;; the next file it loads into `user-init-file'.
               (setq user-init-file t)
@@ -381,5 +386,6 @@ the `--debug-init' option to view a complete error backtrace."
                 debug-on-error-from-init-file debug-on-error)))
     (when debug-on-error-should-be-set
       (setq debug-on-error debug-on-error-from-init-file))))
+)
 
 (provide 'zenit-start)

@@ -30,34 +30,11 @@ autoloads.")
 ;;; Library
 
 (defun zenit-autoloads--compile-file (file)
-  ;; Make sure the cached definitions are loaded for the byte-compiler
-  (dolist (cache-file (butlast (mapcar #'car zenit-cache-generators) 1))
-    (load (file-name-concat zenit-local-dir cache-file) nil (not init-file-debug)))
-  ;; Setup environment for compilation
-  (require 'zenit-start)
-  ;; If we are embedding the configuration, we need to load a bit more,
-  (when (modulep! :config compile)
-    (require 'zenit-use-package)
-    (require 'use-package)
-    (require 'zenit-el-patch)
-    (require 'zenit-keybinds)
-    (require 'zenit-ui)
-    (require 'zenit-projects)
-    (require 'zenit-editor)
-
-    ;; Prevent packages from being loaded at compile time if they
-    ;; don't meet their own predicates.
-    (push (list :no-require t
-                (lambda (_name args)
-                  (or (when-let (pred (or (plist-get args :if)
-                                          (plist-get args :when)))
-                        (not (eval pred t)))
-                      (when-let (pred (plist-get args :unless))
-                        (eval pred t)))))
-          use-package-defaults))
+  (zenit-cli-compile-setup-env)
 
   (condition-case-unless-debug e
-      (let ((byte-compile-warnings (if init-file-debug byte-compile-warnings)))
+      (let ((byte-compile-warnings (if init-file-debug byte-compile-warnings
+                                     '(not make-local noruntime unresolved))))
         (and (byte-compile-file file)
              (load (byte-compile-dest-file file) nil t)))
     (error

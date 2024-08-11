@@ -10,6 +10,20 @@
 ;; https://github.com/chadbraunduin/backups-mode, but slimmed down and adjusted
 ;; to my liking.
 
+(eval-when-compile
+  (require 'cl-lib))
+
+;; `cl-seq'
+(declare-function cl-remove-duplicates "cl-seq")
+
+;; `evil-states'
+(declare-function evil-emacs-state "ext:evil-states")
+
+;; `subr-x'
+(declare-function hash-table-keys "subr-x")
+(autoload #'hash-table-keys "subr-x")
+
+
 ;;
 ;;; Variables
 
@@ -20,6 +34,9 @@ This variable should be set to a function that takes a file name
 as an argument and returns a list of backup files for that file.
 The default value is `+backups--backup-files'.")
 
+(defvar +backups--saved-wconf nil
+  "Store the window configuration of the before activating
+`zenit-file-backups-mode' or `zenit-view-backup-file-mode'.")
 
 ;;
 ;;; File versions
@@ -221,10 +238,6 @@ and is read-only."
 
 ;;
 ;;; Cleanup
-
-(defvar +backups--saved-wconf nil
-  "Store the window configuration of the before activating
-`zenit-file-backups-mode' or `zenit-view-backup-file-mode'.")
 
 (defun +backups--cleanup-and-close ()
   "Cleanup open buffers and close the backup session.
@@ -456,7 +469,6 @@ nil. Adapted from `set-auto-mode--apply-alist'"
            (error "Cannot view current file."))
           ((and (> index 0) (< index (length (+backups--get-backups +backups--file-info-alist))))
            (let ((file-name (+backups--get-file-name-from-index index))
-                 (buf (format "*Backup-View: %s*" (+backups--get-file-name-from-index index)))
                  (mode (or (+backups--guess-mode (+backups--get-original-file +backups--file-info-alist))
                            'fundamental-mode)))
              (find-file-read-only-other-window file-name)
@@ -500,7 +512,7 @@ The list has the form (ORGIN-FNAME . HASHED-FNAME)."
       (get-buffer-create buf)
       (pop-to-buffer buf)
       (erase-buffer)
-      (pcase-dolist (`(,orig-fname . ,key) orphans)
+      (pcase-dolist (`(,orig-fname . ,_key) orphans)
         (let ((backup-files (file-backup-file-names orig-fname)))
           (insert (format "%s \n" orig-fname))
           (dolist (fn backup-files)
@@ -533,4 +545,4 @@ The list has the form (ORGIN-FNAME . HASHED-FNAME)."
         (erase-buffer)
         (prin1 cache (current-buffer))))))
 
-
+(provide 'zenit-lib '(backups))

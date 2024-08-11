@@ -3,10 +3,21 @@
 ;;
 ;;; Packages
 
-(use-package! tab-bar
-  :defer t
-  :config/el-patch
-  (defun tab-bar-tab-name-format-default (tab i)
+;; PATCH 2024-08-02: Slightly adjust the formatted output of
+;;   `tab-bar-tab-name-format-default'.
+(eval-when-compile
+  (require 'cl-lib))
+
+(cl-eval-when (compile)
+  (require 'el-patch)
+  (require 'zenit-el-patch)
+  (require 'tab-bar))
+
+;; PATCH 2024-08-02: `tab-bar'
+(el-patch-feature tab-bar)
+
+(after! tab-bar
+  (el-patch-defun tab-bar-tab-name-format-default (tab i)
     (let ((current-p (eq (car tab) 'current-tab)))
       (propertize
        (concat (if tab-bar-tab-hints (format (el-patch-swap "%d " "  #%d: ") i) "")
@@ -16,7 +27,10 @@
                                  (if current-p 'non-selected 'selected)))
                         tab-bar-close-button)
                    ""))
-       'face (funcall tab-bar-tab-face-function tab))))
+       'face (funcall tab-bar-tab-face-function tab)))))
+
+(use-package! tab-bar
+  :defer t
   :config
   (setq! tab-bar-history-limit 25
          tab-bar-show 1

@@ -45,32 +45,41 @@ t   Save on Emacs shutdown.")
 ;;
 ;;; Packages
 
+;; PATCH 2024-06-24: Use own functions to determine project root.
+(cl-eval-when (compile)
+  (require 'el-patch)
+  (require 'zenit-el-patch)
+  (require 'bufferlo))
+
+;; PATCH 2024-08-02: `bufferlo'
+(el-patch-feature bufferlo)
+
+;; (after! bufferlo
+;;   (el-patch-defun bufferlo-isolate-project (&optional file-buffers-only)
+;;     "Isolate a project in the frame or tab.
+;; Remove all buffers that do not belong to the current project from
+;; the local buffer list.  When FILE-BUFFERS-ONLY is non-nil or the
+;; prefix argument is given, remove only buffers that visit a file.
+;; Buffers matching `bufferlo-include-buffer-filters' are not removed."
+;;     (interactive "P")
+;;     (bufferlo--warn)
+;;     (let ((curr-project (el-patch-swap (project-current) (zenit-project-root)))
+;;           (include (bufferlo--merge-regexp-list
+;;                     (append '("a^") bufferlo-include-buffer-filters))))
+;;       (if curr-project
+;;           (dolist (buffer (bufferlo-buffer-list))
+;;             (when (and (not (string-match-p include (buffer-name buffer)))
+;;                        (not (equal curr-project
+;;                                    (with-current-buffer buffer (el-patch-swap (project-current) (zenit-project-root)))))
+;;                        (or (not file-buffers-only) (buffer-file-name buffer)))
+;;               (bufferlo-remove buffer)))
+;;         (message "Current buffer is not part of a project")))))
+
 (use-package! bufferlo
   :unless noninteractive
   :hook (zenit-init-ui . bufferlo-mode)
   :init
   (defvar bufferlo-mode-map (make-sparse-keymap))
-  :config/el-patch
-  ;; PATCH 2024-06-24: Use own functions to determine project root.
-  (defun bufferlo-isolate-project (&optional file-buffers-only)
-    "Isolate a project in the frame or tab.
-Remove all buffers that do not belong to the current project from
-the local buffer list.  When FILE-BUFFERS-ONLY is non-nil or the
-prefix argument is given, remove only buffers that visit a file.
-Buffers matching `bufferlo-include-buffer-filters' are not removed."
-    (interactive "P")
-    (bufferlo--warn)
-    (let ((curr-project (el-patch-swap (project-current) (zenit-project-root)))
-          (include (bufferlo--merge-regexp-list
-                    (append '("a^") bufferlo-include-buffer-filters))))
-      (if curr-project
-          (dolist (buffer (bufferlo-buffer-list))
-            (when (and (not (string-match-p include (buffer-name buffer)))
-                       (not (equal curr-project
-                                   (with-current-buffer buffer (el-patch-swap (project-current) (zenit-project-root)))))
-                       (or (not file-buffers-only) (buffer-file-name buffer)))
-              (bufferlo-remove buffer)))
-        (message "Current buffer is not part of a project"))))
   :config
   ;; Buffer to always include
   (setq! bufferlo-include-buffer-filters '("^\\*\\Messages" "^\\*Warnings"))

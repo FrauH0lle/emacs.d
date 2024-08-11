@@ -1,7 +1,19 @@
-;; lisp/core/lib/packages.el -*- lexical-binding: t; -*-
+;; lisp/core/lib/zenit-lib-packages.el -*- lexical-binding: t; -*-
 
-(mapc (zenit-rpartial #'load nil (not init-file-debug) 'nosuffix)
-      (file-expand-wildcards (concat zenit-core-dir "cli/*.el")))
+(eval-when-compile
+  (require 'cl-lib))
+
+;; `ansi-color'
+(declare-function ansi-color-apply-on-region "ansi-color")
+
+;; `straight'
+(declare-function straight--alist-set "ext:straight")
+(declare-function straight--lockfile-read "ext:straight")
+(defvar straight-profiles)
+
+
+;; (mapc (zenit-rpartial #'load nil (not init-file-debug) 'nosuffix)
+;;       (file-expand-wildcards (concat zenit-core-dir "cli/*.el")))
 
 ;;;###autoload
 (defun zenit/search-versions ()
@@ -35,38 +47,4 @@ seperate buffer."
      duplicates)
    "*zenit-duplicate-packages*"))
 
-;;;###autoload
-(defun zenit/update-package ()
-  "Updates a single package."
-  (interactive)
-  (print! (start "Updating package (this may take a while)..."))
-  (call-interactively #'straight-pull-package)
-  (print! (start "Exit and run 'make referesh'!")))
-
-;;;###autoload
-(defun zenit/update-all-packages ()
-  "Updates all packages and forces a rebuild of all packages."
-  (interactive)
-  (require 'init-cli)
-  (let* ((evil-collection-mode-list nil)
-         (default-directory zenit-emacs-dir)
-         (buf (get-buffer-create " *emacs*"))
-         (zenit-format-backend 'ansi)
-         (ignore-window-parameters t)
-         (noninteractive t)
-         (noninteractive nil)
-         (standard-output
-          (lambda (char)
-            (with-current-buffer buf
-              (insert char)
-              (when (memq char '(?\n ?\r))
-                (require 'ansi-color)
-                (ansi-color-apply-on-region (line-beginning-position -1) (line-end-position))
-                (redisplay))))))
-    (with-current-buffer (switch-to-buffer buf)
-      (erase-buffer)
-
-      (print! (start "Updating packages (this may take a while)..."))
-      (straight-x-pull-all)
-      (zenit-cli-packages-build t)))
-  (print! (start "Exit and run 'make referesh'!")))
+(provide 'zenit-lib '(packages))

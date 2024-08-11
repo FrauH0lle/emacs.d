@@ -1,7 +1,8 @@
-;; lisp/core/lib/print.el -*- lexical-binding: t; -*-
+;; lisp/core/lib/zenit-lib-print.el -*- lexical-binding: t; -*-
 
 (eval-when-compile
-  (require 'zenit-core))
+  (require 'zenit-core)
+  (require 'cl-lib))
 (require 'ansi-color)
 
 
@@ -184,7 +185,7 @@ syntax."
   (cl-destructuring-bind (&key if indent level verbose title
                                ;; TODO: Implement these
                                _benchmark)
-      (cl-loop for (key val) on body by #'cddr
+      (cl-loop for (key _val) on body by #'cddr
                while (keywordp key)
                collect (pop body)
                collect (pop body))
@@ -334,7 +335,6 @@ example:
   "Ensure MSG is split into lines no longer than `fill-column'."
   (with-temp-buffer
     (let* ((fill-column (or column fill-column))
-           (col 0)
            (indent (or indent 0))
            (fill-prefix (make-string indent ?\s)))
       (save-excursion
@@ -511,3 +511,5 @@ transformative logic."
                  (zenit-print--apply (cdr forms) t)
                  nil))
         (forms)))
+
+(provide 'zenit-lib '(print))

@@ -1,4 +1,6 @@
 ;; editor/evil/config.el -*- lexical-binding: t; -*-
+(eval-and-compile
+  (message "at the top featurep evil is: %s" (featurep 'evil)))
 
 (defvar +evil-want-o/O-to-continue-comments t
   "If non-nil, the o/O keys will continue comment lines if the
@@ -46,6 +48,8 @@ point is on a line with a linewise comment.")
         evil-want-fine-undo t
         evil-undo-system 'undo-tree)
 
+  ;; (cl-eval-when (compile)
+  ;;   (require 'evil-core))
   (defadvice! +evil--persist-state-a (fn &rest args)
     "When changing major modes, Evil's state is lost. This advice
 preserves it."
@@ -203,6 +207,8 @@ helpful,`abort-recursive-edit' gets called one time too many."
   (advice-add #'evil-goto-first-line :around #'zenit-set-jump-a)
   (advice-add #'evil-goto-line       :around #'zenit-set-jump-a)
 
+  ;; (cl-eval-when (compile)
+  ;;   (require 'evil-ex))
   ;; These arg types will highlight matches in the current buffer
   (evil-ex-define-argument-type regexp-match
     :runner (lambda (flag &optional arg) (+evil-ex-regexp-match flag arg 'inverted)))
@@ -233,8 +239,13 @@ helpful,`abort-recursive-edit' gets called one time too many."
   ;; Lazy load evil ex commands, part II
   (compile-along! "+commands")
   (after! evil-ex
-    (load! "+commands")))
+      (load! "+commands"))
+  )
 
+;; (use-package evil-ex
+;;   :defer t
+;;   :config
+;;   (load! "+commands"))
 
 ;;
 ;;; Packages
@@ -422,3 +433,6 @@ helpful,`abort-recursive-edit' gets called one time too many."
 (compile-along! "+keybinds")
 (after! evil
   (load! "+keybinds"))
+
+(eval-and-compile
+  (message "at the end featurep evil is: %s" (featurep 'evil)))

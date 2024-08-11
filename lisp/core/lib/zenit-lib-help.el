@@ -1,4 +1,8 @@
-;; lisp/core/lib/help.el -*- lexical-binding: t; -*-
+;; lisp/core/lib/zenit-lib-help.el -*- lexical-binding: t; -*-
+
+(eval-when-compile
+  (require 'cl-lib))
+
 
 (defvar zenit--help-major-mode-module-alist
   '((lisp-mode       :lang common-lisp)
@@ -360,3 +364,5 @@ does not include config blocks in your private config."
 
 ;;;###autoload
 (defalias 'zenit/help-package-homepage #'straight-visit-package-website)
+
+(provide 'zenit-lib '(help))

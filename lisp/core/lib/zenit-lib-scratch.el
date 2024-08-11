@@ -1,4 +1,20 @@
-;; lisp/core/lib/scratch.el -*- lexical-binding: t; -*-
+;; lisp/core/lib/zenit-lib-scratch.el -*- lexical-binding: t; -*-
+
+(eval-when-compile
+  (require 'cl-lib))
+
+;; `cl-extra'
+(declare-function cl-some "cl-extra")
+
+;; `cl-seq'
+(declare-function cl-delete-if-not "cl-seq")
+
+;; `zenit-lib-buffers'
+(declare-function zenit-mark-buffer-as-real-h "zenit-lib-buffers")
+
+;; `zenit-lib-projects'
+(declare-function zenit-project-name "zenit-lib-projects")
+
 
 (defvar zenit-scratch-default-file "__default"
   "The default file name for a project-less scratch buffer.
@@ -203,3 +219,5 @@ If prefix ARG, delete all persistent scratches."
           (message "%S does not exist" (abbreviate-file-name file))
         (delete-file file)
         (message "Successfully deleted %S" (abbreviate-file-name file))))))
+
+(provide 'zenit-lib '(scratch))

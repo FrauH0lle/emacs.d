@@ -1,7 +1,17 @@
-;; lisp/core/lib/store.el -*- lexical-binding: t; -*-
+;; lisp/core/lib/zenit-lib-store.el -*- lexical-binding: t; -*-
 
 ;; This little library abstracts the process of writing arbitrary elisp values to a 2-tiered file
 ;; store (in `zenit-store-dir'/`zenit-store-location').
+
+(eval-when-compile
+  (require 'cl-lib))
+
+;; `cl-seq'
+(declare-function cl-set-difference "cl-seq")
+
+;; `zenit-lib-files'
+(declare-function zenit-files-in "zenit-lib-files")
+
 
 (defvar zenit-store-dir (concat zenit-data-dir "store/")
   "Directory to look for and store data accessed through this
@@ -34,7 +44,7 @@ multiple cache entries.")
       (maphash (lambda (key val)
                  (when (zenit--store-expired-p key val)
                    (cl-pushnew location locations :test #'equal)
-                   (zenit--store-rem key location 'noflush)))
+                   (zenit-store-rem key location 'noflush)))
                (zenit--store-init location)))
     (mapc #'zenit--store-flush locations)))
 (add-hook 'kill-emacs-hook #'zenit-save-persistent-store-h)
@@ -187,3 +197,5 @@ LOCATION defaults to `zenit-store-location'."
     (when (file-exists-p path)
       (delete-file path)
       t)))
+
+(provide 'zenit-lib '(store))

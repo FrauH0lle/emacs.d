@@ -1,5 +1,51 @@
 ;; lisp/core/zenit-keybinds.el -*- lexical-binding: t; -*-
 
+(eval-when-compile
+  (require 'cl-lib))
+
+;; `ansi-color'
+(defvar ansi-color-for-comint-mode)
+
+;; `cl-seq'
+(declare-function cl-delete-if-not "cl-seq")
+(declare-function cl-find-if "cl-seq")
+(declare-function cl-set-difference "cl-seq")
+(declare-function cl-union "cl-seq")
+
+;; `hide-mode-line'
+(declare-function hide-mode-line-mode "ext:hide-mode-line")
+
+;; `image'
+(defvar image-animate-loop)
+
+;; `profiler'
+(defvar profiler-report-cpu-line-format)
+(defvar profiler-report-memory-line-format)
+
+;; `rainbow-delimiters'
+(defvar rainbow-delimiters-max-face-count)
+
+;; `whitespace'
+(defvar whitespace-active-style)
+(defvar whitespace-display-mappings)
+(defvar whitespace-line-column)
+(defvar whitespace-mode)
+(defvar whitespace-style)
+
+;; `zenit-core'
+(declare-function zenit--reset-inhibited-vars-h "zenit-core")
+
+;; `zenit-lib-buffers'
+(declare-function zenit-fallback-buffer "zenit-lib-buffers")
+(declare-function zenit-visible-buffers "zenit-lib-buffers")
+(declare-function zenit-real-buffer-list "zenit-lib-buffers")
+(declare-function zenit-real-buffer-p "zenit-lib-buffers")
+
+;; `zenit-lib-buffers'
+(declare-function zenit/delete-frame-with-prompt "zenit-lib-ui")
+(declare-function zenit-quit-p "zenit-lib-ui")
+
+
 ;;
 ;;; Variables
 
@@ -558,64 +604,67 @@ buffers are visible in other windows, switch to
       (cons 'custom-theme-directory
             (delq 'custom-theme-directory custom-theme-load-path)))
 
-(defun zenit--make-font-specs (face font)
-  "Create font specifications for a given FACE and FONT.
-
-The function will generate new specifications for FACE, taking
-into account the display conditions for the current frame."
-  (let* ((base-specs (cadr (assq 'user (get face 'theme-face))))
-         (base-specs (or base-specs '((t nil))))
-         (attrs '(:family :foundry :slant :weight :height :width))
-         (new-specs nil))
-    (dolist (spec base-specs)
-      ;; Each SPEC has the form (DISPLAY ATTRIBUTE-PLIST)
-      (let ((display (car spec))
-            (plist   (copy-tree (nth 1 spec))))
-        ;; Alter only DISPLAY conditions matching this frame.
-        (when (or (memq display '(t default))
-                  (face-spec-set-match-display display this-frame))
-          (dolist (attr attrs)
-            (setq plist (plist-put plist attr (face-attribute face attr)))))
-        (push (list display plist) new-specs)))
-    (nreverse new-specs)))
-
 (defun zenit-init-fonts-h (&optional reload)
-  "Loads `zenit-font'."
-  (dolist (map `((default . ,zenit-font)
-                 (fixed-pitch . ,zenit-font)
-                 (fixed-pitch-serif . ,zenit-serif-font)
-                 (variable-pitch . ,zenit-variable-pitch-font)))
-    (when-let* ((face (car map))
-                (font (cdr map)))
-      (dolist (frame (frame-list))
-        (when (display-multi-font-p frame)
-          (set-face-attribute face frame
-                              :width 'normal :weight 'normal
-                              :slant 'normal :font font)))
-      (let ((new-specs (zenit--make-font-specs face font)))
-        ;; Don't save to `customized-face' so it's omitted from `custom-file'
-        ;;(put face 'customized-face new-specs)
-        (custom-push-theme 'theme-face face 'user 'set new-specs)
-        (put face 'face-modified nil))))
-  (when (fboundp 'set-fontset-font)
-    (let* ((fn (zenit-rpartial #'member (font-family-list)))
-           (symbol-font (or zenit-symbol-font
-                            (cl-find-if fn zenit-symbol-fallback-font-families)))
-           (emoji-font (or zenit-emoji-font
-                           (cl-find-if fn zenit-emoji-fallback-font-families))))
-      (when symbol-font
-        (dolist (script '(symbol mathematical))
-          (set-fontset-font t script symbol-font)))
-      (when emoji-font
-        (set-fontset-font t 'emoji emoji-font)
-        ;; some characters in the Emacs symbol script are often covered by emoji
-        ;; fonts
-        (set-fontset-font t 'symbol emoji-font nil 'append)))
-    ;; Nerd Fonts use these Private Use Areas
-    (dolist (range '((#xe000 . #xf8ff) (#xf0000 . #xfffff)))
-      (set-fontset-font t range "Symbols Nerd Font Mono")))
-  ;; Users should inject their own font logic in `after-setting-font-hook'
-  (run-hooks 'after-setting-font-hook))
+  "Load `zenit-font', `zenit-serif-font', and `zenit-variable-pitch-font'."
+  (let ((initialized-frames (unless reload (get 'zenit-font 'initialized-frames))))
+    (dolist (frame (if reload (frame-list) (list (selected-frame))))
+      (unless (member frame initialized-frames)
+        (dolist (map `((default . ,zenit-font)
+                       (fixed-pitch . ,zenit-font)
+                       (fixed-pitch-serif . ,zenit-serif-font)
+                       (variable-pitch . ,zenit-variable-pitch-font)))
+          (condition-case e
+              (when-let* ((face (car map))
+                          (font (cdr map)))
+                (when (display-multi-font-p frame)
+                  (set-face-attribute face frame
+                                      :width 'normal :weight 'normal
+                                      :slant 'normal :font font))
+                (custom-push-theme
+                 'theme-face face 'user 'set
+                 (let* ((base-specs (cadr (assq 'user (get face 'theme-face))))
+                        (base-specs (or base-specs '((t nil))))
+                        (attrs '(:family :foundry :slant :weight :height :width))
+                        (new-specs nil))
+                   (dolist (spec base-specs)
+                     (let ((display (car spec))
+                           (plist (copy-tree (nth 1 spec))))
+                       (when (or (memq display '(t default))
+                                 (face-spec-set-match-display display frame))
+                         (dolist (attr attrs)
+                           (setq plist (plist-put plist attr (face-attribute face attr)))))
+                       (push (list display plist) new-specs)))
+                   (nreverse new-specs)))
+                (put face 'face-modified nil))
+            ('error
+             (ignore-errors (zenit--reset-inhibited-vars-h))
+             (if (string-prefix-p "Font not available" (error-message-string e))
+                 (signal 'zenit-font-error (list (font-get (cdr map) :family)))
+               (signal (car e) (cdr e))))))
+        (put 'zenit-font 'initialized-frames
+             (cons frame (cl-delete-if-not #'frame-live-p initialized-frames))))))
+  ;; Only do this once per session (or on `zenit/reload-fonts'); superfluous
+  ;; `set-fontset-font' calls may segfault in some contexts.
+  (when (or reload (not (get 'zenit-font 'initialized)))
+    (when (fboundp 'set-fontset-font)  ; unavailable in emacs-nox
+      (let* ((fn (zenit-rpartial #'member (font-family-list)))
+             (symbol-font (or zenit-symbol-font
+                              (cl-find-if fn zenit-symbol-fallback-font-families)))
+             (emoji-font (or zenit-emoji-font
+                             (cl-find-if fn zenit-emoji-fallback-font-families))))
+        (when symbol-font
+          (dolist (script '(symbol mathematical))
+            (set-fontset-font t script symbol-font)))
+        (when emoji-font
+          (set-fontset-font t 'emoji emoji-font)
+          ;; some characters in the Emacs symbol script are often covered by
+          ;; emoji fonts
+          (set-fontset-font t 'symbol emoji-font nil 'append)))
+      ;; Nerd Fonts use these Private Use Areas
+      (dolist (range '((#xe000 . #xf8ff) (#xf0000 . #xfffff)))
+        (set-fontset-font t range "Symbols Nerd Font Mono")))
+    (run-hooks 'after-setting-font-hook))
+  (put 'zenit-font 'initialized t))
 
 (defun zenit-init-theme-h (&rest _)
   "Load the theme specified by `zenit-theme' in FRAME."

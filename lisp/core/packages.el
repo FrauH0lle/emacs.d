@@ -37,5 +37,5 @@
 ;; tests
 (package! buttercup :lockfile core)
 
-(package! benchmark-init)
+(package! benchmark-init :lockfile core)
 (package! esup)

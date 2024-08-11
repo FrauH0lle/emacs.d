@@ -1,4 +1,4 @@
-;; lisp/core/lib/alist.el -*- lexical-binding: t; -*-
+;; lisp/core/lib/zenit-lib-alist.el -*- lexical-binding: t; -*-
 
 ;;;###autoload
 (defun zenit-alist-set (key val alist &optional symbol)
@@ -22,3 +22,5 @@ Adapted from URL `https://emacs.stackexchange.com/a/33893'."
       (setcdr pair val)
     (push (cons key val) alist))
   alist)
+
+(provide 'zenit-lib '(alist))

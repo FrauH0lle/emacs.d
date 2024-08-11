@@ -1,4 +1,11 @@
-;; lisp/core/lib/projects.el -*- lexical-binding: t; -*-
+;; lisp/core/lib/zenit-lib-projects.el -*- lexical-binding: t; -*-
+
+(eval-when-compile
+  (require 'cl-lib))
+
+;; `zenit-lib-files'
+(declare-function zenit-path "zenit-lib-files")
+
 
 ;;;###autoload (defvar projectile-project-root nil)
 ;;;###autoload (defvar projectile-enable-caching (not noninteractive))
@@ -153,3 +160,5 @@ package."
     (or (file-in-directory-p project-root temporary-file-directory)
         (file-in-directory-p project-root (concat zenit-emacs-dir "straight"))
         (file-in-directory-p project-root zenit-local-dir))))
+
+(provide 'zenit-lib '(projects))

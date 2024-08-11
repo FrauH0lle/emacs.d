@@ -24,6 +24,8 @@ during batch commands.")
               zenit-data-dir
               zenit-cache-dir))
 
+  (delete-file async-byte-compile-log-file)
+
   (require 'cl-lib)
 
   ;; (quiet!

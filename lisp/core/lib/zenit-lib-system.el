@@ -1,4 +1,11 @@
-;; lisp/core/lib/system.el -*- lexical-binding: t; -*-
+;; lisp/core/lib/zenit-lib-system.el -*- lexical-binding: t; -*-
+
+(eval-when-compile
+  (require 'cl-lib))
+
+;; `zenit-lib-process'
+(declare-function zenit-call-process "zenit-lib-process")
+
 
 ;;;###autoload
 (defun zenit-system-cpus ()
@@ -29,3 +36,5 @@ Tries to be portable. Returns 1 if cannot be determined."
                          (user-error "Failed to look up number of processors, because:\n\n%s"
                                      (cdr cpus)))))
                     1))))))
+
+(provide 'zenit-lib '(system))

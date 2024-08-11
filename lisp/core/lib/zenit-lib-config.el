@@ -1,4 +1,16 @@
-;; lisp/core/lib/config.el -*- lexical-binding: t; -*-
+;; lisp/core/lib/zenit-lib-config.el -*- lexical-binding: t; -*-
+
+;; `projectile'
+(declare-function projectile-ripgrep "ext:projectile")
+(defvar projectile-project-root)
+
+;; `zenit-lib-projects'
+(declare-function zenit-project-find-file "zenit-lib-projects")
+(declare-function zenit-project-browse "zenit-lib-projects")
+
+;; `zenit-modules'
+(declare-function zenit-module-p "zenit-modules")
+
 
 ;;;###autoload
 (defvar zenit-reload-hook nil
@@ -64,7 +76,7 @@ If prefix ARG is set, include ignored/hidden files."
          (current-prefix-arg (unless (eq arg 'other) arg))
          (default-directory zenit-emacs-dir))
     (call-interactively
-     (cond ((modulep! :completion vertico) #'+vertico/project-search-from-cwd)
+     (cond ((zenit-module-p :completion 'vertico) #'+vertico/project-search-from-cwd)
            (#'projectile-ripgrep)))))
 
 ;;;###autoload
@@ -83,3 +95,5 @@ If prefix ARG is set, include ignored/hidden files."
   (insert (if arg
               (format-time-string "%d.%m.%Y")
             (format-time-string "%Y-%m-%d"))))
+
+(provide 'zenit-lib '(config))

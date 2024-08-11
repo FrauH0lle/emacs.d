@@ -92,6 +92,7 @@ You should use `set-eshell-alias!' to change this.")
   (eval-when! (modulep! :ui workspaces)
     (cl-eval-when (compile)
       (require 'el-patch)
+      (require 'zenit-el-patch)
       (require 'esh-mode))
 
     (el-patch-feature esh-mode)
@@ -194,19 +195,27 @@ You should use `set-eshell-alias!' to change this.")
   :config (setup-esh-help-eldoc))
 
 
-(use-package! eshell-did-you-mean
-  ;; Specifically esh-mode, not eshell
-  :after esh-mode
-  :config/el-patch
-  ;; PATCH 2024-06-22: The way `pcomplete-completions' is originally used is
-  ;;   probably outdated.
-  (defun eshell-did-you-mean--get-all-commands ()
+;; PATCH 2024-06-22: The way `pcomplete-completions' is originally used is
+;;   probably outdated.
+(cl-eval-when (compile)
+  (require 'el-patch)
+  (require 'zenit-el-patch)
+  (require 'eshell-did-you-mean))
+
+(el-patch-feature eshell-did-you-mean)
+
+(after! eshell-did-you-mean
+  (el-patch-defun eshell-did-you-mean--get-all-commands ()
     "Feed `eshell-did-you-mean--all-commands'."
     (el-patch-swap
       (unless eshell-did-you-mean--all-commands
         (setq eshell-did-you-mean--all-commands (pcomplete-completions)))
       (with-memoization eshell-did-you-mean--all-commands
-        (all-completions "" (pcomplete-completions)))))
+        (all-completions "" (pcomplete-completions))))))
+
+(use-package! eshell-did-you-mean
+  ;; Specifically esh-mode, not eshell
+  :after esh-mode
   :config
   (eshell-did-you-mean-setup)
   ;; HACK There is a known issue with `eshell-did-you-mean' where it does not

@@ -1,4 +1,23 @@
-;; lisp/core/lib/buffers.el -*- lexical-binding: t; -*-
+;; lisp/core/lib/zenit-lib-buffers.el -*- lexical-binding: t; -*-
+
+(eval-when-compile
+  (require 'cl-lib))
+
+;; `cl-seq'
+(declare-function cl-delete-if "cl-seq")
+(declare-function cl-remove-if "cl-seq")
+(declare-function cl-remove-if-not "cl-seq")
+
+;; `projectile'
+(declare-function projectile-project-buffer-p "ext:projectile")
+
+;; `subr-x'
+(declare-function hash-table-keys "subr-x")
+(autoload #'hash-table-keys "subr-x")
+
+;; `zenit-lib-projects'
+(declare-function zenit-project-root "zenit-lib-projects")
+
 
 ;;;###autoload
 (defvar zenit-real-buffer-functions
@@ -369,3 +388,5 @@ current project."
        interactive "Killed %d project buffers"
        (- (length buffer-list)
           (length (cl-remove-if-not #'buffer-live-p buffer-list)))))))
+
+(provide 'zenit-lib '(buffers))

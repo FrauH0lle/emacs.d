@@ -1,5 +1,22 @@
 ;; lisp/core/zenit-modules.el -*- lexical-binding: t; -*-
 
+(eval-when-compile
+  (require 'cl-lib))
+
+;; `cl-extra'
+(declare-function cl-every "cl-extra")
+(declare-function cl--do-remf "cl-extra")
+
+;; `cl-lib'
+(declare-function cl-oddp "cl-lib")
+
+;; `subr-x'
+(declare-function hash-table-keys "subr-x")
+
+;; `zenit-lib-files'
+(declare-function zenit-files-in "zenit-lib-files")
+
+
 ;;
 ;;; Variables
 
@@ -288,6 +305,7 @@ disabled ones) available in those directories."
                               (eq test :unless))
                          (prependq! mplist (cddr m))))))
             ((catch 'zenit-modules
+               ;; (let ((module (if (listp m) (car m) m)))
                (let* ((module (if (listp m) (car m) m))
                       (flags  (if (listp m) (cdr m))))
                  (push (funcall fn category module :flags (if (listp m) (cdr m)))
@@ -514,7 +532,6 @@ For more about modules and flags, see `modules!'."
                   (error "(modulep! %s %s %s) couldn't figure out what module it was called from (in %s)"
                          category module flag file)))))
        t))
-
 
 ;;
 ;;; Defaults

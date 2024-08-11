@@ -1,4 +1,17 @@
-;; lisp/core/lib/ui.el -*- lexical-binding: t; -*-
+;; lisp/core/lib/zenit-lib-ui.el -*- lexical-binding: t; -*-
+
+(eval-when-compile
+  (require 'cl-lib))
+
+;; `cl-seq'
+(declare-function cl-remove-if "cl-seq")
+
+;; `display-line-numbers'
+(defvar display-line-numbers-type)
+
+;; `zenit-lib-buffers'
+(declare-function zenit-real-buffer-list "zenit-lib-buffers")
+
 
 ;;
 ;;; Public library
@@ -191,7 +204,7 @@ OPACITY is an integer between 0 to 100, inclusive."
   "Variable to store the base buffer of an indirectly narrowed
 buffer.")
 ;;;###autoload
-(defun zenit/narrow-buffer-indirectly (beg end &optional clone-p)
+(defun zenit/narrow-buffer-indirectly (beg end)
   "Restrict editing in this buffer to the current region, indirectly.
 This recursively creates indirect clones of the current buffer so
 that the narrowing doesn't affect other windows displaying the
@@ -237,7 +250,7 @@ buffer, it is `widen'ed."
            (kill-buffer orig-buffer)))))
 
 ;;;###autoload
-(defun zenit/toggle-narrow-buffer (beg end &optional clone-p)
+(defun zenit/toggle-narrow-buffer (beg end)
   "Narrow the buffer to BEG END. If narrowed, widen it."
   (interactive
    (list (or (bound-and-true-p evil-visual-beginning) (region-beginning))
@@ -249,3 +262,5 @@ buffer, it is `widen'ed."
       (setq beg (line-beginning-position)
             end (line-end-position)))
     (narrow-to-region beg end)))
+
+(provide 'zenit-lib '(ui))

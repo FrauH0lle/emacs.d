@@ -22,6 +22,10 @@
 ;; modify, and should follow a ;;;## package-name header line (if not using
 ;; `after!' or `use-package!').
 
+(eval-when-compile
+  (require 'cl-lib))
+
+
 ;;
 ;;; Core functions
 
@@ -52,15 +56,6 @@ that by remapping `quit-window' to this commmand."
                 (live-p (buffer-live-p parent-buffer)))
       (display-buffer parent-buffer))))
 (global-set-key [remap quit-window] #'+popup/quit-window)
-
-(defadvice! +popup-override-display-buffer-alist-a (fn &rest args)
-  "When `pop-to-buffer' is called with non-nil ACTION, that ACTION should
-override `display-buffer-alist'."
-  :around #'switch-to-buffer-other-tab
-  :around #'switch-to-buffer-other-window
-  :around #'switch-to-buffer-other-frame
-  (let ((display-buffer-alist nil))
-    (apply fn args)))
 
 
 ;;
@@ -227,6 +222,7 @@ window."
         origin)
     (save-popups!
      (find-file path)
+     ;; (set-auto-mode)
      (when-let (pos (get-text-property button 'position
                                        (marker-buffer button)))
        (goto-char pos))
@@ -313,21 +309,12 @@ other windows. Ugh, such an ugly hack."
            (popup-p (+popup-window-p window)))
       (prog1 (apply fn args)
         (when (and popup-p (window-live-p window))
-          (delete-window window)))))
-
-  ;; Ensure todo, agenda, and other minor popups are delegated to the popup
-  ;; system.
-  (defadvice! +popup--org-pop-to-buffer-a (fn buf &optional norecord)
-    "Use `pop-to-buffer' instead of `switch-to-buffer' to open buffer.'"
-    :around #'org-switch-to-buffer-other-window
-    (if popper-mode
-        (pop-to-buffer buf nil norecord)
-      (funcall fn buf norecord))))
+          (delete-window window))))))
 
 
 ;;;###package org-journal
 (defadvice! +popup--use-popup-window-a (fn &rest args)
-  :around #'org-journal-search-by-string
+  :around #'org-journal--search-by-string
   (letf! ((#'switch-to-buffer #'pop-to-buffer))
     (apply fn args)))
 

@@ -1,5 +1,25 @@
 ;; lisp/core/zenit-keybinds.el -*- lexical-binding: t; -*-
 
+(defvar mac-command-modifier)
+(defvar ns-command-modifier)
+(defvar mac-option-modifier)
+(defvar ns-option-modifier)
+(defvar mac-right-option-modifier)
+(defvar ns-right-option-modifier)
+(defvar w32-lwindow-modifier)
+(defvar w32-rwindow-modifier)
+
+;; `cl-extra'
+(declare-function cl-subseq "cl-extra")
+
+;; `cl-seq'
+(declare-function cl-position "cl-seq")
+
+;; `which-key'
+(declare-function which-key-add-key-based-replacements "ext:which-key")
+(declare-function which-key-setup-side-window-bottom "ext:which-key")
+(declare-function which-key-key-order-alpha "ext:which-key")
+
 
 ;; A centralized keybinds system, integrated with `which-key' to preview
 ;; available keybindings. All built into one powerful macro: `map!'. If evil is
@@ -144,7 +164,7 @@ can be specified as a description for the menu item.")
                            (t ,fallback-def))))))))
 
 (add-hook! 'zenit-first-input-hook
-  (defun +general-predicate-dispatch-fix-load-history-h ()
+  (defun +general-predicate-dispatch--fix-load-history-h ()
     "Add `general-predicate-dispatch' explicitly to load-history so
 the patch can be validated."
     (push
@@ -221,7 +241,7 @@ for a more convenient interface.
 
 See `zenit-localleader-key' and `zenit-localleader-alt-key' to
 change the localleader prefix."
-  (eval-if! (modulep! :editor evil)
+  (eval-if! (zenit-module-p :editor 'evil)
       ;; :non-normal-prefix doesn't apply to non-evil sessions (only evil's
       ;; emacs state)
       `(general-define-key
@@ -247,7 +267,7 @@ change the localleader prefix."
   (defun zenit-init-leader-keys-h ()
     "Bind `zenit-leader-key' and `zenit-leader-alt-key'."
     (let ((map general-override-mode-map))
-      (if (not (modulep! :editor evil))
+      (if (not (zenit-module-p :editor 'evil))
           (progn
             (cond ((equal zenit-leader-alt-key "C-c")
                    (set-keymap-parent zenit-leader-map mode-specific-map))
@@ -325,7 +345,7 @@ For example, :nvi will map to (list \\='normal \\='visual \\='insert). See
 `map!' block.")
 (defvar zenit--map-evil-p nil
   "Non-nil if the :editor evil module is active.")
-(when (modulep! :editor evil) (setq zenit--map-evil-p t))
+(when (zenit-module-p :editor 'evil) (setq zenit--map-evil-p t))
 
 (defun zenit--map-process (rest)
   "Process the rest of a `map!' block. REST is the forms to be
@@ -536,7 +556,7 @@ States
   Don't
     (map! :n :leader :desc \"Description\" \"C-c\" #\\='dosomething)
     (map! :leader :n :desc \"Description\" \"C-c\" #\\='dosomething)"
-  (eval-if! (modulep! :editor evil)
+  (eval-if! (zenit-module-p :editor 'evil)
       `(general-with-eval-after-load 'evil
          ,(when (or (bound-and-true-p byte-compile-current-file)
                     (not noninteractive))

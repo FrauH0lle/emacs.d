@@ -1,5 +1,5 @@
 ;; config/default/+evil.el -*- lexical-binding: t; -*-
-
+;; (benchmark-run 1 (progn
 (defun +default-disable-delete-selection-mode-h ()
   (delete-selection-mode -1))
 (add-hook 'evil-insert-state-entry-hook #'delete-selection-mode)
@@ -37,6 +37,7 @@
   ;;    (file-name-concat
   ;;     (dir!)
   ;;     (file-name-with-extension "+evil-bindings" ".el"))))
+
   (compile-along! "+evil-bindings")
   ;; (require 'async-bytecomp)
     ;; (byte-compile-file
@@ -52,3 +53,4 @@
   ;;     (file-name-with-extension "+evil-bindings" ".el"))))
   (load! "+evil-bindings")
   )
+;; ))

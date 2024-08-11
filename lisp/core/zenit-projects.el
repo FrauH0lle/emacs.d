@@ -1,5 +1,21 @@
 ;; lisp/core/zenit-projects.el -*- lexical-binding: t; -*-
 
+(eval-when-compile
+  (zenit-require 'zenit-lib 'files))
+
+;; `cl-seq'
+(declare-function cl-find-if "cl-seq")
+
+;; `subr-x'
+(declare-function hash-table-keys "subr-x")
+
+;; `zenit-lib-process'
+(declare-function zenit-call-process "zenit-lib-process")
+
+;; `zenit-lib-projects'
+(declare-function zenit-project-p "zenit-lib-projects")
+(declare-function zenit-project-ignored-p "zenit-lib-projects")
+
 
 (defvar zenit-projectile-cache-limit 10000
   "If any project cache surpasses this many files it is purged when

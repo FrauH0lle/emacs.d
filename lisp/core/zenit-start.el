@@ -1,5 +1,20 @@
 ;; lisp/core/zenit-start.el -*- lexical-binding: t; -*-
 
+(eval-when-compile
+  (require 'cl-lib))
+
+(defvar ffap-machine-p-known)
+
+;; `gcmh'
+(declare-function gcmh-mode "ext:gcmh")
+(defvar gcmh-idle-delay)
+(defvar gcmh-auto-idle-delay-factor)
+(defvar gcmh-high-cons-threshold)
+
+;; `subr-x'
+(declare-function string-remove-suffix "subr-x")
+
+
 ;;
 ;;; Custom hooks
 
@@ -197,7 +212,7 @@ If NOW is non-nil, load PACKAGES incrementally, in
       (while packages
         (let ((req (pop packages))
               idle-time)
-          (if (featurep req)
+          (if (and (locate-library (symbol-name req)) (featurep req))
               (zenit-log "start:inc-loader: Already loaded %s (%d left)" req (length packages))
             (condition-case-unless-debug e
                 (and
@@ -212,7 +227,9 @@ If NOW is non-nil, load PACKAGES incrementally, in
                               (inhibit-message t)
                               (file-name-handler-alist
                                (list (rassq 'jka-compr-handler file-name-handler-alist))))
-                          (require req nil t)
+                          (if (locate-library (symbol-name req))
+                              (require req nil t)
+                            (funcall req))
                           t))))
                  (push req packages))
               (error
@@ -233,7 +250,11 @@ If NOW is non-nil, load PACKAGES incrementally, in
 If this is a daemon session, load them all immediately instead."
   (when (numberp zenit-incremental-first-idle-timer)
     (if (zerop zenit-incremental-first-idle-timer)
-        (mapc #'require (cdr zenit-incremental-packages))
+        (mapc (lambda (p)
+                (if (locate-library (symbol-name p))
+                    (require p nil t)
+                  (funcall p)))
+              (cdr zenit-incremental-packages))
       (run-with-idle-timer zenit-incremental-first-idle-timer
                            nil #'zenit-load-packages-incrementally
                            (cdr zenit-incremental-packages) t))))
@@ -298,8 +319,18 @@ it."
     (add-hook 'hack-local-variables-hook #'zenit-run-local-var-hooks-h)))
 
 ;; Load site-lisp/init.el early, but only when not in CLI mode.
-(when (not (zenit-context-p 'cli))
-  (zenit-load (file-name-sans-extension (file-truename (file-name-concat zenit-local-conf-dir zenit-module-init-file))) t)
+(when (and (not noninteractive)
+           (not (or (zenit-context-p 'cli) (zenit-context-p 'compile))))
+  (eval-and-compile
+    (when (bound-and-true-p byte-compile-log-buffer)
+      (when (get-buffer-create byte-compile-log-buffer)
+        (with-current-buffer byte-compile-log-buffer
+          (insert (format "is noninteractive true? : %s \n" noninteractive))
+          (insert (format "is zenit-context-p definded?: %s\n" (fboundp 'zenit-context-p)))
+          (insert (format "(zenit-context-p 'compile) is: %s\n" (when (fboundp 'zenit-context-p) (zenit-context-p 'compile))))
+          (insert "oha, we are before loading the site-lisp/init.el\n")))))
+    (zenit-load (file-name-sans-extension (file-truename (file-name-concat zenit-local-conf-dir zenit-module-init-file))) t)
+
   ;; (let ((vc-handled-backends nil)
   ;;       (vc-follow-symlinks nil))
   ;; (load! (string-remove-suffix ".el" zenit-module-init-file) zenit-local-conf-dir t))
@@ -308,15 +339,15 @@ it."
 ;; Load the rest of site-lisp/ + modules if noninteractive and not in CLI mode.
 ;; The idea is to be able to use this file in Emacs' batch mode and initialize
 ;; the local configuraton.
-(when (and noninteractive (not (zenit-context-p 'cli)))
-  (let ((init-file (file-name-concat zenit-emacs-dir "init.el")))
-    (unless (file-exists-p init-file)
-      (user-error "Init file hasn't been generated. Did you forgot to run 'make refresh'?"))
-    (let (kill-emacs-query-functions
-          kill-emacs-hook)
-      ;; Loads modules, then site-lisp/config.el
-      (zenit-load init-file 'noerror)
-      (zenit-initialize-packages))))
+;; (when (and noninteractive (not (or (zenit-context-p 'cli) (zenit-context-p 'compile))))
+;;   (let ((init-file (file-name-concat zenit-emacs-dir "init.el")))
+;;     (unless (file-exists-p init-file)
+;;       (user-error "Init file hasn't been generated. Did you forgot to run 'make refresh'?"))
+;;     (let (kill-emacs-query-functions
+;;           kill-emacs-hook)
+;;       ;; Loads modules, then site-lisp/config.el
+;;       (zenit-load init-file 'noerror)
+;;       (zenit-initialize-packages))))
 
 ;; Entry point
 ;; HACK: This advice hijacks Emacs' initfile loader to accomplish the following:
@@ -326,66 +357,64 @@ it."
 ;;      and ~/_emacs) and spare us the IO of searching for them.
 ;;   3. Cut down on unnecessary logic in Emacs' bootstrapper.
 ;;   4. Offer a more user-friendly error state/screen.
-(unless (bound-and-true-p +esup-active-p)
-(define-advice startup--load-user-init-file (:override (&rest _) init-zenit 100)
-  (let ((debug-on-error-from-init-file nil)
-        (debug-on-error-should-be-set nil)
-        (debug-on-error-initial (if (eq init-file-debug t) 'startup init-file-debug))
-        ;; The init file might contain byte-code with embedded NULs, which can
-        ;; cause problems when read back, so disable nul byte detection. (Bug
-        ;; #52554)
-        (inhibit-null-byte-detection t))
-    (let ((debug-on-error debug-on-error-initial))
-      (condition-case-unless-debug error
-          (when init-file-user
-            (let ((init-file-name
-                   ;; This dynamically generated init file stores a lot of
-                   ;; precomputed information, such as module and package
-                   ;; autoloads, and values for expensive variables like
-                   ;; `zenit-modules', `zenit-disabled-packages', `load-path',
-                   ;; `auto-mode-alist', and `Info-directory-list'. etc.
-                   ;; Compiling them in one place is a big reduction in startup
-                   ;; time, and by keeping a history of them, you get a snapshot
-                   ;; of your config in time.
-                   (file-name-concat zenit-emacs-dir (if (bound-and-true-p +esup-active-p) "init.el" "init.elc"))))
-              ;; If `user-init-file' is t, then `load' will store the name of
-              ;; the next file it loads into `user-init-file'.
-              (setq user-init-file t)
-              (when init-file-name
-                (load init-file-name 'noerror 'nomessage 'nosuffix))
-              ;; (when init-file-name
-              ;;   (load (concat (string-remove-suffix ".elc" init-file-name)
-              ;;               ".el") 'noerror 'nomessage 'nosuffix))
-              ;; If it's still `t', then it failed to load the profile initfile.
-              (when (eq user-init-file t)
-                (signal 'zenit-nosync-error (list init-file-name)))
-              ;; If we loaded a compiled file, set `user-init-file' to the
-              ;; source version if that exists.
-              (setq user-init-file
-                    (concat (string-remove-suffix ".elc" user-init-file)
-                            ".el"))))
-        (error
-         (display-warning
-          'initialization
-          (format-message "\
-An error occurred while loading `%s':\n\n%s%s%s\n\n\
-To ensure normal operation, you should investigate and remove the
-cause of the error in your initialization file.  Start Emacs with
-the `--debug-init' option to view a complete error backtrace."
-                          user-init-file
-                          (get (car error) 'error-message)
-                          (if (cdr error) ": " "")
-                          (mapconcat (lambda (s) (prin1-to-string s t))
-                                     (cdr error) ", "))
-          :warning)
-         (setq init-file-had-error t)))
-      ;; If we can tell that the init file altered debug-on-error, arrange to
-      ;; preserve the value that it set up.
-      (or (eq debug-on-error debug-on-error-initial)
-          (setq debug-on-error-should-be-set t
-                debug-on-error-from-init-file debug-on-error)))
-    (when debug-on-error-should-be-set
-      (setq debug-on-error debug-on-error-from-init-file))))
-)
+;; (define-advice startup--load-user-init-file (:override (&rest _) init-zenit 100)
+;;   (let ((debug-on-error-from-init-file nil)
+;;         (debug-on-error-should-be-set nil)
+;;         (debug-on-error-initial (if (eq init-file-debug t) 'startup init-file-debug))
+;;         ;; The init file might contain byte-code with embedded NULs, which can
+;;         ;; cause problems when read back, so disable nul byte detection. (Bug
+;;         ;; #52554)
+;;         (inhibit-null-byte-detection t))
+;;     (let ((debug-on-error debug-on-error-initial))
+;;       (condition-case-unless-debug error
+;;           (when init-file-user
+;;             (let ((init-file-name
+;;                    ;; This dynamically generated init file stores a lot of
+;;                    ;; precomputed information, such as module and package
+;;                    ;; autoloads, and values for expensive variables like
+;;                    ;; `zenit-modules', `zenit-disabled-packages', `load-path',
+;;                    ;; `auto-mode-alist', and `Info-directory-list'. etc.
+;;                    ;; Compiling them in one place is a big reduction in startup
+;;                    ;; time, and by keeping a history of them, you get a snapshot
+;;                    ;; of your config in time.
+;;                    (file-name-concat zenit-emacs-dir (if (bound-and-true-p +esup-active-p) "init.el" "init.elc"))))
+;;               ;; If `user-init-file' is t, then `load' will store the name of
+;;               ;; the next file it loads into `user-init-file'.
+;;               (setq user-init-file t)
+;;               (when init-file-name
+;;                 (load init-file-name 'noerror 'nomessage 'nosuffix))
+;;               ;; (when init-file-name
+;;               ;;   (load (concat (string-remove-suffix ".elc" init-file-name)
+;;               ;;               ".el") 'noerror 'nomessage 'nosuffix))
+;;               ;; If it's still `t', then it failed to load the profile initfile.
+;;               (when (eq user-init-file t)
+;;                 (signal 'zenit-nosync-error (list init-file-name)))
+;;               ;; If we loaded a compiled file, set `user-init-file' to the
+;;               ;; source version if that exists.
+;;               (setq user-init-file
+;;                     (concat (string-remove-suffix ".elc" user-init-file)
+;;                             ".el"))))
+;;         (error
+;;          (display-warning
+;;           'initialization
+;;           (format-message "\
+;; An error occurred while booting Emacs `%s':\n\n%s%s%s\n\n\
+;; To ensure normal operation, you should investigate and remove the
+;; cause of the error in your Emacs config files.  Start Emacs with
+;; the `--debug-init' option to view a complete error backtrace."
+;;                           user-init-file
+;;                           (get (car error) 'error-message)
+;;                           (if (cdr error) ": " "")
+;;                           (mapconcat (lambda (s) (prin1-to-string s t))
+;;                                      (cdr error) ", "))
+;;           :warning)
+;;          (setq init-file-had-error t)))
+;;       ;; If we can tell that the init file altered debug-on-error, arrange to
+;;       ;; preserve the value that it set up.
+;;       (or (eq debug-on-error debug-on-error-initial)
+;;           (setq debug-on-error-should-be-set t
+;;                 debug-on-error-from-init-file debug-on-error)))
+;;     (when debug-on-error-should-be-set
+;;       (setq debug-on-error debug-on-error-from-init-file))))
 
 (provide 'zenit-start)

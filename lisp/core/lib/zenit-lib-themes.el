@@ -1,4 +1,11 @@
-;; lisp/core/lib/themes.el -*- lexical-binding: t; -*-
+;; lisp/core/lib/zenit-lib-themes.el -*- lexical-binding: t; -*-
+
+(eval-when-compile
+  (require 'cl-lib))
+
+;; `zenit-lib-fonts'
+(declare-function zenit/reload-font "zenit-lib-fonts")
+
 
 ;;;###autoload
 (defconst zenit-customize-theme-hook nil)
@@ -60,6 +67,8 @@ order issues, so you can use zenit-themes' API without worry."
   (declare (indent defun))
   `(custom-theme-set-faces! 'user ,@specs))
 
+(defvar zenit-theme)
+(defvar zenit-load-theme-hook)
 ;;;###autoload
 (defun zenit/reload-theme ()
   "Reload the current Emacs theme."
@@ -79,3 +88,5 @@ order issues, so you can use zenit-themes' API without worry."
                       (if (cdr themes) "s" ""))
               'face 'bold)
              (mapconcat #'prin1-to-string themes ", "))))
+
+(provide 'zenit-lib '(themes))

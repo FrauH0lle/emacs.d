@@ -1,4 +1,15 @@
-;; lisp/core/lib/debug.el -*- lexical-binding: t; -*-
+;; lisp/core/lib/zenit-lib-debug.el -*- lexical-binding: t; -*-
+
+(eval-when-compile
+  (require 'cl-lib))
+
+;; `cl-seq'
+(declare-function cl-remove-if-not "cl-seq")
+
+;;`profiler'
+(declare-function profiler-report "profiler")
+(declare-function profiler-stop "profiler")
+
 
 ;;
 ;;; Profiling
@@ -91,9 +102,11 @@ symbol and CDR is the value to set it to when `zenit-debug-mode' is activated.")
   (setq after-init-time (current-time))
   (let ((inhibit-startup-hooks nil))
     (mapc (lambda (hook)
-            (run-hook-wrapped hook #'zenit-try-run-hook))
+            (run-hook-wrapped hook #'zenit-run-hook))
           '(after-init-hook
             delayed-warnings-hook
             emacs-startup-hook
             tty-setup-hook
             window-setup-hook))))
+
+(provide 'zenit-lib '(debug))

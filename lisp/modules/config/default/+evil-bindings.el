@@ -1,6 +1,15 @@
 ;; config/default/+bindings.el -*- lexical-binding: t; -*-
 
-(when (modulep! :editor evil)
+(defvar +default-minibuffer-maps
+  (append '(minibuffer-local-map
+            minibuffer-local-ns-map
+            minibuffer-local-completion-map
+            minibuffer-local-must-match-map
+            minibuffer-local-isearch-map
+            read-expression-map))
+  "A list of all the keymaps used for the minibuffer.")
+(require 'zenit-keybinds)
+(eval-when! (modulep! :editor evil)
   ;; NOTE SPC u replaces C-u as the universal argument.
 
   ;; Minibuffer
@@ -219,31 +228,15 @@
 ;;
 ;;; <leader>
 
+;; HACK 2024-08-02: The declaration and autoload are necessary because
+;;   `general-simulate-key' calls `evil-set-command-property' wrapped in an
+;;   `eval-after-load'. Well, the byte-compiler does not like that, even though
+;;   my understanding is that code within `eval-after-load' does not get
+;;   compiled ...
+(declare-function evil-set-command-property "evil-common")
+(autoload #'evil-set-command-property "evil-common" nil t)
 ;; Make "," in normal and visual mode the localleader key
 (map! :nv "," (general-simulate-key "SPC m"))
-;; (autoload 'evil-set-command-property "evil")
-;;   (require 'evil)
-
-;; (eval-when-compile
-;;   (require 'evil)
-;;   (message "oh hey :)")
-;;   (autoload 'evil-set-command-property "evil"))
-;; (map! :nv "," (progn
-;;                 (eval-after-load 'evil
-
-;;                   '(evil-set-command-property
-;;                     (function general-simulate-SPC_m)
-;;                     :repeat 'general--simulate-repeat))
-;;                 (when nil
-;;                   (general-with-eval-after-load 'which-key
-;;                     (push
-;;                      '((nil . "general-simulate-SPC_m")
-;;                        nil)
-;;                      which-key-replacement-alist)))
-;;                 (defun general-simulate-SPC_m nil "Simulate 'SPC m' in the current context."
-;;                        (interactive)
-;;                        (general--simulate-keys nil "SPC m" 'nil nil t t))
-;;                 (function general-simulate-SPC_m)))
 
 (map! :leader
       :desc "Eval expression"       ":"    #'pp-eval-expression

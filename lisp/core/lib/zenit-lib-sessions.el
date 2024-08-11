@@ -1,9 +1,31 @@
-;; lisp/core/lib/sessions.el -*- lexical-binding: t; -*-
+;; lisp/core/lib/zenit-lib-sessions.el -*- lexical-binding: t; -*-
 
+(eval-when-compile
+  (require 'cl-lib))
+
+;; `bufferlo'
+(declare-function bufferlo-bookmark-frame-load "ext:bufferlo")
+(declare-function bufferlo-mode "ext:bufferlo")
+(defvar bufferlo-mode)
+
+;; `desktop'
+(declare-function desktop-full-file-name "desktop")
 (defvar desktop-base-file-name)
 (defvar desktop-dirname)
-(defvar desktop-restore-eager)
 (defvar desktop-file-modtime)
+(defvar desktop-restore-eager)
+
+;; `restart-emacs'
+(declare-function restart-emacs--restore-frames-using-desktop "ext:restart-emacs")
+
+;; `ui/workspaces'
+(defvar +workspaces-autosave)
+(defvar +workspaces-autosave-file)
+(defvar +workspaces-bookmark-alist)
+(defvar +workspaces-save-directory)
+
+;; `zenit-modules'
+(declare-function zenit-module-p "zenit-modules")
 
 
 ;;
@@ -25,7 +47,7 @@ NAME.
 
 If neither `bufferlo-mode' nor `desktop' is available, the
 function signals an error."
-  (cond ((and (modulep! :ui workspaces)
+  (cond ((and (zenit-module-p :ui 'workspaces)
               (require 'bufferlo nil t))
          (if name
              (expand-file-name name +workspaces-save-directory)
@@ -55,7 +77,7 @@ using `bufferlo-bookmark-tab-save' with the specified FILE. When
 If neither `bufferlo-mode' nor `desktop' is available, the
 function signals an error."
   (setq file (expand-file-name (or file (zenit-session-file))))
-  (cond ((and (modulep! :ui workspaces)
+  (cond ((and (zenit-module-p :ui 'workspaces)
               (require 'bufferlo nil t))
          (unless bufferlo-mode (bufferlo-mode +1))
          (setq +workspaces-autosave nil)
@@ -94,7 +116,7 @@ If neither `bufferlo-mode' nor `desktop' is available, the function
 signals an error."
   (setq file (expand-file-name (or file (zenit-session-file))))
   (message "Attempting to load %s" file)
-  (cond ((and (modulep! :ui workspaces)
+  (cond ((and (zenit-module-p :ui 'workspaces)
               (require 'bufferlo nil t))
          (unless bufferlo-mode (bufferlo-mode +1))
          (let ((bookmark-alist nil))
@@ -226,3 +248,5 @@ the --debug switch."
              (when (boundp 'chemacs-current-emacs-profile)
                (list "--with-profile" chemacs-current-emacs-profile))
              (list "-l" tmpfile)))))
+
+(provide 'zenit-lib '(sessions))

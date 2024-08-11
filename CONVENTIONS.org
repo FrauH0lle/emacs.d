@@ -1,0 +1,26 @@
+#+title: Conventions
+
+* Files in ~core/lib~
+- Are added to the load path but should be required via ~zenit-require~ as they
+  are sub-features of ~zenit-lib~
+- However, using them in ~declare-function~ requires their file name, e.g.
+  ~zenit-lib-files~
+* Async byte compilation
+- Order matters!
+  - Make sure macros are defined before their use
+  - If you use a function in a macro which gets expanded you might need
+    `eval-and-compile`
+    - See [[help:zenit--fn-crawl]]
+- The async process is non-interactive
+* Compile-time evaluation
+- Remember: ~eval-when-compile~ evaluates its body at compile time AND at load
+  time, like progn
+  - Same as ~(cl-eval-when (compile load) ...)~
+- ~(cl-eval-when (compile) ...)~ evaluates its body ONLY at compile time
+  - And needs ~cl-lib~ or ~cl-macs~ at compile time :)
+  - Thus, you need ~(eval-when-compile (require 'cl-lib))~ followed by
+    ~(cl-eval-when (compile) ...)~
+* modulep!
+- Use ~zenit-module-p~ instead for everything which is compiled BEFORE init.el
+  is processed. ~modulep!~ uses its own API to determine if modules are
+  available!

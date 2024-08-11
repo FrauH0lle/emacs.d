@@ -1,4 +1,37 @@
-;; lisp/core/lib/files.el -*- lexical-binding: t; -*-
+;; lisp/core/lib/zenit-lib-files.el -*- lexical-binding: t; -*-
+
+(eval-when-compile
+  (require 'cl-lib))
+
+;; `magit-git'
+(declare-function magit-toplevel "ext:magit-git")
+
+;; `magit-mode'
+(declare-function magit-refresh "ext:magit-mode")
+
+;; `projectile'
+(declare-function projectile-purge-file-from-cache "ext:projectile")
+(declare-function projectile-file-cached-p "ext:projectile")
+
+;; `recentf'
+(declare-function recentf-remove-if-non-kept "recentf")
+
+;; `saveplace'
+(declare-function save-place-forget-unreadable-files "saveplace")
+
+;; `zenit-lib-buffers'
+(declare-function zenit/kill-this-buffer-in-all-windows "zenit-lib-buffers")
+
+;; `zenit-lib-projects'
+(declare-function zenit-project-p "zenit-lib-projects")
+(declare-function zenit-project-root "zenit-lib-projects")
+
+;; `zenit-lib-process'
+(declare-function zenit-call-process "zenit-lib-process")
+
+;; `zenit-modules'
+(declare-function zenit-module-from-path "zenit-modules")
+
 
 (defun zenit--resolve-path-forms (spec &optional directory)
   "Converts a simple nested series of or/and forms into a series of
@@ -132,6 +165,7 @@ included."
         (mapcar map result)
       result)))
 
+(autoload #'zenit-module-context-with "zenit-modules" nil nil 'macro)
 ;;;###autoload
 (defun zenit-file-cookie-p (file &optional cookie null-value)
   "Returns the evaluated result of FORM in a ;;;###COOKIE FORM at
@@ -529,3 +563,5 @@ allowing the file to be modified with root privileges."
              (switch-to-buffer (find-file-noselect origin))
              (setq-local zenit--symlink-origin nil)))
           (t (message "Could not detect symlink.")))))
+
+(provide 'zenit-lib '(files))

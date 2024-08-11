@@ -2,9 +2,6 @@
 
 (defvar +popup--internal nil)
 
-;; Customized display buffer function
-(compile-along! "+popup-display-func")
-
 (defconst +popup-window-parameters '(ttl quit select modeline popup)
   "A list of custom parameters to be added to
 `window-persistent-parameters'. Modifying this has no
@@ -181,7 +178,17 @@ disabled when that window has been changed or closed."
 ;;
 ;;; Hacks
 
+;; Customized display buffer function
+;; PATCH 2024-08-02: `window'
+(el-patch-feature window)
+(compile-along! "+popup-display-func")
+(autoload! "+popup-display-func" #'+popup-display-buffer-stacked-side-window-fn)
+
 (compile-along! "+hacks")
+
+
 (add-hook! 'popper-mode-hook :append
   (load! "+hacks")
-  (load! "+popup-display-func"))
+  ;; (after! window
+  ;;   (load! "+popup-display-func"))
+  )

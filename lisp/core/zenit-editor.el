@@ -1,5 +1,34 @@
 ;; lisp/core/zenit-editor.el -*- lexical-binding: t; -*-
 
+(eval-when-compile
+  (require 'cl-lib))
+
+;; `tramp'
+(defvar tramp-backup-directory-alist)
+(defvar tramp-auto-save-directory)
+
+;; `tabify'
+(defvar tabify-regexp)
+
+;; `bookmark'
+(defvar bookmark-default-file)
+
+;; `evil'
+(defvar evil--jumps-jumping)
+
+;; `smie'
+(declare-function smie-config-guess "smie")
+
+;; `zenit-lib-buffers'
+(declare-function zenit-visible-buffers "zenit-lib-buffers")
+
+;; `zenit-lib-ui'
+(declare-function zenit-recenter-a "zenit-lib-ui")
+(declare-function zenit-shut-up-a "zenit-lib-ui")
+
+;; `zenit-start'
+(declare-function zenit-load-packages-incrementally "zenit-start")
+
 
 (defvar zenit-detect-indentation-excluded-modes
   '(pascal-mode
@@ -9,7 +38,6 @@
     org-mode)
   "A list of major modes where indentation shouldn't be
  auto-detected.")
-
 
 (defvar-local zenit-inhibit-indent-detection nil
   "A buffer-local flag that indicates whether `dtrt-indent' should

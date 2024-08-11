@@ -1,4 +1,4 @@
-;; lisp/core/lib/regexp.el -*- lexical-binding: t; -*-
+;; lisp/core/lib/zenit-lib-regexp.el -*- lexical-binding: t; -*-
 
 ;;;###autoload
 (defun zenit-pcre-quote (str)
@@ -11,3 +11,5 @@
             (push c quoted))
           str)
     (concat (nreverse quoted))))
+
+(provide 'zenit-lib '(regexp))

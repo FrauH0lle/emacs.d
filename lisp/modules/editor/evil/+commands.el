@@ -1,5 +1,8 @@
 ;; editor/evil/+commands.el -*- lexical-binding: t; -*-
 
+(eval-when-compile
+  (require 'evil-ex)
+  (require 'zenit-modules))
 
 ;; Editing
 (evil-ex-define-cmd "R[ead]"       #'+evil:read)

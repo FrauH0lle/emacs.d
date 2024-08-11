@@ -1,4 +1,8 @@
-;; lisp/core/lib/plist.el -*- lexical-binding: t; -*-
+;; lisp/core/lib/zenit-lib-plist.el -*- lexical-binding: t; -*-
+
+(eval-when-compile
+  (require 'cl-lib))
+
 
 ;;
 ;;; Library
@@ -67,3 +71,5 @@ values is returned. Loops infinitely when the list is circular."
     (while (and (consp plist) (not (keywordp (car plist))))
       (push (pop plist) result))
     (nreverse result)))
+
+(provide 'zenit-lib '(plist))

@@ -1,4 +1,11 @@
-;; lisp/core/lib/fonts.el -*- lexical-binding: t; -*-
+;; lisp/core/lib/zenit-lib-fonts.el -*- lexical-binding: t; -*-
+
+(eval-when-compile
+  (require 'cl-lib))
+
+;; `zenit-ui'
+(declare-function zenit-init-fonts-h "zenit-ui")
+
 
 ;;;###autoload
 (defvar zenit-font-increment 2
@@ -144,7 +151,7 @@ Assuming it has been adjusted via `zenit/increase-font-size' and
                (/= text-scale-mode-amount 0))
       (text-scale-set 0)
       (setq success t))
-    (cond (zenit-big-font-mode
+    (cond ((bound-and-true-p zenit-big-font-mode)
            (message "Disabling `zenit-big-font-mode'")
            (zenit-big-font-mode -1)
            (setq success t))
@@ -174,3 +181,5 @@ font). Also resizees `zenit-variable-pitch-font' and
     (zenit-adjust-font-size nil)
     (when zenit-big-font-mode
       (zenit-adjust-font-size zenit-big-font-increment))))
+
+(provide 'zenit-lib '(fonts))

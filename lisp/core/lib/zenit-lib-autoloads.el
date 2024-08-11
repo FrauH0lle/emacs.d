@@ -1,4 +1,4 @@
-;; lisp/core/lib/autoloads.el -*- lexical-binding: t; no-byte-compile: t; -*-
+;; lisp/core/lib/zenit-lib-autoloads.el -*- lexical-binding: t; no-byte-compile: t; -*-
 
 (defvar zenit-autoloads-excluded-packages '()
   "Which packages to exclude from autoloads files.
@@ -35,8 +35,13 @@ autoloads.")
   (condition-case-unless-debug e
       (let ((byte-compile-warnings (if init-file-debug byte-compile-warnings
                                      '(not make-local noruntime unresolved))))
-        (and (byte-compile-file file)
-             (load (byte-compile-dest-file file) nil t)))
+        (and (pcase-let ((`(,status . ,msg)
+                          (async-get (zenit-async-byte-compile-file file :req-core t :req-core-libs '(files) :req-extra '(cl-lib zenit-modules zenit-use-package zenit-el-patch zenit-keybinds) :modulep t))))
+               (when msg
+                 (print! msg))
+               status)
+             ;; (load (byte-compile-dest-file file) nil t)
+             ))
     (error
      (delete-file (byte-compile-dest-file file))
      (signal 'zenit-autoload-error (list file e)))))
@@ -189,7 +194,10 @@ non-nil, treat FILES as pre-generated autoload files instead."
                          load-path)))
             (condition-case _
                 (while t
-                  (push (zenit-autoloads--cleanup-form (read (current-buffer))
-                                                       (not literal))
-                        autoloads))
+                  (let ((form (zenit-autoloads--cleanup-form (read (current-buffer))
+                                                             (not literal))))
+                    (unless (member form autoloads)
+                      (push form autoloads))))
               (end-of-file))))))))
+
+(provide 'zenit-lib '(autoloads))

@@ -45,4 +45,4 @@ LSP/eglot-powered buffers.")
 
 (eval-if! (modulep! +eglot)
     (include! "+eglot")
-  (load! "+lsp"))
+  (include! "+lsp"))

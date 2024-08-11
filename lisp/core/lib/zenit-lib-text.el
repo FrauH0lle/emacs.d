@@ -1,4 +1,22 @@
-;; lisp/core/lib/text.el -*- lexical-binding: t; -*-
+;; lisp/core/lib/zenit-lib-text.el -*- lexical-binding: t; -*-
+
+(eval-when-compile
+  (require 'cl-lib))
+
+;; `dtrt-indent'
+(defvar dtrt-indent-hook-mapping-list)
+
+;; `editorconfig'
+(declare-function editorconfig-set-indentation "ext:editorconfig")
+
+;; `evil'
+(declare-function evil-visual-state-p "ext:evil-states")
+(defvar evil-visual-beginning)
+(defvar evil-visual-end)
+
+;; `ws-butler'
+(declare-function ws-butler-mode "ext:ws-butler")
+
 
 (defvar-local zenit--sppss-memo-last-point nil)
 (defvar-local zenit--sppss-memo-last-result nil)
@@ -241,7 +259,7 @@ EOL is the end of the line position."
 beginning of the line. The opposite of
 `zenit/forward-to-last-non-comment-or-eol'."
   (interactive "^d")
-  (let ((pt (point)))
+  (let ((pt (or point (point))))
     (cl-destructuring-bind (bol bot _eot _eol)
         (zenit--bol-bot-eot-eol pt)
       (cond ((> pt bot)
@@ -408,3 +426,5 @@ i.e. disables `ws-butler-mode' in the current buffer."
 (defun zenit-disable-show-trailing-whitespace-h ()
   "Disable `show-trailing-whitespace' in the current buffer."
   (setq-local show-trailing-whitespace nil))
+
+(provide 'zenit-lib '(text))

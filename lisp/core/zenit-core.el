@@ -32,7 +32,40 @@
 ;;     X On first switched-to buffer: `zenit-first-buffer-hook'
 ;;     X On first opened file:        `zenit-first-file-hook'
 
-(eval-when-compile (require 'subr-x))
+(eval-when-compile
+  (require 'cl-lib))
+
+;; `async'
+(defvar async-byte-compile-log-file)
+
+;; `desktop'
+(defvar desktop-dirname)
+(defvar desktop-base-file-name)
+(defvar desktop-base-lock-name)
+
+(defvar pcache-directory)
+(defvar request-storage-directory)
+
+;; `auth-source'
+(defvar auth-sources)
+
+;; `comp'
+(defvar native-comp-async-report-warnings-errors)
+(defvar native-comp-warning-on-missing-source)
+(defvar comp-num-cpus)
+(defvar native-comp-async-jobs-number)
+
+;; `gnutls'
+(defvar gnutls-verify-error)
+(defvar gnutls-algorithm-priority)
+(defvar gnutls-min-prime-bits)
+(defvar gnutls-verify-error)
+
+(defvar tls-checktrust)
+(defvar tls-program)
+
+;; `warnings'
+(defvar warning-suppress-types)
 
 
 ;;
@@ -87,6 +120,7 @@
 ;; Load the standard library early, so the macros and functions can be used for
 ;; the configuration.
 (add-to-list 'load-path (file-name-directory load-file-name))
+(add-to-list 'load-path (file-name-concat (file-name-directory load-file-name) "lib"))
 (require 'zenit-lib)
 
 
@@ -306,7 +340,7 @@ handling encrypted or compressed files, among other things."
 
     ;; Unset a non-trivial list of command line options that aren't relevant
     ;; to our current OS, but `command-line-1' still processes.
-    (eval-unless! zenit--system-macos-p
+    (eval-unless! (featurep :system 'macos)
       (setq command-line-ns-option-alist nil))
     (eval-unless! (memq initial-window-system '(x pgtk))
       (setq command-line-x-option-alist nil))))
@@ -500,7 +534,7 @@ site-lisp/config.el are loaded."
 (defcustom zenit-after-init-hook ()
   "A hook run once core, modules and local config are loaded.
 
-This triggers at the absolutel atest point in the eager startup
+This triggers at the absolute latest point in the eager startup
 process, and runs in both interactive and non-interactive
 sessions, so guard hooks appropriately against `noninteractive'."
   :group 'zenit

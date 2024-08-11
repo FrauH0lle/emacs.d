@@ -4,7 +4,7 @@
   "If non-nil, the package management system has been
 initialized.")
 
-(defvar zenit-mandatory-packages '(straight compat)
+(defvar zenit-mandatory-packages '(straight async)
   "A list of packages that must be installed (and will be
 auto-installed if missing) and shouldn't be deleted.")
 

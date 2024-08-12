@@ -101,7 +101,7 @@ Fixes #3939: unsortable dired entries on Windows."
 
 
 (use-package! fd-dired
-  :when zenit-projectile-fd-binary
+  :when zenit-fd-executable
   :defer t
   :init
   (global-set-key [remap find-dired] #'fd-dired)

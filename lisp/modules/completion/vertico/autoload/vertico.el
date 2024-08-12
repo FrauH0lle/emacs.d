@@ -224,8 +224,8 @@ See URL `https://github.com/minad/consult/issues/770'."
           ((bin (if (ignore-errors (file-remote-p default-directory nil t))
                     (cl-find-if (zenit-rpartial #'executable-find t)
                                 (list "fdfind" "fd"))
-                  zenit-projectile-fd-binary))
-           (version (with-memoization zenit-projects--fd-version
+                  zenit-fd-executable))
+           (version (with-memoization (get 'zenit-fd-executable 'version)
                       (cadr (split-string (cdr (zenit-call-process bin "--version"))
                                           " " t))))
            ((ignore-errors (version-to-list version))))

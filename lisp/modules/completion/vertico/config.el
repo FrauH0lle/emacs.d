@@ -141,9 +141,9 @@
         consult-async-input-debounce 0.1)
   (unless +vertico-consult-fd-args
     (setq +vertico-consult-fd-args
-          (if zenit-projectile-fd-binary
+          (if zenit-fd-executable
               (format "%s --color=never -i -H -E .git --regex %s"
-                      zenit-projectile-fd-binary
+                      zenit-fd-executable
                       (eval-if! zenit--system-windows-p "--path-separator=/" ""))
             consult-find-args)))
 

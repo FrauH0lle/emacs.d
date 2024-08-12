@@ -28,17 +28,27 @@ quitting Emacs.")
   "If non-nil, non-projects are purged from the cache on
 `kill-emacs-hook'.")
 
-(defvar zenit-projectile-fd-binary
-  (cl-find-if #'executable-find (list "fdfind" "fd"))
-  "The filename of the `fd' executable. On some distros it's
-\\='fdfind\\=' (ubuntu, debian, and derivatives). On most it's
-\\='fd\\='.")
+(defvar zenit-fd-executable (cl-find-if #'executable-find (list "fdfind" "fd"))
+  "The filename of the `fd' executable.
 
-(defvar zenit-projects--fd-version nil)
+On some distros it's \\='fdfind\\=' (ubuntu, debian, and
+derivatives). On most it's \\='fd\\='.")
 
+(defvar zenit-ripgrep-executable (executable-find "rg")
+  "The filename of the Ripgrep executable.
+
+Is nil if no executable is found in your PATH during startup.")
 
 ;;
 ;;; Packages
+
+(use-package! project
+  :defer t
+  :init
+  (setq project-list-file (file-name-concat zenit-cache-dir "projects"))
+  :config
+  (add-to-list 'project-vc-extra-root-markers ".jj"))
+
 
 (use-package! projectile
   :commands (projectile-project-root
@@ -57,7 +67,8 @@ quitting Emacs.")
         projectile-kill-buffers-filter 'kill-only-files
         projectile-known-projects-file (concat zenit-cache-dir "projectile.projects")
         projectile-ignored-projects '("~/")
-        projectile-ignored-project-function #'zenit-project-ignored-p)
+        projectile-ignored-project-function #'zenit-project-ignored-p
+        projectile-fd-executable zenit-fd-executable)
 
   (global-set-key [remap evil-jump-to-tag] #'projectile-find-tag)
   (global-set-key [remap find-tag]         #'projectile-find-tag)
@@ -94,21 +105,14 @@ quitting Emacs.")
   ;;   `projectile-project-root-files-top-down-recurring' but doesn't have a
   ;;   parent directory with the same file.
   ;;
-  ;; In the interest of performance, we reduce the number of project root marker
-  ;; files/directories projectile searches for when resolving the project root.
-  (setq projectile-project-root-files-bottom-up
-        (append '(".projectile"  ; projectile's root marker
-                  ".project"     ; project marker
-                  ".git")        ; Git VCS root dir
-                (when (executable-find "hg")
-                  '(".hg"))      ; Mercurial VCS root dir
-                (when (executable-find "bzr")
-                  '(".bzr")))    ; Bazaar VCS root dir
-        ;; This will be filled by other modules. We build this list manually so
-        ;; projectile doesn't perform so many file checks every time it resolves
-        ;; a project's root -- particularly when a file has no project.
-        projectile-project-root-files '()
+  ;; These will be filled by other modules. We build this list manually so
+  ;; projectile doesn't perform so many file checks every time it resolves a
+  ;; project's root -- particularly when a file has no project.
+  (setq projectile-project-root-files '()
         projectile-project-root-files-top-down-recurring '("Makefile"))
+
+  ;; Adds a more editor/plugin-agnostic project marker.
+  (add-to-list 'projectile-project-root-files-bottom-up ".project")
 
   (push (abbreviate-file-name zenit-local-dir) projectile-globally-ignored-directories)
 
@@ -119,8 +123,9 @@ quitting Emacs.")
   ;; Support the more generic .project files as an alternative to .projectile
   (defadvice! zenit--projectile-dirconfig-file-a ()
     :override #'projectile-dirconfig-file
-    (cond ((file-exists-p! (or ".projectile" ".project") (projectile-project-root)))
-          ((expand-file-name ".project" (projectile-project-root)))))
+    (let ((proot (projectile-project-root)))
+      (cond ((file-exists-p! (or projectile-dirconfig-file ".project") proot))
+            ((expand-file-name ".project" proot)))))
 
   ;; Disable commands that we provide an alternative for.
   (put 'projectile-ag 'disabled "Use +default/search-project instead")
@@ -165,14 +170,15 @@ c) are not valid projectile projects."
                  and do (remhash proot projectile-project-type-cache))
         (projectile-serialize-cache))))
 
-  ;; Some MSYS utilities auto expanded the `/' path separator, so we need to prevent it.
+  ;; HACK: Some MSYS utilities auto expanded the `/' path separator, so we need
+  ;;   to prevent it.
   (eval-when! zenit--system-windows-p
     (setenv "MSYS_NO_PATHCONV" "1") ; Fix path in Git Bash
     (setenv "MSYS2_ARG_CONV_EXCL" "--path-separator")) ; Fix path in MSYS2
 
   ;; HACK Don't rely on VCS-specific commands to generate our file lists. That's
-  ;;      7 commands to maintain, versus the more generic, reliable and
-  ;;      performant `fd' or `ripgrep'.
+  ;;   7 commands to maintain, versus the more generic, reliable and performant
+  ;;   `fd' or `ripgrep'.
   (defadvice! zenit--only-use-generic-command-a (fn vcs)
     "Only use `projectile-generic-command' for indexing project files.
 And if it's a function, evaluate it."
@@ -181,16 +187,19 @@ And if it's a function, evaluate it."
              (not (file-remote-p default-directory)))
         (funcall projectile-generic-command vcs)
       (let ((projectile-git-submodule-command
-             (get 'projectile-git-submodule-command 'initial-value)))
+             (or projectile-git-submodule-command
+                 (get 'projectile-git-submodule-command 'initial-value))))
         (funcall fn vcs))))
 
-  ;; `projectile-generic-command' doesn't typically support a function, but my
-  ;; `zenit--only-use-generic-command-a' advice allows this. I do it this
-  ;; way so that projectile can adapt to remote systems (over TRAMP), rather
-  ;; then look for fd/ripgrep on the remote system simply because it exists on
-  ;; the host. It's faster too.
+  ;; HACK: `projectile-generic-command' doesn't typically support a function,
+  ;;   but the `zenit--only-use-generic-command-a' advice allows this. I do it
+  ;;   this way so that projectile can adapt to remote systems (over TRAMP),
+  ;;   rather then look for fd/ripgrep on the remote system simply because it
+  ;;   exists on the host. It's faster too.
   (put 'projectile-git-submodule-command 'initial-value projectile-git-submodule-command)
   (setq projectile-git-submodule-command nil
+        ;; Include and follow symlinks in file listings.
+        projectile-git-fd-args (concat "-L -tl " projectile-git-fd-args " --ignore-file .project")
         projectile-indexing-method 'hybrid
         projectile-generic-command
         (lambda (_)
@@ -199,23 +208,38 @@ And if it's a function, evaluate it."
           ;; it respects .gitignore. This is recommended in the projectile docs.
           (cond
            ((when-let*
-                ((bin (if (ignore-errors (file-remote-p default-directory nil t))
-                          (cl-find-if (zenit-rpartial #'executable-find t)
-                                      (list "fdfind" "fd"))
-                        zenit-projectile-fd-binary))
+                ((zenit-fd-executable)
+                 (projectile-git-use-fd)
                  ;; REVIEW Temporary fix for #6618. Improve me later.
-                 (version (with-memoization zenit-projects--fd-version
-                            (cadr (split-string (cdr (zenit-call-process bin "--version"))
+                 (version (with-memoization (get 'zenit-fd-executable 'version)
+                            (cadr (split-string (cdr (zenit-call-process zenit-fd-executable "--version"))
                                                 " " t))))
                  ((ignore-errors (version-to-list version))))
-              (concat (format "%s . -0 -H --color=never --type file --type symlink --follow --exclude .git %s"
-                              bin (if (version< version "8.3.0")
-                                      "" "--strip-cwd-prefix"))
-                      (eval-if! zenit--system-windows-p " --path-separator=/"))))
+              (string-join
+               (delq
+                nil (list zenit-fd-executable "."
+                          (if (version< version "8.3.0")
+                              (replace-regexp-in-string "--strip-cwd-prefix" "" projectile-git-fd-args t t)
+                            projectile-git-fd-args)
+                          (when project-vc-backend-markers-alist
+                            (mapconcat (fn! (format "-E %s" (shell-quote-argument (cdr %))))
+                                       project-vc-backend-markers-alist
+                                       " "))
+                          (if zenit--system-windows-p " --path-separator=/" "")))
+               " ")))
            ;; Otherwise, resort to ripgrep, which is also faster than find
-           ((executable-find "rg" t)
-            (concat "rg -0 --files --follow --color=never --hidden -g!.git"
-                    (eval-if! zenit--system-windows-p " --path-separator=/")))
+           (zenit-ripgrep-executable
+            (string-join
+             (delq
+              nil (list zenit-ripgrep-executable
+                        "-0 --files --follow --color=never --hidden"
+                        (when project-vc-backend-markers-alist
+                          (mapconcat (fn! (format "-g!%s" (shell-quote-argument (cdr %))))
+                                     project-vc-backend-markers-alist
+                                     " "))
+                        (if zenit--system-windows-p " --path-separator=/")))
+             " "))
+           ((not zenit--system-windows-p) "find . -type f | cut -c3- | tr '\\n' '\\0'")
            ("find . -type f -print0"))))
 
   (defadvice! zenit--projectile-default-generic-command-a (fn &rest args)

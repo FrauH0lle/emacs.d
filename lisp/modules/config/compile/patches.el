@@ -79,7 +79,7 @@ display a message."
                              (when (or (file-in-directory-p ,source-file (file-name-concat user-emacs-directory "lisp" "core/"))
                                        (file-in-directory-p ,source-file (file-name-concat user-emacs-directory "lisp" "modules/"))
                                        (file-in-directory-p ,source-file (file-name-concat user-emacs-directory "site-lisp"))
-                                       (equal ,source-file (file-name-concat user-emacs-directory "init.el")))
+                                       (equal (expand-file-name ,source-file) (expand-file-name (file-name-concat user-emacs-directory "init.el"))))
                                (message "Zenit Emacs file %s detected! Loading compiler setup!" ,source-file)
                                ,(zenit-native-comp-helper source-file)))
                            (message "Compiling %s..." ,source-file)

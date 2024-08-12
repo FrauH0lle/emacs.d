@@ -138,26 +138,37 @@
          (signal 'zenit-error (list 'byte-compile e)))))))
 
 (defun zenit-cli-clean-compiled-files ()
-  "Delete all the compiled elc eln files in your Emacs configuration
-and private module.
+  "Delete all the compiled elc and eln files in your Emacs
+configuration and private module.
 
 This does not include third party packages.'"
   (print! (start "Cleaning .elc and .eln files"))
-  (print-group!
-   (cl-loop with default-directory = zenit-emacs-dir
-            with success = nil
-            for path
-            in (append (zenit-files-in zenit-local-conf-dir :match "\\.el$")
-                       (zenit-files-in zenit-core-dir :match "\\.el$")
-                       (zenit-files-in zenit-modules-dirs :match "\\.el$"))
-            if (file-exists-p (byte-compile-dest-file path))
-            do (delete-file (byte-compile-dest-file path))
-            and do (print! (success "Deleted %s") (relpath (byte-compile-dest-file path)))
-            and do (setq success t)
-            if (file-exists-p (zenit--eln-output-file (zenit--eln-file-name path)))
-            do (delete-file (zenit--eln-output-file (zenit--eln-file-name path)))
-            and do (print! (success "Deleted %s") (relpath (zenit--eln-output-file (zenit--eln-file-name path))))
-            finally do
-            (print! (if success
-                        (success "All elc and eln files deleted")
-                      (item "No files to clean"))))))
+  (let ((success nil))
+    (print-group!
+      (cl-loop with default-directory = zenit-emacs-dir
+               with el-files = (append (zenit-files-in zenit-local-conf-dir :match "\\.el$")
+                                       (zenit-files-in zenit-core-dir :match "\\.el$")
+                                       (zenit-files-in zenit-modules-dirs :match "\\.el$"))
+               for path in el-files
+               if (file-exists-p (byte-compile-dest-file path))
+               do (delete-file (byte-compile-dest-file path))
+               and do (print! (success "Deleted %s") (relpath (byte-compile-dest-file path)))
+               and do (setq success t)
+               if (file-exists-p (zenit--eln-output-file (zenit--eln-file-name path)))
+               do (delete-file (zenit--eln-output-file (zenit--eln-file-name path)))
+               and do (print! (success "Deleted %s") (relpath (zenit--eln-output-file (zenit--eln-file-name path)))))
+
+      (cl-loop with default-directory = zenit-emacs-dir
+               with elc-files = (append (zenit-files-in zenit-local-conf-dir :match "\\.elc$")
+                                        (zenit-files-in zenit-core-dir :match "\\.elc$")
+                                        (zenit-files-in zenit-modules-dirs :match "\\.elc$"))
+               for path in elc-files
+               if (and (string-suffix-p ".elc" path)
+                       (file-exists-p path))
+               do (delete-file path)
+               and do (print! (success "Deleted %s") (relpath path))
+               and do (setq success t))
+
+      (print! (if success
+                  (success "All elc and eln files deleted")
+                (item "No files to clean"))))))

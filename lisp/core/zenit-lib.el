@@ -27,8 +27,11 @@
 (defvar zenit-local-conf-dir)
 (defvar zenit-modules-dir)
 
-;; `zenit-lib-files'
+;; `zenit-lib-compile'
 (declare-function zenit-async-byte-compile-file "zenit-lib-compile")
+(autoload #'zenit-async-byte-compile-file "zenit-lib-compile")
+(declare-function zenit-compile-generate-args "zenit-lib-compile")
+(autoload #'zenit-compile-generate-args "zenit-lib-compile")
 
 ;; `zenit-lib-files'
 (declare-function zenit-files-in "zenit-lib-files")
@@ -857,7 +860,6 @@ exist."
        (eval-when-compile
          (setq zenit-include--current-file zenit-include--previous-file)))))
 
-(autoload #'zenit-async-byte-compile-file "zenit-lib-compile")
 (defmacro compile-along! (filename &optional path)
   "Compile FILENAME along the file this macro was called from.
 
@@ -876,23 +878,15 @@ getting compiled."
            (files))
       (if (not (file-directory-p filename))
           `(eval-when-compile
-             (async-get (zenit-async-byte-compile-file
-                         ,(file-name-with-extension filename ".el")
-                         :req-core-lib t :req-core t
-                         :req-core-libs 'all
-                         :req-extra '(cl-lib zenit-modules zenit-use-package
-                                      zenit-el-patch zenit-keybinds
-                                      zenit-projects zenit-editor)
-                         :modulep t)))
+             (async-get (apply #'zenit-async-byte-compile-file
+                               '(,(file-name-with-extension filename ".el")
+                                 ,@(zenit-compile-generate-args
+                                    (file-name-with-extension filename ".el"))))))
         (dolist (f (zenit-files-in filename :match ".el$" :depth 0) files)
-          (push `(async-get (zenit-async-byte-compile-file
-                             ,(file-name-with-extension f ".el")
-                             :req-core-lib t :req-core t
-                             :req-core-libs 'all
-                             :req-extra '(cl-lib zenit-modules zenit-use-package
-                                          zenit-el-patch zenit-keybinds
-                                          zenit-projects zenit-editor)
-                             :modulep t))
+          (push `(async-get (apply #'zenit-async-byte-compile-file
+                                   '(,(file-name-with-extension f ".el")
+                                     ,@(zenit-compile-generate-args
+                                        (file-name-with-extension f ".el")))))
                 files))
         `(eval-when-compile
            ,@files)))))

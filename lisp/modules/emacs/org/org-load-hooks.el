@@ -1,6 +1,5 @@
 ;; emacs/org/org-load-hooks.el -*- lexical-binding: t; -*-
 
-
 (defun +org-init-org-directory-h ()
   (unless org-directory
     (setq-default org-directory "~/org"))

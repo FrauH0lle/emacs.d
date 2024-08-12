@@ -1,5 +1,8 @@
 ;; emacs/eshell/config.el -*- lexical-binding: t; -*-
 
+(eval-when-compile
+  (require 'cl-lib))
+
 ;; See:
 ;;   + `+eshell/here': open eshell in the current window
 ;;   + `+eshell/toggle': toggles an eshell popup
@@ -92,7 +95,6 @@ You should use `set-eshell-alias!' to change this.")
   (eval-when! (modulep! :ui workspaces)
     (cl-eval-when (compile)
       (require 'el-patch)
-      (require 'zenit-el-patch)
       (require 'esh-mode))
 
     (el-patch-feature esh-mode)
@@ -199,7 +201,6 @@ You should use `set-eshell-alias!' to change this.")
 ;;   probably outdated.
 (cl-eval-when (compile)
   (require 'el-patch)
-  (require 'zenit-el-patch)
   (require 'eshell-did-you-mean))
 
 (el-patch-feature eshell-did-you-mean)

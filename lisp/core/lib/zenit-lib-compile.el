@@ -14,8 +14,6 @@
 
 ;;;###autoload
 (defun zenit-compile-generate-args (target)
-  (message "target is: %s "(expand-file-name target))
-  (message "assumed init.el is: %s "(expand-file-name (file-name-concat user-emacs-directory "init.el")))
   (cond ((string-suffix-p "zenit-lib.el" target)
          nil)
         ((string-suffix-p "zenit-core.el" target)
@@ -45,7 +43,7 @@
          '(:req-core-lib t :req-core t :req-core-libs all
            :req-extra (cl-lib zenit-modules zenit-use-package zenit-el-patch
                               zenit-keybinds zenit-projects zenit-editor)
-           :modulep t))
+           :modulep t :autoloads t))
         (t
          nil)))
 
@@ -66,24 +64,34 @@
                                    (req-core nil)
                                    (req-core-libs nil)
                                    (req-extra nil)
-                                   (modulep nil))
+                                   (modulep nil)
+                                   (autoloads nil))
   `(progn
      ,(when req-core-lib
         `(require 'zenit-lib))
      ,(when (or req-core req-core-libs)
         `(require 'zenit-core))
-     ,(when req-core-libs
-        (cond ((eq req-core-libs 'all)
-               `(progn ,@(cl-loop for lib in (zenit-files-in (file-name-concat zenit-core-dir "lib") :match ".el$")
-                                  collect `(zenit-require 'zenit-lib ',(intern (string-remove-prefix "zenit-lib-" (file-name-base lib)))))))
-              (t
-               `(progn ,@(cl-loop for lib in (ensure-list req-core-libs)
-                                  collect `(zenit-require 'zenit-lib ',lib))))))
-     ,(when req-extra
-        `(progn ,@(cl-loop for lib in (ensure-list req-extra)
-                           collect `(require ',lib))))
+     ,@(when req-core-libs
+         (cond ((eq req-core-libs 'all)
+                (cl-loop for lib in (zenit-files-in (file-name-concat zenit-core-dir "lib") :match ".el$")
+                         collect `(zenit-require 'zenit-lib ',(intern (string-remove-prefix "zenit-lib-" (file-name-base lib))))))
+               (t
+                (cl-loop for lib in (ensure-list req-core-libs)
+                         collect `(zenit-require 'zenit-lib ',lib)))))
+     ,@(when req-extra
+         (cl-loop for lib in (ensure-list req-extra)
+                  collect `(require ',lib)))
      ,@(when modulep
          (zenit-compile--generate-modules))
+
+     ,@(when autoloads
+         (let (forms)
+           (dolist (file '("zenit-autoloads.el" "zenit-packages-autoloads.el") forms)
+             (let ((fname (file-name-concat user-emacs-directory ".local" file)))
+               (when (file-exists-p fname)
+                 (push `(load ,fname) forms))))
+           (nreverse forms)))
+
      (when (featurep 'zenit-core)
        (zenit-context-push 'compile))
 
@@ -106,7 +114,8 @@
           (req-core nil)
           (req-core-libs nil)
           (req-extra nil)
-          (modulep nil))
+          (modulep nil)
+          (autoloads nil))
   "Byte compile Lisp code FILE asynchronously.
 
 By setting the following keyword arguments, you can control which
@@ -127,12 +136,12 @@ usually enough."
       ,(async-inject-variables async-bytecomp-load-variable-regexp)
       ,(async-inject-variables "\\`zenit-modules\\'")
       ,(async-inject-variables "\\`zenit-disabled-packages\\'")
-      (setq load-prefer-newer t)
+      ;; (setq load-prefer-newer t)
       (setq byte-compile-warnings t)
       ,(zenit-compile-setup-env
         :req-core-lib req-core-lib :req-core req-core
-        :req-core-libs req-core-libs :req-extra req-extra :modulep modulep)
-(message "for file %s (zenit-context-p 'compile) is: %s" ,file (when (fboundp 'zenit-context-p) (zenit-context-p 'compile)))
+        :req-core-libs req-core-libs :req-extra req-extra
+        :modulep modulep :autoloads autoloads)
       (let ((default-directory ,default-directory)
             error-data status compiler-log)
         (pcase (byte-compile-file ,file)
@@ -144,9 +153,6 @@ usually enough."
                              (buffer-substring-no-properties (point-min) (point-max))))
           (unless (string= error-data "")
             (with-temp-buffer
-              (insert (format "is noninteractive true? : %s \n" noninteractive))
-              (insert (format "for file %s is zenit-context-p definded?: %s\n" ,file (fboundp 'zenit-context-p)))
-              (insert (format "for file %s (zenit-context-p 'compile) is: %s\n" ,file (when (fboundp 'zenit-context-p) (zenit-context-p 'compile))))
               (insert error-data ?\n)
               (goto-char (point-min))
               (insert ,file ":\n")
@@ -164,7 +170,7 @@ usually enough."
 ;;     (message "comp: %s" (async-get (zenit-async-byte-compile-file filename :req-core t)))))
 
 ;; (pcase-let ((`(,status . ,msg)
-             ;; (async-get (zenit-async-byte-compile-file "~/.emacs.d/lisp/core/zenit-core.el" :req-core-libs '(files)))))
+;; (async-get (zenit-async-byte-compile-file "~/.emacs.d/lisp/core/zenit-core.el" :req-core-libs '(files)))))
 ;;   (when status (message "all good!"))
 ;;   (when msg (message "%s" msg))
 ;;   )

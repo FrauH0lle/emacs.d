@@ -10,7 +10,6 @@
 
 (cl-eval-when (compile)
   (require 'el-patch)
-  (require 'zenit-el-patch)
   (require 'tab-bar))
 
 ;; PATCH 2024-08-02: `tab-bar'

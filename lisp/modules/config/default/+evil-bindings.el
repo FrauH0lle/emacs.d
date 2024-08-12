@@ -8,7 +8,7 @@
             minibuffer-local-isearch-map
             read-expression-map))
   "A list of all the keymaps used for the minibuffer.")
-(require 'zenit-keybinds)
+
 (eval-when! (modulep! :editor evil)
   ;; NOTE SPC u replaces C-u as the universal argument.
 

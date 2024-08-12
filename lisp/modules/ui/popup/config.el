@@ -186,9 +186,5 @@ disabled when that window has been changed or closed."
 
 (compile-along! "+hacks")
 
-
 (add-hook! 'popper-mode-hook :append
-  (load! "+hacks")
-  ;; (after! window
-  ;;   (load! "+popup-display-func"))
-  )
+  (load! "+hacks"))

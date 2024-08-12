@@ -18,14 +18,18 @@
         debug-on-error t))
 
 ;; Native compilation support
-;; Don't store eln files in ~/.emacs.d/eln-cache. We need to set this very early
-;; so more or less all files are caught. We also set this again in
-;; zenit-core.el.
 (when (featurep 'native-compile)
+  ;; Don't store eln files in ~/.emacs.d/eln-cache. We need to set this very
+  ;; early so more or less all files are caught. We also set this again in
+  ;; zenit-core.el.
   (startup-redirect-eln-cache ".local/cache/eln/")
+  ;; HACK 2024-08-10: ~/.emacs.d/init.el gets compiled before our patch actually
+  ;;   applies. Thus, we add it to `native-comp-jit-compilation-deny-list' to
+  ;;   prevent any compilation attempt. Otherwise there could be a race
+  ;;   condition between the first compilation attempt of .emacs.d/init.el and
+  ;;   the manually added one.
   (with-eval-after-load 'comp
-    (add-to-list 'native-comp-jit-compilation-deny-list "/\\.emacs\\.d/init\\.el\\'"))
-  )
+    (add-to-list 'native-comp-jit-compilation-deny-list "/\\.emacs\\.d/init\\.el\\'")))
 
 (when (member "--benchmark-init" command-line-args)
   (delete "--benchmark-init" command-line-args)
@@ -106,5 +110,3 @@ already recorded."
 
  ;; Then continue on to the config we want to load.
  (load user-init-file 'noerror (not init-file-debug) nil 'must-suffix))
-
-(setq native-comp-async-env-modifier-form '(message "file is %s" load-file-name))

@@ -3,4 +3,5 @@
 
 (:depends
  ((+lsp :tools lsp)
+  (+pyright :tools lsp)
   (+tree-sitter :tools tree-sitter)))

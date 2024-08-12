@@ -100,5 +100,4 @@ in `zenit-local-conf-dir' take precedence.")
         (letf! ((#'yas-minor-mode #'ignore))
           (apply fn args)))))
   :config
-  (load! "patches/lsp-snippet-tempel")
-  )
+  (load! "patches/lsp-snippet-tempel"))

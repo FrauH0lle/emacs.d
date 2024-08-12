@@ -25,8 +25,6 @@
 When compilation is finished, run `native-comp-async-all-done-hook' and
 display a message."
   (cl-assert (null comp-no-spawn))
-  (el-patch-add (message "queue is: %s" comp-files-queue))
-
   (if (or comp-files-queue
           (> (comp-async-runnings) 0))
       (unless (>= (comp-async-runnings) (comp-effective-async-max-jobs))
@@ -77,9 +75,14 @@ display a message."
                            ;; this point).
                            ;;(package-activate-all)
                            ,native-comp-async-env-modifier-form
+                           (el-patch-add
+                             (when (or (file-in-directory-p ,source-file (file-name-concat user-emacs-directory "lisp" "core/"))
+                                       (file-in-directory-p ,source-file (file-name-concat user-emacs-directory "lisp" "modules/"))
+                                       (file-in-directory-p ,source-file (file-name-concat user-emacs-directory "site-lisp"))
+                                       (equal ,source-file (file-name-concat user-emacs-directory "init.el")))
+                               (message "Zenit Emacs file %s detected! Loading compiler setup!" ,source-file)
+                               ,(zenit-native-comp-helper source-file)))
                            (message "Compiling %s..." ,source-file)
-                           (el-patch-add (message "for file %s is zenit-context-p definded?: %s" ,source-file (fboundp 'zenit-context-p)))
-                           (el-patch-add (message "for file %s (zenit-context-p 'compile) is: %s" ,source-file (when (fboundp 'zenit-context-p) (zenit-context-p 'compile))))
                            (comp--native-compile ,source-file ,(and load t))))
                    (source-file1 source-file) ;; Make the closure works :/
                    (temp-file (make-temp-file
@@ -103,36 +106,20 @@ display a message."
                                           comp-async-buffer-name)
                                        (setf buffer-read-only t)
                                        (current-buffer))
-                             :command (el-patch-swap
-                                        (list
-                                         (expand-file-name invocation-name
-                                                           invocation-directory)
-                                         "-no-comp-spawn" "-Q" "--batch"
-                                         "--eval"
-                                         ;; Suppress Abort dialogs on MS-Windows
-                                         "(setq w32-disable-abort-dialog t)"
-                                         "-l" temp-file)
-                                        (delq nil `(
-                                                    ,(expand-file-name invocation-name
-                                                                       invocation-directory)
-                                                    "-no-comp-spawn" "-Q" "--batch"
-                                                    ,@(when (or (file-in-directory-p source-file (file-name-concat user-emacs-directory "lisp" "core/"))
-                                                                (file-in-directory-p source-file (file-name-concat user-emacs-directory "lisp" "modules/"))
-                                                                (file-in-directory-p source-file (file-name-concat user-emacs-directory "site-lisp"))
-                                                                (equal source-file (file-name-concat user-emacs-directory "init.el")))
-                                                        `("--eval" ,(concat "(message \"Zenit Emacs file %s detected! Loading compiler setup!\" \"" source-file "\")")
-                                                          "--eval" ,(prin1-to-string (zenit-native-comp-helper source-file))))
-                                                    "--eval"
-                                                    ;; Suppress Abort dialogs on MS-Windows
-                                                    "(setq w32-disable-abort-dialog t)"
-                                                    "-l" ,temp-file)))
+                             :command (list
+                                       (expand-file-name invocation-name
+                                                         invocation-directory)
+                                       "-no-comp-spawn" "-Q" "--batch"
+                                       "--eval"
+                                       ;; Suppress Abort dialogs on MS-Windows
+                                       "(setq w32-disable-abort-dialog t)"
+                                       "-l" temp-file)
                              :sentinel
                              (lambda (process _event)
                                (run-hook-with-args
                                 'native-comp-async-cu-done-functions
                                 source-file)
                                (comp-accept-and-process-async-output process)
-                               (ignore-errors (delete-file temp-file))
                                (let ((eln-file (comp-el-to-eln-filename
                                                 source-file1)))
                                  (when (and load1

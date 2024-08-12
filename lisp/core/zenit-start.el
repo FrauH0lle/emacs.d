@@ -321,15 +321,7 @@ it."
 ;; Load site-lisp/init.el early, but only when not in CLI mode.
 (when (and (not noninteractive)
            (not (or (zenit-context-p 'cli) (zenit-context-p 'compile))))
-  (eval-and-compile
-    (when (bound-and-true-p byte-compile-log-buffer)
-      (when (get-buffer-create byte-compile-log-buffer)
-        (with-current-buffer byte-compile-log-buffer
-          (insert (format "is noninteractive true? : %s \n" noninteractive))
-          (insert (format "is zenit-context-p definded?: %s\n" (fboundp 'zenit-context-p)))
-          (insert (format "(zenit-context-p 'compile) is: %s\n" (when (fboundp 'zenit-context-p) (zenit-context-p 'compile))))
-          (insert "oha, we are before loading the site-lisp/init.el\n")))))
-    (zenit-load (file-name-sans-extension (file-truename (file-name-concat zenit-local-conf-dir zenit-module-init-file))) t)
+  (zenit-load (file-name-sans-extension (file-truename (file-name-concat zenit-local-conf-dir zenit-module-init-file))) t)
 
   ;; (let ((vc-handled-backends nil)
   ;;       (vc-follow-symlinks nil))

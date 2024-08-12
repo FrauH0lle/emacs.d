@@ -1,6 +1,10 @@
 ;; editor/evil/+keybinds.el -*- lexical-binding: t; -*-
 
+(eval-when-compile
+  (require 'cl-lib))
 
+(cl-eval-when (compile)
+  (require 'evil))
 
 ;; Keybinds that have no Emacs+evil analogues (i.e. don't exist):
 ;;   zu{q,w} - undo last marking

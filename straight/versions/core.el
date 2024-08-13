@@ -12,7 +12,7 @@
  ("gcmh" . "0089f9c3a6d4e9a310d0791cf6fa8f35642ecfd9")
  ("general.el" . "826bf2b97a0fb4a34c5eb96ec2b172d682fd548f")
  ("gnu-elpa-mirror" . "2c8e23cde6d5c5be2b216e57faaf864599954c1b")
- ("helpful" . "a32a5b3d959a7fccf09a71d97b3d7c888ac31c69")
+ ("helpful" . "4ba24cac9fb14d5fdc32582cd947572040e82b2c")
  ("highlight-numbers" . "8b4744c7f46c72b1d3d599d4fb75ef8183dee307")
  ("melpa" . "1839deb57d34adc76db0b1a1a877b3cb542a6810")
  ("nerd-icons.el" . "4322290303f2e12efd5685a0d22d76ed76ec7349")

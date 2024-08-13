@@ -646,6 +646,14 @@ looking up a C function.")
          (helpful-variable (button-get button 'apropos-symbol))))))
 
   :config
+  ;; REVIEW 2024-08-13: No idea why, but when you use `helpful' to find the
+  ;;   definition of something, the major mode of the file is not triggered ...
+  (defadvice! +helpful--run-auto-mode-a (&rest _)
+    "Run `set-auto-mode' maunally after following a link from
+ `helpful'."
+    :after #'helpful--navigate
+    (set-auto-mode))
+
   ;; Function used by `helpful--set' to interactively set variables
   (setq helpful-set-variable-function #'setq!)
 

@@ -48,8 +48,6 @@ point is on a line with a linewise comment.")
         evil-want-fine-undo t
         evil-undo-system 'undo-tree)
 
-  ;; (cl-eval-when (compile)
-  ;;   (require 'evil-core))
   (defadvice! +evil--persist-state-a (fn &rest args)
     "When changing major modes, Evil's state is lost. This advice
 preserves it."
@@ -239,13 +237,8 @@ helpful,`abort-recursive-edit' gets called one time too many."
   ;; Lazy load evil ex commands, part II
   (compile-along! "+commands")
   (after! evil-ex
-      (load! "+commands"))
-  )
+    (load! "+commands")))
 
-;; (use-package evil-ex
-;;   :defer t
-;;   :config
-;;   (load! "+commands"))
 
 ;;
 ;;; Packages

@@ -25,11 +25,10 @@
   (startup-redirect-eln-cache ".local/cache/eln/")
   ;; HACK 2024-08-10: ~/.emacs.d/init.el gets compiled before our patch actually
   ;;   applies. Thus, we add it to `native-comp-jit-compilation-deny-list' to
-  ;;   prevent any compilation attempt. Otherwise there could be a race
-  ;;   condition between the first compilation attempt of .emacs.d/init.el and
-  ;;   the manually added one.
-  (with-eval-after-load 'comp
-    (add-to-list 'native-comp-jit-compilation-deny-list "/\\.emacs\\.d/init\\.el\\'")))
+  ;;   prevent any compilation attempt. Otherwise there can be a race condition
+  ;;   between the first compilation attempt of .emacs.d/init.el and any later
+  ;;   one.
+  (defvar native-comp-jit-compilation-deny-list '("/\\.emacs\\.d/init\\.el\\'")))
 
 (when (member "--benchmark-init" command-line-args)
   (delete "--benchmark-init" command-line-args)

@@ -222,7 +222,6 @@ window."
         origin)
     (save-popups!
      (find-file path)
-     ;; (set-auto-mode)
      (when-let (pos (get-text-property button 'position
                                        (marker-buffer button)))
        (goto-char pos))

@@ -356,3 +356,7 @@
   :when (modulep! +pyright)
   :when (not (modulep! :tools lsp +eglot))
   :after lsp-mode)
+
+;; Use the new ruff LSP server
+(after! lsp-mode
+  (setq! lsp-ruff-lsp-server-command '("ruff" "server")))

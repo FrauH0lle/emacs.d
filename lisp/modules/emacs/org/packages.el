@@ -6,12 +6,11 @@
            ;; The mirror is a bit faster.
            :repo "emacs-straight/org-mode"
            :depth 1)
-  :lockfile 'pinned
   :lockfile emacs-org)
+
 (package! org-contrib
   :recipe (:host github
            :repo "emacsmirror/org-contrib")
-  :lockfile 'pinned
   :lockfile emacs-org)
 
 (package! avy :lockfile emacs-org)

@@ -68,26 +68,26 @@
     (straight--make-build-cache-available)
     (print! (start "Updating recipe repos..."))
     (print-group!
-     (zenit--with-package-recipes
-         (delq
-          nil (mapcar (zenit-rpartial #'gethash straight--repo-cache)
-                      (mapcar #'symbol-name straight-recipe-repositories)))
-         (recipe package type local-repo)
-       (let ((esc (if init-file-debug "" "\033[1A"))
-             (ref (straight-vc-get-commit type local-repo))
-             newref output)
-         (print! (start "\rUpdating recipes for %s...%s") package esc)
-         (zenit--straight-with (straight-vc-fetch-from-remote recipe)
-           (when .it
-             (setq output .output)
-             (straight-merge-package package)
-             (unless (equal ref (setq newref (straight-vc-get-commit type local-repo)))
-               (print! (success "\r%s updated (%s -> %s)")
-                       package
-                       (zenit--abbrev-commit ref)
-                       (zenit--abbrev-commit newref))
-               (unless (string-empty-p output)
-                 (print-group! (print! (item "%s" output))))))))))
+      (zenit--with-package-recipes
+          (delq
+           nil (mapcar (zenit-rpartial #'gethash straight--repo-cache)
+                       (mapcar #'symbol-name straight-recipe-repositories)))
+          (recipe package type local-repo)
+        (let ((esc (if init-file-debug "" "\033[1A"))
+              (ref (straight-vc-get-commit type local-repo))
+              newref output)
+          (print! (start "\rUpdating recipes for %s...%s") package esc)
+          (zenit--straight-with (straight-vc-fetch-from-remote recipe)
+            (when .it
+              (setq output .output)
+              (straight-merge-package package)
+              (unless (equal ref (setq newref (straight-vc-get-commit type local-repo)))
+                (print! (success "\r%s updated (%s -> %s)")
+                        package
+                        (zenit--abbrev-commit ref)
+                        (zenit--abbrev-commit newref))
+                (unless (string-empty-p output)
+                  (print-group! (print! (item "%s" output))))))))))
     (setq straight--recipe-lookup-cache (make-hash-table :test #'eq)
           zenit--cli-updated-recipes t)))
 
@@ -194,58 +194,58 @@ already been."
   ;; Collect package versions
   (let ((pinned (straight--lockfile-read-all)))
     (print-group!
-     (if-let (built
-              (zenit--with-package-recipes (zenit-package-recipe-list)
-                  (recipe package type local-repo)
-                (let ((repo-dir (straight--repos-dir local-repo))
-                      (build-dir (straight--build-dir package))
-                      (need-rebuild-p))
-                  ;; Package is installed when both build and repo directories
-                  ;; are present
-                  (cond ((and (file-directory-p repo-dir)
-                              (file-directory-p build-dir))
-                         (zenit-log "%s already installed" package))
-                        ;; Only repo directory present, simply rebuild
-                        ((and (file-directory-p repo-dir)
-                              (not (file-directory-p build-dir)))
-                         (zenit-log "Rebuilding %s" package)
-                         (setq need-rebuild-p t))
-                        ;; Otherwise, try to install packge
-                        (t (setq need-rebuild-p t)))
-                  (when need-rebuild-p
-                    ;; If local repo is not present, update recipes before
-                    ;; cloning
-                    (unless (file-directory-p (straight--repos-dir local-repo))
-                      (zenit--cli-recipes-update))
-                    (condition-case-unless-debug e
-                        (let ((straight-use-package-pre-build-functions
-                               (cons (lambda (pkg &rest _)
-                                       (when-let (commit (cdr (assoc pkg pinned)))
-                                         (print! (item "Checked out %s: %s") pkg commit)))
-                                     straight-use-package-pre-build-functions)))
-                          (straight-use-package (intern package))
-                          ;; HACK Line encoding issues can plague repos with
-                          ;;   dirty worktree prompts when updating packages or
-                          ;;   "Local variables entry is missing the suffix"
-                          ;;   errors when installing them (see
-                          ;;   hlissner/zenit-emacs#2637), so have git handle
-                          ;;   conversion by force.
-                          (when (and zenit--system-windows-p (stringp local-repo))
-                            (let ((default-directory (straight--repos-dir local-repo)))
-                              (when (file-in-directory-p default-directory straight-base-dir)
-                                (straight--process-run "git" "config" "core.autocrlf" "true"))))
+      (if-let (built
+               (zenit--with-package-recipes (zenit-package-recipe-list)
+                   (recipe package type local-repo)
+                 (let ((repo-dir (straight--repos-dir local-repo))
+                       (build-dir (straight--build-dir package))
+                       (need-rebuild-p))
+                   ;; Package is installed when both build and repo directories
+                   ;; are present
+                   (cond ((and (file-directory-p repo-dir)
+                               (file-directory-p build-dir))
+                          (zenit-log "%s already installed" package))
+                         ;; Only repo directory present, simply rebuild
+                         ((and (file-directory-p repo-dir)
+                               (not (file-directory-p build-dir)))
+                          (zenit-log "Rebuilding %s" package)
+                          (setq need-rebuild-p t))
+                         ;; Otherwise, try to install packge
+                         (t (setq need-rebuild-p t)))
+                   (when need-rebuild-p
+                     ;; If local repo is not present, update recipes before
+                     ;; cloning
+                     (unless (file-directory-p (straight--repos-dir local-repo))
+                       (zenit--cli-recipes-update))
+                     (condition-case-unless-debug e
+                         (let ((straight-use-package-pre-build-functions
+                                (cons (lambda (pkg &rest _)
+                                        (when-let (commit (cdr (assoc pkg pinned)))
+                                          (print! (item "Checked out %s: %s") pkg commit)))
+                                      straight-use-package-pre-build-functions)))
+                           (straight-use-package (intern package))
+                           ;; HACK Line encoding issues can plague repos with
+                           ;;   dirty worktree prompts when updating packages or
+                           ;;   "Local variables entry is missing the suffix"
+                           ;;   errors when installing them (see
+                           ;;   hlissner/zenit-emacs#2637), so have git handle
+                           ;;   conversion by force.
+                           (when (and zenit--system-windows-p (stringp local-repo))
+                             (let ((default-directory (straight--repos-dir local-repo)))
+                               (when (file-in-directory-p default-directory straight-base-dir)
+                                 (straight--process-run "git" "config" "core.autocrlf" "true"))))
 
-                          ;; Remove any existing .eln files. Compilation is done
-                          ;; in async mode and thus, remaining .eln files can
-                          ;; trigger rebuilds.
-                          (when (featurep 'native-compile)
-                            (zenit--remove-eln-files build-dir)))
-                      (error
-                       (signal 'zenit-package-error (list package e))))))))
-         (progn
-           (print! (success "\rInstalled %d packages") (length built)))
-       (print! (item "No packages need to be installed"))
-       nil))))
+                           ;; Remove any existing .eln files. Compilation is done
+                           ;; in async mode and thus, remaining .eln files can
+                           ;; trigger rebuilds.
+                           (when (featurep 'native-compile)
+                             (zenit--remove-eln-files build-dir)))
+                       (error
+                        (signal 'zenit-package-error (list package e))))))))
+          (progn
+            (print! (success "\rInstalled %d packages") (length built)))
+        (print! (item "No packages need to be installed"))
+        nil))))
 
 
 ;;
@@ -257,96 +257,96 @@ already been."
   (zenit-initialize-packages)
   (print! (start "(Re)building %spackages...") (if force-p "all " ""))
   (print-group!
-   (let ((straight-check-for-modifications
-          (when (file-directory-p (straight--modified-dir))
-            '(find-when-checking)))
-         (straight--allow-find
-          (and straight-check-for-modifications
-               (executable-find straight-find-executable)
-               t))
-         (straight--packages-not-to-rebuild
-          (or straight--packages-not-to-rebuild (make-hash-table :test #'equal)))
-         (straight--packages-to-rebuild
-          (or (if force-p :all straight--packages-to-rebuild)
-              (make-hash-table :test #'equal)))
-         (recipes (zenit-package-recipe-list)))
+    (let ((straight-check-for-modifications
+           (when (file-directory-p (straight--modified-dir))
+             '(find-when-checking)))
+          (straight--allow-find
+           (and straight-check-for-modifications
+                (executable-find straight-find-executable)
+                t))
+          (straight--packages-not-to-rebuild
+           (or straight--packages-not-to-rebuild (make-hash-table :test #'equal)))
+          (straight--packages-to-rebuild
+           (or (if force-p :all straight--packages-to-rebuild)
+               (make-hash-table :test #'equal)))
+          (recipes (zenit-package-recipe-list)))
 
-     (unless force-p
-       (straight--make-build-cache-available))
-     (if-let (built
-              (zenit--with-package-recipes recipes (package local-repo recipe)
-                (unless force-p
-                  ;; Ensure packages with outdated files/bytecode are rebuilt
-                  (let* ((build-dir (straight--build-dir package))
-                         (repo-dir  (straight--repos-dir local-repo))
-                         (build (if (plist-member recipe :build)
-                                    (plist-get recipe :build)
-                                  t))
-                         (want-byte-compile
-                          (or (eq build t)
-                              (memq 'compile build)))
-                         (want-native-compile
-                          (or (eq build t)
-                              (memq 'native-compile build)))
-                         rebuild-reason)
-                    (and (eq (car-safe build) :not)
-                         (setq want-byte-compile (not want-byte-compile)
-                               want-native-compile (not want-native-compile)))
-                    (unless (featurep 'native-compile)
-                      (setq want-native-compile nil))
-                    (and (or want-byte-compile want-native-compile)
-                         (or (when (file-newer-than-file-p repo-dir build-dir)
-                               (setq rebuild-reason "Repository newer than build directory") t)
-                             (when (file-exists-p (straight--modified-dir (or local-repo package)))
-                               (setq rebuild-reason "Entry in 'straight/modified/' exists") t)
-                             (when (cl-loop with outdated = nil
-                                            for file in (zenit-files-in build-dir :match "\\.el$" :full t)
-                                            if (or (when want-byte-compile
-                                                     (zenit--elc-file-outdated-p file))
-                                                   ;; Only check .eln files if
-                                                   ;; .elc file actually exists.
-                                                   ;; Otherwise you can get a
-                                                   ;; bunch of unncessary
-                                                   ;; rebuilds because a file in
-                                                   ;; the eln cache is missing.
-                                                   (when (and want-native-compile
-                                                              (file-exists-p (byte-compile-dest-file file)))
-                                                     (zenit--eln-file-outdated-p file)))
-                                            do (setq outdated t)
-                                            (when want-native-compile
-                                              (push file zenit--eln-output-expected))
-                                            finally return outdated)
-                               (setq rebuild-reason ".eln/.elc outdated") t))
-                         (progn (zenit-log "%s is outdated, rebuilding" package)
-                                (zenit-log "Reason: %s" rebuild-reason)
-                                (puthash package t straight--packages-to-rebuild)
-                                (when (featurep 'native-compile)
-                                  (zenit--remove-eln-files build-dir))))))
-                (if force-p
-                    (progn
-                      (when (featurep 'native-compile)
-                        (zenit--remove-eln-files t 'all))
-                      ;; NOTE 2024-05-02: This is the same as what
-                      ;;   `straight-rebuild-all' does but we reverse the order
-                      ;;   of the packages such that they are build in the order
-                      ;;   they were declared.
-                      (dolist (package (nreverse (hash-table-keys straight--recipe-cache)))
-                        (straight-use-package (intern package))))
-                  (when (gethash package straight--packages-to-rebuild)
-                    (straight-register-repo-modification local-repo)
-                    (straight-use-package (intern package))))))
+      (unless force-p
+        (straight--make-build-cache-available))
+      (if-let (built
+               (zenit--with-package-recipes recipes (package local-repo recipe)
+                 (unless force-p
+                   ;; Ensure packages with outdated files/bytecode are rebuilt
+                   (let* ((build-dir (straight--build-dir package))
+                          (repo-dir  (straight--repos-dir local-repo))
+                          (build (if (plist-member recipe :build)
+                                     (plist-get recipe :build)
+                                   t))
+                          (want-byte-compile
+                           (or (eq build t)
+                               (memq 'compile build)))
+                          (want-native-compile
+                           (or (eq build t)
+                               (memq 'native-compile build)))
+                          rebuild-reason)
+                     (and (eq (car-safe build) :not)
+                          (setq want-byte-compile (not want-byte-compile)
+                                want-native-compile (not want-native-compile)))
+                     (unless (featurep 'native-compile)
+                       (setq want-native-compile nil))
+                     (and (or want-byte-compile want-native-compile)
+                          (or (when (file-newer-than-file-p repo-dir build-dir)
+                                (setq rebuild-reason "Repository newer than build directory") t)
+                              (when (file-exists-p (straight--modified-dir (or local-repo package)))
+                                (setq rebuild-reason "Entry in 'straight/modified/' exists") t)
+                              (when (cl-loop with outdated = nil
+                                             for file in (zenit-files-in build-dir :match "\\.el$" :full t)
+                                             if (or (when want-byte-compile
+                                                      (zenit--elc-file-outdated-p file))
+                                                    ;; Only check .eln files if
+                                                    ;; .elc file actually exists.
+                                                    ;; Otherwise you can get a
+                                                    ;; bunch of unncessary
+                                                    ;; rebuilds because a file in
+                                                    ;; the eln cache is missing.
+                                                    (when (and want-native-compile
+                                                               (file-exists-p (byte-compile-dest-file file)))
+                                                      (zenit--eln-file-outdated-p file)))
+                                             do (setq outdated t)
+                                             (when want-native-compile
+                                               (push file zenit--eln-output-expected))
+                                             finally return outdated)
+                                (setq rebuild-reason ".eln/.elc outdated") t))
+                          (progn (zenit-log "%s is outdated, rebuilding" package)
+                                 (zenit-log "Reason: %s" rebuild-reason)
+                                 (puthash package t straight--packages-to-rebuild)
+                                 (when (featurep 'native-compile)
+                                   (zenit--remove-eln-files build-dir))))))
+                 (if force-p
+                     (progn
+                       (when (featurep 'native-compile)
+                         (zenit--remove-eln-files t 'all))
+                       ;; NOTE 2024-05-02: This is the same as what
+                       ;;   `straight-rebuild-all' does but we reverse the order
+                       ;;   of the packages such that they are build in the order
+                       ;;   they were declared.
+                       (dolist (package (nreverse (hash-table-keys straight--recipe-cache)))
+                         (straight-use-package (intern package))))
+                   (when (gethash package straight--packages-to-rebuild)
+                     (straight-register-repo-modification local-repo)
+                     (straight-use-package (intern package))))))
 
-         (progn
-           ;; HACK Every time you save a file in a package that straight tracks,
-           ;;   it is recorded in ~/.emacs.d/straight/modified/. Typically,
-           ;;   straight will clean these up after rebuilding, but our use-case
-           ;;   circumnavigates that, leaving these files there and causing a
-           ;;   rebuild of those packages each time `sync' or similar is run, so
-           ;;   we clean it up ourselves:
-           (delete-directory (straight--modified-dir) 'recursive)
-           (print! (success "\rRebuilt %d package(s)") (length built)))
-       (print! (item "No packages need rebuilding"))
-       nil))))
+          (progn
+            ;; HACK Every time you save a file in a package that straight tracks,
+            ;;   it is recorded in ~/.emacs.d/straight/modified/. Typically,
+            ;;   straight will clean these up after rebuilding, but our use-case
+            ;;   circumnavigates that, leaving these files there and causing a
+            ;;   rebuild of those packages each time `sync' or similar is run, so
+            ;;   we clean it up ourselves:
+            (delete-directory (straight--modified-dir) 'recursive)
+            (print! (success "\rRebuilt %d package(s)") (length built)))
+        (print! (item "No packages need rebuilding"))
+        nil))))
 
 
 ;;
@@ -355,7 +355,6 @@ already been."
 (defun zenit-cli-packages-update (&optional force-p)
   "Updates packages."
   (zenit-initialize-packages)
-  (zenit--cli-recipes-update)
   (let* ((repo-dir (straight--repos-dir))
          (pinned (straight--lockfile-read-all))
          (recipes (zenit-package-recipe-list))
@@ -363,134 +362,147 @@ already been."
          (repos-to-rebuild (make-hash-table :test 'equal))
          (total (length recipes))
          (esc (if init-file-debug "" "\033[1A"))
-         (i 0)
-         errors)
-    (print! (start "Updating packages (this may take a while)..."))
+         (i 0))
     (zenit--with-package-recipes recipes (recipe package type local-repo)
       (cl-incf i)
       (print-group!
-       (unless (straight--repository-is-available-p recipe)
-         (print! (error "(%d/%d) Couldn't find local repo for %s") i total package)
-         (cl-return))
-       ;; Packages can get updated indirectly if they are a dependency for
-       ;; another one.
-       (when (gethash local-repo repos-to-rebuild)
-         (puthash package t packages-to-rebuild)
-         (print! (success "(%d/%d) %s was updated indirectly (with %s)") i total package local-repo)
-         (cl-return))
-       (let ((default-directory (straight--repos-dir local-repo)))
-         ;; Skip if a package is a local one
-         (unless (file-in-directory-p default-directory repo-dir)
-           (print! (warn "(%d/%d) Skipping %s because it is local") i total package)
-           (cl-return))
-         ;; Make sure that the current repository is a valid git repository
-         (when (eq type 'git)
-           (unless (file-exists-p ".git")
-             (error "%S is not a valid repository" package)))
-         (condition-case-unless-debug e
-             (let ((ref (straight-vc-get-commit type local-repo))
-                   (target-ref
-                    (cdr (or (assoc local-repo pinned)
-                             (assoc package pinned))))
-                   commits
-                   output)
-               (or (cond
-                    ;; When force-p is non-nil, re-clone every repo
-                    (force-p
-                     (print! (start "\r(%d/%d) Re-cloning %s...") i total local-repo esc)
-                     (let ((repo (straight--repos-dir local-repo))
-                           (straight-vc-git-default-clone-depth 'full))
-                       (delete-directory repo 'recursive)
-                       (print-group!
-                        (straight-use-package (intern package) nil 'no-build))
-                       (prog1 (file-directory-p repo)
-                         (or (not (eq type 'git))
-                             (setq output (zenit--commit-log-between ref target-ref)
-                                   commits (length (split-string output "\n" t)))))))
-                    ;; No target commit found, simply pull
-                    ((not (stringp target-ref))
-                     (print! (start "\r(%d/%d) Fetching %s...%s") i total package esc)
-                     (zenit--straight-with (straight-vc-fetch-from-remote recipe)
-                       (when .it
-                         (straight-merge-package package)
-                         (setq target-ref (straight-vc-get-commit type local-repo))
-                         (setq output (zenit--commit-log-between ref target-ref)
-                               commits (length (split-string output "\n" t)))
-                         (or (not (zenit--same-commit-p target-ref ref))
-                             (cl-return)))))
+        (unless (straight--repository-is-available-p recipe)
+          (print! (error "(%d/%d) Couldn't find local repo for %s") i total package)
+          (cl-return))
+        (when (gethash local-repo repos-to-rebuild)
+          (puthash package t packages-to-rebuild)
+          (print! (success "(%d/%d) %s was updated indirectly (with %s)") i total package local-repo)
+          (cl-return))
+        (let ((default-directory (straight--repos-dir local-repo)))
+          (unless (file-in-directory-p default-directory repo-dir)
+            (print! (warn "(%d/%d) Skipping %s because it is out-of-tree...") i total package)
+            (cl-return))
+          (when (eq type 'git)
+            (unless (file-exists-p ".git")
+              (error "%S is not a valid repository" package)))
+          (condition-case-unless-debug e
+              (let ((ref (straight-vc-get-commit type local-repo))
+                    (target-ref
+                     (cdr (or (assoc local-repo pinned)
+                              (assoc package pinned))))
+                    commits
+                    output)
+                (or (cond
+                     ;; When force-p is non-nil, re-clone every repo
+                     (force-p
+                      (print! (start "\r(%d/%d) Re-cloning %s...") i total local-repo esc)
+                      (let ((repo (straight--repos-dir local-repo))
+                            (straight-vc-git-default-clone-depth 'full))
+                        (delete-directory repo 'recursive)
+                        (print-group!
+                          (straight-use-package (intern package) nil 'no-build))
+                        (prog1 (file-directory-p repo)
+                          (or (not (eq type 'git))
+                              (setq output (zenit--commit-log-between ref target-ref)
+                                    commits (length (split-string output "\n" t)))))))
 
-                    ;; Target commit and local commit are the same, do nothing
-                    ((zenit--same-commit-p target-ref ref)
-                     (print! (item "\r(%d/%d) %s is up-to-date...%s") i total package esc)
-                     (cl-return))
+                     ;; No target commit found, simply pull
+                     ((not (stringp target-ref))
+                      (print! (start "\r(%d/%d) Fetching %s...%s") i total package esc)
+                      (zenit--straight-with (straight-vc-fetch-from-remote recipe)
+                        (when .it
+                          (straight-merge-package package)
+                          (setq target-ref (straight-vc-get-commit type local-repo))
+                          (setq output (zenit--commit-log-between ref target-ref)
+                                commits (length (split-string output "\n" t)))
+                          (or (not (zenit--same-commit-p target-ref ref))
+                              (cl-return)))))
 
-                    ;; Target commit present but not checked out, check out
-                    ;; target commit
-                    ((if (straight-vc-commit-present-p recipe target-ref)
-                         (print! (start "\r(%d/%d) Checking out %s (%s)...%s")
-                                 i total package (zenit--abbrev-commit target-ref) esc)
-                       (print! (start "\r(%d/%d) Fetching %s...%s") i total package esc)
-                       ;; Otherwiese fetch and checkout target commit
-                       (and (straight-vc-fetch-from-remote recipe)
-                            (straight-vc-commit-present-p recipe target-ref)))
-                     (straight-vc-check-out-commit recipe target-ref)
-                     ;; Print commit history between old and new commit
-                     (or (not (eq type 'git))
-                         (setq output (zenit--commit-log-between ref target-ref)
-                               commits (length (split-string output "\n" t))))
-                     (zenit--same-commit-p target-ref (straight-vc-get-commit type local-repo)))
+                     ;; Target commit and local commit are the same, do nothing
+                     ((zenit--same-commit-p target-ref ref)
+                      (print! (item "\r(%d/%d) %s is up-to-date...%s") i total package esc)
+                      (cl-return))
 
-                    ;; Otherwise delete local repo and clone it again
-                    ((print! (start "\r(%d/%d) Re-cloning %s...") i total local-repo esc)
-                     (let ((repo (straight--repos-dir local-repo))
-                           (straight-vc-git-default-clone-depth 'full))
-                       (delete-directory repo 'recursive)
-                       (print-group!
-                        (straight-use-package (intern package) nil 'no-build))
-                       (prog1 (file-directory-p repo)
-                         (or (not (eq type 'git))
-                             (setq output (zenit--commit-log-between ref target-ref)
-                                   commits (length (split-string output "\n" t))))))))
+                     ;; Target commit present but not checked out, check out
+                     ;; target commit
+                     ((if (straight-vc-commit-present-p recipe target-ref)
+                          (print! (start "\r(%d/%d) Checking out %s (%s)...%s")
+                                  i total package (zenit--abbrev-commit target-ref) esc)
+                        (print! (start "\r(%d/%d) Fetching %s...%s") i total package esc)
+                        (and (straight-vc-fetch-from-remote recipe)
+                             (straight-vc-commit-present-p recipe target-ref)))
+                      (straight-vc-check-out-commit recipe target-ref)
+                      (or (not (eq type 'git))
+                          (setq output (zenit--commit-log-between ref target-ref)
+                                commits (length (split-string output "\n" t))))
+                      (zenit--same-commit-p target-ref (straight-vc-get-commit type local-repo)))
 
-                   ;; Something went wrong
-                   (progn
-                     (print! (warn "\r(%d/%d) Failed to fetch %s")
-                             i total local-repo)
-                     (unless (string-empty-p output)
-                       (print-group! (print! (item "%s" output))))
-                     (cl-return)))
-               (puthash local-repo t repos-to-rebuild)
-               (puthash package t packages-to-rebuild)
-               (print! (success "\r(%d/%d) %s: %s -> %s%s")
-                       i total local-repo
-                       (zenit--abbrev-commit ref)
-                       (zenit--abbrev-commit target-ref)
-                       (if (and (integerp commits) (> commits 0))
-                           (format " [%d commit(s)]" commits)
-                         ""))
-               (unless (string-empty-p output)
-                 (let ((lines (split-string output "\n")))
-                   (setq output
-                         (if (> (length lines) 20)
-                             (concat (string-join (cl-subseq (butlast lines 1) 0 20) "\n")
-                                     "\n[...]")
-                           output)))
-                 (print-group! (print! "%s" (indent 2 output)))))
-           (user-error
-            (signal 'user-error (error-message-string e)))
-           (error
-            (signal 'zenit-package-error (list package e)))))))
+                     ;; Otherwise delete local repo and clone it again
+                     ((print! (start "\r(%d/%d) Re-cloning %s...") i total local-repo esc)
+                      (let ((repo (straight--repos-dir local-repo))
+                            (straight-vc-git-default-clone-depth 'full))
+                        (delete-directory repo 'recursive)
+                        (print-group!
+                          (straight-use-package (intern package) nil 'no-build))
+                        (prog1 (file-directory-p repo)
+                          (or (not (eq type 'git))
+                              (setq output (zenit--commit-log-between ref target-ref)
+                                    commits (length (split-string output "\n" t))))))))
+                    ;; Something went wrong
+                    (progn
+                      (print! (warn "\r(%d/%d) Failed to fetch %s")
+                              i total local-repo)
+                      (unless (string-empty-p output)
+                        (print-group! (print! (item "%s" output))))
+                      (cl-return)))
+                (puthash local-repo t repos-to-rebuild)
+                ;; HACK: Rebuild all packages that depend on PACKAGE after
+                ;;   updating it. This ensures their bytecode don't contain stale
+                ;;   references to symbols in silent dependencies.
+                ;; TODO: Allow `package!' to control this.
+                ;; TODO: Add cache+optimization step for this rebuild table.
+                (letf! ((dependents (straight-dependents package))
+                        (n 0)
+                        (defun* add-to-rebuild (tree)
+                                (cond ((null tree) nil)
+                                      ((stringp tree)
+                                       (unless (gethash tree packages-to-rebuild)
+                                         (cl-incf n 1)
+                                         (puthash tree t packages-to-rebuild)))
+                                      ((listp tree)
+                                       (add-to-rebuild (car tree))
+                                       (add-to-rebuild (cdr tree))))))
+                  (add-to-rebuild dependents)
+                  (puthash package t packages-to-rebuild)
+                  (print! (success "\r(%d/%d) %s: %s -> %s%s%s")
+                          i total local-repo
+                          (zenit--abbrev-commit ref)
+                          (zenit--abbrev-commit target-ref)
+                          (if (and (integerp commits) (> commits 0))
+                              (format " [%d commit(s)]" commits)
+                            "")
+                          (if (> n 0)
+                              (format " (w/ %d dependents)" n)
+                            "")))
+                (unless (string-empty-p output)
+                  (let ((lines (split-string output "\n")))
+                    (setq output
+                          (if (> (length lines) 20)
+                              (concat (string-join (cl-subseq (butlast lines 1) 0 20) "\n")
+                                      "\n[...]")
+                            output)))
+                  (print-group! (print! "%s" (indent output 2)))))
+            (user-error
+             (signal 'user-error (error-message-string e)))
+            (error
+             (signal 'zenit-package-error (list package e)))))))
     (print-group!
-     (if (hash-table-empty-p packages-to-rebuild)
-         (ignore (print! (success "\rAll %d packages are up-to-date") total))
-       (straight--transaction-finalize)
-       (let ((default-directory (straight--build-dir)))
-         (mapc (zenit-rpartial #'delete-directory 'recursive)
-               (hash-table-keys packages-to-rebuild)))
-       (print! (success "\rUpdated %d package(s)")
-               (hash-table-count packages-to-rebuild))
-       (zenit-cli-packages-build force-p)
-       t))))
+      (if (hash-table-empty-p packages-to-rebuild)
+          (ignore (print! (success "\rAll %d packages are up-to-date") total))
+        (zenit--cli-recipes-update)
+        (straight--transaction-finalize)
+        (let ((default-directory (straight--build-dir)))
+          (mapc (zenit-rpartial #'delete-directory 'recursive)
+                (hash-table-keys packages-to-rebuild)))
+        (print! (success "\rUpdated %d package(s)")
+                (hash-table-count packages-to-rebuild))
+        (zenit-cli-packages-build force-p)
+        t))))
 
 
 ;;
@@ -510,8 +522,8 @@ already been."
         (print! (item "No builds to purge")))
     (print! (start "Purging straight builds..." (length builds)))
     (print-group!
-     (length
-      (delq nil (mapcar #'zenit--packages-purge-build builds))))))
+      (length
+       (delq nil (mapcar #'zenit--packages-purge-build builds))))))
 
 (cl-defun zenit--packages-regraft-repo (repo)
   (let ((default-directory (straight--repos-dir repo)))
@@ -542,12 +554,12 @@ already been."
     (print! (start "Regrafting %d repos..." (length repos)))
     (let ((before-size (zenit-directory-size (straight--repos-dir))))
       (print-group!
-       (prog1 (delq nil (mapcar #'zenit--packages-regraft-repo repos))
-         ;; (princ "\033[K")
-         (let ((after-size (zenit-directory-size (straight--repos-dir))))
-           (print! (success "Finished regrafting. Size before: %0.1fKB and after: %0.1fKB (%0.1fKB)")
-                   before-size after-size
-                   (- after-size before-size))))))))
+        (prog1 (delq nil (mapcar #'zenit--packages-regraft-repo repos))
+          ;; (princ "\033[K")
+          (let ((after-size (zenit-directory-size (straight--repos-dir))))
+            (print! (success "Finished regrafting. Size before: %0.1fKB and after: %0.1fKB (%0.1fKB)")
+                    before-size after-size
+                    (- after-size before-size))))))))
 
 (defun zenit--packages-purge-repo (repo)
   (let ((repo-dir (straight--repos-dir repo)))
@@ -565,8 +577,8 @@ already been."
         (print! (item "No repos to purge")))
     (print! (start "Purging straight repositories..."))
     (print-group!
-     (length
-      (delq nil (mapcar #'zenit--packages-purge-repo repos))))))
+      (length
+       (delq nil (mapcar #'zenit--packages-purge-repo repos))))))
 
 (defun zenit--packages-purge-elpa ()
   (require 'zenit-packages)
@@ -578,10 +590,10 @@ already been."
       (dolist (path dirs (length dirs))
         (condition-case e
             (print-group!
-             (if (file-directory-p path)
-                 (delete-directory path 'recursive)
-               (delete-file path))
-             (print! (success "Deleted %s") (filename path)))
+              (if (file-directory-p path)
+                  (delete-directory path 'recursive)
+                (delete-file path))
+              (print! (success "Deleted %s") (filename path)))
           (error
            (print! (error "Failed to delete %s because: %s")
                    (filename path)
@@ -623,19 +635,19 @@ package-install)."
                 (seq-filter (zenit-rpartial #'straight--checkhash straight--repo-cache)
                             rdirs))))
     (print-group!
-     (delq
-      nil (list
-           (when (featurep 'native-compile)
-             (zenit--packages-purge-eln))
-           (if (not builds-p)
-               (ignore (print! (item "Skipping builds")))
-             (/= 0 (zenit--packages-purge-builds builds-to-purge)))
-           (if (not elpa-p)
-               (ignore (print! (item "Skipping elpa packages")))
-             (/= 0 (zenit--packages-purge-elpa)))
-           (if (not repos-p)
-               (ignore (print! (item "Skipping repos")))
-             (/= 0 (zenit--packages-purge-repos repos-to-purge)))
-           (if (not regraft-repos-p)
-               (ignore (print! (item "Skipping regrafting")))
-             (zenit--packages-regraft-repos repos-to-regraft)))))))
+      (delq
+       nil (list
+            (when (featurep 'native-compile)
+              (zenit--packages-purge-eln))
+            (if (not builds-p)
+                (ignore (print! (item "Skipping builds")))
+              (/= 0 (zenit--packages-purge-builds builds-to-purge)))
+            (if (not elpa-p)
+                (ignore (print! (item "Skipping elpa packages")))
+              (/= 0 (zenit--packages-purge-elpa)))
+            (if (not repos-p)
+                (ignore (print! (item "Skipping repos")))
+              (/= 0 (zenit--packages-purge-repos repos-to-purge)))
+            (if (not regraft-repos-p)
+                (ignore (print! (item "Skipping regrafting")))
+              (zenit--packages-regraft-repos repos-to-regraft)))))))

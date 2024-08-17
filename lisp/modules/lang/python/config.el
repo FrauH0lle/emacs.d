@@ -359,4 +359,25 @@
 
 ;; Use the new ruff LSP server
 (after! lsp-mode
-  (setq! lsp-ruff-lsp-server-command '("ruff" "server")))
+  (setq! lsp-ruff-lsp-server-command '("ruff" "server"))
+  (lsp-register-client
+   (make-lsp-client
+    :new-connection (lsp-stdio-connection
+                     (lambda () lsp-ruff-lsp-server-command))
+    :activation-fn (lsp-activate-on "python")
+    :server-id 'ruff-server
+    :priority -2
+    :add-on? t
+    :multi-root t
+    :initialization-options
+    (lambda ()
+      (list :settings
+            (list :args lsp-ruff-lsp-ruff-args
+                  :logLevel lsp-ruff-lsp-log-level
+                  :path lsp-ruff-lsp-ruff-path
+                  :interpreter (vector lsp-ruff-lsp-python-path)
+                  :showNotifications lsp-ruff-lsp-show-notifications
+                  :organizeImports (lsp-json-bool lsp-ruff-lsp-advertize-organize-imports)
+                  :fixAll (lsp-json-bool lsp-ruff-lsp-advertize-fix-all)
+                  :importStrategy lsp-ruff-lsp-import-strategy)))))
+  (setq! lsp-disabled-clients '(python-mode . (ruff-lsp))))

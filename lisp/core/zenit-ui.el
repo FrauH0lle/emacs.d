@@ -637,7 +637,6 @@ buffers are visible in other windows, switch to
                    (nreverse new-specs)))
                 (put face 'face-modified nil))
             ('error
-             (ignore-errors (zenit--reset-inhibited-vars-h))
              (if (string-prefix-p "Font not available" (error-message-string e))
                  (signal 'zenit-font-error (list (font-get (cdr map) :family)))
                (signal (car e) (cdr e))))))

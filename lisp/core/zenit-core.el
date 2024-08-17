@@ -295,10 +295,9 @@ handling encrypted or compressed files, among other things."
     ;; after startup (or in case of an startup error).
     (defun zenit--reset-inhibited-vars-h ()
       (setq-default inhibit-redisplay nil
-                    ;; Inhibiting `message' only prevents redraws and
                     inhibit-message nil)
-      (redraw-frame))
-    (add-hook 'after-init-hook #'zenit--reset-inhibited-vars-h)
+      (remove-hook 'post-command-hook #'zenit--reset-inhibited-vars-h))
+    (add-hook 'post-command-hook #'zenit--reset-inhibited-vars-h -100)
 
     ;; Lazy load the toolbar until tool-bar-mode is actually used (see
     ;; `startup--load-user-init-file@undo-hacks').
@@ -314,29 +313,25 @@ handling encrypted or compressed files, among other things."
     (put 'site-run-file 'initial-value site-run-file)
     (setq site-run-file nil)
 
-    (define-advice startup--load-user-init-file (:around (fn &rest args) undo-hacks)
+    (define-advice startup--load-user-init-file (:around (fn &rest args) undo-hacks 95)
       "Undo startup optimizations to prep for the user's session."
-      (let (init)
-        (unwind-protect
-            (progn
-              (when (setq site-run-file (get 'site-run-file 'initial-value))
-                (let ((inhibit-startup-screen inhibit-startup-screen))
-                  (letf! ((defun load-file (file) (load file nil 'nomessage))
-                          (defun load (file &optional noerror _nomessage &rest args)
-                            (apply load file noerror t args)))
-                    (load site-run-file t t))))
-              (apply fn args)  ; start up as normal
-              (setq init t))
-          (when (or (not init) init-file-had-error)
-            ;; If we don't undo our inhibit-{message,redisplay} and there's an
-            ;; error, we'll see nothing but a blank Emacs frame.
-            (zenit--reset-inhibited-vars-h))
-          ;; Once startup is sufficiently complete, undo our earlier
-          ;; optimizations to reduce the scope of potential edge cases.
-          (advice-remove #'tool-bar-setup #'ignore)
-          (add-transient-hook! 'tool-bar-mode (tool-bar-setup))
-          (unless (default-toplevel-value 'mode-line-format)
-            (setq-default mode-line-format (get 'mode-line-format 'initial-value))))))
+      (unwind-protect
+          (progn
+            (when (setq site-run-file (get 'site-run-file 'initial-value))
+              (let ((inhibit-startup-screen inhibit-startup-screen))
+                (letf! ((defun load-file (file) (load file nil 'nomessage))
+                        (defun load (file &optional noerror _nomessage &rest args)
+                          (apply load file noerror t args)))
+                  (load site-run-file t t))))
+            (apply fn args))
+        ;; Now it's safe to be verbose.
+        (setq-default inhibit-message nil)
+        ;; Once startup is sufficiently complete, undo our earlier optimizations
+        ;; to reduce the scope of potential edge cases.
+        (advice-remove #'tool-bar-setup #'ignore)
+        (add-transient-hook! 'tool-bar-mode (tool-bar-setup))
+        (unless (default-toplevel-value 'mode-line-format)
+          (setq-default mode-line-format (get 'mode-line-format 'initial-value)))))
 
     ;; Unset a non-trivial list of command line options that aren't relevant
     ;; to our current OS, but `command-line-1' still processes.

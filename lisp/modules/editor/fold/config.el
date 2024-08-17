@@ -1,6 +1,10 @@
 ;; editor/fold/config.el -*- lexical-binding: t; -*-
 
-(when (modulep! :editor evil)
+(defvar +fold-elide-string
+  (format " [%s] " (if (char-displayable-p ?…) "…" "..."))
+  "String to represent folded elided text, e.g. […].")
+
+(eval-when! (modulep! :editor evil)
   (after! evil
     ;; Add vimish-fold, outline-mode & hideshow support to folding commands
     (define-key! 'global
@@ -99,7 +103,7 @@ later."
                          :box nil
                          :inherit font-lock-comment-face
                          :weight light)))
-  (setq ts-fold-replacement "  [...]  ")
+  (setq ts-fold-replacement +fold-elide-string)
   (global-ts-fold-mode +1))
 
 (use-package! outline-minor-faces

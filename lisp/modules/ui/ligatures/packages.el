@@ -2,6 +2,6 @@
 ;; ui/ligatures/packages.el
 
 (when (and (or (featurep 'ns)
-               (string-match-p "HARFBUZZ" system-configuration-features))
+               (featurep 'harfbuzz))
            (featurep 'composite))
-  (package! ligature :lockfile ui-ligatures))
+  (package! ligature :lockfile ui_ligatures))

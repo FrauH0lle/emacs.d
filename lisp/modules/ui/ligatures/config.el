@@ -44,29 +44,28 @@ This should not contain any symbols from the Unicode Private
 Area! There is no universal way of getting the correct symbol as
 that area varies from font to font.")
 
+(defvar +ligatures-alist
+  '((prog-mode
+     "|||>" "<|||" "<==>" "<!--" "####" "~~>" "***" "||=" "||>"
+     ":::" "::=" "=:=" "===" "==>" "=!=" "=>>" "=<<" "=/=" "!=="
+     "!!." ">=>" ">>=" ">>>" ">>-" ">->" "->>" "-->" "---" "-<<"
+     "<~~" "<~>" "<*>" "<||" "<|>" "<$>" "<==" "<=>" "<=<" "<->"
+     "<--" "<-<" "<<=" "<<-" "<<<" "<+>" "</>" "###" "#_(" "..<"
+     "..." "+++" "/==" "///" "_|_" "www" "&&" "^=" "~~" "~@" "~="
+     "~>" "~-" "**" "*>" "*/" "||" "|}" "|]" "|=" "|>" "|-" "{|"
+     "[|" "]#" "::" ":=" ":>" ":<" "$>" "==" "=>" "!=" "!!" ">:"
+     ">=" ">>" ">-" "-~" "-|" "->" "--" "-<" "<~" "<*" "<|" "<:"
+     "<$" "<=" "<>" "<-" "<<" "<+" "</" "#{" "#[" "#:" "#=" "#!"
+     "##" "#(" "#?" "#_" "%%" ".=" ".-" ".." ".?" "+>" "++" "?:"
+     "?=" "?." "??" ";;" "/*" "/=" "/>" "//" "__" "~~" "(*" "*)"
+     "\\\\" "://")
+    (t))
+  "A alist of ligatures to enable in specific modes.")
+
 (defvar +ligatures-extra-alist '((t))
-  "A map of major modes to symbol lists (for
- `prettify-symbols-alist').")
+  "A map of major modes to symbol lists.
 
-(defvar +ligatures-prog-mode-list
-  '("|||>" "<|||" "<==>" "<!--" "####" "~~>" "***" "||=" "||>"
-    ":::" "::=" "=:=" "===" "==>" "=!=" "=>>" "=<<" "=/=" "!=="
-    "!!." ">=>" ">>=" ">>>" ">>-" ">->" "->>" "-->" "---" "-<<"
-    "<~~" "<~>" "<*>" "<||" "<|>" "<$>" "<==" "<=>" "<=<" "<->"
-    "<--" "<-<" "<<=" "<<-" "<<<" "<+>" "</>" "###" "#_(" "..<"
-    "..." "+++" "/==" "///" "_|_" "www" "&&" "^=" "~~" "~@" "~="
-    "~>" "~-" "**" "*>" "*/" "||" "|}" "|]" "|=" "|>" "|-" "{|"
-    "[|" "]#" "::" ":=" ":>" ":<" "$>" "==" "=>" "!=" "!!" ">:"
-    ">=" ">>" ">-" "-~" "-|" "->" "--" "-<" "<~" "<*" "<|" "<:"
-    "<$" "<=" "<>" "<-" "<<" "<+" "</" "#{" "#[" "#:" "#=" "#!"
-    "##" "#(" "#?" "#_" "%%" ".=" ".-" ".." ".?" "+>" "++" "?:"
-    "?=" "?." "??" ";;" "/*" "/=" "/>" "//" "__" "~~" "(*" "*)"
-    "\\\\" "://")
-  "A list of ligatures to enable in all `prog-mode' buffers.")
-
-(defvar +ligatures-all-modes-list
-  '()
-  "A list of ligatures to enable in all buffers.")
+Used by `prettify-symbols-alist'.")
 
 (defvar +ligatures-in-modes
   '(not special-mode comint-mode eshell-mode term-mode vterm-mode Info-mode
@@ -74,7 +73,7 @@ that area varies from font to font.")
   "List of major modes where ligatures should be enabled.
 
   If t, enable it everywhere (except `fundamental-mode'). If the
-  first element is 'not, enable it in any mode besides what is
+  first element is \\='not, enable it in any mode besides what is
   listed. If nil, don't enable ligatures anywhere.")
 
 (defvar +ligatures-extras-in-modes t
@@ -85,7 +84,7 @@ Extra ligatures are mode-specific substituions, defined in
 This variable controls where these are enabled.
 
   If t, enable it everywhere (except `fundamental-mode').
-  If the first element is 'not, enable it in any mode besides
+  If the first element is \\='not, enable it in any mode besides
   what is listed.
   If nil, don't enable these extra ligatures anywhere (though
   it's more efficient to remove the `+extra' flag from the :ui
@@ -139,7 +138,10 @@ function can and cannot run in."
           (setq +ligatures--init-font-hook nil)))
       (when in-mode-extras-p
         (prependq! prettify-symbols-alist
-                   (alist-get major-mode +ligatures-extra-alist)))
+                   (or (alist-get major-mode +ligatures-extra-alist)
+                       (cl-loop for (mode . symbols) in +ligatures-extra-alist
+                                if (derived-mode-p mode)
+                                return symbols))))
       (when (and (or in-mode-p in-mode-extras-p)
                  prettify-symbols-alist)
         (when prettify-symbols-mode
@@ -191,9 +193,8 @@ function can and cannot run in."
   (use-package! ligature
     :commands ligature-mode-turn-on
     :config
-    ;; Enable all `+ligatures-prog-mode-list' ligatures in programming modes
-    (ligature-set-ligatures 'prog-mode +ligatures-prog-mode-list)
-    (ligature-set-ligatures 't +ligatures-all-modes-list))
+    (dolist (lig +ligatures-alist)
+      (ligature-set-ligatures (car lig) (cdr lig))))
 
   (eval-when! (modulep! +auto)
     (add-hook! 'zenit-init-ui-hook :append

@@ -2,7 +2,7 @@
 ;; lang/sh/packages.el
 
 (when (modulep! +fish)
-  (package! fish-mode :lockfile lang-sh))
+  (package! fish-mode :lockfile lang_sh))
 
 (when (modulep! +powershell)
-  (package! powershell :lockfile lang-sh))
+  (package! powershell :lockfile lang_sh))

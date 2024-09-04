@@ -46,8 +46,11 @@
   (member name (+workspace-list-names)))
 
 ;;;###autoload
-(defalias #'+workspace-contains-buffer-p #'bufferlo-local-buffer-p
-  "Return non-nil if BUFFER is in WORKSPACE (defaults to current workspace).")
+(cl-defun +workspace-contains-buffer-p
+    (&optional (buff-or-name (current-buffer)) (workspace (+workspace-current-name)))
+  "Return non-nil if BUFF-OR-NAME is in WORKSPACE.
+ Defaults to current workspace."
+  (bufferlo-local-buffer-p (get-buffer buff-or-name) nil (+workspaces--get-tabnum workspace)))
 
 
 ;;

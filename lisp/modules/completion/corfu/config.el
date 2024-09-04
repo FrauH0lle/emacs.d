@@ -4,9 +4,10 @@
   "Configure how the user expects RET to behave.
 Possible values are:
 - t (default): Insert candidate if one is selected, pass-through otherwise;
-- `minibuffer': Insert candidate if one is selected, pass-through otherwise,
-              and immediatelly exit if in the minibuffer;
-- nil: Pass-through without inserting.")
+- nil: Pass-through without inserting;
+- `both': Insert candidate if one is selected, then pass-through;
+- `minibuffer': Behaves like `both` in the minibuffer and `t`
+  otherwise.")
 
 (defvar +corfu-buffer-scanning-size-limit (* 1 1024 1024) ; 1 MB
   "Size limit for a buffer to be scanned by `cape-dabbrev'.")
@@ -16,33 +17,24 @@ Possible values are:
 Setting this to `aggressive' will enable Corfu in more commands which
 use the minibuffer such as `query-replace'.")
 
+(defvar +corfu-want-tab-prefer-navigating-org-tables nil
+  "If non-nil, prefer navigating org tables over cycling candidates with
+TAB/S-TAB.")
+
+(defvar +corfu-inhibit-auto-functions ()
+  "A list of predicate functions that take no arguments.
+
+If any return non-nil, `corfu-auto' will not invoke as-you-type
+completion.")
+
+
 ;;
 ;;; Packages
 (use-package! corfu
   :hook (zenit-first-input . global-corfu-mode)
-  :init
-  (add-hook! 'minibuffer-setup-hook
-    (defun +corfu-enable-in-minibuffer ()
-      "Enable Corfu in the minibuffer."
-      (when (pcase +corfu-want-minibuffer-completion
-              ('aggressive
-               (not (or (bound-and-true-p mct--active)
-                        (bound-and-true-p vertico--input)
-                        (and (featurep 'auth-source)
-                             (eq (current-local-map) read-passwd-map))
-                        (and (featurep 'helm-core) (helm--alive-p))
-                        (and (featurep 'ido) (ido-active))
-                        (where-is-internal 'minibuffer-complete
-                                           (list (current-local-map)))
-                        (memq #'ivy--queue-exhibit post-command-hook))))
-              ('nil nil)
-              (_ (where-is-internal #'completion-at-point
-                                    (list (current-local-map)))))
-        (setq-local corfu-echo-delay nil)
-        (corfu-mode +1))))
   :config
   (setq corfu-auto t
-        corfu-auto-delay 0.18
+        corfu-auto-delay 0.24
         corfu-auto-prefix 2
         global-corfu-modes '((not erc-mode
                                   circe-mode
@@ -65,6 +57,35 @@ use the minibuffer such as `query-replace'.")
   (add-to-list 'corfu-continue-commands #'+corfu/move-to-minibuffer)
   (add-to-list 'corfu-continue-commands #'+corfu/smart-sep-toggle-escape)
   (add-hook 'evil-insert-state-exit-hook #'corfu-quit)
+
+  (defun +corfu-enable-in-minibuffer-p ()
+    "Return non-nil if Corfu should be enabled in the minibuffer.
+See `+corfu-want-minibuffer-completion'."
+    (pcase +corfu-want-minibuffer-completion
+      ('nil nil)
+      ('aggressive
+       (not (or (bound-and-true-p mct--active)
+                (bound-and-true-p vertico--input)
+                (and (featurep 'auth-source)
+                     (eq (current-local-map) read-passwd-map))
+                (and (featurep 'ido) (ido-active))
+                (where-is-internal 'minibuffer-complete
+                                   (list (current-local-map))))))
+      (_ (where-is-internal #'completion-at-point
+                            (list (current-local-map))))))
+  (setq global-corfu-minibuffer #'+corfu-enable-in-minibuffer-p)
+
+  ;; HACK: Augments Corfu to respect `+corfu-inhibit-auto-functions'.
+  (defadvice! +corfu--post-command-a (fn &rest args)
+    "Refresh Corfu after last command."
+    (let ((corfu-auto
+           (if corfu-auto
+               (not (run-hook-with-args-until-success '+corfu-inhibit-auto-functions)))))
+      (apply fn args)))
+
+  (eval-when! (modulep! :editor evil)
+    ;; Modifying the buffer while in replace mode can be janky.
+    (add-to-list '+corfu-inhibit-auto-functions #'evil-replace-state-p))
 
   ;; HACK: If you want to update the visual hints after completing minibuffer
   ;;   commands with Corfu and exiting, you have to do it manually.
@@ -126,7 +147,7 @@ use the minibuffer such as `query-replace'.")
       (setq dabbrev-friend-buffer-function #'+dabbrev-friend-buffer-p
             dabbrev-ignored-buffer-regexps
             '("\\` "
-              "\\(TAGS\\|tags\\|ETAGS\\|etags\\|GTAGS\\|GRTAGS\\|GPATH\\)\\(<[0-9]+>\\)?")
+              "\\(?:\\(?:[EG]?\\|GR\\)TAGS\\|e?tags\\|GPATH\\)\\(<[0-9]+>\\)?")
             dabbrev-upcase-means-case-search t)
       (add-to-list 'dabbrev-ignored-buffer-modes 'pdf-view-mode)
       (add-to-list 'dabbrev-ignored-buffer-modes 'doc-view-mode)

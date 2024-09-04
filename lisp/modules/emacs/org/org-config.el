@@ -123,26 +123,31 @@ missing-epdfinfo errors whenever storing or exporting links."
       (map! :map evil-org-mode-map
             :ni [C-return]   #'+org/insert-item-below
             :ni [C-S-return] #'+org/insert-item-above
-            ;; navigate table cells (from insert-mode)
-            :i Cright (general-predicate-dispatch nil
-                        (org-at-table-p) #'org-table-next-field
-                        #'org-end-of-line)
-            :i Cleft  (general-predicate-dispatch nil
-                        (org-at-table-p) #'org-table-previous-field
-                        #'org-beginning-of-line)
-            :i Cup    (general-predicate-dispatch nil
-                        (org-at-table-p) #'+org/table-previous-row
-                        #'org-up-element)
-            :i Cdown  (general-predicate-dispatch nil
-                        (org-at-table-p) #'org-table-next-row
-                        #'org-down-element)
-            :ni CSright   #'org-shiftright
-            :ni CSleft    #'org-shiftleft
-            :ni CSup      #'org-shiftup
-            :ni CSdown    #'org-shiftdown
+            (:unless evil-disable-insert-state-bindings
+              ;; navigate table cells (from insert-mode)
+              :i Cright (general-predicate-dispatch nil
+                          (org-at-table-p) #'org-table-next-field
+                          #'org-end-of-line)
+              :i Cleft  (general-predicate-dispatch nil
+                          (org-at-table-p) #'org-table-previous-field
+                          #'org-beginning-of-line)
+              :i Cup    (general-predicate-dispatch nil
+                          (org-at-table-p) #'+org/table-previous-row
+                          #'org-up-element)
+              :i Cdown  (general-predicate-dispatch nil
+                          (org-at-table-p) #'org-table-next-row
+                          #'org-down-element)
+              :i CSright   #'org-shiftright
+              :i CSleft    #'org-shiftleft
+              :i CSup      #'org-shiftup
+              :i CSdown    #'org-shiftdown)
+            :n CSright    #'org-shiftright
+            :n CSleft     #'org-shiftleft
+            :n CSup       #'org-shiftup
+            :n CSdown     #'org-shiftdown
             ;; more intuitive RET keybinds
-            :n [return]   #'+org/dwim-at-point
-            :n "RET"      #'+org/dwim-at-point
+            :m [return]   #'+org/dwim-at-point
+            :m "RET"      #'+org/dwim-at-point
             :i [return]   #'+org/return
             :i "RET"      #'+org/return
             :i [S-return] #'+org/shift-return

@@ -11,8 +11,8 @@ buffers.")
 
 (defvar +emacs-lisp-linter-warnings
   '(not free-vars    ; don't complain about unknown variables
-        noruntime    ; don't complain about unknown function calls
-        unresolved)  ; don't complain about undefined functions
+    noruntime    ; don't complain about unknown function calls
+    unresolved)  ; don't complain about undefined functions
   "The value for `byte-compile-warnings' in non-packages.
 
 This reduces the verbosity of flycheck in Emacs configs and
@@ -21,6 +21,10 @@ positives (from the byte-compiler, package-lint, and checkdoc)
 can be more overwhelming than helpful.
 
 See `+emacs-lisp-non-package-mode' for details.")
+
+(defvar +emacs-lisp-clone-emacs-C-src nil
+  "If non-nil, prompt user to clone the Emacs source repository when
+looking up a C function.")
 
 
 ;; `elisp-mode' is loaded at startup. In order to lazy load its config we need
@@ -36,9 +40,9 @@ See `+emacs-lisp-non-package-mode' for details.")
   :config
   (eval-when! (modulep! :tools eval)
     (set-repl-handler! '(emacs-lisp-mode lisp-interaction-mode)
-                       #'+emacs-lisp/open-repl)
+      #'+emacs-lisp/open-repl)
     (set-eval-handler! '(emacs-lisp-mode lisp-interaction-mode)
-                       #'+emacs-lisp-eval))
+      #'+emacs-lisp-eval))
   (eval-when! (modulep! :tools lookup)
     (set-lookup-handlers! '(emacs-lisp-mode lisp-interaction-mode helpful-mode)
                           :definition    #'+emacs-lisp-lookup-definition
@@ -218,3 +222,115 @@ See `+emacs-lisp-non-package-mode' for details.")
         "t" #'+emacs-lisp/buttercup-run-file
         "a" #'+emacs-lisp/buttercup-run-project
         "s" #'buttercup-run-at-point))
+
+
+(use-package! helpful
+  ;; a better *help* buffer
+  :commands helpful--read-symbol
+  :hook (helpful-mode . visual-line-mode)
+  :init
+  ;; Make `apropos' et co search more extensively. They're more useful this way.
+  (setq apropos-do-all t)
+
+  (global-set-key [remap describe-function] #'helpful-callable)
+  (global-set-key [remap describe-command]  #'helpful-command)
+  (global-set-key [remap describe-variable] #'helpful-variable)
+  (global-set-key [remap describe-key]      #'helpful-key)
+  (global-set-key [remap describe-symbol]   #'helpful-symbol)
+
+  (defun zenit-use-helpful-a (fn &rest args)
+    "Force FN to use helpful instead of the old describe-* commands."
+    (letf! ((#'describe-function #'helpful-function)
+            (#'describe-variable #'helpful-variable))
+      (apply fn args)))
+
+  (after! apropos
+    ;; patch apropos buttons to call helpful instead of help
+    (dolist (fun-bt '(apropos-function apropos-macro apropos-command))
+      (button-type-put
+       fun-bt 'action
+       (lambda (button)
+         (helpful-callable (button-get button 'apropos-symbol)))))
+    (dolist (var-bt '(apropos-variable apropos-user-option))
+      (button-type-put
+       var-bt 'action
+       (lambda (button)
+         (helpful-variable (button-get button 'apropos-symbol))))))
+
+  ;; DEPRECATED: Remove when support for 29 is dropped.
+  (eval-when! (= emacs-major-version 29)
+    (defadvice! zenit--find-function-search-for-symbol-save-excursion-a (fn &rest args)
+      "Suppress cursor movement by `find-function-search-for-symbol'.
+
+Addresses an unwanted side-effect in
+`find-function-search-for-symbol' on Emacs 29 where the cursor is
+moved to a variable's definition if it's defined in the current
+buffer."
+      :around #'find-function-search-for-symbol
+      (let (buf pos)
+        (letf! (defun find-library-name (library)
+                 (let ((filename (funcall find-library-name library)))
+                   (with-current-buffer (find-file-noselect filename)
+                     (setq buf (current-buffer)
+                           pos (point)))
+                   filename))
+          (prog1 (apply fn args)
+            (when (buffer-live-p buf)
+              (with-current-buffer buf (goto-char pos))))))))
+  :config
+  ;; REVIEW 2024-08-13: No idea why, but when you use `helpful' to find the
+  ;;   definition of something, the major mode of the file is not triggered ...
+  (defadvice! +helpful--run-auto-mode-a (&rest _)
+    "Run `set-auto-mode' maunally after following a link from
+`helpful'."
+    :after #'helpful--navigate
+    (set-auto-mode))
+
+  (setq helpful-set-variable-function #'setq!)
+
+  (when +emacs-lisp-clone-emacs-C-src
+    ;; Standard location for the Emacs source code
+    (setq source-directory (file-name-concat zenit-data-dir "src/"))
+
+    ;; This is initialized to nil by `find-func' if the source is not cloned
+    ;; when the library is loaded
+    (setq find-function-C-source-directory
+          (expand-file-name "src" source-directory))
+
+    (defun zenit--clone-emacs-source-maybe ()
+      "Prompt user to clone Emacs source repository if needed."
+      (when (and (not (file-directory-p source-directory))
+                 (not (get-buffer "*zenit clone emacs src*"))
+                 (yes-or-no-p "Clone Emacs source repository? "))
+        (make-directory (file-name-directory source-directory) 'parents)
+        (let ((branch (concat "emacs-" (prin1-to-string emacs-major-version)))
+              (compilation-buffer-name-function
+               (lambda (&rest _)
+                 "*zenit clone emacs src*")))
+          (save-current-buffer
+            (compile
+             (format
+              "git clone -b %s --depth 1 https://github.com/emacs-mirror/emacs.git %s"
+              (shell-quote-argument branch)
+              (shell-quote-argument source-directory)))))))
+
+    (after! find-func
+      (defadvice! +find-func--clone-emacs-source-a (&rest _)
+        "Clone Emacs source if needed to view definition."
+        :before #'find-function-C-source
+        (zenit--clone-emacs-source-maybe)))
+
+    (defadvice! +helpful--clone-emacs-source-a (library-name)
+      "Prompt user to clone Emacs source code when looking up functions.
+Otherwise, it only happens when looking up variables, for some
+bizarre reason."
+      :before #'helpful--library-path
+      (when (member (file-name-extension library-name) '("c" "rs"))
+        (zenit--clone-emacs-source-maybe))))
+
+  ;; Open help:* links with helpful-* instead of describe-*
+  (advice-add #'org-link--open-help :around #'zenit-use-helpful-a)
+
+  (map! :map helpful-mode-map
+        :ng "o"  #'link-hint-open-link
+        :n  "gr" #'helpful-update))

@@ -64,6 +64,9 @@
 (defvar tls-checktrust)
 (defvar tls-program)
 
+;; `novice'
+(declare-function en/disable-command "novice" (command disable))
+
 ;; `warnings'
 (defvar warning-suppress-types)
 
@@ -217,10 +220,17 @@ autoloaded functions.")
            (locate-file-internal "calc-loaddefs.el" load-path))
          nil
        (list (rassq 'jka-compr-handler old-value))))
-    ;; Make sure the new value survives any current let-binding.
-    (set-default-toplevel-value 'file-name-handler-alist file-name-handler-alist)
     ;; Remember it ...
     (put 'file-name-handler-alist 'initial-value old-value)
+    ;; Emacs will process any files passed to it via the command line, and will
+    ;; do so *really* early in the startup process. These might contain special
+    ;; file paths like TRAMP paths, so restore `file-name-handler-alist' just
+    ;; for this portion of startup.
+    (define-advice command-line-1 (:around (fn args-left) respect-file-handlers)
+      (let ((file-name-handler-alist (if args-left old-value file-name-handler-alist)))
+        (funcall fn args-left)))
+    (eval-when-compile
+      (declare-function command-line-1@respect-file-handlers nil))
     ;; ... so it can be reset where needed.
     (add-hook! 'emacs-startup-hook :depth 101
       (defun zenit--reset-file-handler-alist-h ()
@@ -256,7 +266,9 @@ handling encrypted or compressed files, among other things."
         (advice-remove #'tty-run-terminal-initialization #'tty-run-terminal-initialization@defer)
         (add-hook 'window-setup-hook
                   (zenit-partial #'tty-run-terminal-initialization
-                                 (selected-frame) nil t))))
+                                 (selected-frame) nil t)))
+      (eval-when-compile
+        (declare-function tty-run-terminal-initialization@defer nil)))
 
     ;; `load-suffixes' and `load-file-rep-suffixes' are consulted on each
     ;; `require' and `load'. Removing .so gives a small boost. This is later
@@ -297,6 +309,8 @@ handling encrypted or compressed files, among other things."
       (setq-default inhibit-redisplay nil
                     inhibit-message nil)
       (remove-hook 'post-command-hook #'zenit--reset-inhibited-vars-h))
+    (eval-when-compile
+      (declare-function zenit--reset-inhibited-vars-h nil))
     (add-hook 'post-command-hook #'zenit--reset-inhibited-vars-h -100)
 
     ;; Lazy load the toolbar until tool-bar-mode is actually used (see
@@ -332,6 +346,8 @@ handling encrypted or compressed files, among other things."
         (add-transient-hook! 'tool-bar-mode (tool-bar-setup))
         (unless (default-toplevel-value 'mode-line-format)
           (setq-default mode-line-format (get 'mode-line-format 'initial-value)))))
+    (eval-when-compile
+      (declare-function startup--load-user-init-file@undo-hacks nil))
 
     ;; Unset a non-trivial list of command line options that aren't relevant
     ;; to our current OS, but `command-line-1' still processes.
@@ -466,7 +482,9 @@ them otherwise."
     (and (null comp-num-cpus)
          (zerop native-comp-async-jobs-number)
          (setq comp-num-cpus
-               (max 1 (/ (num-processors) (if noninteractive 1 4)))))))
+               (max 1 (/ (num-processors) (if noninteractive 1 4))))))
+  (eval-when-compile
+    (declare-function comp-effective-async-max-jobs@set-default-cpus nil)))
 
 ;; Suppress package.el
 (setq package-enable-at-startup nil)
@@ -557,6 +575,8 @@ sessions, so guard hooks appropriately against `noninteractive'."
 (unless noninteractive
   ;; This is the absolute latest a hook can run in Emacs' startup process.
   (define-advice command-line-1 (:after (&rest _) run-after-init-hook)
-    (zenit-run-hooks 'zenit-after-init-hook)))
+    (zenit-run-hooks 'zenit-after-init-hook))
+  (eval-when-compile
+    (declare-function command-line-1@run-after-init-hook nil)))
 
 (provide 'zenit-core)

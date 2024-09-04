@@ -263,7 +263,7 @@
 
   (describe "helpful package config"
     (before-all
-      (setq zenit-clone-emacs-C-src t)
+      (setq +emacs-lisp-clone-emacs-C-src t)
       (require 'helpful))
 
     (describe "zenit-use-helpful-a"

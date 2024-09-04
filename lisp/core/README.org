@@ -43,10 +43,3 @@ Core configuration.
 - [[https://github.com/jorgenschaefer/emacs-buttercup][buttercup]]
 
 * Configuration
-** Editor
-
-#+begin_src elisp
-(defvar zenit-clone-emacs-C-src nil
-  "If non-nil, prompt user to clone the Emacs source repository when
-looking up a C function.")
-#+end_src

@@ -1,15 +1,18 @@
 ;; lisp/core/lib/zenit-lib-config.el -*- lexical-binding: t; -*-
 
 ;; `projectile'
-(declare-function projectile-ripgrep "ext:projectile")
+(declare-function projectile-ripgrep "ext:projectile" (search-term &optional arg))
 (defvar projectile-project-root)
 
 ;; `zenit-lib-projects'
-(declare-function zenit-project-find-file "zenit-lib-projects")
-(declare-function zenit-project-browse "zenit-lib-projects")
+(declare-function zenit-project-find-file "zenit-lib-projects" (dir))
+(declare-function zenit-project-browse "zenit-lib-projects" (dir))
 
 ;; `zenit-modules'
-(declare-function zenit-module-p "zenit-modules")
+(declare-function zenit-module-p "zenit-modules" (category module &optional flag))
+
+;; `completion/vertico'
+(declare-function +vertico/project-search-from-cwd "../../modules/completion/vertico/autoload/vertico.el" (&optional arg initial-query))
 
 
 ;;;###autoload

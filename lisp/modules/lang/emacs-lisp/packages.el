@@ -4,11 +4,12 @@
 (package! elisp-mode :built-in t)
 
 ;; Fontification plugins
-(package! highlight-quoted :lockfile lang-emacs-lisp)
+(package! highlight-quoted :lockfile lang_emacs-lisp)
 
 ;; Tools
-(package! macrostep :lockfile lang-emacs-lisp)
-(package! elisp-def :lockfile lang-emacs-lisp)
-(package! elisp-demos :lockfile lang-emacs-lisp)
+(package! helpful :lockfile lang_emacs-lisp)
+(package! macrostep :lockfile lang_emacs-lisp)
+(package! elisp-def :lockfile lang_emacs-lisp)
+(package! elisp-demos :lockfile lang_emacs-lisp)
 
-(package! buttercup :lockfile lang-emacs-lisp)
+(package! buttercup :lockfile lang_emacs-lisp)

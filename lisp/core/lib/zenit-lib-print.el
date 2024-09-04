@@ -267,9 +267,8 @@ example:
                                 (get (car spec) 'print-level)))
                            (cadr spec)))))
 
-(defun zenit-print--redirect-standard-output (streamspec level &optional old-stream)
-  (let ((old (or old-stream standard-output))
-        (streams (zenit-print--redirect-streams streamspec level)))
+(defun zenit-print--redirect-standard-output (streamspec level)
+  (let ((streams (zenit-print--redirect-streams streamspec level)))
     (lambda (ch)
       (let ((str (char-to-string ch)))
         (dolist (stream streams)

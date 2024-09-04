@@ -93,8 +93,8 @@ settings."
         ;; We include all present buffers in the first workspace
         (let ((bufferlo-exclude-buffer-filters nil)
               (bufferlo-include-buffer-filters '(".*")))
-          (bufferlo--include-exclude-buffers nil)
-          (tab-bar-mode +1))
+          (tab-bar-mode +1)
+          (bufferlo--include-exclude-buffers nil))
         ;; Restrict buffer list to workspace
         (advice-add #'zenit-buffer-list :override #'+workspace-buffer-list))
        (t
@@ -120,27 +120,7 @@ settings."
       (consult-customize
        consult--source-buffer
        :hidden t
-       :default nil)
-
-      ;; Add workspace buffers source
-      (defvar +consult--source-workspace
-        `(:name     "Workspace Buffers"
-          :narrow   ?w
-          :history  buffer-name-history
-          :category buffer
-          :state    ,#'consult--buffer-state
-          :default  t
-          :items
-          ,(lambda () (consult--buffer-query
-                       :predicate (lambda (x)
-                                    (and (bufferlo-local-buffer-p x)
-                                         (if (modulep! :ui popup)
-                                             (not (popper-popup-p x))
-                                           t)))
-                       :sort 'visibility
-                       :as #'buffer-name))))
-
-      (spliceq! consult-buffer-sources '+consult--source-workspace 'consult--source-buffer)))
+       :default nil)))
 
   ;; Filter popups by workspace
   (eval-when! (modulep! :ui popup)

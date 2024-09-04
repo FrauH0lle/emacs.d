@@ -4,4 +4,4 @@
 (package! rotate-text
   :recipe (:host github
            :repo "debug-ito/rotate-text.el")
-  :lockfile editor-rotate-text)
+  :lockfile editor_rotate-text)

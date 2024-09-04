@@ -285,18 +285,16 @@ If NOERROR, don't throw an error if PATH doesn't exist."
      (signal (car e) (cdr e)))
     (error
      (setq path (locate-file path load-path (get-load-suffixes)))
-     (signal (cond ((not (and path (featurep 'zenit-core)))
-                    'error)
-                   ((file-in-directory-p path (expand-file-name "cli" zenit-core-dir))
-                    'zenit-cli-error)
-                   ((file-in-directory-p path zenit-core-dir)
-                    'zenit-core-error)
-                   ((file-in-directory-p path zenit-local-conf-dir)
-                    'zenit-local-conf-error)
-                   ((file-in-directory-p path zenit-modules-dir)
-                    'zenit-module-error)
-                   ('zenit-error))
-             (list path e)))))
+     (if (not (and path (featurep 'zenit-core)))
+         (signal (car e) (cdr e))
+       (cl-loop for (err . dir)
+                in `((zenit-cli-error        . ,(expand-file-name "cli" zenit-core-dir))
+                     (zenit-core-error       . ,zenit-core-dir)
+                     (zenit-local-conf-error . ,zenit-local-conf-dir)
+                     (zenit-module-error     . ,zenit-modules-dir))
+                if (file-in-directory-p path dir)
+                do (signal err (list (file-relative-name path (expand-file-name "../" dir))
+                                     e)))))))
 
 (defun zenit-require (feature &optional filename noerror)
   "Like `require', but handles subfeatures.
@@ -509,7 +507,7 @@ sessions this inhibits output to the echo-area, but not to
 ;;; Closure factories
 
 (defmacro lambda! (arglist &rest body)
-  "Returns (cl-function (lambda ARGLIST BODY...)).
+  "Return (cl-function (lambda ARGLIST BODY...)).
 
 The closure is wrapped in `cl-function', meaning ARGLIST will
 accept anything `cl-defun' will. Implicitly adds
@@ -535,6 +533,8 @@ accept anything `cl-defun' will. Implicitly adds
                                  (nreverse newargs))
                              (append args (list '&allow-other-keys)))
                          args)))
+         (eval-when-compile
+           (declare-function allow-other-keys nil))
          (allow-other-keys arglist))
       ,@body)))
 

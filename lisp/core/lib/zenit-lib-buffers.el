@@ -4,19 +4,19 @@
   (require 'cl-lib))
 
 ;; `cl-seq'
-(declare-function cl-delete-if "cl-seq")
-(declare-function cl-remove-if "cl-seq")
-(declare-function cl-remove-if-not "cl-seq")
+(declare-function cl-delete-if "cl-seq" (cl-pred cl-list &rest cl-keys))
+(declare-function cl-remove-if "cl-seq" (cl-pred cl-list &rest cl-keys))
+(declare-function cl-remove-if-not "cl-seq" (cl-pred cl-list &rest cl-keys))
 
 ;; `projectile'
-(declare-function projectile-project-buffer-p "ext:projectile")
+(declare-function projectile-project-buffer-p "ext:projectile" (buffer project-root))
 
 ;; `subr-x'
-(declare-function hash-table-keys "subr-x")
+(declare-function hash-table-keys "subr-x" (hash-table))
 (autoload #'hash-table-keys "subr-x")
 
 ;; `zenit-lib-projects'
-(declare-function zenit-project-root "zenit-lib-projects")
+(declare-function zenit-project-root "zenit-lib-projects" (&optional dir))
 
 
 ;;;###autoload

@@ -4,19 +4,19 @@
   (require 'cl-lib))
 
 ;; `bufferlo'
-(declare-function bufferlo-bookmark-frame-load "ext:bufferlo")
-(declare-function bufferlo-mode "ext:bufferlo")
+(declare-function bufferlo-bookmark-frame-load "ext:bufferlo" (name))
+(declare-function bufferlo-mode "ext:bufferlo" (&optional dirname))
 (defvar bufferlo-mode)
 
 ;; `desktop'
-(declare-function desktop-full-file-name "desktop")
+(declare-function desktop-full-file-name "desktop" (&optional dirname))
 (defvar desktop-base-file-name)
 (defvar desktop-dirname)
 (defvar desktop-file-modtime)
 (defvar desktop-restore-eager)
 
 ;; `restart-emacs'
-(declare-function restart-emacs--restore-frames-using-desktop "ext:restart-emacs")
+(declare-function restart-emacs--restore-frames-using-desktop "ext:restart-emacs" (file))
 
 ;; `ui/workspaces'
 (defvar +workspaces-autosave)
@@ -25,7 +25,12 @@
 (defvar +workspaces-save-directory)
 
 ;; `zenit-modules'
-(declare-function zenit-module-p "zenit-modules")
+(declare-function zenit-module-p "zenit-modules" (category module &optional flag))
+
+;; `ui/workspaces'
+(declare-function +workspace-kill "../../modules/ui/workspaces/autoload/workspaces.el" (workspace &optional inhibit-kill-p))
+(declare-function +workspace-list-names "../../modules/ui/workspaces/autoload/workspaces.el")
+(declare-function +workspace-save-session "../../modules/ui/workspaces/autoload/workspaces.el" (file))
 
 
 ;;

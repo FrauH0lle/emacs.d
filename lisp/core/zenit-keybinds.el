@@ -163,13 +163,6 @@ can be specified as a description for the menu item.")
                                      defs)
                            (t ,fallback-def))))))))
 
-(add-hook! 'zenit-first-input-hook
-  (defun +general-predicate-dispatch--fix-load-history-h ()
-    "Add `general-predicate-dispatch' explicitly to load-history so
-the patch can be validated."
-    (push
-     `(,(locate-library "general") (defun . general-predicate-dispatch)) load-history)))
-
 ;; Convenience aliases
 (defalias 'define-key! #'general-def)
 (defalias 'undefine-key! #'general-unbind)

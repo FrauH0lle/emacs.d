@@ -14,13 +14,13 @@
   (require 'cl-lib))
 
 ;; `cl-seq'
-(declare-function cl-remove-duplicates "cl-seq")
+(declare-function cl-remove-duplicates "cl-seq" (cl-seq &rest cl-keys))
 
 ;; `evil-states'
-(declare-function evil-emacs-state "ext:evil-states")
+(declare-function evil-emacs-state "ext:evil-states" t t)
 
 ;; `subr-x'
-(declare-function hash-table-keys "subr-x")
+(declare-function hash-table-keys "subr-x" (hash-table))
 (autoload #'hash-table-keys "subr-x")
 
 

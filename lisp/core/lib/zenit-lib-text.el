@@ -10,7 +10,7 @@
 (declare-function editorconfig-set-indentation "ext:editorconfig")
 
 ;; `evil'
-(declare-function evil-visual-state-p "ext:evil-states")
+(declare-function evil-visual-state-p "ext:evil-states" t t)
 (defvar evil-visual-beginning)
 (defvar evil-visual-end)
 

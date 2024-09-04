@@ -17,33 +17,6 @@
                  ;; Core files which are not used in the interactive session
                  "zenit-cli.el" "zenit-packages.el")))))
 
-(defun zenit-cli-compile-setup-env ()
-  "Load required files for the byte-compilation."
-  ;; Make sure the cached definitions are loaded for the byte-compiler
-  (dolist (cache-file (butlast (mapcar #'car zenit-cache-generators) 1))
-    (load (file-name-concat zenit-local-dir cache-file) nil (not init-file-debug)))
-
-  ;; Setup environment for compilation
-  (require 'zenit-start)
-  (require 'zenit-use-package)
-  (require 'use-package)
-  (require 'zenit-el-patch)
-  (require 'zenit-keybinds)
-  (require 'zenit-ui)
-  (require 'zenit-projects)
-  (require 'zenit-editor)
-
-  ;; Prevent packages from being loaded at compile time if they
-  ;; don't meet their own predicates.
-  (push (list :no-require t
-              (lambda (_name args)
-                (or (when-let (pred (or (plist-get args :if)
-                                        (plist-get args :when)))
-                      (not (eval pred t)))
-                    (when-let (pred (plist-get args :unless))
-                      (eval pred t)))))
-        use-package-defaults))
-
 (cl-defun zenit-cli-compile ()
   "Byte and native compiles your emacs configuration."
   (let ((default-directory zenit-emacs-dir)
@@ -64,7 +37,6 @@
     (let ((load-prefer-newer t)
           kill-emacs-query-functions
           kill-emacs-hook)
-      ;; (zenit-cli-compile-setup-env)
       (zenit-initialize-packages))
 
     ;; Assemble .el files we want to compile
@@ -90,7 +62,6 @@
            (warn "Couldn't find any valid targets")
          (item "No targets to compile")))
       (cl-return nil))
-
     (print!
      (item "Compiling your config (may take a while)..."))
     (print-group!
@@ -119,12 +90,18 @@
                      (`nil
                       (print! (error "Failed to compile %s") (relpath target))
                       (when msg
-                        (print! msg))
+                        (with-output-to!
+                            `((t . ,(alist-get 'complog zenit-cli-log-buffers)))
+                          (let ((zenit-print-indent 0))
+                            (print! msg))))
                       total-fail)
                      (_
                       (print! (success "Compiled %s") (relpath target))
                       (when msg
-                        (print! msg))
+                        (with-output-to!
+                            `((t . ,(alist-get 'complog zenit-cli-log-buffers)))
+                          (let ((zenit-print-indent 0))
+                            (print! msg))))
                       total-ok))))))
             (print! (class (if (= total-fail 0) 'success 'error)
                            "%s %d/%d file(s) (%d ignored)")

@@ -335,7 +335,8 @@ for `mode-line-format'."
 (defun +popup-unset-modeline-on-disable-h ()
   "Restore the modeline when `+popup-buffer-mode' is deactivated."
   (when (and (not (bound-and-true-p +popup-buffer-mode))
-             (bound-and-true-p hide-mode-line-mode))
+             (bound-and-true-p hide-mode-line-mode)
+             (not (bound-and-true-p global-hide-mode-line-mode)))
     (hide-mode-line-mode -1)))
 
 ;;;###autoload
@@ -485,18 +486,18 @@ is non-nil."
 ;;;###autoload
 (defun +popup-record-parent-a (fn &rest args)
   "Record popup's parent buffer."
-  (if (popper-popup-p (current-buffer))
-      (let ((parent (current-buffer))
-            (parents +popup--parents)
-            (quit (+popup-parameter 'quit))
-            ;; Do not destroy the parent
-            +popup--timer)
-        (prog1
-            (apply fn args)
-          (when (popper-popup-p (current-buffer))
-            (push (cons parent quit) parents)
-            (setq +popup--parents parents))))
-    (apply fn args)))
+  (let ((parent (or describe-function-orig-buffer
+                    (current-buffer)))
+        (parents +popup--parents)
+        (quit (+popup-parameter 'quit))
+        ;; Do not destroy the parent
+        +popup--timer)
+    (prog1
+        (apply fn args)
+      (when (and (popper-popup-p (current-buffer))
+                 (not (eq (current-buffer) (caar +popup--parents))))
+        (push (cons parent quit) parents)
+        (setq +popup--parents parents)))))
 
 (advice-add #'+popup-buffer :around #'+popup-record-parent-a)
 

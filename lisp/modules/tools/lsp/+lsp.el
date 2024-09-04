@@ -51,8 +51,7 @@
         (lsp-signature-stop)
         t)))
 
-  (eval-when! (modulep! :ui popup)
-    (set-popup-rule! "^\\*lsp-\\(help\\|install\\)" :size 0.35 :quit t :select t))
+  (set-popup-rule! "^\\*lsp-\\(help\\|install\\)" :size 0.35 :quit t :select t)
   (eval-when! (modulep! :tools lookup)
     (set-lookup-handlers! 'lsp-mode
                           :definition #'+lsp-lookup-definition-handler
@@ -71,15 +70,7 @@
           (setq-local flycheck-checker old-checker))
       (apply fn args)))
 
-  (add-hook! 'lsp-mode-hook
-    (defun +lsp-display-guessed-project-root-h ()
-      "Log what LSP things is the root of the current project."
-      ;; Makes it easier to detect root resolution issues.
-      (when-let (path (buffer-file-name (buffer-base-buffer)))
-        (if-let (root (lsp--calculate-root (lsp-session) path))
-            (lsp--info "Guessed project root is %s" (abbreviate-file-name root))
-          (lsp--info "Could not guess project root."))))
-    #'+lsp-optimization-mode)
+  (add-hook 'lsp-mode-hook #'+lsp-optimization-mode)
 
   (defvar +lsp--deferred-shutdown-timer nil)
   (defadvice! +lsp-defer-server-shutdown-a (fn &optional restart)

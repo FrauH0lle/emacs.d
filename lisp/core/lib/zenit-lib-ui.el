@@ -10,7 +10,10 @@
 (defvar display-line-numbers-type)
 
 ;; `zenit-lib-buffers'
-(declare-function zenit-real-buffer-list "zenit-lib-buffers")
+(declare-function zenit-real-buffer-list "zenit-lib-buffers" (&optional buffer-list))
+
+;; `ui/workspaces'
+(declare-function +popup-window-p "../../modules/ui/popup/autoload/popup.el" (&optional window))
 
 
 ;;

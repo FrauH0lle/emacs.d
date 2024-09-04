@@ -44,6 +44,38 @@
   (set-evil-initial-state! 'vc-dir-mode 'emacs))
 
 
+(use-package! smerge-mode
+  :defer t
+  :init
+  (add-hook! 'find-file-hook
+    (defun +vc-init-smerge-mode-h ()
+      (unless (bound-and-true-p smerge-mode)
+        (save-excursion
+          (goto-char (point-min))
+          (when (re-search-forward "^<<<<<<< " nil t)
+            (smerge-mode 1))))))
+  :config
+  (map! :map smerge-mode-map
+        :localleader
+        "n" #'smerge-next
+        "p" #'smerge-prev
+        "r" #'smerge-resolve
+        "a" #'smerge-keep-all
+        "b" #'smerge-keep-base
+        "o" #'smerge-keep-lower
+        "l" #'smerge-keep-lower
+        "m" #'smerge-keep-upper
+        "u" #'smerge-keep-upper
+        "E" #'smerge-ediff
+        "C" #'smerge-combine-with-next
+        "R" #'smerge-refine
+        "C-m" #'smerge-keep-current
+        (:prefix "="
+                 "<" #'smerge-diff-base-upper
+                 ">" #'smerge-diff-base-lower
+                 "=" #'smerge-diff-upper-lower)))
+
+
 (after! git-timemachine
   ;; Sometimes I forget `git-timemachine' is enabled in a buffer, so instead of
   ;; showing revision details in the minibuffer, show them in
@@ -90,6 +122,10 @@ info in the `header-line-format' is a more visible indicator."
                     (propertize author 'face 'git-timemachine-minibuffer-author-face)
                     (propertize sha-or-subject 'face 'git-timemachine-minibuffer-detail-face)
                     date-full date-relative))))
+
+  ;; ;; HACK 2024-08-21: `delay-mode-hooks' suppresses font-lock-mode in later
+  ;;   versions of Emacs, so git-timemachine buffers end up unfontified.
+  (add-hook 'git-timemachine-mode-hook #'font-lock-mode)
 
   (after! evil
     ;; Rehash evil keybindings so they are recognized

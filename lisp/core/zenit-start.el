@@ -150,13 +150,15 @@ Default value is nil, allowing the hooks to run.")
                " " (buffer-name (or (buffer-base-buffer)
                                     (current-buffer)))))
     (setq-local zenit-inhibit-local-var-hooks t)
+    (zenit-run-hooks (intern-soft (format "%s-local-vars-hook" major-mode)))
     ;; The tree-sitter supported modes are usually derived from a common base
     ;; mode. Thus, instead of having to add to the non-ts-mode and normal-mode
     ;; hooks, we run the parent hooks as well.
-    (let ((parent (get major-mode 'derived-mode-parent)))
-      (when (string-suffix-p "base-mode" (symbol-name parent))
-        (zenit-run-hooks (intern-soft (format "%s-local-vars-hook" parent))))
-      (zenit-run-hooks (intern-soft (format "%s-local-vars-hook" major-mode))))))
+    ;; (let ((parent (get major-mode 'derived-mode-parent)))
+    ;;   (when (string-suffix-p "base-mode" (symbol-name parent))
+    ;;     (zenit-run-hooks (intern-soft (format "%s-local-vars-hook" parent))))
+    ;;   (zenit-run-hooks (intern-soft (format "%s-local-vars-hook" major-mode))))
+    ))
 
 ;; If the user has disabled `enable-local-variables', then
 ;; `hack-local-variables-hook' is never triggered, so we trigger it at the end
@@ -309,6 +311,14 @@ it."
 (zenit-run-hook-on 'zenit-first-file-hook   '(find-file-hook dired-initial-position-hook))
 (zenit-run-hook-on 'zenit-first-input-hook  '(pre-command-hook))
 
+;; If the user's already opened something (e.g. with command-line arguments),
+;; then we should assume nothing about the user's intentions and simply treat
+;; this session as fully initialized.
+(add-hook! 'zenit-after-init-hook :depth 100
+  (defun zenit-run-first-hooks-if-files-open-h ()
+    (when file-name-history
+      (zenit-run-hooks 'zenit-first-file-hook 'zenit-first-buffer-hook))))
+
 ;; Activate these later, otherwise they'll fire for every buffer created between
 ;; now and the end of startup.
 (add-hook! 'after-init-hook
@@ -321,25 +331,7 @@ it."
 ;; Load site-lisp/init.el early, but only when not in CLI mode.
 (when (and (not noninteractive)
            (not (or (zenit-context-p 'cli) (zenit-context-p 'compile))))
-  (zenit-load (file-name-sans-extension (file-truename (file-name-concat zenit-local-conf-dir zenit-module-init-file))) t)
-
-  ;; (let ((vc-handled-backends nil)
-  ;;       (vc-follow-symlinks nil))
-  ;; (load! (string-remove-suffix ".el" zenit-module-init-file) zenit-local-conf-dir t))
-  )
-
-;; Load the rest of site-lisp/ + modules if noninteractive and not in CLI mode.
-;; The idea is to be able to use this file in Emacs' batch mode and initialize
-;; the local configuraton.
-;; (when (and noninteractive (not (or (zenit-context-p 'cli) (zenit-context-p 'compile))))
-;;   (let ((init-file (file-name-concat zenit-emacs-dir "init.el")))
-;;     (unless (file-exists-p init-file)
-;;       (user-error "Init file hasn't been generated. Did you forgot to run 'make refresh'?"))
-;;     (let (kill-emacs-query-functions
-;;           kill-emacs-hook)
-;;       ;; Loads modules, then site-lisp/config.el
-;;       (zenit-load init-file 'noerror)
-;;       (zenit-initialize-packages))))
+  (load! (string-remove-suffix ".el" zenit-module-init-file) zenit-local-conf-dir t))
 
 ;; Entry point
 ;; HACK: This advice hijacks Emacs' initfile loader to accomplish the following:
@@ -349,64 +341,69 @@ it."
 ;;      and ~/_emacs) and spare us the IO of searching for them.
 ;;   3. Cut down on unnecessary logic in Emacs' bootstrapper.
 ;;   4. Offer a more user-friendly error state/screen.
-;; (define-advice startup--load-user-init-file (:override (&rest _) init-zenit 100)
-;;   (let ((debug-on-error-from-init-file nil)
-;;         (debug-on-error-should-be-set nil)
-;;         (debug-on-error-initial (if (eq init-file-debug t) 'startup init-file-debug))
-;;         ;; The init file might contain byte-code with embedded NULs, which can
-;;         ;; cause problems when read back, so disable nul byte detection. (Bug
-;;         ;; #52554)
-;;         (inhibit-null-byte-detection t))
-;;     (let ((debug-on-error debug-on-error-initial))
-;;       (condition-case-unless-debug error
-;;           (when init-file-user
-;;             (let ((init-file-name
-;;                    ;; This dynamically generated init file stores a lot of
-;;                    ;; precomputed information, such as module and package
-;;                    ;; autoloads, and values for expensive variables like
-;;                    ;; `zenit-modules', `zenit-disabled-packages', `load-path',
-;;                    ;; `auto-mode-alist', and `Info-directory-list'. etc.
-;;                    ;; Compiling them in one place is a big reduction in startup
-;;                    ;; time, and by keeping a history of them, you get a snapshot
-;;                    ;; of your config in time.
-;;                    (file-name-concat zenit-emacs-dir (if (bound-and-true-p +esup-active-p) "init.el" "init.elc"))))
-;;               ;; If `user-init-file' is t, then `load' will store the name of
-;;               ;; the next file it loads into `user-init-file'.
-;;               (setq user-init-file t)
-;;               (when init-file-name
-;;                 (load init-file-name 'noerror 'nomessage 'nosuffix))
-;;               ;; (when init-file-name
-;;               ;;   (load (concat (string-remove-suffix ".elc" init-file-name)
-;;               ;;               ".el") 'noerror 'nomessage 'nosuffix))
-;;               ;; If it's still `t', then it failed to load the profile initfile.
-;;               (when (eq user-init-file t)
-;;                 (signal 'zenit-nosync-error (list init-file-name)))
-;;               ;; If we loaded a compiled file, set `user-init-file' to the
-;;               ;; source version if that exists.
-;;               (setq user-init-file
-;;                     (concat (string-remove-suffix ".elc" user-init-file)
-;;                             ".el"))))
-;;         (error
-;;          (display-warning
-;;           'initialization
-;;           (format-message "\
-;; An error occurred while booting Emacs `%s':\n\n%s%s%s\n\n\
-;; To ensure normal operation, you should investigate and remove the
-;; cause of the error in your Emacs config files.  Start Emacs with
-;; the `--debug-init' option to view a complete error backtrace."
-;;                           user-init-file
-;;                           (get (car error) 'error-message)
-;;                           (if (cdr error) ": " "")
-;;                           (mapconcat (lambda (s) (prin1-to-string s t))
-;;                                      (cdr error) ", "))
-;;           :warning)
-;;          (setq init-file-had-error t)))
-;;       ;; If we can tell that the init file altered debug-on-error, arrange to
-;;       ;; preserve the value that it set up.
-;;       (or (eq debug-on-error debug-on-error-initial)
-;;           (setq debug-on-error-should-be-set t
-;;                 debug-on-error-from-init-file debug-on-error)))
-;;     (when debug-on-error-should-be-set
-;;       (setq debug-on-error debug-on-error-from-init-file))))
+(define-advice startup--load-user-init-file (:override (&rest _) init-zenit 100)
+  (let ((debug-on-error-from-init-file nil)
+        (debug-on-error-should-be-set nil)
+        (debug-on-error-initial (if (eq init-file-debug t) 'startup init-file-debug))
+        ;; The init file might contain byte-code with embedded NULs, which can
+        ;; cause problems when read back, so disable nul byte detection. (Bug
+        ;; #52554)
+        (inhibit-null-byte-detection t))
+    (let ((debug-on-error debug-on-error-initial))
+      (condition-case-unless-debug error
+          (when init-file-user
+            (let ((init-file-name
+                   ;; This dynamically generated init file stores a lot of
+                   ;; precomputed information, such as module and package
+                   ;; autoloads, and values for expensive variables like
+                   ;; `zenit-modules', `zenit-disabled-packages', `load-path',
+                   ;; `auto-mode-alist', and `Info-directory-list'. etc.
+                   ;; Compiling them in one place is a big reduction in startup
+                   ;; time, and by keeping a history of them, you get a snapshot
+                   ;; of your config in time.
+                   (file-name-concat zenit-emacs-dir "init.elc")))
+              ;; If `user-init-file' is t, then `load' will store the name of
+              ;; the next file it loads into `user-init-file'.
+              (setq user-init-file t)
+              (when init-file-name
+                (load init-file-name 'noerror 'nomessage 'nosuffix)
+                ;; HACK 2024-09-02: If `init-file-name' happens to be higher in
+                ;;   `load-history' than a symbol's actual definition,
+                ;;   `symbol-file' (and help/helpful buffers) will report the
+                ;;   source of a symbol as `init-file-name', rather than it's
+                ;;   true source. By removing this file from `load-history', no
+                ;;   one will make that mistake.
+                (setq load-history (delete (assoc init-file-name load-history)
+                                           load-history)))
+              ;; If it's still `t', then it failed to load the profile initfile.
+              (when (eq user-init-file t)
+                (signal 'zenit-nosync-error (list init-file-name)))
+              ;; If we loaded a compiled file, set `user-init-file' to the
+              ;; source version if that exists.
+              (setq user-init-file
+                    (concat (string-remove-suffix ".elc" user-init-file)
+                            ".el"))))
+        (error
+         (display-warning
+          'initialization
+          (format-message "\
+An error occurred while booting Emacs `%s':\n\n%s%s%s\n\n\
+To ensure normal operation, you should investigate and remove the
+cause of the error in your Emacs config files.  Start Emacs with
+the `--debug-init' option to view a complete error backtrace."
+                          user-init-file
+                          (get (car error) 'error-message)
+                          (if (cdr error) ": " "")
+                          (mapconcat (lambda (s) (prin1-to-string s t))
+                                     (cdr error) ", "))
+          :warning)
+         (setq init-file-had-error t)))
+      ;; If we can tell that the init file altered debug-on-error, arrange to
+      ;; preserve the value that it set up.
+      (or (eq debug-on-error debug-on-error-initial)
+          (setq debug-on-error-should-be-set t
+                debug-on-error-from-init-file debug-on-error)))
+    (when debug-on-error-should-be-set
+      (setq debug-on-error debug-on-error-from-init-file))))
 
 (provide 'zenit-start)

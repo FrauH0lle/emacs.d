@@ -3,7 +3,7 @@
 ;;;###autoload
 (defun +eval-display-results-in-popup (output &optional _source-buffer)
   "Display OUTPUT in a popup buffer."
-  (let ((output-buffer (get-buffer-create "*doom eval*"))
+  (let ((output-buffer (get-buffer-create "*emacs eval*"))
         (origin (selected-window)))
     (with-current-buffer output-buffer
       (setq-local scroll-margin 0)

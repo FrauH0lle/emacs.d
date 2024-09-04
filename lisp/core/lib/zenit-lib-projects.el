@@ -4,7 +4,7 @@
   (require 'cl-lib))
 
 ;; `zenit-lib-files'
-(declare-function zenit-path "zenit-lib-files")
+(declare-function zenit-path "zenit-lib-files" (&rest segments))
 
 
 ;;;###autoload (defvar projectile-project-root nil)
@@ -64,25 +64,27 @@ choosing."
 ;;;###autoload
 (defun zenit/add-directory-as-project (dir)
   "Register an arbitrary directory as a project.
+
 Unlike `projectile-add-known-project', if DIR isn't a valid
 project, a .project file will be created within it so that it
 will always be treated as one. This command will throw an error
 if a parent of DIR is a valid project (which would mask DIR)."
   (interactive "D")
-  (let* ((short-dir (abbreviate-file-name dir))
-         (proj-file (zenit-path dir ".project"))
-         (proj-dir (or (zenit-project-root dir)
-                       (when (file-exists-p proj-file)
-                         dir))))
-    (unless proj-dir
-      (message "%S was not a project; adding .project file to it"
-               short-dir)
-      (with-temp-file proj-file)
-      (setq proj-dir proj-file))
+  (when-let ((proj-dir (zenit-project-root dir)))
     (if (file-equal-p proj-dir dir)
-        (user-error "Can't add %S as a project, because %S is already a project"
-                    short-dir (abbreviate-file-name proj-dir))
-      (projectile-add-known-project dir))))
+        (user-error "ERROR: Directory is already a project: %s" proj-dir)
+      (user-error "ERROR: Directory is already inside another project: %s" proj-dir)))
+  (let ((short-dir (abbreviate-file-name dir)))
+    (when (projectile-ignored-project-p dir)
+      (user-error "ERROR: Directory is in projectile's ignore list: %s" short-dir))
+    (dolist (proj projectile-known-projects)
+      (when (file-in-directory-p proj dir)
+        (user-error "ERROR: Directory contains a known project: %s" short-dir))
+      (when (file-equal-p proj dir)
+        (user-error "ERROR: Directory is already a known project: %s" short-dir)))
+    (with-temp-file (zenit-path dir ".project"))
+    (message "Added directory as a project: %s" short-dir)
+    (projectile-add-known-project dir)))
 
 
 ;;

@@ -1,10 +1,5 @@
 ;; editor/fold/autoload/hideshow.el -*- lexical-binding: t; -*-
 
-(defface +fold-hideshow-folded-face
-  `((t (:inherit font-lock-comment-face :weight light)))
-  "Face to hightlight `hideshow' overlays."
-  :group 'doom-themes)
-
 ;;;###autoload
 (defun +fold-hideshow-haml-forward-sexp-fn (arg)
   (haml-forward-sexp arg)
@@ -30,7 +25,8 @@
                          'empty-line
                          'vimish-fold-fringe))))
     (overlay-put
-     ov 'display (propertize +fold-elide-string 'face '+fold-hideshow-folded-face))))
+     ov 'display (propertize +fold-ellipsis
+                             'face '+fold-hideshow-folded-face))))
 
 
 ;;

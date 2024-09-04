@@ -30,18 +30,20 @@ autoloads.")
 ;;; Library
 
 (defun zenit-autoloads--compile-file (file)
-  (zenit-cli-compile-setup-env)
-
   (condition-case-unless-debug e
       (let ((byte-compile-warnings (if init-file-debug byte-compile-warnings
-                                     '(not make-local noruntime unresolved))))
+                                     '(not make-local noruntime unresolved)))
+            success)
         (and (pcase-let ((`(,status . ,msg)
                           (async-get (zenit-async-byte-compile-file file :req-core t :req-core-libs '(files) :req-extra '(cl-lib zenit-modules zenit-use-package zenit-el-patch zenit-keybinds) :modulep t))))
                (when msg
-                 (print! msg))
-               status)
-             ;; (load (byte-compile-dest-file file) nil t)
-             ))
+                 (with-output-to!
+                     `((t . ,(alist-get 'complog zenit-cli-log-buffers)))
+                   (let ((zenit-print-indent 0))
+                     (print! msg))))
+               (setq success status))
+             (if success t (signal 'error "Failed to byte-compile init file"))
+             (load (byte-compile-dest-file file) nil t)))
     (error
      (delete-file (byte-compile-dest-file file))
      (signal 'zenit-autoload-error (list file e)))))

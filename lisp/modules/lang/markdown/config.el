@@ -51,7 +51,7 @@ capture, the end position, and the output buffer.")
 
   :config
   (set-flyspell-predicate! '(markdown-mode gfm-mode)
-    #'+markdown-flyspell-word-p)
+                           #'+markdown-flyspell-word-p)
   (eval-when! (modulep! :tools lookup)
     (set-lookup-handlers! '(markdown-mode gfm-mode)
                           ;; `markdown-follow-thing-at-point' may open an external program or a
@@ -181,11 +181,12 @@ capture, the end position, and the output buffer.")
   (map! :map evil-markdown-mode-map
         :n "TAB" #'markdown-cycle
         :n [backtab] #'markdown-shifttab
-        :i "M-*" #'markdown-insert-list-item
-        :i "M-b" #'markdown-insert-bold
-        :i "M-i" #'markdown-insert-italic
-        :i "M-`" #'+markdown/insert-del
-        :i "M--" #'markdown-insert-hr
+        (:unless evil-disable-insert-state-bindings
+          :i "M-*" #'markdown-insert-list-item
+          :i "M-b" #'markdown-insert-bold
+          :i "M-i" #'markdown-insert-italic
+          :i "M-`" #'+markdown/insert-del
+          :i "M--" #'markdown-insert-hr)
         :n "M-r" #'browse-url-of-file
         :m "]h"  #'markdown-next-visible-heading
         :m "[h"  #'markdown-previous-visible-heading

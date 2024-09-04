@@ -9,7 +9,7 @@
     (set-evil-initial-state! 'pacfiles-mode 'emacs)))
 
 (use-package! pkgbuild-mode
-  :mode ("/PKGBUILD$" . pkgbuild-mode)
+  :mode ("/PKGBUILD\\'" . pkgbuild-mode)
   :config
   (map! :map pkgbuild-mode-map
         :localleader

@@ -107,12 +107,14 @@ if it's callable, `apropos' otherwise."
                (when (invisible-p (point))
                  (org-show-hidden-entry))))
            'deferred))
-        (thing (helpful-symbol (intern thing)))
-        ((call-interactively #'helpful-at-point))))
-
-;; DEPRECATED Remove when 28 support is dropped.
-(unless (fboundp 'lisp--local-defform-body-p)
-  (fset 'lisp--local-defform-body-p #'ignore))
+        (thing
+         (funcall (or (command-remapping #'describe-symbol)
+                      #'describe-symbol)
+                  (intern thing)))
+        ((call-interactively
+          (if (fboundp #'helpful-at-point)
+              #'helpful-at-point
+            #'describe-symbol)))))
 
 ;;;###autoload
 (defun +emacs-lisp-indent-function (indent-point state)

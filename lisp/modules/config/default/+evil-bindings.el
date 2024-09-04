@@ -80,8 +80,6 @@
 
       (:after help :map help-mode-map
        :n "o"       #'link-hint-open-link)
-      (:after helpful :map helpful-mode-map
-       :n "o"       #'link-hint-open-link)
       (:after info :map Info-mode-map
        :n "o"       #'link-hint-open-link)
       (:after apropos :map apropos-mode-map
@@ -138,6 +136,8 @@
        (:after corfu
         (:map corfu-mode-map
          :i "C-." #'completion-at-point
+         :i "C-n" #'+corfu/dabbrev-or-next
+         :i "C-p" #'+corfu/dabbrev-or-last
          :n "C-." (cmd! (call-interactively #'evil-insert-state)
                         (call-interactively #'completion-at-point))
          :v "C-." (cmd! (call-interactively #'evil-change)
@@ -421,8 +421,6 @@
        :desc "Revert file"                 "R"   #'vc-revert
        :desc "Copy link to remote"         "y"   #'+vc/browse-at-remote-kill
        :desc "Copy link to homepage"       "Y"   #'+vc/browse-at-remote-kill-homepage
-       (:when (modulep! :ui hydra)
-         :desc "SMerge"                    "m"   #'+vc/smerge-hydra/body)
        (:when (modulep! :ui vc-gutter)
          (:when (modulep! :ui hydra)
            :desc "VCGutter"                "."   #'+vc/gutter-hydra/body)
@@ -685,6 +683,7 @@
       (:prefix-map ("t" . "toggle")
        :desc "Big mode"                     "b" #'zenit-big-font-mode
        :desc "Fill Column Indicator"        "c" #'global-display-fill-column-indicator-mode
+       :desc "Diff Highlights (Git Gutter)" "d" #'diff-hl-mode
        :desc "Flymake"                      "f" #'flymake-mode
        (:when (modulep! :checkers syntax)
          :desc "Flycheck"                   "f" #'flycheck-mode)

@@ -310,7 +310,7 @@ See URL `https://github.com/emacs-ess/ESS/issues/300'."
 
 
 (use-package! poly-R
-  :mode ("\\.[rR]md$" . poly-markdown+r-mode)
+  :mode ("\\.[rR]md\\'" . poly-markdown+r-mode)
   :config
   (eval-when! (modulep! :editor snippets)
     (set-tempel-minor-mode! 'poly-markdown+r-mode)))

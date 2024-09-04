@@ -1,8 +1,5 @@
 ;; completion/vertico/config.el -*- lexical-binding: t; -*-
 
-(defvar +vertico-consult-fd-args nil
-  "Shell command and arguments the vertico module uses for fd.")
-
 ;;
 ;;; Packages
 
@@ -66,27 +63,23 @@
 (use-package! orderless
   :after-call zenit-first-input-hook
   :config
+  (setq orderless-affix-dispatch-alist
+        '((?! . orderless-without-literal)
+          (?& . orderless-annotation)
+          (?% . char-fold-to-regexp)
+          (?` . orderless-initialism)
+          (?= . orderless-literal)
+          (?^ . orderless-literal-prefix)
+          (?~ . orderless-flex)))
+
   (defun +vertico-orderless-dispatch (pattern _index _total)
     (cond
      ;; Ensure $ works with Consult commands, which add disambiguation suffixes
      ((string-suffix-p "$" pattern)
-      `(orderless-regexp . ,(concat (substring pattern 0 -1) "[\x200000-\x300000]*$")))
-     ;; Ignore single !
-     ((string= "!" pattern) `(orderless-literal . ""))
-     ;; Without literal
-     ((string-prefix-p "!" pattern) `(orderless-without-literal . ,(substring pattern 1)))
-     ;; Character folding
-     ((string-prefix-p "%" pattern) `(char-fold-to-regexp . ,(substring pattern 1)))
-     ((string-suffix-p "%" pattern) `(char-fold-to-regexp . ,(substring pattern 0 -1)))
-     ;; Initialism matching
-     ((string-prefix-p "`" pattern) `(orderless-initialism . ,(substring pattern 1)))
-     ((string-suffix-p "`" pattern) `(orderless-initialism . ,(substring pattern 0 -1)))
-     ;; Literal matching
-     ((string-prefix-p "=" pattern) `(orderless-literal . ,(substring pattern 1)))
-     ((string-suffix-p "=" pattern) `(orderless-literal . ,(substring pattern 0 -1)))
-     ;; Flex matching
-     ((string-prefix-p "~" pattern) `(orderless-flex . ,(substring pattern 1)))
-     ((string-suffix-p "~" pattern) `(orderless-flex . ,(substring pattern 0 -1)))))
+      `(orderless-regexp . ,(concat (substring pattern 0 -1) "[\x200000-\x300000]*$")))))
+
+  (add-to-list 'orderless-style-dispatchers '+vertico-orderless-dispatch)
+
   (add-to-list
    'completion-styles-alist
    '(+vertico-basic-remote
@@ -103,6 +96,10 @@
   ;; ...otherwise find-file gets different highlighting than other commands
   (set-face-attribute 'completions-first-difference nil :inherit nil))
 
+
+;; PATCH 2024-09-04: `consult'
+(compile-along! "patches/workspaces.el")
+(el-patch-feature consult)
 
 (use-package! consult
   :defer t
@@ -124,9 +121,14 @@
     [remap switch-to-buffer-other-frame]  #'consult-buffer-other-frame
     [remap yank-pop]                      #'consult-yank-pop)
   :config
-  (defadvice! +vertico--consult-recent-file-a (&rest _args)
-    "`consult-recent-file' needs to have `recentf-mode' on to work correctly"
-    :before #'consult-recent-file
+  (load! "patches/workspaces.el")
+
+  (defadvice! +vertico--consult-recentf-a (&rest _args)
+    "`consult-recent-file' needs to have `recentf-mode' on to
+ work correctly.
+
+`consult-buffer' needs `recentf-mode' to show file candidates."
+    :before (list #'consult-recent-file #'consult-buffer)
     (recentf-mode +1))
 
   ;; Track jump
@@ -138,30 +140,35 @@
         consult-async-min-input 2
         consult-async-refresh-delay  0.15
         consult-async-input-throttle 0.2
-        consult-async-input-debounce 0.1)
-  (unless +vertico-consult-fd-args
-    (setq +vertico-consult-fd-args
-          (if zenit-fd-executable
-              (format "%s --color=never -i -H -E .git --regex %s"
-                      zenit-fd-executable
-                      (eval-if! zenit--system-windows-p "--path-separator=/" ""))
-            consult-find-args)))
+        consult-async-input-debounce 0.1
+        consult-fd-args
+        '((if (executable-find "fdfind" 'remote) "fdfind" "fd")
+          "--color=never"
+          ;; https://github.com/sharkdp/fd/issues/839
+          "--full-path --absolute-path"
+          "--hidden --exclude .git"
+          (if (featurep :system 'windows) "--path-separator=/")))
+
 
   (protect-macros!
     (consult-customize
      consult-ripgrep consult-git-grep consult-grep
      consult-bookmark consult-recent-file
-     +default/search-project +default/search-other-project
-     +default/search-project-for-symbol-at-point
-     +default/search-cwd +default/search-other-cwd
-     +default/search-notes-for-symbol-at-point
-     +default/search-emacsd
      consult--source-recent-file consult--source-project-recent-file consult--source-bookmark
-     :preview-key "C-SPC")
-    (consult-customize
-     consult-theme
-     :preview-key (list "C-SPC" :debounce 0.5 'any)))
-  (when (modulep! :emacs org)
+     :preview-key "C-SPC"))
+  (eval-when! (modulep! :config default)
+    (protect-macros!
+      (consult-customize
+       +default/search-project +default/search-other-project
+       +default/search-project-for-symbol-at-point
+       +default/search-cwd +default/search-other-cwd
+       +default/search-notes-for-symbol-at-point
+       +default/search-emacsd
+       :preview-key "C-SPC")))
+  (consult-customize
+   consult-theme
+   :preview-key (list "C-SPC" :debounce 0.5 'any))
+  (eval-when! (modulep! :emacs org)
     (defvar +vertico--consult-org-source
       (list :name     "Org Buffer"
             :category 'buffer
@@ -192,21 +199,24 @@
   :general
   ([remap list-directory] #'consult-dir)
   (:keymaps 'vertico-map
-  "C-x C-d" #'consult-dir
-  "C-x C-j" #'consult-dir-jump-file)
+            "C-x C-d" #'consult-dir
+            "C-x C-j" #'consult-dir-jump-file)
   :config
-  (when (modulep! :tools docker)
+  (eval-when! (modulep! :tools docker)
+    (defun +vertico--consult-dir-podman-hosts ()
+      (tramp-container--completion-function "podman"))
+
     (defun +vertico--consult-dir-docker-hosts ()
-      "Get a list of hosts from docker."
-      (when (require 'docker-tramp nil t)
-        (let ((hosts)
-              (docker-tramp-use-names t))
-          (dolist (cand (docker-tramp--parse-running-containers))
-            (let ((user (unless (string-empty-p (car cand))
-                          (concat (car cand) "@")))
-                  (host (car (cdr cand))))
-              (push (concat "/docker:" user host ":/") hosts)))
-          hosts)))
+      (tramp-container--completion-function "docker"))
+
+    (defvar +vertico--consult-dir-source-tramp-podman
+      `(:name     "Podman"
+        :narrow   ?p
+        :category file
+        :face     consult-file
+        :history  file-name-history
+        :items    ,#'+vertico--consult-dir-podman-hosts)
+      "Podman candidate source for `consult-dir'.")
 
     (defvar +vertico--consult-dir-source-tramp-docker
       `(:name     "Docker"
@@ -215,12 +225,14 @@
         :face     consult-file
         :history  file-name-history
         :items    ,#'+vertico--consult-dir-docker-hosts)
-      "Docker candiadate source for `consult-dir'.")
+      "Docker candidate source for `consult-dir'.")
 
+    (add-to-list 'consult-dir-sources '+vertico--consult-dir-source-tramp-podman t)
     (add-to-list 'consult-dir-sources '+vertico--consult-dir-source-tramp-docker t))
 
   (add-to-list 'consult-dir-sources 'consult-dir--source-tramp-ssh t)
   (add-to-list 'consult-dir-sources 'consult-dir--source-tramp-local t))
+
 
 (use-package! consult-flycheck
   :when (modulep! :checkers syntax)
@@ -244,8 +256,7 @@
   :config
   (require 'consult)
 
-  (eval-when! (modulep! :ui popup)
-    (set-popup-rule! "^\\*Embark Export:" :size 0.35 :ttl 0 :quit nil))
+  (set-popup-rule! "^\\*Embark Export:" :size 0.35 :ttl 0 :quit nil)
 
   (after! which-key
     (defadvice! +vertico--embark-which-key-prompt-a (fn &rest args)
@@ -268,18 +279,19 @@
         '+vertico-embark-target-package-fn
         (nthcdr pos embark-target-finders)))
   (defvar-keymap +vertico/embark-zenit-package-map
-    :doc "Keymap for Embark package actions for packages installed by Doom."
-    "h" #'doom/help-packages
-    "b" #'doom/bump-package
-    "c" #'doom/help-package-config
-    "u" #'doom/help-package-homepage)
+    :doc "Keymap for Embark package actions for packages installed."
+    "h" #'zenit/help-packages
+    "b" #'zenit/bump-package
+    "c" #'zenit/help-package-config
+    "u" #'zenit/help-package-homepage)
   (setf (alist-get 'package embark-keymap-alist) #'+vertico/embark-zenit-package-map)
   (map! (:map embark-file-map
          :desc "Open target with sudo"        "s"   #'zenit/sudo-find-file
          (:when (modulep! :tools magit)
            :desc "Open magit-status of target" "g"   #'+vertico/embark-magit-status)
          (:when (modulep! :ui workspaces)
-           :desc "Open in new workspace"       "TAB" #'+vertico/embark-open-in-new-workspace))))
+           :desc "Open in new workspace"       "TAB" #'+vertico/embark-open-in-new-workspace
+           :desc "Open in new workspace"       "<tab>" #'+vertico/embark-open-in-new-workspace))))
 
 
 (use-package! marginalia
@@ -300,12 +312,6 @@
             '(projectile-recentf . project-file)
             '(projectile-switch-to-buffer . buffer)
             '(projectile-switch-project . project-file)))
-
-
-(use-package! embark-consult
-  :after (embark consult)
-  :config
-  (add-hook 'embark-collect-mode-hook #'consult-preview-at-point-mode))
 
 
 (use-package! wgrep

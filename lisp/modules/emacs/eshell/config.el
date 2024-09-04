@@ -218,12 +218,7 @@ You should use `set-eshell-alias!' to change this.")
   ;; Specifically esh-mode, not eshell
   :after esh-mode
   :config
-  (eshell-did-you-mean-setup)
-  ;; HACK There is a known issue with `eshell-did-you-mean' where it does not
-  ;;   work on first invocation, so we invoke it once manually by setting the
-  ;;   last command and then calling the output filter.
-  (setq eshell-last-command-name "catt")
-  (eshell-did-you-mean-output-filter "catt: command not found"))
+  (eshell-did-you-mean-setup))
 
 
 (use-package eshell-syntax-highlighting

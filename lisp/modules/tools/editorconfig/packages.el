@@ -3,4 +3,4 @@
 
 (package! editorconfig
   :recipe (:nonrecursive t)
-  :lockfile tools-editorconfig)
+  :lockfile tools_editorconfig)

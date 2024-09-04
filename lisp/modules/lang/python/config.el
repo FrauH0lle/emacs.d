@@ -268,6 +268,25 @@
 (use-package! conda
   :when (modulep! +conda)
   :after python
+  :preface
+  ;; HACK: `conda-anaconda-home's initialization can throw an error if none of
+  ;;   `conda-home-candidates' exist, so unset it early.
+  (setq conda-anaconda-home (getenv "ANACONDA_HOME")
+        conda-home-candidates
+        (list "~/.anaconda"
+              "~/.anaconda3"
+              "~/.miniconda"
+              "~/.miniconda3"
+              "~/.miniforge3"
+              "~/anaconda3"
+              "~/miniconda3"
+              "~/miniforge3"
+              "~/opt/miniconda3"
+              "/usr/bin/anaconda3"
+              "/usr/local/anaconda3"
+              "/usr/local/miniconda3"
+              "/usr/local/Caskroom/miniconda/base"
+              "~/.conda"))
   :config
   ;; The location of your anaconda home will be guessed from a list of common
   ;; possibilities, starting with `conda-anaconda-home''s default value (which
@@ -276,20 +295,7 @@
   ;; If none of these work for you, `conda-anaconda-home' must be set
   ;; explicitly. Afterwards, run M-x `conda-env-activate' to switch between
   ;; environments
-  (or (cl-loop for dir in (list conda-anaconda-home
-                                "~/.anaconda"
-                                "~/.miniconda"
-                                "~/.miniconda3"
-                                "~/.miniforge3"
-                                "~/anaconda3"
-                                "~/miniconda3"
-                                "~/miniforge3"
-                                "~/opt/miniconda3"
-                                "/usr/bin/anaconda3"
-                                "/usr/local/anaconda3"
-                                "/usr/local/miniconda3"
-                                "/usr/local/Caskroom/miniconda/base"
-                                "~/.conda")
+  (or (cl-loop for dir in (cons conda-anaconda-home conda-home-candidates)
                if (file-directory-p dir)
                return (setq conda-anaconda-home (expand-file-name dir)
                             conda-env-home-directory (expand-file-name dir)))
@@ -358,26 +364,26 @@
   :after lsp-mode)
 
 ;; Use the new ruff LSP server
-(after! lsp-mode
-  (setq! lsp-ruff-lsp-server-command '("ruff" "server"))
-  (lsp-register-client
-   (make-lsp-client
-    :new-connection (lsp-stdio-connection
-                     (lambda () lsp-ruff-lsp-server-command))
-    :activation-fn (lsp-activate-on "python")
-    :server-id 'ruff-server
-    :priority -2
-    :add-on? t
-    :multi-root t
-    :initialization-options
-    (lambda ()
-      (list :settings
-            (list :args lsp-ruff-lsp-ruff-args
-                  :logLevel lsp-ruff-lsp-log-level
-                  :path lsp-ruff-lsp-ruff-path
-                  :interpreter (vector lsp-ruff-lsp-python-path)
-                  :showNotifications lsp-ruff-lsp-show-notifications
-                  :organizeImports (lsp-json-bool lsp-ruff-lsp-advertize-organize-imports)
-                  :fixAll (lsp-json-bool lsp-ruff-lsp-advertize-fix-all)
-                  :importStrategy lsp-ruff-lsp-import-strategy)))))
-  (setq! lsp-disabled-clients '(python-mode . (ruff-lsp))))
+;; (after! lsp-mode
+;;   (setq! lsp-ruff-lsp-server-command '("ruff" "server"))
+;;   (lsp-register-client
+;;    (make-lsp-client
+;;     :new-connection (lsp-stdio-connection
+;;                      (lambda () lsp-ruff-lsp-server-command))
+;;     :activation-fn (lsp-activate-on "python")
+;;     :server-id 'ruff-server
+;;     :priority -2
+;;     :add-on? t
+;;     :multi-root t
+;;     :initialization-options
+;;     (lambda ()
+;;       (list :settings
+;;             (list :args lsp-ruff-lsp-ruff-args
+;;                   :logLevel lsp-ruff-lsp-log-level
+;;                   :path lsp-ruff-lsp-ruff-path
+;;                   :interpreter (vector lsp-ruff-lsp-python-path)
+;;                   :showNotifications lsp-ruff-lsp-show-notifications
+;;                   :organizeImports (lsp-json-bool lsp-ruff-lsp-advertize-organize-imports)
+;;                   :fixAll (lsp-json-bool lsp-ruff-lsp-advertize-fix-all)
+;;                   :importStrategy lsp-ruff-lsp-import-strategy)))))
+;;   (setq! lsp-disabled-clients '(python-mode . (ruff-lsp))))

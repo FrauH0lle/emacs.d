@@ -30,7 +30,7 @@
     (add-hook 'python-mode-local-vars-hook #'tree-sitter! 'append))
 
   (eval-when! (modulep! :ui indent-guides)
-    (add-hook 'python-mode-local-vars-hook #'indent-bars-mode 'append))
+    (add-hook 'python-mode-local-vars-hook #'+indent-guides-init-maybe-h 'append))
 
   :config
   (set-repl-handler! 'python-mode #'+python/open-repl

@@ -16,6 +16,11 @@ the mode will not be activated."
 ;; TODO 2024-07-10: Add tree-sitter support
 (use-package! indent-bars
   :defer t
+  :init
+  (defun +indent-guides-init-maybe-h ()
+    "Enable `indent-bars-mode' depending on `+indent-guides-inhibit-functions'."
+    (unless (run-hook-with-args-until-success '+indent-guides-inhibit-functions)
+      (indent-bars-mode +1)))
   :config
   (setq!
    ;; Show indent guides starting from the first column.

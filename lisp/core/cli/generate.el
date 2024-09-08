@@ -84,9 +84,9 @@
            (cl-loop for dir
                     in (append (zenit-module-load-path zenit-modules-dirs)
                                (list zenit-local-conf-dir))
-                    if (zenit-glob dir "autoload.el") collect it
+                    if (zenit-glob dir "autoload.el") append it
                     if (zenit-glob dir "autoload/*.el") append it)
-           (mapcan #'zenit-glob zenit-autoloads-files))
+           (zenit-glob zenit-autoloads-files))
    nil))
 
 (defun zenit--generate-package-autoloads ()

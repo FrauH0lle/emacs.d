@@ -26,7 +26,7 @@
         ;; In case it is changed during compile-time
         (auto-mode-alist auto-mode-alist)
 
-        (targets (list
+        (targets (append
                   (zenit-glob zenit-core-dir "zenit-lib.el")
                   (zenit-glob zenit-core-dir "zenit-core.el")
                   (zenit-glob zenit-core-dir "zenit-el-patch.el")
@@ -46,14 +46,13 @@
                               :filter #'zenit--byte-compile-ignore-file-p
                               :depth 0)
 
-              (list
                (zenit-glob zenit-core-dir "zenit-modules.el")
                (zenit-glob zenit-core-dir "zenit-start.el")
                (zenit-glob zenit-core-dir "zenit-use-package.el")
                (zenit-glob zenit-core-dir "zenit-keybinds.el")
                (zenit-glob zenit-core-dir "zenit-ui.el")
                (zenit-glob zenit-core-dir "zenit-projects.el")
-               (zenit-glob zenit-core-dir "zenit-editor.el")))
+               (zenit-glob zenit-core-dir "zenit-editor.el"))
 
     (delq nil targets)
     (unless targets

@@ -4,7 +4,7 @@
   (require 'cl-lib))
 
 ;; `zenit-ui'
-(declare-function zenit-init-fonts-h "zenit-ui")
+(declare-function zenit-init-fonts-h "zenit-ui" (&optional reload))
 
 
 ;;;###autoload

@@ -41,3 +41,17 @@
 - Use ~zenit-module-p~ instead for everything which is compiled BEFORE init.el
   is processed. ~modulep!~ uses its own API to determine if modules are
   available!
+* declare-function
+It seems that ~declare-function~ does not understand cl-defun's, etc. extended
+argument list. Thus, instead of
+#+begin_src emacs-lisp
+(declare-function zenit-async-byte-compile-file "zenit-lib-compile" (file &key (req-core-lib nil) (req-core nil) (req-core-libs nil) (req-extra nil) (modulep nil) (autoloads nil)))
+#+end_src
+use
+#+begin_src emacs-lisp
+(declare-function zenit-async-byte-compile-file "zenit-lib-compile" (file &rest kwargs))
+#+end_src
+However, this leads to another issue: The arglist check of the byte compiler
+looks at the expanded form of the definition (~cl-defun foo (x &key y)~ expands
+to ~(defun foo (x &rest --cl-rest--))~). ~check-declare~ on the other hand does
+not and takes the original arglist. And thus, it will complain.

@@ -4,7 +4,7 @@
   (require 'cl-lib))
 
 ;; `zenit-lib-process'
-(declare-function zenit-call-process "zenit-lib-process")
+(declare-function zenit-call-process "zenit-lib-process" (command &rest args))
 
 
 ;;;###autoload

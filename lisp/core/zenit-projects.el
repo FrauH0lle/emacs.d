@@ -1,20 +1,24 @@
 ;; lisp/core/zenit-projects.el -*- lexical-binding: t; -*-
 
 (eval-when-compile
-  (zenit-require 'zenit-lib 'files))
+  (require 'cl-lib))
 
 ;; `cl-seq'
-(declare-function cl-find-if "cl-seq")
+(declare-function cl-find-if "cl-seq" (cl-pred cl-list &rest cl-keys))
 
 ;; `subr-x'
-(declare-function hash-table-keys "subr-x")
+(declare-function hash-table-keys "subr-x" (hash-table))
+
+;; `zenit-lib-files'
+(cl-eval-when (compile)
+  (autoload #'file-exists-p! "zenit-lib-files" nil nil 'macro))
 
 ;; `zenit-lib-process'
-(declare-function zenit-call-process "zenit-lib-process")
+(declare-function zenit-call-process "zenit-lib-process" (command &rest args))
 
 ;; `zenit-lib-projects'
-(declare-function zenit-project-p "zenit-lib-projects")
-(declare-function zenit-project-ignored-p "zenit-lib-projects")
+(declare-function zenit-project-p "zenit-lib-projects" (&optional dir))
+(declare-function zenit-project-ignored-p "zenit-lib-projects" (project-root))
 
 
 (defvar zenit-projectile-cache-limit 10000
@@ -187,7 +191,7 @@ And if it's a function, evaluate it."
   (put 'projectile-git-submodule-command 'initial-value projectile-git-submodule-command)
   (setq projectile-git-submodule-command nil
         ;; Include and follow symlinks in file listings.
-        projectile-git-fd-args (concat "-L -tl " projectile-git-fd-args)
+        projectile-git-fd-args (concat "-tl " projectile-git-fd-args)
         projectile-indexing-method 'hybrid
         projectile-generic-command
         (lambda (_)

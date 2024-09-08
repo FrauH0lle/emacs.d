@@ -4,7 +4,7 @@
   (require 'cl-lib))
 
 ;; `cl-seq'
-(declare-function cl-remove-if "cl-seq")
+(declare-function cl-remove-if "cl-seq" (cl-pred cl-list &rest cl-keys))
 
 ;; `display-line-numbers'
 (defvar display-line-numbers-type)

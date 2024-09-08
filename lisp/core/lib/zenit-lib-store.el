@@ -7,10 +7,11 @@
   (require 'cl-lib))
 
 ;; `cl-seq'
-(declare-function cl-set-difference "cl-seq")
+(declare-function cl-set-difference "cl-seq" (cl-list1 cl-list2 &rest cl-keys))
 
 ;; `zenit-lib-files'
-(declare-function zenit-files-in "zenit-lib-files")
+(declare-function zenit-files-in "zenit-lib-files" (paths &rest rest))
+
 
 
 (defvar zenit-store-dir (concat zenit-data-dir "store/")

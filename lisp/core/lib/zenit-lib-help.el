@@ -3,6 +3,89 @@
 (eval-when-compile
   (require 'cl-lib))
 
+;; `cl-seq'
+(declare-function cl-remove-if-not "cl-seq" (cl-pred cl-list &rest cl-keys))
+(declare-function cl-delete-duplicates "cl-seq" (cl-seq &rest cl-keys))
+
+;; `consult'
+(declare-function consult--ripgrep-make-builder "ext:consult" (paths))
+
+;; `ol'
+(defvar org-link-any-re)
+
+;; `org'
+(declare-function org-collect-keywords "org" (keywords &optional unique directory))
+(declare-function org-get-outline-path "org" (&optional with-self use-cache))
+(declare-function org-heading-components "org" ())
+(declare-function org-map-entries "org" (func &optional match scope &rest skip))
+(defvar org-agenda-new-buffers)
+(defvar org-agenda-files)
+(defvar org-inhibit-startup)
+
+;; `org-fold'
+(declare-function org-fold-show-subtree "org-fold" ())
+
+;; `outline'
+(declare-function outline-previous-visible-heading "outline" (arg))
+
+;; `package'
+(declare-function describe-package-1 "package" (pkg))
+(declare-function package-desc-p "package" t t)
+(declare-function package--print-help-section "package" (name &rest strings))
+(defvar package-alist)
+(defvar package-archive-contents)
+(defvar package--builtins)
+(defvar package--initialized)
+
+;; `straight'
+(declare-function straight-visit-package-website "ext:straight" (recipe))
+(declare-function straight--build-dir "ext:straight" (&rest segments))
+(declare-function straight--repos-dir "ext:straight" (&rest segments))
+(declare-function straight--lockfile-read "ext:straight" (lockfile))
+(declare-function straight--versions-lockfile "ext:straight" (profile))
+(defvar straight--recipe-cache)
+(defvar straight--build-cache)
+
+;; `subr-x'
+(declare-function hash-table-keys "subr-x" (hash-table))
+(declare-function hash-table-values "subr-x" (hash-table))
+
+;; `thingatpt'
+(declare-function thing-at-point--beginning-of-sexp "thingatpt" ())
+
+;; `zenit-lib-files'
+(cl-eval-when (compile)
+  (autoload #'file-exists-p! "zenit-lib-files" nil nil 'macro))
+
+;; `zenit-packages'
+(declare-function zenit-initialize-packages "zenit-packages" (&optional force-p))
+(declare-function zenit-package-backend "zenit-packages" (package))
+(declare-function zenit-package-build-recipe "zenit-packages" (package &optional prop nil-value))
+(declare-function zenit-package-get "zenit-packages" (package &optional prop nil-value))
+(declare-function zenit-package-list "zenit-packages" (&optional module-list))
+(declare-function zenit-package-recipe-repo "zenit-packages" (package))
+
+;; `zenit-projects'
+(defvar zenit-ripgrep-executable)
+
+;; `zenit-lib-packages'
+(declare-function zenit-package-homepage "zenit-lib-packages" (package))
+
+;; `zenit-lib-process'
+(declare-function zenit-call-process "zenit-lib-process" (command &rest args))
+
+;; `zenit-lib-projects'
+(declare-function zenit-project-browse "zenit-lib-projects" (dir))
+
+;; `zenit-lib-text'
+(declare-function zenit-thing-at-point-or-region "zenit-lib-text" (&optional thing prompt))
+
+;; `zenit-modules'
+(declare-function zenit-module-from-path "zenit-modules" (path &optional enabled-only))
+(declare-function zenit-module-list "zenit-modules" (&optional paths-or-all initorder?))
+(declare-function zenit-module-locate-path "zenit-modules" (category &optional module file))
+(declare-function zenit-module-p "zenit-modules" (category module &optional flag))
+
 
 ;;;###autoload
 (defvar zenit-docs-dir (file-name-concat zenit-emacs-dir "docs/")
@@ -104,11 +187,11 @@ corresponding to the current major-modea.")
 active or not."
   (interactive
    (list (completing-read "Describe active mode: " (zenit-active-minor-modes))))
-  (let ((symbol
-         (cond ((stringp mode) (intern mode))
-               ((symbolp mode) mode)
-               ((error "Expected a symbol/string, got a %s" (type-of mode)))))
-        (fn (if (fboundp symbol) #'describe-function #'describe-variable)))
+  (let* ((symbol
+          (cond ((stringp mode) (intern mode))
+                ((symbolp mode) mode)
+                ((error "Expected a symbol/string, got a %s" (type-of mode)))))
+         (fn (if (fboundp symbol) #'describe-function #'describe-variable)))
     (funcall (or (command-remapping fn) fn)
              symbol)))
 
@@ -116,10 +199,42 @@ active or not."
 ;;
 ;;; Documentation commands
 
-(defvar org-agenda-files)
-(defvar org-inhibit-startup)
 (cl-defun zenit--org-headings (files &key depth mindepth include-files &allow-other-keys)
-  "TODO"
+  "Extract and return a list of Org headings from specified FILES.
+
+This function searches through the given Org files and returns a
+list of headings that match the specified criteria.
+
+Arguments:
+
+FILES: A file or list of files to search. Can be a single
+       filename or a list of filenames.
+
+DEPTH: If specified, only include headings up to this depth.
+       Headings deeper than this will be excluded. If nil,
+       include headings at any depth.
+
+MINDEPTH: If specified, only include headings at or deeper than
+          this depth. Headings shallower than this will be
+          excluded. If nil, include headings at any depth.
+
+INCLUDE-FILES: If non-nil, include the filename (or TITLE
+               property if available) in the heading path.
+
+Returns a list of lists, where each sublist contains:
+
+1. A string representing the full heading path, including tags
+2. The filename of the Org file containing the heading
+3. The point (character position) of the heading in the file
+
+The function uses `org-map-entries` to efficiently search through
+the files, and applies filtering based on the DEPTH and MINDEPTH
+arguments. Headings with the :TOC: tag are excluded from the
+results.
+
+Note: This function temporarily modifies `org-agenda-files` and
+creates temporary buffers, which are cleaned up after the search
+is complete."
   (require 'org)
   (let* ((default-directory zenit-docs-dir)
          (org-agenda-files (mapcar #'expand-file-name (ensure-list files)))
@@ -161,8 +276,51 @@ active or not."
 
 ;;;###autoload
 (cl-defun zenit-completing-read-org-headings
-    (prompt files &rest plist &key depth mindepth include-files initial-input extra-candidates action)
-  "TODO"
+    (prompt files &rest plist &key initial-input extra-candidates action &allow-other-keys)
+  "Prompt user to select an Org heading and perform an action on it.
+
+This function presents a list of Org headings from specified
+files to the user, allows them to select one, and then performs
+an action based on the selection.
+
+Arguments:
+
+PROMPT: The prompt string to display to the user when asking for
+        input.
+
+FILES: A file or list of files to search for Org headings.
+
+INITIAL-INPUT: Initial input for the completing-read prompt.
+
+EXTRA-CANDIDATES: Additional candidates to append to the list of
+                  Org headings.
+
+ACTION: A function to call with the selected file and location.
+        If not provided, the function will open the file and
+        navigate to the heading.
+
+Other keyword arguments are passed to `zenit--org-headings'.
+
+The function does the following:
+
+1. Retrieves a list of Org headings using `zenit--org-headings'.
+2. Appends any extra candidates to this list.
+3. Prompts the user to select a heading using `completing-read'.
+4. Performs an action based on the selection:
+   - If ACTION is provided, it calls ACTION with the file and
+     location.
+   - Otherwise, it opens the file, navigates to the heading, and
+     ensures the heading is visible.
+
+If the user aborts the selection, a `user-error' is signaled.
+
+The return value depends on the ACTION:
+
+- If ACTION is provided, the return value is the result of
+  calling ACTION.
+- Otherwise, there is no explicit return value, but the side
+  effect is opening the file and navigating to the selected
+  heading."
   (let ((alist
          (append (apply #'zenit--org-headings files plist)
                  extra-candidates)))
@@ -181,7 +339,7 @@ active or not."
                           '(outline org-fold-outline))
                 (save-excursion
                   (outline-previous-visible-heading 1)
-                  (org-show-subtree))))))
+                  (org-fold-show-subtree))))))
       (user-error "Aborted"))))
 
 ;;;###autoload
@@ -503,7 +661,7 @@ If prefix arg is present, refresh the cache."
 
         (package--print-help-section "Package")
         (insert (symbol-name package) "\n")
-        (format "%s %s" 1 nil)
+
         (package--print-help-section "Source")
         (pcase (zenit-package-backend package)
           (`straight

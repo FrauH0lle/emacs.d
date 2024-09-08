@@ -4,7 +4,6 @@
   (require 'cl-lib))
 
 ;; `cl-seq'
-(declare-function cl-delete-if "cl-seq" (cl-pred cl-list &rest cl-keys))
 (declare-function cl-remove-if "cl-seq" (cl-pred cl-list &rest cl-keys))
 (declare-function cl-remove-if-not "cl-seq" (cl-pred cl-list &rest cl-keys))
 
@@ -101,27 +100,40 @@ PROJECT is nil, default to the current project."
 ;;;###autoload
 (defun zenit-dired-buffer-p (buf)
   "Returns non-nil if BUF is a dired buffer."
-  (with-current-buffer buf (derived-mode-p 'dired-mode)))
+  (provided-mode-derived-p (buffer-local-value 'major-mode buf)
+                           'dired-mode))
 
 ;;;###autoload
 (defun zenit-special-buffer-p (buf)
-  "Returns non-nil if BUF's name starts and ends with an *."
-  (equal (substring (buffer-name buf) 0 1) "*"))
+  "Returns non-nil if BUF's name starts with an *."
+  (char-equal ?* (aref (buffer-name buf) 0)))
 
 ;;;###autoload
 (defun zenit-temp-buffer-p (buf)
   "Returns non-nil if BUF is temporary."
-  (equal (substring (buffer-name buf) 0 1) " "))
+  (char-equal ?\s (aref (buffer-name buf) 0)))
+
+;;;###autoload
+(defun zenit-visible-buffer-p (buf)
+  "Return non-nil if BUF is visible."
+  (get-buffer-window buf))
+
+;;;###autoload
+(defun zenit-buried-buffer-p (buf)
+  "Return non-nil if BUF is not visible."
+  (not (zenit-visible-buffer-p buf)))
 
 ;;;###autoload
 (defun zenit-non-file-visiting-buffer-p (buf)
   "Returns non-nil if BUF does not have a value for `buffer-file-name'."
-  (not (buffer-file-name buf)))
+  (not (buffer-file-name (or (buffer-base-buffer buf) buf))))
 
 ;;;###autoload
 (defun zenit-real-buffer-list (&optional buffer-list)
   "Return a list of buffers that satify `zenit-real-buffer-p'."
-  (cl-remove-if-not #'zenit-real-buffer-p (or buffer-list (zenit-buffer-list))))
+  (cl-loop for buf in (or buffer-list (zenit-buffer-list))
+           if (zenit-real-buffer-p buf)
+           collect buf))
 
 ;;;###autoload
 (defun zenit-real-buffer-p (buffer-or-name)
@@ -166,14 +178,13 @@ See `zenit-real-buffer-p' for details on what that means."
 (defun zenit-buffers-in-mode (modes &optional buffer-list derived-p)
   "Return a list of buffers whose `major-mode' is `eq' to MODE(S).
 If DERIVED-P, test with `derived-mode-p', otherwise use `eq'."
-  (let ((modes (ensure-list modes)))
-    (cl-remove-if-not (if derived-p
-                          (lambda (buf)
-                            (with-current-buffer buf
-                              (apply #'derived-mode-p modes)))
-                        (lambda (buf)
-                          (memq (buffer-local-value 'major-mode buf) modes)))
-                      (or buffer-list (zenit-buffer-list)))))
+  (cl-loop with modes = (ensure-list modes)
+           for buf in (or buffer-list (zenit-buffer-list))
+           for mode = (buffer-local-value 'major-mode buf)
+           if (if derived-p
+                  (apply #'provided-mode-derived-p mode modes)
+                (memq mode modes))
+           collect buf))
 
 ;;;###autoload
 (defun zenit-visible-windows (&optional window-list)
@@ -192,20 +203,23 @@ If DERIVED-P, test with `derived-mode-p', otherwise use `eq'."
                    if (window-list frame)
                    nconc (mapcar #'window-buffer it)))))
     (if buffer-list
-        (cl-delete-if (lambda (b) (memq b buffer-list))
-                      buffers)
-      (delete-dups buffers))))
+        (cl-loop for buf in buffers
+                 unless (memq buf buffer-list)
+                 collect buffers)
+      buffers)))
 
 ;;;###autoload
 (defun zenit-buried-buffers (&optional buffer-list)
   "Get a list of buffers that are buried."
-  (cl-remove-if #'get-buffer-window (or buffer-list (zenit-buffer-list))))
+  (cl-loop for buf in (or buffer-list (zenit-buffer-list))
+           unless (zenit-visible-buffer-p buf)
+           collect buf))
 
 ;;;###autoload
 (defun zenit-matching-buffers (pattern &optional buffer-list)
   "Get a list of all buffers that match the regex PATTERN."
   (cl-loop for buf in (or buffer-list (zenit-buffer-list))
-           when (string-match-p pattern (buffer-name buf))
+           if (string-match-p pattern (buffer-name buf))
            collect buf))
 
 ;;;###autoload

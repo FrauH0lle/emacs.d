@@ -690,7 +690,7 @@
        :desc "Frame fullscreen"             "F" #'toggle-frame-fullscreen
        :desc "Evil goggles"                 "g" #'evil-goggles-mode
        (:when (modulep! :ui indent-guides)
-         :desc "Indent guides"              "i" #'highlight-indent-guides-mode)
+         :desc "Indent guides"              "i" #'indent-bars-mode)
        :desc "Indent style"                 "I" #'zenit/toggle-indent-style
        :desc "Line numbers"                 "l" #'zenit/toggle-line-numbers
        (:when (modulep! :ui minimap)

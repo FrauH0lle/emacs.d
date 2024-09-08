@@ -4,16 +4,16 @@
   (require 'cl-lib))
 
 ;; `cl-extra'
-(declare-function cl-some "cl-extra")
+(declare-function cl-some "cl-extra" (cl-pred cl-seq &rest cl-rest))
 
 ;; `cl-seq'
-(declare-function cl-delete-if-not "cl-seq")
+(declare-function cl-delete-if-not "cl-seq" (cl-pred cl-list &rest cl-keys))
 
 ;; `zenit-lib-buffers'
-(declare-function zenit-mark-buffer-as-real-h "zenit-lib-buffers")
+(declare-function zenit-mark-buffer-as-real-h "zenit-lib-buffers" ())
 
 ;; `zenit-lib-projects'
-(declare-function zenit-project-name "zenit-lib-projects")
+(declare-function zenit-project-name "zenit-lib-projects" (&optional dir))
 
 
 (defvar zenit-scratch-default-file "__default"

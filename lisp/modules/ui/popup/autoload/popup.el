@@ -486,7 +486,7 @@ is non-nil."
 ;;;###autoload
 (defun +popup-record-parent-a (fn &rest args)
   "Record popup's parent buffer."
-  (let ((parent (or describe-function-orig-buffer
+  (let ((parent (or (bound-and-true-p describe-function-orig-buffer)
                     (current-buffer)))
         (parents +popup--parents)
         (quit (+popup-parameter 'quit))

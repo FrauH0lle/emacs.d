@@ -29,7 +29,7 @@
 
 ;; `ui/workspaces'
 (declare-function +workspace-kill "../../modules/ui/workspaces/autoload/workspaces.el" (workspace &optional inhibit-kill-p))
-(declare-function +workspace-list-names "../../modules/ui/workspaces/autoload/workspaces.el")
+(declare-function +workspace-list-names "../../modules/ui/workspaces/autoload/workspaces.el" ())
 (declare-function +workspace-save-session "../../modules/ui/workspaces/autoload/workspaces.el" (file))
 
 

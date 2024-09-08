@@ -1,5 +1,15 @@
 ;; ui/indent-guides/config.el -*- lexical-binding: t; -*-
 
+(defcustom +indent-guides-inhibit-functions ()
+  "A list of predicate functions.
+
+Each function will be run in the context of a buffer where
+`indent-bars' should be enabled. If any function returns non-nil,
+the mode will not be activated."
+  :type 'hook
+  :group '+indent-guides)
+
+
 ;;
 ;;; Packages
 
@@ -8,12 +18,31 @@
   :defer t
   :config
   (setq!
+   ;; Show indent guides starting from the first column.
+   indent-bars-starting-column 0
+   ;; Slightly thinner bars
+   indent-bars-width-frac 0.2
+   ;; Make indent guides subtle.
+   indent-bars-color-by-depth nil
    ;; Tone down the highlighting
    indent-bars-color '(highlight :face-bg t :blend 0.2)
    ;; But increase the highlighting of the current depth
    indent-bars-highlight-current-depth (plist-put indent-bars-highlight-current-depth :blend 0.5)
    ;; Do not highlight on empty lines
    indent-bars-display-on-blank-lines nil)
+
+  (unless (boundp 'enable-theme-functions)
+    (add-hook 'zenit-load-theme-hook #'indent-bars-reset-styles))
+
+  (add-hook! '+indent-guides-inhibit-functions
+    ;; Org's virtual indentation messes up indent-guides.
+    (defun +indent-guides-in-org-indent-mode-p ()
+      (bound-and-true-p org-indent-mode))
+
+    ;; Don't display indent guides in childframe popups (not helpful in
+    ;; completion or eldoc popups).
+    (defun +indent-guides-in-childframe-p ()
+      (frame-parent)))
 
   ;; Integrate with `editorconfig'
   ;; From https://github.com/jdtsmith/indent-bars/wiki/integration-with-Editorconfig

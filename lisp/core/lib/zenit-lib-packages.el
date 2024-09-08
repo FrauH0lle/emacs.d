@@ -3,9 +3,16 @@
 (eval-when-compile
   (require 'cl-lib))
 
+;; `cl-seq'
+(declare-function cl-remove-if-not "cl-seq" (cl-pred cl-list &rest cl-keys))
+
+;; `jka-compr'
+(declare-function jka-compr-insert-file-contents "jka-compr" (file &optional visit beg end replace))
+
 ;; `package'
 (declare-function package-desc-archive "package" t t)
 (defvar package-archive)
+(defvar package-archives)
 (defvar package-archive-contents)
 
 ;; `straight'
@@ -20,6 +27,17 @@
 ;; `vertico'
 (defvar vertico-sort-function)
 
+;; `zenit-modules'
+(declare-function zenit-module-list "zenit-modules" (&optional paths-or-all initorder?))
+
+;; `zenit-packages'
+(declare-function zenit-initialize-packages "zenit-packages" (&optional force-p))
+(declare-function zenit-packages-get-lockfile "zenit-packages" (profile))
+(declare-function zenit-package-list "zenit-packages" (&optional module-list))
+
+;; `config/default'
+(declare-function +default/search-cwd "../../modules/config/default/autoload/search.el" (&optional arg))
+
 
 ;;;###autoload
 (defun zenit/search-versions ()
@@ -32,6 +50,7 @@
   "Search for duplicate package versions and display them in a
 seperate buffer."
   (interactive)
+  (zenit-initialize-packages)
   (pp-display-expression
    (let ((versions nil)
          (duplicates nil)
@@ -68,6 +87,7 @@ will used as candidates."
   (interactive
    (list (intern (completing-read "Bump package: "
                                   (mapcar #'car (zenit-package-list 'all))))))
+  (zenit-initialize-packages)
   (let* ((packages (zenit-package-list 'all))
          (modules (plist-get (alist-get package packages) :modules))
          (lockfiles (delq nil (mapcar #'zenit-packages-get-lockfile (plist-get (alist-get package packages) :lockfile))))

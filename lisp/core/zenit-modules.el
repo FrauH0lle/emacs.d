@@ -4,17 +4,17 @@
   (require 'cl-lib))
 
 ;; `cl-extra'
-(declare-function cl-every "cl-extra")
-(declare-function cl--do-remf "cl-extra")
+(declare-function cl-every "cl-extra" (cl-pred cl-seq &rest cl-rest))
+(declare-function cl--do-remf "cl-extra" (plist tag))
 
 ;; `cl-lib'
-(declare-function cl-oddp "cl-lib")
+(declare-function cl-oddp "cl-lib" (integer))
 
 ;; `subr-x'
-(declare-function hash-table-keys "subr-x")
+(declare-function hash-table-keys "subr-x" (hash-table))
 
 ;; `zenit-lib-files'
-(declare-function zenit-files-in "zenit-lib-files")
+(declare-function zenit-files-in "zenit-lib-files" (paths &rest rest))
 
 
 ;;
@@ -308,7 +308,7 @@ disabled ones) available in those directories."
                ;; (let ((module (if (listp m) (car m) m)))
                (let* ((module (if (listp m) (car m) m))
                       (flags  (if (listp m) (cdr m))))
-                 (push (funcall fn category module :flags (if (listp m) (cdr m)))
+                 (push (funcall fn category module :flags flags)
                        results))))))
     (when noninteractive
       (setq zenit-inhibit-module-warnings t))

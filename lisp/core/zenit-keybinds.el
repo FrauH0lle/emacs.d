@@ -10,15 +10,15 @@
 (defvar w32-rwindow-modifier)
 
 ;; `cl-extra'
-(declare-function cl-subseq "cl-extra")
+(declare-function cl-subseq "cl-extra" (seq start &optional end))
 
 ;; `cl-seq'
-(declare-function cl-position "cl-seq")
+(declare-function cl-position "cl-seq" (cl-item cl-seq &rest cl-keys))
 
 ;; `which-key'
-(declare-function which-key-add-key-based-replacements "ext:which-key")
-(declare-function which-key-setup-side-window-bottom "ext:which-key")
-(declare-function which-key-key-order-alpha "ext:which-key")
+(declare-function which-key-add-key-based-replacements "ext:which-key" (key-sequence replacement &rest more))
+(declare-function which-key-setup-side-window-bottom "ext:which-key" ())
+(declare-function which-key-key-order-alpha "ext:which-key" (acons bcons))
 
 
 ;; A centralized keybinds system, integrated with `which-key' to preview
@@ -84,6 +84,17 @@ Used for Insert and Emacs states, and for non-evil users.")
                                 (vconcat (cl-subseq keys 0 -1) [C-i]))))
                           (not (or (numberp key) (null key))))))
                  [C-i] [?\C-i])))
+
+;; HACK: Same as C-i, but to distinguish C-m from RET is a little harder. There
+;;   is no workaround for this for the terminal.
+(define-key input-decode-map
+  [?\C-m] (cmd! (if (when-let ((keys (this-single-command-raw-keys)))
+                      (and (display-graphic-p)
+                           (not (cl-position 'return    keys))
+                           (not (cl-position 'kp-return keys))
+                           ;; Fall back if no <C-m> keybind can be found.
+                           (key-binding (vconcat (cl-subseq keys 0 -1) [C-m]) nil t)))
+                    [C-m] [?\C-m])))
 
 
 ;;

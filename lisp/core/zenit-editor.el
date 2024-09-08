@@ -10,24 +10,25 @@
 (defvar evil--jumps-jumping)
 
 ;; `smie'
-(declare-function smie-config-guess "smie")
+(declare-function smie-config-guess "smie" ())
 
 ;; `tabify'
 (defvar tabify-regexp)
 
 ;; `tramp'
+(declare-function tramp-file-name-localname "tramp" t t)
 (defvar tramp-backup-directory-alist)
 (defvar tramp-auto-save-directory)
 
 ;; `zenit-lib-buffers'
-(declare-function zenit-visible-buffers "zenit-lib-buffers")
+(declare-function zenit-visible-buffers "zenit-lib-buffers" (&optional buffer-list all-frames))
 
 ;; `zenit-lib-ui'
-(declare-function zenit-recenter-a "zenit-lib-ui")
-(declare-function zenit-shut-up-a "zenit-lib-ui")
+(declare-function zenit-recenter-a "zenit-lib-ui" (&rest _))
+(declare-function zenit-shut-up-a "zenit-lib-ui" (orig-fn &rest args))
 
 ;; `zenit-start'
-(declare-function zenit-load-packages-incrementally "zenit-start")
+(declare-function zenit-load-packages-incrementally "zenit-start" (packages &optional now))
 
 
 (defvar zenit-detect-indentation-excluded-modes
@@ -322,8 +323,15 @@ system."
   :hook (after-save . zenit-auto-revert-buffers-h)
   :hook (zenit-switch-buffer . zenit-auto-revert-buffer-h)
   :hook (zenit-switch-window . zenit-auto-revert-buffer-h)
+  :commands zenit-auto-revert-buffers-h
   :init
-  (add-function :after after-focus-change-function #'zenit-auto-revert-buffers-h)
+  (with-no-warnings
+    (when (boundp 'after-focus-change-function)
+      (add-function
+       :after after-focus-change-function
+       (lambda ()
+         (when (frame-focus-state)
+           (zenit-auto-revert-buffers-h))))))
   :config
   (setq auto-revert-verbose t ; let us know when it happens
         auto-revert-use-notify nil
@@ -379,6 +387,8 @@ system."
             (equal "sudo" (file-remote-p file 'method)))
         (abbreviate-file-name (file-truename (tramp-file-name-localname file)))
       file))
+  (eval-when-compile
+    (declare-function zenit--recentf-file-truename-fn nil))
 
   ;; Anything in runtime folders
   (add-to-list 'recentf-exclude
@@ -484,7 +494,7 @@ faster `prin1'."
 
 (use-package! server
   :when (display-graphic-p)
-  :after-call zenit-first-input-hook zenit-first-file-hook after-focus-change-function ; focus-out-hook
+  :after-call zenit-first-input-hook zenit-first-file-hook
   :defer 1
   :config
   (when-let (name (getenv "EMACS_SERVER_NAME"))
@@ -611,7 +621,9 @@ Emacs in a broken state."
                          (message "[WARNING] Indent detection: %s"
                                   (error-message-string e))
                          (message ""))))) ; warn silently
-        (funcall fn arg)))))
+        (funcall fn arg))
+      (eval-when-compile
+        (declare-function symbol-config--guess nil)))))
 
 
 (use-package! smartparens
@@ -717,7 +729,7 @@ current buffer.")
               ws-butler-mode
               auto-composition-mode
               undo-tree-mode
-              highlight-indent-guides-mode
+              indent-bars-mode
               hl-fill-column-mode
               ;; These are redundant on Emacs 29+
               flycheck-mode

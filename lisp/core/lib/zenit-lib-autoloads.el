@@ -31,11 +31,15 @@ autoloads.")
 
 (defun zenit-autoloads--compile-file (file)
   (condition-case-unless-debug e
-      (let ((byte-compile-warnings (if init-file-debug byte-compile-warnings
-                                     '(not make-local noruntime unresolved)))
+      (let ((byte-compile-warnings (if init-file-debug byte-compile-warnings))
             success)
         (and (pcase-let ((`(,status . ,msg)
-                          (async-get (zenit-async-byte-compile-file file :req-core t :req-core-libs '(files) :req-extra '(cl-lib zenit-modules zenit-use-package zenit-el-patch zenit-keybinds) :modulep t))))
+                          (async-get
+                           (zenit-async-byte-compile-file
+                            file :req-core t :req-core-libs '(files)
+                            :req-extra '(cl-lib zenit-modules zenit-use-package zenit-el-patch zenit-keybinds)
+                            :modulep t
+                            :warnings byte-compile-warnings))))
                (when msg
                  (with-output-to!
                      `((t . ,(alist-get 'complog zenit-cli-log-buffers)))

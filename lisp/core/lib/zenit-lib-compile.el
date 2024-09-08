@@ -115,7 +115,8 @@
           (req-core-libs nil)
           (req-extra nil)
           (modulep nil)
-          (autoloads nil))
+          (autoloads nil)
+          (warnings (if init-file-debug byte-compile-warnings '(not make-local noruntime))))
   "Byte compile Lisp code FILE asynchronously.
 
 By setting the following keyword arguments, you can control which
@@ -136,8 +137,8 @@ usually enough."
       ,(async-inject-variables async-bytecomp-load-variable-regexp)
       ,(async-inject-variables "\\`zenit-modules\\'")
       ,(async-inject-variables "\\`zenit-disabled-packages\\'")
-      ;; (setq load-prefer-newer t)
-      (setq byte-compile-warnings t)
+      (setq load-prefer-newer t)
+      (setq byte-compile-warnings ',warnings)
       ,(zenit-compile-setup-env
         :req-core-lib req-core-lib :req-core req-core
         :req-core-libs req-core-libs :req-extra req-extra

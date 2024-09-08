@@ -12,11 +12,11 @@
 (declare-function cl-remove-if-not "cl-seq" (cl-pred cl-list &rest cl-keys))
 
 ;; `gcmh'
-(declare-function gcmh-idle-garbage-collect "gcmh")
+(declare-function gcmh-idle-garbage-collect "gcmh" ())
 
 ;;`profiler'
-(declare-function profiler-report "profiler")
-(declare-function profiler-stop "profiler")
+(declare-function profiler-report "profiler" ())
+(declare-function profiler-stop "profiler" ())
 
 ;; `zenit-lib-print'
 (defvar zenit-print-indent)

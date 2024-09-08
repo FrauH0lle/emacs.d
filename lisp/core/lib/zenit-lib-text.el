@@ -7,7 +7,7 @@
 (defvar dtrt-indent-hook-mapping-list)
 
 ;; `editorconfig'
-(declare-function editorconfig-set-indentation "ext:editorconfig")
+(declare-function editorconfig-set-indentation "ext:editorconfig" (style &optional size tab_width))
 
 ;; `evil'
 (declare-function evil-visual-state-p "ext:evil-states" t t)
@@ -15,7 +15,7 @@
 (defvar evil-visual-end)
 
 ;; `ws-butler'
-(declare-function ws-butler-mode "ext:ws-butler")
+(declare-function ws-butler-mode "ext:ws-butler" (&optional arg))
 
 
 (defvar-local zenit--sppss-memo-last-point nil)

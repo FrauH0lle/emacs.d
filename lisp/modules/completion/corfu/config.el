@@ -58,6 +58,7 @@ completion.")
   (add-to-list 'corfu-continue-commands #'+corfu/smart-sep-toggle-escape)
   (add-hook 'evil-insert-state-exit-hook #'corfu-quit)
 
+  ;; Respect `+corfu-want-minibuffer-completion'
   (defun +corfu-enable-in-minibuffer-p ()
     "Return non-nil if Corfu should be enabled in the minibuffer.
 See `+corfu-want-minibuffer-completion'."
@@ -120,6 +121,7 @@ See `+corfu-want-minibuffer-completion'."
       (setq text-mode-ispell-word-completion nil)
       (remove-hook 'completion-at-point-functions #'ispell-completion-at-point t)))))
 
+
 (use-package! cape
   :defer t
   :init
@@ -160,6 +162,7 @@ See `+corfu-want-minibuffer-completion'."
   (advice-add #'eglot-completion-at-point :around #'cape-wrap-nonexclusive)
   (advice-add #'pcomplete-completions-at-point :around #'cape-wrap-nonexclusive))
 
+
 (use-package! corfu-terminal
   :when (modulep! :os tty)
   :when (not (display-graphic-p))
@@ -174,10 +177,12 @@ See `+corfu-want-minibuffer-completion'."
   :config
   (after! savehist (add-to-list 'savehist-additional-variables 'corfu-history)))
 
+
 (use-package! corfu-popupinfo
   :hook ((corfu-mode . corfu-popupinfo-mode))
   :config
   (setq corfu-popupinfo-delay '(0.5 . 1.0)))
+
 
 (use-package! nerd-icons-corfu
   :when (modulep! +icons)
@@ -185,6 +190,7 @@ See `+corfu-want-minibuffer-completion'."
   :init
   (after! corfu
     (add-to-list 'corfu-margin-formatters #'nerd-icons-corfu-formatter)))
+
 
 ;; If vertico is not enabled, orderless will be installed but not configured.
 ;; That may break smart separator behavior, so we conditionally configure it.

@@ -28,6 +28,10 @@
 
   (eval-when! (modulep! +tree-sitter)
     (add-hook 'python-mode-local-vars-hook #'tree-sitter! 'append))
+
+  (eval-when! (modulep! :ui indent-guides)
+    (add-hook 'python-mode-local-vars-hook #'indent-bars-mode 'append))
+
   :config
   (set-repl-handler! 'python-mode #'+python/open-repl
     :persist t
@@ -55,8 +59,6 @@
 
   (set-popup-rule! "^\\*Python" :side 'bottom :height 0.33 :width 0.5 :quit nil)
 
-  (eval-when! (modulep! :ui indent-guides)
-    (add-hook! 'python-mode-hook (indent-bars-mode +1)))
   ;; Stop the spam!
   (setq python-indent-guess-indent-offset-verbose nil)
 
@@ -361,7 +363,10 @@
   :when (modulep! +lsp)
   :when (modulep! +pyright)
   :when (not (modulep! :tools lsp +eglot))
-  :after lsp-mode)
+  :after lsp-mode
+  :init
+  (when-let ((exe (executable-find "basedpyright")))
+    (setq lsp-pyright-langserver-command exe)))
 
 ;; Use the new ruff LSP server
 ;; (after! lsp-mode

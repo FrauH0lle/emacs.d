@@ -7,19 +7,19 @@
   (require 'cl-lib))
 
 ;; `cl-extra'
-(declare-function cl-some "cl-extra")
-(declare-function cl-subseq "cl-extra")
+(declare-function cl-some "cl-extra" (cl-pred cl-seq &rest cl-rest))
+(declare-function cl-subseq "cl-extra" (seq start &optional end))
 
 ;; `cl-lib'
-(declare-function cl-evenp "cl-lib")
+(declare-function cl-evenp "cl-lib" (integer))
 
 ;; `cl-seq'
-(declare-function cl-position "cl-seq")
+(declare-function cl-position "cl-seq" (cl-item cl-seq &rest cl-keys))
 
 ;; `subr-x'
-(declare-function string-remove-prefix "subr-x")
+(declare-function string-remove-prefix "subr-x" (prefix string))
 (autoload #'string-remove-prefix "subr-x")
-(declare-function string-remove-suffix "subr-x")
+(declare-function string-remove-suffix "subr-x" (suffix string))
 (autoload #'string-remove-suffix "subr-x")
 
 ;; `zenit-core'
@@ -28,17 +28,17 @@
 (defvar zenit-modules-dir)
 
 ;; `zenit-lib-compile'
-(declare-function zenit-async-byte-compile-file "zenit-lib-compile")
+(declare-function zenit-async-byte-compile-file "zenit-lib-compile" (file &rest kwargs))
 (autoload #'zenit-async-byte-compile-file "zenit-lib-compile")
-(declare-function zenit-compile-generate-args "zenit-lib-compile")
+(declare-function zenit-compile-generate-args "zenit-lib-compile" (target))
 (autoload #'zenit-compile-generate-args "zenit-lib-compile")
 
 ;; `zenit-lib-files'
-(declare-function zenit-files-in "zenit-lib-files")
-(declare-function zenit-file-read "zenit-lib-files")
+(declare-function zenit-files-in "zenit-lib-files" (paths &rest rest))
+(declare-function zenit-file-read "zenit-lib-files" (file &rest kwargs))
 
 ;; `zenit-modules'
-(declare-function zenit-module-context-key "zenit-modules")
+(declare-function zenit-module-context-key "zenit-modules" (&optional context))
 
 
 ;;
@@ -158,10 +158,10 @@ text can be passed via ARGS."
            args)))
 
 (defmacro zenit-log (message &rest args)
-  "Log a message in *Messages*.
-Does not emit the message in the echo area. This is a macro instead of a
-function to prevent the potentially expensive evaluation of its arguments when
-debug mode is off. Return non-nil."
+  "Log a MESSAGE in *Messages*.
+Does not emit the message in the echo area. This is a macro
+instead of a function to prevent the potentially expensive
+evaluation of its ARGS when debug mode is off. Return non-nil."
   (declare (debug t))
   `(unless zenit-inhibit-log (zenit--log ,message ,@args)))
 
@@ -170,7 +170,7 @@ debug mode is off. Return non-nil."
 ;;; Helpers
 
 (defun zenit--resolve-hook-forms (hooks)
-  "Converts a list of modes into a list of hook symbols.
+  "Convert a list of modes into a list of hook symbols.
 
 If a mode is quoted, it is left as is. If the entire HOOKS list
 is quoted, the list is returned as-is."
@@ -184,8 +184,7 @@ is quoted, the list is returned as-is."
                else collect (intern (format "%s-hook" (symbol-name hook)))))))
 
 (defun zenit--setq-hook-fns (hooks rest &optional singles)
-  "Generate a list of hook setting functions for the given HOOKS and
-REST.
+  "Generate a list of hook setting functions for HOOKS and REST.
 
 HOOKS can be a list of hooks or a single hook symbol. REST is a
 list of variable-value pairs or a list of variables if SINGLES is
@@ -231,14 +230,15 @@ MODE is derived from the hook name."
   exp)
 
 (defun zenit-keyword-intern (str)
-  "Converts STR (a string) into a keyword (`keywordp')."
+  "Convert STR (a string) into a keyword (`keywordp')."
   (declare (pure t) (side-effect-free t))
   (cl-check-type str string)
   (intern (concat ":" str)))
 
 (defun zenit-keyword-name (keyword)
-  "Returns the string name of KEYWORD (`keywordp') minus the
-leading colon."
+  "Return the string name of KEYWORD (`keywordp').
+
+Removes the leading colon."
   (declare (pure t) (side-effect-free t))
   (cl-check-type keyword keyword)
   (substring (symbol-name keyword) 1))
@@ -246,10 +246,10 @@ leading colon."
 (defalias 'zenit-partial #'apply-partially)
 
 (defun zenit-rpartial (fn &rest args)
-  "Return a partial application of FUN to right-hand ARGS.
+  "Return a partial application of FN to right-hand ARGS.
 
-ARGS is a list of the last N arguments to pass to FUN. The result
-is a new function which does the same as FUN, except that the
+ARGS is a list of the last N arguments to pass to FN. The result
+is a new function which does the same as FN, except that the
 last N arguments are fixed at the values with which this function
 was called."
   (declare (side-effect-free t))
@@ -257,7 +257,10 @@ was called."
     (apply fn (append pre-args args))))
 
 (defun zenit-lookup-key (keys &rest keymaps)
-  "Like `lookup-key', but search active keymaps if KEYMAP is omitted."
+  "Look up key sequence KEYS in KEYMAPS.
+
+Like `lookup-key', but search active keymaps, if KEYMAPS is
+omitted."
   (if keymaps
       (cl-some (zenit-rpartial #'lookup-key keys) keymaps)
     (cl-loop for keymap

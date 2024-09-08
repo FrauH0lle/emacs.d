@@ -6,13 +6,13 @@
 (defvar ffap-machine-p-known)
 
 ;; `gcmh'
-(declare-function gcmh-mode "ext:gcmh")
+(declare-function gcmh-mode "ext:gcmh" (&optional arg))
 (defvar gcmh-idle-delay)
 (defvar gcmh-auto-idle-delay-factor)
 (defvar gcmh-high-cons-threshold)
 
 ;; `subr-x'
-(declare-function string-remove-suffix "subr-x")
+(declare-function string-remove-suffix "subr-x" (suffix string))
 
 
 ;;

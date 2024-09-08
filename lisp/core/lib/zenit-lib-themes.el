@@ -4,7 +4,7 @@
   (require 'cl-lib))
 
 ;; `zenit-lib-fonts'
-(declare-function zenit/reload-font "zenit-lib-fonts")
+(declare-function zenit/reload-font "zenit-lib-fonts" ())
 
 
 ;;;###autoload

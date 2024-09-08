@@ -4,33 +4,33 @@
   (require 'cl-lib))
 
 ;; `magit-git'
-(declare-function magit-toplevel "ext:magit-git")
+(declare-function magit-toplevel "ext:magit-git" (&optional directory))
 
 ;; `magit-mode'
-(declare-function magit-refresh "ext:magit-mode")
+(declare-function magit-refresh "ext:magit-mode" ())
 
 ;; `projectile'
-(declare-function projectile-purge-file-from-cache "ext:projectile")
-(declare-function projectile-file-cached-p "ext:projectile")
+(declare-function projectile-purge-file-from-cache "ext:projectile" (file))
+(declare-function projectile-file-cached-p "ext:projectile" (file project))
 
 ;; `recentf'
-(declare-function recentf-remove-if-non-kept "recentf")
+(declare-function recentf-remove-if-non-kept "recentf" (filename))
 
 ;; `saveplace'
-(declare-function save-place-forget-unreadable-files "saveplace")
+(declare-function save-place-forget-unreadable-files "saveplace" ())
 
 ;; `zenit-lib-buffers'
-(declare-function zenit/kill-this-buffer-in-all-windows "zenit-lib-buffers")
+(declare-function zenit/kill-this-buffer-in-all-windows "zenit-lib-buffers" (buffer &optional dont-save))
 
 ;; `zenit-lib-projects'
-(declare-function zenit-project-p "zenit-lib-projects")
-(declare-function zenit-project-root "zenit-lib-projects")
+(declare-function zenit-project-p "zenit-lib-projects" (&optional dir))
+(declare-function zenit-project-root "zenit-lib-projects" (&optional dir))
 
 ;; `zenit-lib-process'
-(declare-function zenit-call-process "zenit-lib-process")
+(declare-function zenit-call-process "zenit-lib-process" (command &rest args))
 
 ;; `zenit-modules'
-(declare-function zenit-module-from-path "zenit-modules")
+(declare-function zenit-module-from-path "zenit-modules" (path &optional enabled-only))
 
 
 (defun zenit--resolve-path-forms (spec &optional directory)
@@ -65,36 +65,43 @@ This is used by `file-exists-p!' and `project-file-exists-p!'."
                  `(file-exists-p ,filevar))
               ,filevar)))))
 
-(defun zenit--path (&rest segments)
-  "Join SEGMENTS into a single file path.
-Expands each segment using `expand-file-name', then concatenates
-them into a single file path."
-  (let ((segments (delq nil segments))
-        dir)
-    (while segments
-      (setq dir (expand-file-name (car segments) dir)
-            segments (cdr segments)))
-    dir))
-
-;;;###autoload
-(defun zenit-glob (&rest segments)
-  "Construct a path from SEGMENTS and expand glob patterns.
-Returns nil if the path doesn't exist. Ignores `nil' elements in
-SEGMENTS."
-  (let* (case-fold-search
-         (dir (apply #'zenit--path segments)))
-    (if (string-match-p "[[*?]" dir)
-        (file-expand-wildcards dir t)
-      (if (file-exists-p dir)
-          dir))))
 
 ;;;###autoload
 (defun zenit-path (&rest segments)
-  "Constructs a file path from SEGMENTS.
-Ignores `nil' elements in SEGMENTS."
-  (if segments
-      (apply #'zenit--path segments)
-    (macroexpand '(file!))))
+  "Return an path expanded after concatenating SEGMENTS with path separators.
+
+Ignores `nil' elements in SEGMENTS, and is intended as a fast
+compromise between `expand-file-name' (slow, but accurate),
+`file-name-concat' (fast, but inaccurate)."
+  (declare (side-effect-free t))
+  ;; An empty `file-name-handler-alist' = faster `expand-file-name'.
+  (let (file-name-handler-alist)
+    (expand-file-name
+     ;; Avoid the overhead of `apply' in the trivial case. This function is used
+     ;; a lot, so every bit counts.
+     (if (cdr segments)
+         (apply #'file-name-concat segments)
+       (car segments)))))
+
+;;;###autoload
+(defun zenit-glob (&rest segments)
+  "Return file list matching the glob created by joined SEGMENTS.
+
+The returned file paths will be relative to `default-directory',
+unless SEGMENTS concatenate into an absolute path.
+
+Returns nil if no matches exist.
+Ignores `nil' elements in SEGMENTS.
+If the glob ends in a slash, only returns matching directories."
+  (declare (side-effect-free t))
+  (let* (case-fold-search
+         file-name-handler-alist
+         (path (apply #'file-name-concat segments)))
+    (if (string-suffix-p "/" path)
+        (cl-loop for file in (file-expand-wildcards (substring path 0 -1))
+                 if (file-directory-p file)
+                 collect file)
+      (file-expand-wildcards path))))
 
 ;;;###autoload
 (cl-defun zenit-files-in
@@ -295,7 +302,7 @@ from FILE."
            (buffer-substring-no-properties (point-min) (point-max)))
           ('read
            (condition-case _ (read (current-buffer)) (end-of-file)))
-          ('(read . ,i)
+          (`(read . ,i)
            (let (forms)
              (condition-case _
                  (dotimes (_ i) (push (read (current-buffer)) forms))

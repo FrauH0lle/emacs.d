@@ -7,13 +7,13 @@
 (defvar ansi-color-for-comint-mode)
 
 ;; `cl-seq'
-(declare-function cl-delete-if-not "cl-seq")
-(declare-function cl-find-if "cl-seq")
-(declare-function cl-set-difference "cl-seq")
-(declare-function cl-union "cl-seq")
+(declare-function cl-delete-if-not "cl-seq" (cl-pred cl-list &rest cl-keys))
+(declare-function cl-find-if "cl-seq" (cl-pred cl-list &rest cl-keys))
+(declare-function cl-set-difference "cl-seq" (cl-list1 cl-list2 &rest cl-keys))
+(declare-function cl-union "cl-seq" (cl-list1 cl-list2 &rest cl-keys))
 
 ;; `hide-mode-line'
-(declare-function hide-mode-line-mode "ext:hide-mode-line")
+(declare-function hide-mode-line-mode "ext:hide-mode-line" (&optional arg))
 
 ;; `image'
 (defvar image-animate-loop)
@@ -33,17 +33,17 @@
 (defvar whitespace-style)
 
 ;; `zenit-core'
-(declare-function zenit--reset-inhibited-vars-h "zenit-core")
+(declare-function zenit--reset-inhibited-vars-h "zenit-core" ())
 
 ;; `zenit-lib-buffers'
-(declare-function zenit-fallback-buffer "zenit-lib-buffers")
-(declare-function zenit-visible-buffers "zenit-lib-buffers")
-(declare-function zenit-real-buffer-list "zenit-lib-buffers")
-(declare-function zenit-real-buffer-p "zenit-lib-buffers")
+(declare-function zenit-fallback-buffer "zenit-lib-buffers" ())
+(declare-function zenit-visible-buffers "zenit-lib-buffers" (&optional buffer-list all-frames))
+(declare-function zenit-real-buffer-list "zenit-lib-buffers" (&optional buffer-list))
+(declare-function zenit-real-buffer-p "zenit-lib-buffers" (buffer-or-name))
 
 ;; `zenit-lib-buffers'
-(declare-function zenit/delete-frame-with-prompt "zenit-lib-ui")
-(declare-function zenit-quit-p "zenit-lib-ui")
+(declare-function zenit/delete-frame-with-prompt "zenit-lib-ui" ())
+(declare-function zenit-quit-p "zenit-lib-ui" (&optional prompt))
 
 
 ;;
@@ -468,9 +468,9 @@ buffers are visible in other windows, switch to
       org-agenda-mode dired-mode)
     "What modes to enable `hl-line-mode' in.")
   :config
-  ;; HACK I reimplement `global-hl-line-mode' so we can white/blacklist modes
-  ;;      in `global-hl-line-modes' _and_ so we can use `global-hl-line-mode',
-  ;;      which users expect to control hl-line in Emacs.
+  ;; HACK I reimplement `global-hl-line-mode' so we can white/blacklist modes in
+  ;;   `global-hl-line-modes' _and_ so we can use `global-hl-line-mode', which
+  ;;   users expect to control hl-line in Emacs.
   (defun +hl-line--turn-on-global-hl-line-mode ()
     "Turn on global `hl-line-mode' if conditions are met."
     (and (cond (hl-line-mode nil)
@@ -480,10 +480,18 @@ buffers are visible in other windows, switch to
                 (not (derived-mode-p global-hl-line-modes)))
                ((apply #'derived-mode-p global-hl-line-modes)))
          (hl-line-mode +1)))
+  (eval-when-compile
+    (declare-function +hl-line--turn-on-global-hl-line-mode nil))
+
   (define-globalized-minor-mode global-hl-line-mode hl-line-mode
     (lambda ()
       (+hl-line--turn-on-global-hl-line-mode))
     :group 'hl-line)
+  (eval-when-compile
+    (declare-function hl-line-mode-set-explicitly nil)
+    (declare-function global-hl-line-mode-cmhh nil)
+    (declare-function global-hl-line-mode-check-buffers nil)
+    (declare-function global-hl-line-mode-enable-in-buffers nil))
 
   ;; Temporarily disable `hl-line' when selection is active, since it doesn't
   ;; serve much purpose when the selection is so much more visible.
@@ -494,13 +502,13 @@ buffers are visible in other windows, switch to
       (unless hl-line-mode
         (setq-local zenit--hl-line-mode nil))))
 
-  (add-hook! '(evil-visual-state-entry-hook activate-mark-hook)
+  (add-hook! 'evil-visual-state-entry-hook
     (defun zenit-disable-hl-line-h ()
       (when hl-line-mode
         (hl-line-mode -1)
         (setq-local zenit--hl-line-mode t))))
 
-  (add-hook! '(evil-visual-state-exit-hook deactivate-mark-hook)
+  (add-hook! 'evil-visual-state-exit-hook
     (defun zenit-enable-hl-line-maybe-h ()
       (when zenit--hl-line-mode
         (hl-line-mode +1)))))
@@ -754,6 +762,8 @@ prematurely triggering hooks during startup."
     "`whitespace-mode' inundates child frames with whitespace
 markers, so disable it to fix all that visual noise."
     (null (frame-parameter nil 'parent-frame)))
+  (eval-when-compile
+    (declare-function zenit-is-childframes-p nil))
   (add-function :before-while whitespace-enable-predicate #'zenit-is-childframes-p))
 
 (provide 'zenit-ui)

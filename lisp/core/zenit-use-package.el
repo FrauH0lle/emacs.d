@@ -1,14 +1,14 @@
 ;; lisp/core/zenit-use-package.el -*- lexical-binding: t; -*-
 
 ;; `use-package'
-(declare-function use-package-concat "use-package-core")
-(declare-function use-package-handle-mode "use-package-core")
-(declare-function use-package-list-insert "use-package-core")
-(declare-function use-package-normalize-mode "use-package-core")
-(declare-function use-package-normalize-paths "use-package-core")
-(declare-function use-package-normalize-symlist "use-package-core")
-(declare-function use-package-process-keywords "use-package-core")
-(declare-function use-package-ensure-elpa "use-package-ensure")
+(declare-function use-package-concat "use-package-core" (&rest elems))
+(declare-function use-package-handle-mode "use-package-core" (name alist args rest state))
+(declare-function use-package-list-insert "use-package-core" (elem xs &optional anchor after test))
+(declare-function use-package-normalize-mode "use-package-core" (name keyword args))
+(declare-function use-package-normalize-paths "use-package-core" (label arg &optional recursed))
+(declare-function use-package-normalize-symlist "use-package-core" (_name keyword args))
+(declare-function use-package-process-keywords "use-package-core" (name plist &optional state))
+(declare-function use-package-ensure-elpa "use-package-ensure" (name args _state &optional _no-refresh))
 (defvar use-package-compute-statistics)
 (defvar use-package-deferring-keywords)
 (defvar use-package-ensure-function)
@@ -19,7 +19,7 @@
 (defvar use-package-verbose)
 
 ;; `zenit-start'
-(declare-function zenit-load-packages-incrementally "zenit-start")
+(declare-function zenit-load-packages-incrementally "zenit-start" (packages &optional now))
 (autoload #'zenit-load-packages-incrementally "zenit-start")
 
 

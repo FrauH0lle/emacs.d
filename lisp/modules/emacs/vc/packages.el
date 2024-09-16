@@ -6,7 +6,6 @@
 (package! smerge-mode :built-in t)
 
 (package! browse-at-remote :lockfile emacs_vc)
-(package! git-commit :lockfile emacs_vc)
 (package! git-timemachine
   ;; The original lives on codeberg.org; which has uptime issues.
   :recipe (:host github :repo "emacsmirror/git-timemachine")

@@ -289,29 +289,35 @@ handling encrypted or compressed files, among other things."
     (add-hook! 'zenit-before-init-hook
       (defun zenit--reset-custom-dont-initialize-h ()
         (setq custom-dont-initialize nil)))
-
-    ;; The mode-line procs a couple dozen times during startup. This is
-    ;; normally quite fast, but disabling the default mode-line and reducing
-    ;; the update delay timer seems to stave off ~30-50ms.
-    (put 'mode-line-format 'initial-value (default-toplevel-value 'mode-line-format))
-    (setq-default mode-line-format nil)
-    (dolist (buf (buffer-list))
-      (with-current-buffer buf (setq mode-line-format nil)))
-
-    ;; Premature redisplays can substantially affect startup times and produce
-    ;; ugly flashes of unstyled Emacs.
-    (setq-default inhibit-redisplay t
-                  inhibit-message t)
-
-    ;; If the above vars aren't reset, Emacs could appear frozen or garbled
-    ;; after startup (or in case of an startup error).
-    (defun zenit--reset-inhibited-vars-h ()
-      (setq-default inhibit-redisplay nil
-                    inhibit-message nil)
-      (remove-hook 'post-command-hook #'zenit--reset-inhibited-vars-h))
+    (define-advice command-line-1 (:around (fn args-left) respect-defcustom-setters)
+      (let ((custom-dont-initialize nil))
+        (funcall fn args-left)))
     (eval-when-compile
-      (declare-function zenit--reset-inhibited-vars-h nil))
-    (add-hook 'post-command-hook #'zenit--reset-inhibited-vars-h -100)
+      (declare-function command-line-1@respect-defcustom-setters nil))
+
+    (unless init-file-debug
+      ;; The mode-line procs a couple dozen times during startup. This is
+      ;; normally quite fast, but disabling the default mode-line and reducing
+      ;; the update delay timer seems to stave off ~30-50ms.
+      (put 'mode-line-format 'initial-value (default-toplevel-value 'mode-line-format))
+      (setq-default mode-line-format nil)
+      (dolist (buf (buffer-list))
+        (with-current-buffer buf (setq mode-line-format nil)))
+
+      ;; Premature redisplays can substantially affect startup times and produce
+      ;; ugly flashes of unstyled Emacs.
+      (setq-default inhibit-redisplay t
+                    inhibit-message t)
+
+      ;; If the above vars aren't reset, Emacs could appear frozen or garbled
+      ;; after startup (or in case of an startup error).
+      (defun zenit--reset-inhibited-vars-h ()
+        (setq-default inhibit-redisplay nil
+                      inhibit-message nil)
+        (remove-hook 'post-command-hook #'zenit--reset-inhibited-vars-h))
+      (eval-when-compile
+        (declare-function zenit--reset-inhibited-vars-h nil))
+      (add-hook 'post-command-hook #'zenit--reset-inhibited-vars-h -100))
 
     ;; Lazy load the toolbar until tool-bar-mode is actually used (see
     ;; `startup--load-user-init-file@undo-hacks').
@@ -333,10 +339,11 @@ handling encrypted or compressed files, among other things."
           (progn
             (when (setq site-run-file (get 'site-run-file 'initial-value))
               (let ((inhibit-startup-screen inhibit-startup-screen))
-                (letf! ((defun load-file (file) (load file nil 'nomessage))
+                (letf! ((defun load-file (file)
+                          (load file nil (not init-file-debug)))
                         (defun load (file &optional noerror _nomessage &rest args)
-                          (apply load file noerror t args)))
-                  (load site-run-file t t))))
+                          (apply load file noerror (not init-file-debug) args)))
+                  (load site-run-file t))))
             (apply fn args))
         ;; Now it's safe to be verbose.
         (setq-default inhibit-message nil)

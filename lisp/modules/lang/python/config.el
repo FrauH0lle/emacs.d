@@ -298,7 +298,7 @@
   ;; explicitly. Afterwards, run M-x `conda-env-activate' to switch between
   ;; environments
   (or (cl-loop for dir in (cons conda-anaconda-home conda-home-candidates)
-               if (file-directory-p dir)
+               if (and dir (file-directory-p dir))
                return (setq conda-anaconda-home (expand-file-name dir)
                             conda-env-home-directory (expand-file-name dir)))
       (message "Cannot find Anaconda installation"))
@@ -363,7 +363,7 @@
   :when (modulep! +lsp)
   :when (modulep! +pyright)
   :when (not (modulep! :tools lsp +eglot))
-  :after lsp-mode
+  :defer t
   :init
   (when-let ((exe (executable-find "basedpyright")))
     (setq lsp-pyright-langserver-command exe)))

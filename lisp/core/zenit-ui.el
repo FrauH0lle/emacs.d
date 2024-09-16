@@ -644,7 +644,7 @@ buffers are visible in other windows, switch to
                        (push (list display plist) new-specs)))
                    (nreverse new-specs)))
                 (put face 'face-modified nil))
-            ('error
+            (error
              (if (string-prefix-p "Font not available" (error-message-string e))
                  (signal 'zenit-font-error (list (font-get (cdr map) :family)))
                (signal (car e) (cdr e))))))
@@ -695,7 +695,19 @@ buffers are visible in other windows, switch to
           (setq zenit-theme theme)
           (put 'zenit-theme 'previous-themes (or last-themes 'none))
           ;; DEPRECATED Hook into `enable-theme-functions' when we target 29
-          (zenit-run-hooks 'zenit-load-theme-hook))))))
+          (zenit-run-hooks 'zenit-load-theme-hook)
+          ;; Fix incorrect fg/bg in new frames created after the initial frame
+          ;; (which are reroneously displayed as black).
+          (pcase-dolist (`(,param ,fn ,face)
+                         '((foreground-color face-foreground default)
+                           (background-color face-background default)
+                           (cursor-color face-background cursor)
+                           (border-color face-background border)
+                           (mouse-color face-background mouse)))
+            (when-let* ((color (funcall fn face nil t))
+                        ((stringp color))
+                        ((not (string-prefix-p "unspecified-" color))))
+              (setf (alist-get param default-frame-alist) color))))))))
 
 
 ;;
@@ -758,12 +770,12 @@ prematurely triggering hooks during startup."
   (fset 'define-fringe-bitmap #'ignore))
 
 (after! whitespace
-  (defun zenit-is-childframes-p ()
+  (defun zenit--in-parent-frame-p ()
     "`whitespace-mode' inundates child frames with whitespace
 markers, so disable it to fix all that visual noise."
     (null (frame-parameter nil 'parent-frame)))
   (eval-when-compile
-    (declare-function zenit-is-childframes-p nil))
-  (add-function :before-while whitespace-enable-predicate #'zenit-is-childframes-p))
+    (declare-function zenit--in-parent-frame-p nil))
+  (add-function :before-while whitespace-enable-predicate #'zenit--in-parent-frame-p))
 
 (provide 'zenit-ui)

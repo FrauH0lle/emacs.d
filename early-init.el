@@ -93,17 +93,16 @@ already recorded."
 
    ;; `load' and `require' use `load-suffixes' to locate a file. Startup time can
    ;; be reduced by limiting them.
-   (if (let ((load-suffixes '(".elc" ".el")))
+   (if (let ((load-suffixes '(".elc" ".el"))
+             (zenit-core-file (expand-file-name "lisp/core/zenit-core" user-emacs-directory)))
          ;; The following keeps non-config related errors visible.
-         (condition-case _
+         (if (file-exists-p (concat zenit-core-file ".el"))
              ;; Load the core of the configuration.
-             (load (expand-file-name "lisp/core/zenit-core" user-emacs-directory)
-                   nil (not init-file-debug) nil 'must-suffix)
+             (load zenit-core-file nil (not init-file-debug) nil 'must-suffix)
            ;; If this fails, something is wrong in the directory.
-           (file-missing
-            (signal 'error
-                    (list "Could not find lisp/core/zenit-core"
-                          "make sure this file exists.")))))
+           (signal 'error
+                   (list "Could not find lisp/core/zenit-core"
+                         "make sure this file exists."))))
        ;; Otherwise, proceed the startup.
        (require (if noninteractive 'zenit-cli 'zenit-start))))
 

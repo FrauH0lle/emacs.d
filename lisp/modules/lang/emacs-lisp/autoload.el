@@ -108,8 +108,9 @@ if it's callable, `apropos' otherwise."
                  (org-show-hidden-entry))))
            'deferred))
         (thing
-         (funcall (or (command-remapping #'describe-symbol)
-                      #'describe-symbol)
+         (funcall (if (fboundp #'helpful-symbol)
+                      #'helpful-symbol
+                    #'describe-symbol)
                   (intern thing)))
         ((call-interactively
           (if (fboundp #'helpful-at-point)
@@ -657,5 +658,4 @@ Adapted from URL
 ;; HACK: Quite a few functions here are called often, and so are especially
 ;;   performance sensitive, so we compile this file on-demand.
 (zenit-compile-functions #'+emacs-lisp-highlight-vars-and-faces
-                         #'+emacs-lisp-truncate-pin
                          #'+emacs-lisp--calculate-lisp-indent-a)

@@ -1,7 +1,6 @@
 ;; emacs/org/org-config.el -*- lexical-binding: t; -*-
 
 (defun +zenit-org--init-config ()
-(zenit--log "Loading org config :)")
 (use-package! toc-org ; auto-table of contents
   :hook (org-mode . toc-org-enable)
   :config

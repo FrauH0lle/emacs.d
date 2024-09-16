@@ -48,6 +48,7 @@
   `(;; Custom variables
     (zenit-print-minimum-level . debug)
     (zenit-inhibit-log . nil)
+    (zenit-log-level . 2)
 
     ;; Emacs variables
     async-debug

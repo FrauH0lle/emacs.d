@@ -1,9 +1,9 @@
 #!/usr/bin/env sh
 :; # -*- mode: emacs-lisp; lexical-binding: t -*-
 :; case "$EMACS" in *term*) EMACS=emacs ;; *) EMACS="${EMACS:-emacs}" ;; esac
+:; [ "$EMACS" = emacs ] && { type emacs >/dev/null 2>&1 || err=1; }
+:; [ -n "$err" ] && { echo "Error: failed to run Emacs with command '$EMACS'"; echo; echo "Are you sure Emacs is installed and in your \$PATH?"; exit 1; } >&2
 :; emacs="$EMACS ${DEBUG:+--debug-init} -q --no-site-file --batch"
-:; tmpdir=`$emacs --eval '(princ (temporary-file-directory))' 2>/dev/null`
-:; [ -z "$tmpdir" ] && { >&2 echo "Error: failed to run Emacs with command '$EMACS'"; >&2 echo; >&2 echo "Are you sure Emacs is installed and in your \$PATH?"; exit 1; }
 :; $emacs --load "$0" -- "$@" || exit=$?
 :; exit $exit
 
@@ -27,24 +27,23 @@
 ;;    "term". If so, it sets EMACS to "emacs". Otherwise, it sets EMACS to its
 ;;    current value or "emacs" if not set.
 
-;; 4) :; emacs="$EMACS ${DEBUG:+--debug-init} -q --no-site-file --batch"
+;; 4) :; [ "$EMACS" = emacs ] && { type emacs >/dev/null 2>&1 || err=1; }
+;;
+;;    This line sets up the EMACS environment variable to contain the Emacs
+;;    command. If the command cannot be found, the err variable is set to 1.
+
+;; 5) [ -n "$err" ] && { echo "Error: failed to run Emacs with command '$EMACS'"; echo; echo "Are you sure Emacs is installed and in your \$PATH?"; exit 1; } >&2
+;;
+;;    If err is not empty, it prints an error message and exits with status code
+;;    1.
+
+;; 6) :; emacs="$EMACS ${DEBUG:+--debug-init} -q --no-site-file --batch"
 ;;
 ;;    This line sets up the emacs variable to contain the Emacs command with
 ;;    appropriate flags. If the DEBUG environment variable is set, the
 ;;    --debug-init flag is added. The -q flag means no initialization file is
 ;;    loaded, --no-site-file skips loading site files, and --batch runs Emacs in
 ;;    non-interactive mode.
-
-;; 5) :; tmpdir=$emacs --eval '(princ (temporary-file-directory))' 2>/dev/null``
-;;
-;;    This line runs Emacs to get the temporary-file-directory and stores it in
-;;    the tmpdir variable. Errors are redirected to /dev/null.
-
-;; 6) :; [ -z "$tmpdir" ] && { >&2 echo "Error: failed to run Emacs with command '$EMACS'"; >&2 echo; >&2 echo "Are you sure Emacs is installed and in your \$PATH?"; exit 1; }
-;;
-;;    If tmpdir is empty, it prints an error message and exits with status code
-;;    1. Together with the above tmpdir variable, this checks if Emacs is
-;;    installed.
 
 ;; 7) :; $emacs --load "$0" -- "$@" || exit=$?
 ;;

@@ -236,7 +236,6 @@ looking up a C function.")
   (global-set-key [remap describe-command]  #'helpful-command)
   (global-set-key [remap describe-variable] #'helpful-variable)
   (global-set-key [remap describe-key]      #'helpful-key)
-  (global-set-key [remap describe-symbol]   #'helpful-symbol)
 
   (defun zenit-use-helpful-a (fn &rest args)
     "Force FN to use helpful instead of the old describe-* commands."

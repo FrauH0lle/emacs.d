@@ -80,13 +80,13 @@
 
 (defun zenit--generate-autoloads ()
   (zenit-autoloads--scan
-   (append (zenit-glob zenit-core-dir "lib/*.el")
+   (delete "" (append (zenit-glob zenit-core-dir "lib/*.el")
            (cl-loop for dir
                     in (append (zenit-module-load-path zenit-modules-dirs)
                                (list zenit-local-conf-dir))
                     if (zenit-glob dir "autoload.el") append it
                     if (zenit-glob dir "autoload/*.el") append it)
-           (zenit-glob zenit-autoloads-files))
+           (zenit-glob zenit-autoloads-files)))
    nil))
 
 (defun zenit--generate-package-autoloads ()

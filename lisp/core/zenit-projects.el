@@ -255,7 +255,12 @@ prompt you for the command instead."
     (projectile-mode +1)
     ;; HACK: See bbatsov/projectile@3c92d28c056c
     (remove-hook 'buffer-list-update-hook #'projectile-track-known-projects-find-file-hook)
-    (add-hook 'zenit-switch-buffer-hook #'projectile-track-known-projects-find-file-hook t)))
+    (add-hook 'zenit-switch-buffer-hook #'projectile-track-known-projects-find-file-hook t)
+    (add-hook! 'dired-after-readin-hook
+      (defun zenit-project-track-known-project-h ()
+        (when projectile-mode
+          (setq projectile-project-root-cache (make-hash-table :test 'equal))
+          (projectile-track-known-projects-find-file-hook))))))
 
 
 ;;

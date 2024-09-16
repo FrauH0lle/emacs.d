@@ -424,7 +424,7 @@
        (:when (modulep! :ui vc-gutter)
          (:when (modulep! :ui hydra)
            :desc "VCGutter"                "."   #'+vc/gutter-hydra/body)
-         :desc "Revert hunk at point"      "r"   #'+vc-gutter/revert-hunk
+         :desc "Revert hunk at point"      "r"   #'+vc-gutter/save-and-revert-hunk
          :desc "stage hunk at point"       "s"   #'+vc-gutter/stage-hunk
          :desc "Git time machine"          "t"   #'git-timemachine-toggle
          :desc "Jump to next hunk"         "]"   #'+vc-gutter/next-hunk

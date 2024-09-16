@@ -1,5 +1,8 @@
 ;; lisp/core/zenit-keybinds.el -*- lexical-binding: t; -*-
 
+(eval-when-compile
+  (require 'cl-lib))
+
 (defvar mac-command-modifier)
 (defvar ns-command-modifier)
 (defvar mac-option-modifier)
@@ -62,39 +65,29 @@ Used for Insert and Emacs states, and for non-evil users.")
   (setq w32-lwindow-modifier 'super
         w32-rwindow-modifier 'super)))
 
-;; HACK: Emacs cannot distinguish between C-i from TAB. This is largely a
-;;   byproduct of its history in the terminal, which can't distinguish them
-;;   either, however, when GUIs came about Emacs created separate input events
-;;   for more contentious keys like TAB and RET. Therefore [return] != RET,
-;;   [tab] != TAB, and [backspace] != DEL.
-;;
-;;   In the same vein, this keybind adds a [C-i] event, so users can bind to it.
-;;   Otherwise, it falls back to regular C-i keybinds.
-(define-key key-translation-map [?\C-i]
-            (cmd!
-             (if (let ((keys (this-single-command-raw-keys)))
-                   (and keys
-                        (not (cl-position 'tab    keys))
-                        (not (cl-position 'kp-tab keys))
-                        (display-graphic-p)
-                        ;; Fall back if no <C-i> keybind can be found, otherwise
-                        ;; we've broken all pre-existing C-i keybinds.
-                        (let ((key
-                               (zenit-lookup-key
-                                (vconcat (cl-subseq keys 0 -1) [C-i]))))
-                          (not (or (numberp key) (null key))))))
-                 [C-i] [?\C-i])))
-
-;; HACK: Same as C-i, but to distinguish C-m from RET is a little harder. There
-;;   is no workaround for this for the terminal.
-(define-key input-decode-map
-  [?\C-m] (cmd! (if (when-let ((keys (this-single-command-raw-keys)))
-                      (and (display-graphic-p)
-                           (not (cl-position 'return    keys))
-                           (not (cl-position 'kp-return keys))
-                           ;; Fall back if no <C-m> keybind can be found.
-                           (key-binding (vconcat (cl-subseq keys 0 -1) [C-m]) nil t)))
-                    [C-m] [?\C-m])))
+;; HACK: Emacs can't distinguish C-i from TAB, or C-m from RET, in either GUI or
+;;   TTY frames. This is a byproduct of its history with the terminal, which
+;;   can't distinguish them either, however, Emacs has separate input events for
+;;   many contentious keys like TAB and RET (like [tab] and [return], aka
+;;   "<tab>" and "<return>"), which are only triggered in GUI frames, so here, I
+;;   create one for C-i. Won't work in TTY frames, though. The :os tty module
+;;   has a workaround for that though.
+(pcase-dolist (`(,key ,fallback . ,events)
+               '(([C-i] [?\C-i] tab kp-tab)
+                 ([C-m] [?\C-m] return kp-return)))
+  (define-key
+   input-decode-map fallback
+   (cmd! (if (when-let ((keys (this-single-command-raw-keys)))
+               (and (display-graphic-p)
+                    (not (cl-loop for event in events
+                                  if (cl-position event keys)
+                                  return t))
+                    ;; Use FALLBACK if nothing is bound to KEY, otherwise we've
+                    ;; broken all pre-existing FALLBACK keybinds.
+                    (key-binding
+                     (vconcat (if (= 0 (length keys)) [] (cl-subseq keys 0 -1))
+                              key) nil t)))
+             key fallback))))
 
 
 ;;

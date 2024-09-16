@@ -70,15 +70,10 @@
           (?` . orderless-initialism)
           (?= . orderless-literal)
           (?^ . orderless-literal-prefix)
-          (?~ . orderless-flex)))
-
-  (defun +vertico-orderless-dispatch (pattern _index _total)
-    (cond
-     ;; Ensure $ works with Consult commands, which add disambiguation suffixes
-     ((string-suffix-p "$" pattern)
-      `(orderless-regexp . ,(concat (substring pattern 0 -1) "[\x200000-\x300000]*$")))))
-
-  (add-to-list 'orderless-style-dispatchers '+vertico-orderless-dispatch)
+          (?~ . orderless-flex))
+        orderless-style-dispatchers
+        '(+vertico-orderless-dispatch
+          +vertico-orderless-disambiguation-dispatch))
 
   (add-to-list
    'completion-styles-alist
@@ -130,6 +125,15 @@
 `consult-buffer' needs `recentf-mode' to show file candidates."
     :before (list #'consult-recent-file #'consult-buffer)
     (recentf-mode +1))
+
+  (defadvice! +vertico--use-evil-registers-a (fn &rest args)
+    "Use `evil-register-list' if `evil-mode' is active."
+    :around #'consult-register--alist
+    (let ((register-alist
+           (if (bound-and-true-p evil-local-mode)
+               (evil-register-list)
+             register-alist)))
+      (apply fn args)))
 
   ;; Track jump
   (advice-add #'consult--read :around #'zenit-set-jump-a)

@@ -47,7 +47,7 @@
 (define-error 'zenit-error "Error in Emacs")
 (define-error 'zenit-nosync-error "Config could not be initialized; did you remember to run 'make refresh' in the shell?" 'zenit-error)
 (define-error 'zenit-core-error "Unexpected error in core directory" 'zenit-error)
-(define-error 'zenit-context-error "Invalid context" 'zenit-error)
+(define-error 'zenit-context-error "Incorrect context error" 'zenit-error)
 (define-error 'zenit-hook-error "Error in a startup hook" 'zenit-error)
 (define-error 'zenit-autoload-error "Error in an autoloads file" 'zenit-error)
 (define-error 'zenit-module-error "Error in a module" 'zenit-error)
@@ -127,9 +127,24 @@ BODY is only compiled if COND evaluates to non-nil. See
 ;;; Logging
 
 (defvar zenit-inhibit-log (not (or noninteractive init-file-debug))
-  "If non-nil, suppress `zenit-log' output.")
+  "If non-nil, suppress `zenit-log' output completely.")
 
-(defun zenit--log (text &rest args)
+(defvar zenit-log-level
+  (if init-file-debug
+      (if-let ((level (getenv-internal "DEBUG"))
+               (level (string-to-number level))
+               ((not (zerop level))))
+          level
+        2)
+    0)
+  "How verbosely to log from `zenit-log' calls.
+
+0 -- No logging at all.
+1 -- Only warnings.
+2 -- Warnings and notices.
+3 -- Debug info, warnings, and notices.")
+
+(defun zenit--log (level text &rest args)
   "Log a message with the given TEXT and ARGS.
 
 The message will be formatted with a timestamp, and optionally
@@ -140,9 +155,13 @@ If the TEXT starts with a colon, it is considered an absolute
 context and the current `zenit-module-context' will not be used.
 In this case, the colon will be removed from the logged message.
 
+If LEVEL is below `zenit-log-level', do not log the output.
+
 Any additional arguments to be used for formatting the message
 text can be passed via ARGS."
-  (let ((inhibit-message (not init-file-debug))
+  (let ((inhibit-message (if noninteractive
+                             (not init-file-debug)
+                           (> level zenit-log-level)))
         (absolute? (string-prefix-p ":" text)))
     (apply #'message
            (propertize (concat "* %.06f:%s" (if (not absolute?) ":") text)
@@ -163,7 +182,14 @@ Does not emit the message in the echo area. This is a macro
 instead of a function to prevent the potentially expensive
 evaluation of its ARGS when debug mode is off. Return non-nil."
   (declare (debug t))
-  `(unless zenit-inhibit-log (zenit--log ,message ,@args)))
+  (let ((level (if (integerp message)
+                   (prog1 message
+                     (setq message (pop args)))
+                 2)))
+    `(when (and (not zenit-inhibit-log)
+                (or (not noninteractive)
+                    (<= ,level zenit-log-level)))
+       (zenit--log ,level ,message ,@args))))
 
 
 ;;
@@ -423,10 +449,10 @@ functions."
   "Return the filename of the file this macro was called."
   (or
    (bound-and-true-p zenit-include--current-file)
-   (macroexp-file-name)
    (bound-and-true-p byte-compile-current-file)
    load-file-name
-   buffer-file-name   ; for `eval'
+   (buffer-file-name (buffer-base-buffer))   ; for `eval'
+   (macroexp-file-name)
    (error "file!: cannot deduce the current file path")))
 
 (defmacro dir! ()
@@ -438,26 +464,32 @@ functions."
   "Temporarily rebind function, macros, and advice in BODY.
 
 Intended as syntax sugar for `cl-letf', `cl-labels',
-`cl-macrolet', and temporary advice.
+`cl-macrolet', and temporary advice (`define-advice').
 
 BINDINGS is either:
 
+  A list of (PLACE VALUE) bindings as `cl-letf*' would accept.
   A list of, or a single, `defun', `defun*', `defmacro', or
-  `defadvice' forms. A list of (PLACE VALUE) bindings as
-  `cl-letf*' would accept.
+  `defadvice' forms.
 
-TYPE is one of:
 
-  `defun' (uses `cl-letf')
-  `defun*' (uses `cl-labels'; allows recursive references),
-  `defmacro' (uses `cl-macrolet')
-  `defadvice' (uses `defadvice!' before BODY, then `undefadvice!'
-  after)
+The def* forms accepted are:
 
-NAME, ARGLIST, and BODY are the same as `defun', `defun*',
-`defmacro', and `defadvice!', respectively.
+  (defun NAME (ARGS...) &rest BODY)
+    Defines a temporary function with `cl-letf'
 
-\(fn ((TYPE NAME ARGLIST &rest BODY) ...) BODY...)"
+  (defun* NAME (ARGS...) &rest BODY)
+    Defines a temporary function with `cl-labels' (allows
+    recursive definitions).
+
+  (defmacro NAME (ARGS...) &rest BODY)
+    Uses `cl-macrolet'.
+
+  (defadvice FUNCTION WHERE ADVICE)
+    Uses `advice-add' (then `advice-remove' afterwards).
+
+  (defadvice FUNCTION (HOW LAMBDA-LIST &optional NAME DEPTH) &rest BODY)
+    Defines temporary advice with `define-advice'."
   (declare (indent defun))
   (setq body (macroexp-progn body))
   (when (memq (car bindings) '(defun defun* defmacro defadvice))
@@ -468,16 +500,33 @@ NAME, ARGLIST, and BODY are the same as `defun', `defun*',
       (setq
        body (pcase type
               (`defmacro `(cl-macrolet ((,@rest)) ,body))
-              (`defadvice `(progn (defadvice! ,@rest)
-                                  (unwind-protect ,body (undefadvice! ,@rest))))
-              ((or `defun `defun*)
-               `(cl-letf ((,(car rest) (symbol-function #',(car rest))))
-                  (ignore ,(car rest))
-                  ,(if (eq type 'defun*)
-                       `(cl-labels ((,@rest)) ,body)
-                     `(cl-letf (((symbol-function #',(car rest))
-                                 (lambda! ,(cadr rest) ,@(cddr rest))))
-                        ,body))))
+              (`defadvice
+                  (if (keywordp (cadr rest))
+                      (cl-destructuring-bind (target where fn) rest
+                        `(when-let (fn ,fn)
+                           (advice-add ,target ,where fn)
+                           (unwind-protect ,body (advice-remove ,target fn))))
+                    (let* ((fn (pop rest))
+                           (argspec (pop rest)))
+                      (when (< (length argspec) 3)
+                        (setq argspec
+                              (list (nth 0 argspec)
+                                    (nth 1 argspec)
+                                    (or (nth 2 argspec) (gensym (format "%s-a" (symbol-name fn)))))))
+                      (let ((name (nth 2 argspec)))
+                        `(progn
+                           (define-advice ,fn ,argspec ,@rest)
+                           (unwind-protect ,body
+                             (advice-remove #',fn #',name)
+                             ,(if name `(fmakunbound ',name))))))))
+              (`defun
+                  `(cl-letf ((,(car rest) (symbol-function #',(car rest))))
+                     (ignore ,(car rest))
+                     (cl-letf (((symbol-function #',(car rest))
+                                (lambda! ,(cadr rest) ,@(cddr rest))))
+                       ,body)))
+              (`defun*
+               `(cl-labels ((,@rest)) ,body))
               (_
                (when (eq (car-safe type) 'function)
                  (setq type (list 'symbol-function type)))
@@ -1108,7 +1157,7 @@ This macro accepts, in order:
               func-forms)))
     `(progn
        ,@defn-forms
-       (dolist (hook (nreverse ',hook-forms))
+       (dolist (hook ',(nreverse hook-forms))
          (dolist (func (list ,@func-forms))
            ,(if remove-p
                 `(remove-hook hook func ,local-p)

@@ -35,6 +35,7 @@
                                        (make-string (- w half-w) ?0)))
                              2))
         nil nil 'center)))
+
   (defun +vc-gutter-type-at-pos-fn (type _pos)
     (if (eq type 'delete)
         'diff-hl-bmp-delete

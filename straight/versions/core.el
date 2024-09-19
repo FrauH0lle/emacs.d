@@ -23,7 +23,7 @@
  ("rainbow-delimiters" . "f40ece58df8b2f0fb6c8576b527755a552a5e763")
  ("restart-emacs" . "1607da2bc657fe05ae01f7fdf26f716eafead02c")
  ("smartparens" . "a5c68cac1bea737b482a37aa92de4f6efbf7580b")
- ("straight.el" . "88e574ae75344e39b436f863ef0344135c7b6517")
+ ("straight.el" . "08e197bfa63829f5f5ce42cf1e3c4a4e40003f5a")
  ("undo-tree" . "5e9f4c92348b3cfd6f140c1730294017dca4bc05")
  ("ws-butler" . "e3a38d93e01014cd47bf5af4924459bd145fd7c4"))
 :gamma

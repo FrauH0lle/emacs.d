@@ -449,10 +449,11 @@ pending definitions in `zenit--map-batch-forms'."
   (setq zenit--map-state (plist-put zenit--map-state prop value)))
 
 (defun zenit--map-def (key def &optional states desc)
-  "Add a key-definition to `zenit--map-batch-forms'. KEY is the
-key-chord, DEF is the command to be bound to KEY, STATES are the
-evil states to bind under, and DESC is a description for
-which-key."
+  "Add a key-definition to `zenit--map-batch-forms'.
+
+KEY is the key-chord, DEF is the command to be bound to KEY,
+STATES are the evil states to bind under, and DESC is a
+description for which-key."
   (when (or (memq 'global states)
             (null states))
     (setq states (cons 'nil (delq 'global states))))

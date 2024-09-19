@@ -86,7 +86,7 @@ If prefix ARG is set, include ignored/hidden files."
   "Search current project for symbol at point.
 If prefix ARG is set, prompt for a known project to search from."
   (interactive
-   (list (zenit-pcre-quote (or (zenit-thing-at-point-or-region) ""))
+   (list (or (zenit-thing-at-point-or-region) "")
          (let ((projectile-project-root nil))
            (if current-prefix-arg
                (if-let (projects (projectile-relevant-known-projects))

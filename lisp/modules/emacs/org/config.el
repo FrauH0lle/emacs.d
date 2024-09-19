@@ -106,6 +106,35 @@ animate it!")
   org-list org-pcomplete org-src org-footnote org-macro ob org org-agenda
   org-capture
   :preface
+  ;; Set to nil so we can detect user changes to them later (and fall back on
+  ;; defaults otherwise).
+  (defvar org-directory nil)
+  (defvar org-id-locations-file nil)
+  (defvar org-attach-id-dir nil)
+  (defvar org-babel-python-command nil)
+
+  (setq org-persist-directory (concat zenit-cache-dir "org/persist/")
+        org-publish-timestamp-directory (concat zenit-cache-dir "org/timestamps/")
+        org-preview-latex-image-directory (concat zenit-cache-dir "org/latex/")
+        ;; Recognize a), A), a., A., etc -- must be set before org is loaded.
+        org-list-allow-alphabetical t)
+
+  ;; Make most of the default modules opt-in to lighten its first-time load
+  ;; delay. I sincerely doubt most users use them all.
+  (defvar org-modules
+    '(;; ol-doi
+      ;; ol-w3m
+      ;; ol-bbdb
+      ol-bibtex
+      ;; ol-docview
+      ;; ol-gnus
+      ;; ol-info
+      ;; ol-irc
+      ;; ol-mhe
+      ;; ol-rmail
+      ;; ol-eww
+      ))
+
   (add-hook! 'org-load-hook
              #'+org-init-org-directory-h
              #'+org-init-appearance-h

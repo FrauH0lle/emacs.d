@@ -38,30 +38,28 @@ looking up a C function.")
 (use-package! elisp-mode
   :mode ("\\.Cask\\'" . emacs-lisp-mode)
   :config
-  (eval-when! (modulep! :tools eval)
-    (set-repl-handler! '(emacs-lisp-mode lisp-interaction-mode)
-      #'+emacs-lisp/open-repl)
-    (set-eval-handler! '(emacs-lisp-mode lisp-interaction-mode)
-      #'+emacs-lisp-eval))
-  (eval-when! (modulep! :tools lookup)
-    (set-lookup-handlers! '(emacs-lisp-mode lisp-interaction-mode helpful-mode)
-                          :definition    #'+emacs-lisp-lookup-definition
-                          :documentation #'+emacs-lisp-lookup-documentation)
-    (set-docsets! '(emacs-lisp-mode lisp-interaction-mode) "Emacs Lisp"))
+  (let ((modes '(emacs-lisp-mode lisp-interaction-mode lisp-data-mode)))
+    (set-repl-handler! modes #'+emacs-lisp/open-repl)
+    (set-eval-handler! modes #'+emacs-lisp-eval)
+    (eval-when! (modulep! :tools lookup)
+      (set-lookup-handlers! `(,@modes helpful-mode)
+                            :definition    #'+emacs-lisp-lookup-definition
+                            :documentation #'+emacs-lisp-lookup-documentation)
+      (set-docsets! modes "Emacs Lisp"))
 
-  (set-formatter! 'lisp-indent #'apheleia-indent-lisp-buffer :modes '(emacs-lisp-mode))
-  (set-ligatures! 'emacs-lisp-mode :lambda "lambda")
-  (set-rotate-patterns! 'emacs-lisp-mode
-    :symbols '(("t" "nil")
-               ("let" "let*")
-               ("when" "unless")
-               ("append" "prepend")
-               ("advice-add" "advice-remove")
-               ("defadvice!" "undefadvice!")
-               ("add-hook" "remove-hook")
-               ("add-hook!" "remove-hook!")
-               ("it" "xit")
-               ("describe" "xdescribe")))
+    (set-formatter! 'lisp-indent #'apheleia-indent-lisp-buffer :modes modes)
+    (set-ligatures! modes :lambda "lambda")
+    (set-rotate-patterns! modes
+      :symbols '(("t" "nil")
+                 ("let" "let*")
+                 ("when" "unless")
+                 ("append" "prepend")
+                 ("advice-add" "advice-remove")
+                 ("defadvice!" "undefadvice!")
+                 ("add-hook" "remove-hook")
+                 ("add-hook!" "remove-hook!")
+                 ("it" "xit")
+                 ("describe" "xdescribe"))))
 
   (setq-hook! 'emacs-lisp-mode-hook
     ;; Emacs' built-in elisp files use a hybrid tab->space indentation scheme
@@ -80,7 +78,7 @@ looking up a C function.")
   ;; and `editorconfig' would force fixed indentation on elisp.
   (add-to-list 'zenit-detect-indentation-excluded-modes 'emacs-lisp-mode)
 
-  (add-hook! 'emacs-lisp-mode-hook
+  (add-hook! '(emacs-lisp-mode-hook lisp-data-mode-local-vars-hook)
              ;; Allow folding of outlines in comments
              #'outline-minor-mode
              ;; Make parenthesis depth easier to distinguish at a glance
@@ -104,13 +102,13 @@ looking up a C function.")
       (apply orig-fn args)))
 
   ;; Special syntax highlighting for elisp
-  (font-lock-add-keywords
-   'emacs-lisp-mode
-   (append `(;; custom cookies
-             ("^;;;###\\(autodef\\|if\\|package\\)[ \n]" (1 font-lock-warning-face t)))
-           ;; highlight defined, special variables & functions
-           (when +emacs-lisp-enable-extra-fontification
-             `((+emacs-lisp-highlight-vars-and-faces . +emacs-lisp--face)))))
+  (dolist (mode '(emacs-lisp-mode lisp-data-mode lisp-interaction-mode))
+    (font-lock-add-keywords
+     mode (append `(;; custom cookies
+                    ("^;;;###\\(autodef\\|if\\|package\\)[ \n]" (1 font-lock-warning-face t)))
+                  ;; highlight defined, special variables & functions
+                  (when +emacs-lisp-enable-extra-fontification
+                    `((+emacs-lisp-highlight-vars-and-faces . +emacs-lisp--face))))))
 
   (defadvice! +emacs-lisp-append-value-to-eldoc-a (fn sym)
     "Display variable value next to documentation in eldoc."

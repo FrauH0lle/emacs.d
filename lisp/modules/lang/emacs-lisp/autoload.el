@@ -108,10 +108,12 @@ if it's callable, `apropos' otherwise."
                  (org-show-hidden-entry))))
            'deferred))
         (thing
-         (funcall (if (fboundp #'helpful-symbol)
-                      #'helpful-symbol
-                    #'describe-symbol)
-                  (intern thing)))
+         (let ((thing (intern thing)))
+           (if (and (not (cl-find-class thing))
+                    (fboundp 'helpful-symbol))
+               (helpful-symbol thing)
+             (describe-symbol thing)
+             (pop-to-buffer (help-buffer)))))
         ((call-interactively
           (if (fboundp #'helpful-at-point)
               #'helpful-at-point

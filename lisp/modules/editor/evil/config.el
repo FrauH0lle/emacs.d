@@ -1,6 +1,4 @@
 ;; editor/evil/config.el -*- lexical-binding: t; -*-
-(eval-and-compile
-  (message "at the top featurep evil is: %s" (featurep 'evil)))
 
 (defvar +evil-want-o/O-to-continue-comments t
   "If non-nil, the o/O keys will continue comment lines if the
@@ -196,8 +194,6 @@ global, so..."
   (advice-add #'evil-goto-first-line :around #'zenit-set-jump-a)
   (advice-add #'evil-goto-line       :around #'zenit-set-jump-a)
 
-  ;; (cl-eval-when (compile)
-  ;;   (require 'evil-ex))
   ;; These arg types will highlight matches in the current buffer
   (evil-ex-define-argument-type regexp-match
     :runner (lambda (flag &optional arg) (+evil-ex-regexp-match flag arg 'inverted)))
@@ -417,6 +413,3 @@ global, so..."
 (compile-along! "+keybinds")
 (after! evil
   (load! "+keybinds"))
-
-(eval-and-compile
-  (message "at the end featurep evil is: %s" (featurep 'evil)))

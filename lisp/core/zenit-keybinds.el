@@ -370,7 +370,7 @@ processed."
                  (:desc
                   (setq desc (pop rest)))
                  (:map
-                  (zenit--map-set :keymaps `(quote ,(ensure-list (pop rest)))))
+                  (zenit--map-set :keymaps `(backquote ,(ensure-list (pop rest)))))
                  (:mode
                   (push (cl-loop for m in (ensure-list (pop rest))
                                  collect (intern (concat (symbol-name m) "-map")))

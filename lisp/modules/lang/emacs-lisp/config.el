@@ -27,13 +27,12 @@ See `+emacs-lisp-non-package-mode' for details.")
 looking up a C function.")
 
 
+;;
+;;; Config
+
 ;; `elisp-mode' is loaded at startup. In order to lazy load its config we need
 ;; to pretend it isn't loaded
 (defer-feature! elisp-mode emacs-lisp-mode)
-
-
-;;
-;;; Config
 
 (use-package! elisp-mode
   :mode ("\\.Cask\\'" . emacs-lisp-mode)

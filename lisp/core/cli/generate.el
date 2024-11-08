@@ -81,19 +81,29 @@
 (defun zenit--generate-autoloads ()
   (zenit-autoloads--scan
    (delete "" (append (zenit-glob zenit-core-dir "lib/*.el")
-           (cl-loop for dir
-                    in (append (zenit-module-load-path zenit-modules-dirs)
-                               (list zenit-local-conf-dir))
-                    if (zenit-glob dir "autoload.el") append it
-                    if (zenit-glob dir "autoload/*.el") append it)
-           (zenit-glob zenit-autoloads-files)))
+                      (cl-loop for dir
+                               in (append (zenit-module-load-path zenit-modules-dirs)
+                                          (list zenit-local-conf-dir))
+                               if (zenit-glob dir "autoload.el") append it
+                               if (zenit-glob dir "autoload/*.el") append it)
+                      (mapcan #'zenit-glob zenit-autoloads-files)))
    nil))
 
 (defun zenit--generate-package-autoloads ()
   (zenit-autoloads--scan
-   (mapcar #'straight--autoloads-file
-           (nreverse (seq-difference (hash-table-keys straight--build-cache)
-                                     zenit-autoloads-excluded-packages)))
+   ;; Create a list of packages starting with the Nth-most dependencies by
+   ;; walking the package dependency tree depth-first. This ensures any
+   ;; load-order constraints in package autoloads are always met.
+   (let (packages)
+     (letf! (defun* walk-packages (pkglist)
+              (cond ((null pkglist) nil)
+                    ((stringp pkglist)
+                     (walk-packages (nth 1 (gethash pkglist straight--build-cache)))
+                     (cl-pushnew pkglist packages :test #'equal))
+                    ((listp pkglist)
+                     (mapc #'walk-packages (reverse pkglist)))))
+       (walk-packages (mapcar #'symbol-name (mapcar #'car zenit-packages))))
+     (mapcar #'straight--autoloads-file (nreverse packages)))
    zenit-autoloads-excluded-files 'literal))
 
 (defun zenit-autoloads-reload (&optional file)

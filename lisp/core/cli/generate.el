@@ -90,19 +90,26 @@
    nil))
 
 (defun zenit--generate-package-autoloads ()
+  "Generate autoloads for packages by walking the package dependency tree depth-first.
+This ensures any load-order constraints in package autoloads are always met."
   (zenit-autoloads--scan
    ;; Create a list of packages starting with the Nth-most dependencies by
    ;; walking the package dependency tree depth-first. This ensures any
    ;; load-order constraints in package autoloads are always met.
    (let (packages)
+     ;; Define a local function to walk through the package list and collect packages
      (letf! (defun* walk-packages (pkglist)
               (cond ((null pkglist) nil)
                     ((stringp pkglist)
+                     ;; Recursively walk through dependencies and add to packages list
                      (walk-packages (nth 1 (gethash pkglist straight--build-cache)))
                      (cl-pushnew pkglist packages :test #'equal))
                     ((listp pkglist)
+                     ;; Walk through each package in the list
                      (mapc #'walk-packages (reverse pkglist)))))
+       ;; Start walking from the root packages
        (walk-packages (mapcar #'symbol-name (mapcar #'car zenit-packages))))
+     ;; Map the collected packages to their autoload files
      (mapcar #'straight--autoloads-file (nreverse packages)))
    zenit-autoloads-excluded-files 'literal))
 

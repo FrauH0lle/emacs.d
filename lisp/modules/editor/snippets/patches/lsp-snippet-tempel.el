@@ -10,7 +10,7 @@
 ;; PATCH `lsp-mode' now checks if `yas-minor-mode' is bound
 (el-patch-defun lsp-snippet-tempel-lsp-mode-init ()
   (lsp-snippet-tempel--init)
-  (advice-add 'lsp--expand-snippet :override #'lsp-snippet-tempel--lsp-mode-expand-snippet)
+  (advice-add #'lsp--expand-snippet :override #'lsp-snippet-tempel--lsp-mode-expand-snippet)
   ;; HACK `lsp-mode' enables snippet based on `(featurep 'yasnippet)'
   (el-patch-remove
     (provide 'yasnippet)))

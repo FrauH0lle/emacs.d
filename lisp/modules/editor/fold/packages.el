@@ -11,3 +11,4 @@
     :recipe (:host github :repo "emacs-tree-sitter/ts-fold")))
 
 (package! outline-minor-faces :lockfile editor_fold)
+(package! backline :lockfile editor_fold)

@@ -239,7 +239,7 @@
 
 
 (use-package! consult-flycheck
-  :when (modulep! :checkers syntax)
+  :when (modulep! :checkers syntax -flymake)
   :after (consult flycheck))
 
 

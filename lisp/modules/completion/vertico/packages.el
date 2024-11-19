@@ -9,7 +9,7 @@
 
 (package! consult :lockfile completion_vertico)
 (package! consult-dir :lockfile completion_vertico)
-(when (modulep! :checkers syntax)
+(when (modulep! :checkers syntax -flymake)
   (package! consult-flycheck :lockfile completion_vertico))
 
 (package! embark :lockfile completion_vertico)

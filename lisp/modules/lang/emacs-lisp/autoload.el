@@ -237,8 +237,7 @@ Indents plists more sensibly. Adapted from URL
 (defun +emacs-lisp-extend-imenu-h ()
   "Improve imenu support in `emacs-lisp-mode'."
   (setq imenu-generic-expression
-        `(("Section" "^[ \t]*;;;;*[ \t]+\\([^\n]+\\)" 1)
-          ("Evil commands" "^\\s-*(evil-define-\\(?:command\\|operator\\|motion\\) +\\(\\_<[^ ()\n]+\\_>\\)" 1)
+        `(("Evil commands" "^\\s-*(evil-define-\\(?:command\\|operator\\|motion\\) +\\(\\_<[^ ()\n]+\\_>\\)" 1)
           ("Unit tests" "^\\s-*(\\(?:ert-deftest\\|describe\\) +\"\\([^\")]+\\)\"" 1)
           ("Package" "^\\s-*\\(?:;;;###package\\|(\\(?:package!\\|use-package!?\\|after!\\)\\) +\\(\\_<[^ ()\n]+\\_>\\)" 1)
           ("Major modes" "^\\s-*(define-derived-mode +\\([^ ()\n]+\\)" 1)
@@ -251,7 +250,8 @@ Indents plists more sensibly. Adapted from URL
           ("CLI Command" "^\\s-*(\\(def\\(?:cli\\|alias\\|obsolete\\|autoload\\)! +\\([^\n]+\\)\\)" 1)
           ("Functions" "^\\s-*(\\(?:cl-\\)?def\\(?:un\\|un\\*\\|method\\|generic\\|-memoized!\\) +\\([^ ,)\n]+\\)" 1)
           ("Variables" "^\\s-*(\\(def\\(?:c\\(?:onst\\(?:ant\\)?\\|ustom\\)\\|ine-symbol-macro\\|parameter\\|var\\(?:-local\\)?\\)\\)\\s-+\\(\\(?:\\sw\\|\\s_\\|\\\\.\\)+\\)" 2)
-          ("Types" "^\\s-*(\\(cl-def\\(?:struct\\|type\\)\\|def\\(?:class\\|face\\|group\\|ine-\\(?:condition\\|error\\|widget\\)\\|package\\|struct\\|t\\(?:\\(?:hem\\|yp\\)e\\)\\)\\)\\s-+'?\\(\\(?:\\sw\\|\\s_\\|\\\\.\\)+\\)" 2))))
+          ("Types" "^\\s-*(\\(cl-def\\(?:struct\\|type\\)\\|def\\(?:class\\|face\\|group\\|ine-\\(?:condition\\|error\\|widget\\)\\|package\\|struct\\|t\\(?:\\(?:hem\\|yp\\)e\\)\\)\\)\\s-+'?(?\\(\\(?:\\sw\\|\\s_\\|\\\\.\\)+\\)" 2)
+          ("Section" "^[ \t]*;;;+\\**[ \t]+\\([^\n]+\\)" 1))))
 
 (defun +emacs-lisp--in-package-buffer-p ()
   (let* ((file-path (buffer-file-name (buffer-base-buffer)))
@@ -397,7 +397,7 @@ or source \(`zenit-emacs-dir')."
     (setq +emacs-lisp-non-package-mode nil))
   (when-let ((modesym (cond ((modulep! :checkers syntax +flymake)
                              #'+emacs-lisp--flymake-non-package-mode)
-                            ((modulep! :checkers syntax)
+                            ((modulep! :checkers syntax -flymake)
                              #'+emacs-lisp--flycheck-non-package-mode))))
     (if (not +emacs-lisp-non-package-mode)
         (when (symbol-value modesym)

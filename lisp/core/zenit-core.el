@@ -74,20 +74,21 @@
 ;;
 ;;; Custom features & Global constants
 
-(defconst zenit-operating-system
+(defconst zenit-os-type
   (pcase system-type
     ('darwin                           '(macos unix))
     ((or 'cygwin 'windows-nt 'ms-dos)  '(windows))
     ((or 'gnu 'gnu/linux)              '(linux unix))
-    ((or 'gnu/kfreebsd 'berkeley-unix) '(bsd unix)))
+    ((or 'gnu/kfreebsd 'berkeley-unix) '(bsd unix))
+    ('android                          '(android)))
   "A list of symbols denoting the current operating system.")
 
 ;; Make the operating system available to `featurep'
 (push :system features)
-(put :system 'subfeatures zenit-operating-system)
+(put :system 'subfeatures zenit-os-type)
 
 ;; Convenience aliases for internal use
-(defconst zenit-system            (car zenit-operating-system))
+(defconst zenit-system            (car zenit-os-type))
 (defconst zenit--system-windows-p (featurep :system 'windows))
 (defconst zenit--system-macos-p   (featurep :system 'macos))
 (defconst zenit--system-linux-p   (featurep :system 'linux))
@@ -269,31 +270,6 @@ handling encrypted or compressed files, among other things."
                                  (selected-frame) nil t)))
       (eval-when-compile
         (declare-function tty-run-terminal-initialization@defer nil)))
-
-    ;; `load-suffixes' and `load-file-rep-suffixes' are consulted on each
-    ;; `require' and `load'. Removing .so gives a small boost. This is later
-    ;; restored in zenit-start.el.
-    (put 'load-suffixes 'initial-value (default-toplevel-value 'load-suffixes))
-    (put 'load-file-rep-suffixes 'initial-value (default-toplevel-value 'load-file-rep-suffixes))
-    (set-default-toplevel-value 'load-suffixes '(".elc" ".el"))
-    (set-default-toplevel-value 'load-file-rep-suffixes '(""))
-
-    (add-hook! 'zenit-before-init-hook
-      (defun zenit--reset-load-suffixes-h ()
-        "Undo any problematic startup optimizations."
-        (setq load-suffixes (get 'load-suffixes 'initial-value)
-              load-file-rep-suffixes (get 'load-file-rep-suffixes 'initial-value))))
-
-    ;; Defer the initialization of `defcustom'.
-    (setq custom-dont-initialize t)
-    (add-hook! 'zenit-before-init-hook
-      (defun zenit--reset-custom-dont-initialize-h ()
-        (setq custom-dont-initialize nil)))
-    (define-advice command-line-1 (:around (fn args-left) respect-defcustom-setters)
-      (let ((custom-dont-initialize nil))
-        (funcall fn args-left)))
-    (eval-when-compile
-      (declare-function command-line-1@respect-defcustom-setters nil))
 
     (unless init-file-debug
       ;; The mode-line procs a couple dozen times during startup. This is

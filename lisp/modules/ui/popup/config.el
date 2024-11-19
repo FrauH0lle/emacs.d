@@ -42,6 +42,8 @@ disable margin adjustment.")
   "Stores the last popup configuration.")
 (defvar-local +popup--parents nil
   "Stores the popup's parent buffers.")
+(defvar +popup--ignore-parent nil
+  "If non-nil, do not record parent buffer.")
 (defvar-local +popup--timer nil
   "Stores current timer for killing the buffer.")
 

@@ -53,5 +53,5 @@ point."
 
 
 (use-package! flycheck-pkgcheck
-  :when (modulep! :checkers syntax)
+  :when (modulep! :checkers syntax -flymake)
   :hook (ebuild-mode . flycheck-pkgcheck-setup))

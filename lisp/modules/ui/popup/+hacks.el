@@ -54,7 +54,8 @@ that by remapping `quit-window' to this commmand."
       (+popup/close nil 'force))
     (when-let* ((parent-buffer (car parent))
                 (live-p (buffer-live-p parent-buffer)))
-      (display-buffer parent-buffer))))
+      (let ((+popup--ignore-parent t))
+        (display-buffer parent-buffer)))))
 (define-key +popup-buffer-mode-map [remap quit-window] #'+popup/quit-window)
 
 

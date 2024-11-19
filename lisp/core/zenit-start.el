@@ -375,7 +375,7 @@ it."
               ;; If we loaded a compiled file, set `user-init-file' to the
               ;; source version if that exists.
               (setq user-init-file
-                    (concat (string-remove-suffix ".elc" user-init-file)
+                    (concat (string-remove-suffix ".elc" init-file-name)
                             ".el"))))
         (error
          (display-warning

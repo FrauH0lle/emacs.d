@@ -47,7 +47,7 @@
   (setq rustic-babel-format-src-block nil
         rustic-format-trigger nil)
 
-  (if (not (modulep! +lsp))
+  (if (modulep! -lsp)
       (after! rustic-flycheck
         (add-to-list 'flycheck-checkers 'rustic-clippy))
     (setq rustic-lsp-client
@@ -55,6 +55,9 @@
               'eglot
             'lsp-mode))
     (add-hook 'rustic-mode-local-vars-hook #'rustic-setup-lsp 'append)
+
+    (eval-when! (modulep! :tools lsp +lsp-flymake)
+      (pushnew! +flycheck-disabled-modes 'rustic-mode))
 
     ;; HACK: Add @scturtle fix for signatures on hover on LSP mode. This code
     ;;   has not been upstreamed because it depends on the exact format of the

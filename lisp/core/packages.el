@@ -1,6 +1,9 @@
 ;; -*- no-byte-compile: t; -*-
 ;; lisp/packages.el
 
+(package! straight :lockfile core)
+(package! async :lockfile core)
+
 ;; zenit-core.el
 (package! auto-minor-mode :lockfile core)
 (package! gcmh :lockfile core)

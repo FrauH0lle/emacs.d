@@ -5,7 +5,7 @@
 (package! pip-requirements :lockfile lang_python)
 (when (modulep! +cython)
   (package! cython-mode :lockfile lang_python)
-  (when (modulep! :checkers syntax)
+  (when (modulep! :checkers syntax -flymake)
     (package! flycheck-cython :lockfile lang_python)))
 
 ;; LSP

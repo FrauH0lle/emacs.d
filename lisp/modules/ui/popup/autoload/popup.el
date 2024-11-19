@@ -495,8 +495,14 @@ is non-nil."
     (prog1
         (apply fn args)
       (when (and (popper-popup-p (current-buffer))
-                 (not (eq (current-buffer) (caar +popup--parents))))
+                 ;; Prevent self-reference
+                 (not (eq (current-buffer) parent))
+                 ;; Avoid duplicate parents
+                 (not (assq parent parents))
+                 (not +popup--ignore-parent))
         (push (cons parent quit) parents)
+        ;; (with-current-buffer parent
+        ;;   (setq +popup--timer nil))
         (setq +popup--parents parents)))))
 
 (advice-add #'+popup-buffer :around #'+popup-record-parent-a)

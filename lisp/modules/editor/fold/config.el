@@ -117,5 +117,10 @@ later."
   (setq ts-fold-replacement +fold-ellipsis)
   (global-ts-fold-mode +1))
 
+
 (use-package! outline-minor-faces
   :hook (outline-minor-mode . outline-minor-faces-mode))
+
+(use-package! backline
+  :after outline
+  :config (advice-add #'outline-flag-region :after #'backline-update))

@@ -10,3 +10,32 @@ prog-mode
 (note (if (derived-mode-p 'emacs-lisp-mode) ";; " comment-start) "NOTE " (i today) ": ")
 (bug (if (derived-mode-p 'emacs-lisp-mode) ";; " comment-start) "BUG " (i today) ": ")
 (xxx (if (derived-mode-p 'emacs-lisp-mode) ";; " comment-start) "XXX " (i today) ": ")
+
+;; Sections
+(section-box
+ ;; Indent line
+ >
+ ;; Ensure `comment-start` is followed by a space
+ (p (if (string-suffix-p " " comment-start)
+        comment-start
+      (concat comment-start " ")) cs t)
+ ;; Create upper line of the box, i.e. # ---------...
+ cs (make-string (- fill-column (current-indentation) (length cs)) ?-) n>
+ ;; Insert region or default
+ cs (r "Title") n>
+ ;; Create lower line of the box, i.e. # ---------...
+ cs (make-string (- fill-column (current-indentation) (length cs)) ?-) n>
+ q)
+(section (i section-box))
+(section-minor
+ ;; Indent line
+ >
+ ;; Ensure `comment-start` is followed by a space
+ (p (if (string-suffix-p " " comment-start)
+        comment-start
+      (concat comment-start " ")) cs t)
+ ;; Create minor indicator, i.e. # --
+ cs "--" n>
+ ;; Insert region or default
+ cs (r "Title") n>
+ q)

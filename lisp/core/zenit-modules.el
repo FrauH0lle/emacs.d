@@ -88,7 +88,7 @@ the local one)."
 ;;; Module API
 
 (defun zenit-module-p (category module &optional flag)
-  "Returns t if CATEGORY MODULE is enabled (ie. present in
+  "Return t if CATEGORY MODULE is enabled (ie. present in
 `zenit-modules')."
   (declare (pure t) (side-effect-free t))
   (when-let (plist (gethash (cons category module) zenit-modules))
@@ -107,6 +107,19 @@ If INITDEPTH? is non-nil, use the CAR if a module was given two depths (see
             (cdr-safe depth))
           depth)
     0))
+
+(defun zenit-module--has-flag-p (flags wanted-flags)
+  "Return t if the list of WANTED-FLAGS satisfies the list of FLAGS."
+  (declare (pure t) (side-effect-free error-free))
+  (cl-loop with flags = (ensure-list flags)
+           for flag in (ensure-list wanted-flags)
+           for flagstr = (symbol-name flag)
+           if (if (eq ?- (aref flagstr 0))
+                  (memq (intern (concat "+" (substring flagstr 1)))
+                        flags)
+                (not (memq flag flags)))
+           return nil
+           finally return t))
 
 (defun zenit-module-get (category module &optional property)
   "Returns the plist for CATEGORY MODULE. Gets PROPERTY,
@@ -253,7 +266,7 @@ MODULE-LIST is a list of cons cells (GROUP . NAME). See
            collect it))
 
 (defun zenit-module-from-path (path &optional enabled-only)
-  "Returns a cons cell (CATEGORY . MODULE) derived from PATH (a file path).
+  "Return a cons cell (CATEGORY . MODULE) derived from PATH (a file path).
 If ENABLED-ONLY, return nil if the containing module isn't
 enabled."
   (let* ((file-name-handler-alist nil)
@@ -265,9 +278,9 @@ enabled."
                (and (or (null enabled-only)
                         (zenit-module-p category module))
                     (cons category module))))
-            ((string-match (concat "^" (regexp-quote zenit-core-dir)) path)
+            ((file-in-directory-p path zenit-core-dir)
              (cons :core nil))
-            ((string-match (concat "^" (regexp-quote zenit-local-conf-dir)) path)
+            ((file-in-directory-p path zenit-local-conf-dir)
              (cons :local-conf nil))))))
 
 (defun zenit-module-load-path (&optional module-dirs)
@@ -502,36 +515,57 @@ module key."
      (zenit-log ":context:module: =%s" zenit-module-context)
      ,@body))
 
-(defmacro modulep! (category &optional module flag)
-  "Return t if :CATEGORY MODULE (and +FLAGS) are enabled.
-If FLAG is provided, returns t if CATEGORY MODULE has FLAG enabled.
+(defmacro modulep! (category &optional module &rest flags)
+    "Return t if :CATEGORY MODULE (and +FLAGS) are enabled.
+
+If FLAGS is provided, returns t if CATEGORY MODULE has all of
+FLAGS enabled.
+
   (modulep! :config default +flag)
+  (modulep! :config default +flag1 +flag2 +flag3)
 
 CATEGORY and MODULE may be omitted when this macro is used from a
-module's source.
-Like so:
+module's source. Like so:
+
+  (modulep! +flag3 +flag1 +flag2)
   (modulep! +flag)
 
+FLAGS can be negated. E.g. This will return non-nil if ':tools
+lsp' is enabled without `+eglot':
+
+  (modulep! :tools lsp -eglot)
+
+To interpolate dynamic values, use comma:
+
+  (let ((flag '-eglot))
+    (modulep! :tools lsp ,flag))
+
 For more about modules and flags, see `modules!'."
-  ;; This macro bypasses the module API to spare startup their runtime cost, as
-  ;; `modulep!' gets called *a lot* during startup.
-  (and (cond (flag (memq flag (aref (or (get category module) zenit--empty-module-context)
-                                    (zenit-module--context-field :flags))))
-             (module (get category module))
-             ((aref zenit-module-context 0)
-              (memq category (aref zenit-module-context
-                                   (zenit-module--context-field :flags))))
-             ((let ((file
-                     ;; This must be expanded at the call site, not in
-                     ;; `modulep!'s definition, to get the file we want.
-                     (macroexpand '(file!))))
-                (if-let (module (zenit-module-from-path file))
-                    (memq category (aref (or (get (car module) (cdr module))
-                                             zenit--empty-module-context)
-                                         (zenit-module--context-field :flags)))
-                  (error "(modulep! %s %s %s) couldn't figure out what module it was called from (in %s)"
-                         category module flag file)))))
-       t))
+    ;; This macro bypasses the module API to spare startup their runtime cost, as
+    ;; `modulep!' gets called *a lot* during startup.
+    (if (keywordp category)
+        (if flags
+            `(zenit-module--has-flag-p
+              (aref (or (get (backquote ,category) (backquote ,module)) zenit--empty-module-context)
+                    (zenit-module--context-field :flags))
+              (backquote ,flags))
+          `(and (get (backquote ,category) (backquote ,module)) t))
+      (let ((flags (delq nil (cons category (cons module flags)))))
+        (if (aref zenit-module-context 0)
+            `(zenit-module--has-flag-p
+              ',(aref zenit-module-context
+                      (zenit-module--context-field :flags))
+              (backquote ,flags))
+          `(let ((file (file!)))
+             (if-let ((module (zenit-module-from-path file)))
+                 (zenit-module--has-flag-p
+                  (aref (or (get (car module) (cdr module))
+                            zenit--empty-module-context)
+                        (zenit-module--context-field :flags))
+                  (backquote ,flags))
+               (error "(modulep! %s) couldn't resolve current module from %s"
+                      (backquote ,flags) (abbreviate-file-name file))))))))
+
 
 ;;
 ;;; Defaults

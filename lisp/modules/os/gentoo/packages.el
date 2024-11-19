@@ -20,3 +20,9 @@
                  (beginning-of-line)
                  (insert ";; ")))))
   :lockfile os_gentoo)
+
+(package! flycheck-pkgcheck
+  :recipe (:host github
+           :repo "pkgcore/pkgcheck"
+           :files ("contrib/emacs/flycheck-pkgcheck.el"))
+  :lockfile os_gentoo)

@@ -460,6 +460,7 @@ functions."
   (let (file-name-handler-alist)
     (file-name-directory (macroexpand '(file!)))))
 
+(put 'defun* 'lisp-indent-function 'defun)
 (defmacro letf! (bindings &rest body)
   "Temporarily rebind function, macros, and advice in BODY.
 

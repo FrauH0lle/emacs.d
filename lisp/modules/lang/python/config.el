@@ -21,6 +21,9 @@
         python-indent-guess-indent-offset-verbose nil)
 
   (eval-when! (modulep! +lsp)
+    (eval-when! (modulep! :tools lsp +lsp-flymake)
+      (pushnew! +flycheck-disabled-modes 'python-mode 'python-ts-mode))
+
     (add-hook 'python-mode-local-vars-hook #'lsp! 'append)
     ;; Use "mspyls" in eglot if in PATH
     (when (executable-find "Microsoft.Python.LanguageServer")
@@ -333,8 +336,7 @@
 
 (use-package! flycheck-cython
   :when (modulep! +cython)
-  :when (and (modulep! :checkers syntax)
-             (not (modulep! :checkers syntax +flymake)))
+  :when (modulep! :checkers syntax -flymake)
   :after cython-mode)
 
 
@@ -362,33 +364,9 @@
 (use-package! lsp-pyright
   :when (modulep! +lsp)
   :when (modulep! +pyright)
-  :when (not (modulep! :tools lsp +eglot))
+  :when (modulep! :tools lsp -eglot)
   :defer t
   :init
-  (when-let ((exe (executable-find "basedpyright")))
-    (setq lsp-pyright-langserver-command exe)))
-
-;; Use the new ruff LSP server
-;; (after! lsp-mode
-;;   (setq! lsp-ruff-lsp-server-command '("ruff" "server"))
-;;   (lsp-register-client
-;;    (make-lsp-client
-;;     :new-connection (lsp-stdio-connection
-;;                      (lambda () lsp-ruff-lsp-server-command))
-;;     :activation-fn (lsp-activate-on "python")
-;;     :server-id 'ruff-server
-;;     :priority -2
-;;     :add-on? t
-;;     :multi-root t
-;;     :initialization-options
-;;     (lambda ()
-;;       (list :settings
-;;             (list :args lsp-ruff-lsp-ruff-args
-;;                   :logLevel lsp-ruff-lsp-log-level
-;;                   :path lsp-ruff-lsp-ruff-path
-;;                   :interpreter (vector lsp-ruff-lsp-python-path)
-;;                   :showNotifications lsp-ruff-lsp-show-notifications
-;;                   :organizeImports (lsp-json-bool lsp-ruff-lsp-advertize-organize-imports)
-;;                   :fixAll (lsp-json-bool lsp-ruff-lsp-advertize-fix-all)
-;;                   :importStrategy lsp-ruff-lsp-import-strategy)))))
-;;   (setq! lsp-disabled-clients '(python-mode . (ruff-lsp))))
+  (add-hook! 'python-mode-local-vars-hook
+    (when-let ((exe (executable-find "basedpyright")))
+      (setq lsp-pyright-langserver-command (file-name-nondirectory exe)))))

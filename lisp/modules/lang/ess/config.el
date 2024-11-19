@@ -77,12 +77,15 @@ variable.")
     (add-hook 'ess-r-mode-local-vars-hook #'tree-sitter! 'append))
   :config
   (setq ess-offset-continued 'straight
-        ess-use-flymake (not (modulep! :checkers syntax))
+        ess-use-flymake (or (modulep! :tools lsp +lsp-flymake)
+                            (modulep! :checkers syntax +flymake))
         ess-nuke-trailing-whitespace-p t
         ess-style 'DEFAULT
         ess-history-directory (expand-file-name "ess-history/" zenit-cache-dir))
 
-  ;; Set fontification
+  ;;
+  ;;; Set fontification
+
   ;; ESS buffer
   (setq ess-R-font-lock-keywords
         '((ess-R-fl-keyword:keywords   . t)
@@ -115,6 +118,24 @@ variable.")
           (ess-fl-keyword:=             . t)
           (ess-R-fl-keyword:F&T         . t)))
 
+
+  ;; RStudio-style `outline-regexp', e.g. matches # Section ----...
+  (defun +ess-r-mode-outline-level ()
+    "Adapted from `lisp-outline-level'."
+    (let ((len (- (match-end 0) (match-beginning 0))))
+      (cond ((looking-at "[ \t]*\\(#+\\) ")
+             (- (match-end 1) (match-beginning 1)))
+            (t
+             len))))
+
+  (add-hook! 'ess-r-mode-local-vars-hook
+    (progn
+      (if (eq ess-style 'RStudio)
+          (setq-local outline-regexp "[ \t]*#+ [^ \t\n#=-].*[#=-]\\{4,\\}"
+                      outline-level #'+ess-r-mode-outline-level)
+        (setq-local outline-regexp "[ \t]*###+ [^ \t\n]"))
+      (outline-minor-mode +1)))
+
   (eval-when! (modulep! :tools lookup)
     (set-docsets! 'ess-r-mode :docsets "R")
     (set-lookup-handlers! '(ess-r-mode ess-julia-mode)
@@ -135,8 +156,10 @@ variable.")
     comment-line-break-function nil)
 
   ;; LSP
-  (eval-when! (and (modulep! :tools lsp)
-                   (modulep! :lang ess +lsp))
+  (eval-when! (modulep! +lsp)
+    (eval-when! (modulep! :tools lsp +lsp-flymake)
+      (pushnew! +flycheck-disabled-modes 'ess-r-mode))
+
     (add-hook! 'ess-r-mode-local-vars-hook
       (defun +ess-lsp-init-maybe-h ()
         "Use LSP mode if the buffer is not a remote."

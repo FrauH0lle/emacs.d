@@ -45,13 +45,32 @@ in `zenit-local-conf-dir' take precedence.")
 
   ;; REVIEW 2024-06-13: Maybe there is a better way to do this less frequently.
   ;;   However, I am not sure if this is really expensive.
-  (defadvice! +tempel-update-tempel-path (&rest _)
-    "Updates `tempel-path'."
+  (defadvice! +tempel-update-tempel-path-a (&rest _)
+    "Update `tempel-path'.
+
+As the load order of multiple template files matters (first takes
+precedence), this function ensures the correct order of all
+template files."
     :before #'tempel-insert
     :before #'tempel-complete
     :before #'tempel-expand
     (unless (bound-and-true-p +file-templates--expanding-p)
-      (setq tempel-path (zenit-files-in +snippets-dirs :match "\\.eld$"))))
+      (let* ((modes (mapcar #'symbol-name
+                            (append
+                             ;; `fundamental-mode' should always be included
+                             (ensure-list 'fundamental-mode)
+                             ;; Get `major-mode' and parents
+                             (parent-mode-list major-mode)
+                             ;; Add `+snippets--extra-modes' if present
+                             (ensure-list +snippets--extra-modes))))
+             (files (zenit-files-in +snippets-dirs :match "\\.eld$"))
+             (files-base (mapcar #'file-name-base files))
+             snippet-files)
+        (dolist (mode modes snippet-files)
+          (when-let ((member-p (member mode files-base))
+                     (idx (seq-position files-base mode)))
+            (push (nth idx files) snippet-files)))
+        (setq tempel-path snippet-files))))
 
   ;; Register `def-project-mode!' modes with yasnippet. This enables project
   ;; specific snippet libraries (e.g. for Laravel, React or Jekyll projects).

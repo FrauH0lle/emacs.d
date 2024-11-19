@@ -26,6 +26,12 @@
   ;; Make breadcrumbs opt-in; they're redundant with the modeline and imenu
   (setq lsp-headerline-breadcrumb-enable nil)
 
+  ;; Explicitly tell lsp to use flymake; Lsp will default to flycheck if found
+  ;; even if its a dependency
+  (when (or (modulep! :checkers syntax +flymake)
+            (modulep! +lsp-flymake))
+    (setq lsp-diagnostics-provider :flymake))
+
   ;; Let us bind the lsp keymap.
   (eval-when! (modulep! :config default +bindings)
     (setq lsp-keymap-prefix nil))

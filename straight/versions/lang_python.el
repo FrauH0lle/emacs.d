@@ -1,5 +1,5 @@
 (("emacs-python-pytest" . "33c921adaa6c9c8f7cceba2342114c6b406e0d7c")
- ("lsp-pyright" . "0c0d72aedd18b16f48379b7d2f9ecb9c068713b0")
+ ("lsp-pyright" . "dd54b3ae7c22d34faaced7b1a89739063c552b1f")
  ("nose" . "f8528297519eba911696c4e68fa88892de9a7b72")
  ("pip-requirements.el" . "216cd1690f80cc965d4ae47b8753fc185f778ff6")
  ("pipenv.el" . "3af159749824c03f59176aff7f66ddd6a5785a10")

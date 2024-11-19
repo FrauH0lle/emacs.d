@@ -31,7 +31,18 @@
 ;;   hacky and there should be a better way. See
 ;;   https://github.com/minad/tempel/issues/105
 (defvar +tempel--last-motion nil)
-(defadvice! +tempel-record-motion-direction (fn arg)
+(defun +tempel--navigate-after-choice (ov direction)
+  "Navigate to next/previous field after choosing an LSP completion."
+  (goto-char (if (eq direction 'forward)
+                 (overlay-end ov)
+               (overlay-start ov)))
+  (when-let ((found (tempel--find (if (eq direction 'forward) 1 -1))))
+    (funcall (if (eq direction 'forward)
+                 #'tempel-next
+               #'tempel-previous)
+             1)))
+
+(defadvice! +tempel-record-motion-direction-a (fn arg)
   "Record motion direction."
   :around #'tempel-next
   (if (> arg 0)
@@ -39,6 +50,9 @@
     (setq +tempel--last-motion 'backward))
   (funcall fn arg))
 
+;; PATCH Make `r' without a region behave like `p' and insert region as editable
+;;   field, if present.
+;;   Furthermore, add `lsp-choice'.
 (el-patch-defun tempel--element (st region elt)
   "Add template ELT to ST given the REGION."
   (pcase elt
@@ -59,53 +73,114 @@
     ((or 'p `(,(or 'p 'P) . ,rest)) (apply #'tempel--placeholder st rest))
     ((or 'r 'r> `(,(or 'r 'r>) . ,rest))
      (if (not region)
-         (when-let ((ov (apply #'tempel--placeholder st rest))
-                    ((not rest)))
-           (overlay-put ov 'tempel--enter #'tempel--done))
-       (goto-char (cdr region))
-       (when (eq (or (car-safe elt) elt) 'r>)
-         (indent-region (car region) (cdr region) nil))))
+         (el-patch-remove
+           (when-let ((ov (apply #'tempel--placeholder st rest))
+                      ((not rest)))
+             (overlay-put ov 'tempel--enter #'tempel--done))
+           (goto-char (cdr region))
+           (when (eq (or (car-safe elt) elt) 'r>)
+             (indent-region (car region) (cdr region) nil)))
+       (el-patch-add
+         ;; When no region is active, behave like p
+         (let ((p-elt (cons 'p rest)))
+           (tempel--protect (indent-according-to-mode))
+           (tempel--element st nil p-elt))
+         ;; Create an editable field with region content
+         (let* ((reg-content (buffer-substring-no-properties (car region) (cdr region)))
+                (name (and (listp elt) (nth 2 elt)))
+                ;; Construct a p-style element with the region content
+                (p-elt (if rest
+                           `(p ,@(if (stringp (car rest))
+                                     (cons reg-content (cdr rest))
+                                   (cons reg-content rest)))
+                         `(p ,reg-content ,name))))
+           ;; Delete the region content since we'll reinsert it in the field
+           (delete-region (car region) (cdr region))
+           ;; Recurse using the p pattern with our constructed element
+           (tempel--element st nil p-elt)
+           ;; Handle indentation if needed
+           (when (eq (or (car-safe elt) elt) 'r>)
+             (let ((end (point)))
+               (indent-region (- end (length reg-content)) end nil)))))))
     ;; TEMPEL EXTENSION: Quit template immediately
     ('q (overlay-put (tempel--field st) 'tempel--enter #'tempel--done))
     (el-patch-add
-      (`(lsp-choice ,choices ,name)
+      (`(lsp-choice ,choices ,_name)
+       (unless (and (listp choices) (seq-every-p #'stringp choices))
+         (error "Invalid LSP choices format"))
        (overlay-put (tempel--placeholder st "CHOICES") 'tempel--enter
                     (lambda (&rest _)
                       (let* ((ov (tempel--field-at-point))
                              (content (buffer-substring-no-properties
-                                       (overlay-start ov) (overlay-end ov))))
-                        ;; BUG `lsp-completion--annotate' causes a strange error when vertico opens:
-                        ;;   Error in post-command-hook (vertico--exhibit): (wrong-type-argument hash-table-p nil)
-                        ;;   The approach below is not nice, but works.
-                        (let ((res (letf! ((#'lsp-completion--annotate #'ignore))
-                                     (completing-read "Choose: " choices nil t (when (member content choices) content)))))
-                          ;; Somethink different was chose than what was
-                          ;; written before, replace it.
-                          (unless (equal res content)
-                            (tempel-kill)
-                            (insert res))
-
-                          ;; Go to the next template field, but only if there
-                          ;; is one. This way we do not automatically end the
-                          ;; template expansion.
-                          (cond
-                           ;; Forward motion
-                           ((eq +tempel--last-motion 'forward)
-                            (goto-char (overlay-end ov))
-                            (when (tempel--find 1)
-                              (message "going forward!")
-                              (tempel-next 1)))
-                           ;; Backward motion
-                           ((eq +tempel--last-motion 'backward)
-                            (goto-char (overlay-start ov))
-                            (when (tempel--find -1)
-                              (message "going backward!")
-                              (tempel-previous 1)))
-                           ;; Go forward if we don't know
-                           (t
-                            (message "no previous motion data!")
-                            (tempel-next 1)))))))))
+                                      (overlay-start ov) (overlay-end ov)))
+                             (res (letf! ((#'lsp-completion--annotate #'ignore))
+                                    (completing-read "Choose: "
+                                                   choices
+                                                   nil t
+                                                   (when (member content choices)
+                                                     content)))))
+                        ;; Replace content if different choice selected
+                        (unless (equal res content)
+                          (tempel-kill)
+                          (insert res))
+                        ;; Navigate based on last motion direction
+                        (+tempel--navigate-after-choice 
+                         ov
+                         (or +tempel--last-motion 'forward)))))))
     (_ (if-let ((ret (run-hook-with-args-until-success 'tempel-user-elements elt)))
            (tempel--element st region ret)
          ;; TEMPEL EXTENSION: Evaluate forms
          (tempel--form st elt)))))
+
+;; PATCH Modified `tempel--insert' to capture region bounds early. Necessary for
+;;   the patch for `tempel--element'.
+(el-patch-defun tempel--insert (template region)
+  "Insert TEMPLATE given the current REGION."
+  (let ((plist template)
+        ;; Capture fixed region bounds if region is active
+        (el-patch-add
+          (fixed-region (when region
+                          ;; Make a copy of the region markers that won't move
+                          (cons
+                           ;; t = rear-advance
+                           (copy-marker (car region) t)
+                           ;; nil = front-advance
+                           (copy-marker (cdr region) nil))))))
+    (while (and plist (not (keywordp (car plist))))
+      (pop plist))
+    (eval (plist-get plist :pre) 'lexical)
+    (unless (eq buffer-undo-list t)
+      (push '(apply tempel--disable) buffer-undo-list))
+    (setf (alist-get 'tempel--active minor-mode-overriding-map-alist) tempel-map)
+    (save-excursion
+      ;; Split existing overlays, do not expand within existing field.
+      (dolist (st tempel--active)
+        (dolist (ov (cdar st))
+          (when (and (<= (overlay-start ov) (point)) (>= (overlay-end ov) (point)))
+            (setf (overlay-end ov) (point)))))
+      ;; Activate template
+      (let ((st (cons nil nil))
+            (ov (point))
+            (tempel--inhibit-hooks t))
+        (while (and template (not (keywordp (car template))))
+          (tempel--element st (el-patch-swap region fixed-region) (pop template)))
+        (setq ov (make-overlay ov (point) nil t))
+        (push ov (car st))
+        (overlay-put ov 'modification-hooks (list #'tempel--range-modified))
+        (overlay-put ov 'tempel--range st)
+        (overlay-put ov 'tempel--post (plist-get plist :post))
+        (push st tempel--active)))
+    ;; Clean up markers
+    (el-patch-add
+      (when fixed-region
+        (set-marker (car fixed-region) nil)
+        (set-marker (cdr fixed-region) nil)))
+    (cond
+     ((cl-loop for ov in (caar tempel--active)
+               never (overlay-get ov 'tempel--field))
+      (goto-char (overlay-end (caaar tempel--active)))
+      (tempel--done))
+     ((cl-loop for ov in (caar tempel--active)
+               never (and (overlay-get ov 'tempel--field)
+                          (eq (point) (overlay-start ov))))
+      (tempel-next 1)))))

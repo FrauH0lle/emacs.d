@@ -52,10 +52,15 @@
   ;; The woman-manpath default value does not necessarily match man. If we have
   ;; man available but aren't using it for performance reasons, we can extract
   ;; it's manpath.
-  (when (executable-find "man")
-    (setq woman-manpath
-          (split-string (cdr (zenit-call-process "man" "--path"))
-                        path-separator t))))
+  (when-let*
+      ((path (cond
+              ((executable-find "manpath")
+               (split-string (cdr (zenit-call-process "manpath" "-q"))
+                             path-separator t))
+              ((executable-find "man")
+               (split-string (cdr (zenit-call-process "man" "--path"))
+                             path-separator t)))))
+    (setq woman-manpath path)))
 
 
 ;;;###package tramp

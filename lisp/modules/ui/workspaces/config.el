@@ -129,7 +129,7 @@ settings."
         (when (bufferlo-local-buffer-p (current-buffer))
           (alist-get 'name current-tab))))
 
-    (setq popper-group-function #'+popper-group-by-workspace))
+    (setq +popup-group-function #'+popper-group-by-workspace))
 
   ;; Delete the current workspace if closing the last open window
   (define-key! bufferlo-mode-map

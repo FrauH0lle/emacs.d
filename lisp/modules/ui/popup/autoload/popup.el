@@ -1,5 +1,97 @@
 ;; ui/popup/autoload/popup.el -*- lexical-binding: t; -*-
 
+(defvar +popup--reference-modes nil
+  "List of buffer names whose windows are treated as popups.")
+(defvar +popup--reference-names nil
+  "List of buffer major-modes whose buffers are treated as popups.")
+(defvar +popup--reference-predicates nil
+  "List of predicates to test if a buffer is treated as a popup.
+
+Each predicate takes a buffer as an argument and returns t if it
+should be considered a popup.")
+
+(defvar +popup--suppressed-names nil
+  "List of buffer names which will be suppressed.")
+
+(defvar +popup--suppressed-modes nil
+  "List of buffer major-modes which will be suppressed.")
+
+(defvar +popup--suppressed-predicates nil
+  "List of predicates to test if a buffer will be suppressed popup
+buffers.")
+
+
+;;
+;;; Internal functions
+
+(defun +popup--find-popup-buffers (buf-list)
+  "Find popup buffers in BUF-List and return them.
+
+This is determined by the variable `+popup-buffer-status'. The
+resulting list is sorted by buffer access time."
+  (let* (open-popups)
+    (dolist (b buf-list open-popups)
+      (let ((popup-status (plist-get (buffer-local-value '+popup-buffer-status b) :status)))
+        (when (and (not (minibufferp b))
+                   (not (eq popup-status 'raised))
+                   (or (member popup-status '(popup user-popup))
+                       (+popup-buffer-p b)))
+          (with-current-buffer b
+            (setq +popup-buffer-status (plist-put
+                                        +popup-buffer-status
+                                        :status
+                                        (cond ((+popup-suppress-p b) 'suppressed)
+                                              (t (or popup-status 'popup))))))
+          (push (cons (get-buffer-window b) b)
+                open-popups))))
+    (cl-sort open-popups
+             (lambda (a b) (time-less-p b a))
+             :key (lambda (p)
+                    (buffer-local-value 'buffer-display-time
+                                        (cdr p))))))
+
+(defun +popup--find-buried-popup-buffers ()
+  "Update the list of currently buried popups.
+
+ Meant to be run when starting command `+popup-mode'."
+  (let ((buried-popups (+popup--find-popup-buffers
+                        (cl-set-difference
+                         (buffer-list)
+                         (mapcar #'window-buffer
+                                 (window-list))))))
+    (if +popup-group-function
+        (let (result)
+          (cl-loop for (win . buf) in buried-popups do
+                   (push (cons win buf)
+                         (alist-get
+                          (with-current-buffer buf
+                            (funcall +popup-group-function))
+                          result
+                          nil nil 'equal)))
+          result)
+      (list (cons nil buried-popups)))))
+
+(defun +popup--find-open-popup-buffers ()
+  "Update the list of currently open popups."
+  (let* ((open-buffers (mapcar #'window-buffer (window-list nil 'no-mini)))
+         (open-popups (+popup--find-popup-buffers open-buffers)))
+    open-popups))
+
+(defun +popup--update-buried-popup-list (group-name buf action)
+  "Update `+popup-buried-buffers-alist' for GROUP-NAME and BUF.
+ACTION can be \\='remove or \\='add."
+  (let* ((group-popups (cdr (assoc group-name +popup-buried-buffers-alist #'equal)))
+         (window (get-buffer-window buf))
+         (popup-entry (cons window buf)))
+    (setf (alist-get group-name +popup-buried-buffers-alist nil nil #'equal)
+          (cl-remove-if-not
+           #'buffer-live-p
+           (if (eq action 'remove)
+               (cl-remove buf group-popups :key #'cdr)
+             (append (list popup-entry)
+                     (cl-remove popup-entry group-popups :key #'cdr)))
+           :key #'cdr))))
+
 (defun +popup--remember (windows)
   "Remember WINDOWS (a list of windows) for later restoration."
   (cl-assert (cl-every #'windowp windows) t)
@@ -35,7 +127,43 @@ try again later."
                (setq +popup--timer
                      (run-at-time ttl nil #'+popup--kill-buffer buffer ttl))))))))
 
-(defun +popup--delete-window (window)
+(defun +popup--delete-popup (win)
+  "Delete popup window WIN, respecting its window type.
+
+If WIN is an atomic window, delete it properly preserving window
+layout.
+
+If WIN is in a child frame, delete the frame.
+
+Otherwise delete the window using standard window deletion."
+  (when (window-valid-p win)
+    (cond
+     ;; For windows in child frames, delete the frame
+     ((frame-parent)
+      (delete-frame))
+
+     ;; For windows in the main frame
+     ((window-parent win)
+      (let ((side (window-parameter win 'window-side)))
+        ;; Handle atomic windows properly
+        (when (window-parameter win 'window-atom)
+          ;; Save window layout if needed
+          (let ((window-combination-resize t))
+            (set-window-parameter win 'window-atom nil)
+            ;; Give sibling windows a chance to resize properly
+            (balance-windows (window-parent win))))
+        ;; Use consistent window deletion strategy
+        (if side
+            ;; Side windows should use delete-window to maintain side window
+            ;; layout
+            (delete-window win)
+          ;; Regular windows use quit-window to handle buffers properly
+          (quit-window nil win))))
+
+     ;; Fallback for any other case
+     (t (quit-window nil win)))))
+
+(defun +popup--delete-window (buffer-or-window)
   "Do housekeeping before destroying a popup window.
 
 + Disables `+popup-buffer-mode' so that any hooks attached to it
@@ -44,42 +172,49 @@ try again later."
   window has a `transient' window parameter (see
   `+popup-window-parameters').
 + And finally deletes the window!"
-  (let ((buffer (window-buffer window))
+  (let ((buffer (or (and (bufferp buffer-or-window) buffer-or-window)
+                    (window-buffer buffer-or-window)))
+        (window (and (windowp buffer-or-window) buffer-or-window))
         (inhibit-quit t))
-    (and (or (buffer-file-name buffer)
-             (if-let (base-buffer (buffer-base-buffer buffer))
-                 (buffer-file-name base-buffer)))
-         (buffer-modified-p buffer)
-         (let ((autosave (+popup-parameter 'autosave window)))
-           (cond ((eq autosave 't))
-                 ((null autosave)
-                  (y-or-n-p "Popup buffer is modified. Save it?"))
-                 ((functionp autosave)
-                  (funcall autosave buffer))))
-         (with-current-buffer buffer (save-buffer)))
-    (let ((ignore-window-parameters t))
-      (if-let (wconf (window-parameter window 'saved-wconf))
-          (set-window-configuration wconf)
-        (popper--delete-popup window)))
-    (unless (window-live-p window)
-      (with-current-buffer buffer
-        (set-buffer-modified-p nil)
-        (+popup-buffer-mode -1)
-        (unless +popup--inhibit-transient
-          (let ((ttl (+popup-parameter 'ttl window)))
-            (when (eq ttl 't)
-              (setq ttl (plist-get +popup-defaults :ttl)))
-            (cond ((null ttl))
-                  ((functionp ttl)
-                   (funcall ttl buffer))
-                  ((not (integerp ttl))
-                   (signal 'wrong-type-argument (list 'integerp ttl)))
-                  ((= ttl 0)
-                   (+popup--kill-buffer buffer 0))
-                  ((add-hook 'kill-buffer-hook #'+popup-kill-buffer-hook-h nil t)
-                   (setq +popup--timer
-                         (run-at-time ttl nil #'+popup--kill-buffer
-                                      buffer ttl))))))))))
+    (letf! ((defun +popup--autosave-buffer (buffer)
+              (and (or (buffer-file-name buffer)
+                       (if-let (base-buffer (buffer-base-buffer buffer))
+                           (buffer-file-name base-buffer)))
+                   (buffer-modified-p buffer)
+                   (let ((autosave (+popup-parameter 'autosave buffer)))
+                     (cond ((eq autosave 't))
+                           ((null autosave)
+                            (y-or-n-p "Popup buffer is modified. Save it?"))
+                           ((functionp autosave)
+                            (funcall autosave buffer))))
+                   (with-current-buffer buffer (save-buffer))))
+            (defun +popup--destroy-buffer (buffer)
+              (with-current-buffer buffer
+                (set-buffer-modified-p nil)
+                (+popup-buffer-mode -1)
+                (unless +popup--inhibit-transient
+                  (let ((ttl (+popup-parameter 'ttl buffer)))
+                    (when (eq ttl 't)
+                      (setq ttl (plist-get +popup-defaults :ttl)))
+                    (cond ((null ttl))
+                          ((functionp ttl)
+                           (funcall ttl buffer))
+                          ((not (integerp ttl))
+                           (signal 'wrong-type-argument (list 'integerp ttl)))
+                          ((= ttl 0)
+                           (+popup--kill-buffer buffer 0))
+                          ((add-hook 'kill-buffer-hook #'+popup-kill-buffer-hook-h nil t)
+                           (setq +popup--timer
+                                 (run-at-time ttl nil #'+popup--kill-buffer
+                                              buffer ttl)))))))))
+      (+popup--autosave-buffer buffer)
+      (let ((ignore-window-parameters t))
+        (unless (+popup-parameter 'tabbed)
+          (if-let (wconf (window-parameter window 'saved-wconf))
+              (set-window-configuration wconf)
+            (+popup--delete-popup window))))
+      (unless (window-live-p window)
+        (+popup--destroy-buffer buffer)))))
 
 (defun +popup--delete-other-windows (window)
   "Fixes `delete-other-windows' when used from a popup window."
@@ -173,17 +308,69 @@ leftover transient timers and enables `+popup-buffer-mode'."
 ;;; Public library
 
 ;;;###autoload
+(defun +popup-update-reference-vars ()
+  "Update internal reference lists from `+popup-reference-buffers'."
+  ;; Reset all variables
+  (setq +popup--reference-modes nil
+        +popup--reference-names nil
+        +popup--reference-predicates nil
+        +popup--suppressed-names nil
+        +popup--suppressed-modes nil
+        +popup--suppressed-predicates nil)
+
+  (cl-loop for entry in +popup-reference-buffers do
+           (pcase-exhaustive entry
+             ;; Handle suppressed entries up front
+             (`(,e . hide)
+              (pcase-exhaustive e
+                ((pred stringp)
+                 (cl-pushnew e +popup--suppressed-names :test #'equal))
+                ((and (pred symbolp)
+                      (guard (or (get e 'derived-mode-parent)
+                                 (get e 'mode-class)
+                                 (string-suffix-p "-mode" (symbol-name e)))))
+                 (cl-pushnew e +popup--suppressed-modes))
+                ((pred functionp)
+                 (cl-pushnew e +popup--suppressed-predicates))))
+             ;; Handle regular entries
+             ((pred stringp)
+              (cl-pushnew entry +popup--reference-names :test #'equal))
+             ((and (pred symbolp)
+                   (guard (or (get entry 'derived-mode-parent)
+                              (get entry 'mode-class)
+                              (string-suffix-p "-mode" (symbol-name entry)))))
+              (cl-pushnew entry +popup--reference-modes))
+             ((pred functionp)
+              (cl-pushnew entry +popup--reference-predicates)))))
+
+;;;###autoload
+(defun +popup-buffer-p (buf)
+  "Predicate to test if buffer BUF qualifies for popup handling.
+Criteria are listed in `+popup-reference-buffers'."
+  (or (seq-some (lambda (buf-regexp)
+                  (string-match-p buf-regexp (buffer-name buf)))
+                +popup--reference-names)
+      (member (buffer-local-value 'major-mode buf) +popup--reference-modes)
+      (seq-some (lambda (pred) (funcall pred buf)) +popup--reference-predicates)))
+
+;;;###autoload
+(defun +popup-suppress-p (buf)
+  "Predicate to check if popup buffer BUF needs to be suppressed."
+  (or (seq-some (lambda (buf-regexp)
+                  (string-match-p buf-regexp (buffer-name buf)))
+                +popup--suppressed-names)
+      (member (buffer-local-value 'major-mode buf) +popup--suppressed-modes)
+      (seq-some (lambda (pred) (funcall pred buf)) +popup--suppressed-predicates)))
+
+;;;###autoload
 (defun +popup-window-p (&optional window)
   "Return non-nil if WINDOW is a popup window. Defaults to the
 current window."
-  (when popper-mode
-    (let* ((window (or window (selected-window)))
-           (buffer (window-buffer window)))
+  (when +popup-mode
+    (let* ((window (or window (selected-window))))
       (and (windowp window)
            (window-live-p window)
            (window-parameter window 'popup)
-           (with-current-buffer buffer
-             popper-popup-status)
            window))))
 
 ;;;###autoload
@@ -193,30 +380,68 @@ current window."
          (window-min-height 3)
          (alist (+popup--normalize-alist alist))
          (actions (or (cdr (assq 'actions alist))
-                      +popup-default-display-buffer-actions)))
-    (or (let* ((alist (remove (assq 'window-width alist) alist))
-               (alist (remove (assq 'window-height alist) alist))
-               (window (display-buffer-reuse-window buffer alist)))
-          (when window
-            (+popup--maybe-select-window window origin)
-            window))
-        (when-let (popup (cl-loop for func in actions
-                                  if (funcall func buffer alist)
-                                  return it))
-          (+popup--init popup alist)
-          (+popup--maybe-select-window popup origin)
-          popup))))
+                      +popup-default-display-buffer-actions))
+         (ttl (alist-get 'ttl (assq 'window-parameters alist)))
+         (quit (alist-get 'quit (assq 'window-parameters alist)))
+         (select (alist-get 'select (assq 'window-parameters alist)))
+         (modeline (alist-get 'modeline (assq 'window-parameters alist)))
+         (autosave (alist-get 'autosave (assq 'window-parameters alist)))
+         (tabbed (alist-get 'tabbed (assq 'window-parameters alist)))
+         (side (alist-get 'side alist)))
+    (letf! ((defun set-popup-buffer-status (buffer side ttl quit select modeline autosave)
+              (with-current-buffer buffer
+                (setq +popup-buffer-status (plist-put +popup-buffer-status :tab side)
+                      +popup-buffer-status (plist-put +popup-buffer-status :ttl ttl)
+                      +popup-buffer-status (plist-put +popup-buffer-status :quit quit)
+                      +popup-buffer-status (plist-put +popup-buffer-status :select select)
+                      +popup-buffer-status (plist-put +popup-buffer-status :modeline modeline)
+                      +popup-buffer-status (plist-put +popup-buffer-status :autosave autosave)))))
+      (or (when tabbed
+            (when-let* ((tab-win (cl-loop for (win . buf) in +popup-open-buffers-alist
+                                          for pop-side = (+popup-parameter 'window-side win)
+                                          for pop-tabbed = (+popup-parameter 'tabbed win)
+                                          if (and (eq pop-side side)
+                                                  pop-tabbed)
+                                          return win)))
+              (with-selected-window tab-win
+                (switch-to-buffer buffer)
+                (set-popup-buffer-status buffer side ttl quit select modeline autosave)
+                (+popup--init tab-win alist))
+              (+popup--maybe-select-window tab-win origin)))
+
+          (let* ((alist (remove (assq 'window-width alist) alist))
+                 (alist (remove (assq 'window-height alist) alist))
+                 (window (display-buffer-reuse-window buffer alist)))
+            (when window
+              (set-popup-buffer-status buffer side ttl quit select modeline autosave)
+              (+popup--maybe-select-window window origin)
+              window))
+          (when-let (popup (cl-loop for func in actions
+                                    if (funcall func buffer alist)
+                                    return it))
+            (set-popup-buffer-status buffer side ttl quit select modeline autosave)
+            (+popup--record-parent (or (caar (window-prev-buffers popup)) (window-buffer origin)) buffer)
+            (+popup--init popup alist)
+            (+popup--maybe-select-window popup origin)
+            popup)))))
 
 ;;;###autoload
-(defun +popup-parameter (parameter &optional window)
-  "Fetch the window PARAMETER (symbol) of WINDOW"
-  (window-parameter (or window (selected-window)) parameter))
+(defun +popup-parameter (parameter &optional buffer-or-window)
+  "Fetch the PARAMETER (symbol) of BUFFER-OR-WINDOW.
+
+BUFFER-OR-WINDOW defaults to the `selected-window'."
+  (let ((buffer-or-window (or buffer-or-window (selected-window))))
+    (if (bufferp buffer-or-window)
+        (plist-get (buffer-local-value '+popup-buffer-status buffer-or-window)
+                   (zenit-keyword-intern (symbol-name parameter)))
+      (window-parameter buffer-or-window parameter))))
 
 ;;;###autoload
-(defun +popup-parameter-fn (parameter &optional window &rest args)
-  "Fetch the window PARAMETER (symbol) of WINDOW. If it is a
-function, run it with ARGS to get its return value."
-  (let ((val (+popup-parameter parameter window)))
+(defun +popup-parameter-fn (parameter &optional buffer-or-window &rest args)
+  "Fetch the PARAMETER (symbol) of BUFFER-OR-WINDOW.
+
+If it is a function, run it with ARGS to get its return value."
+  (let ((val (+popup-parameter parameter buffer-or-window)))
     (if (functionp val)
         (apply val args)
       val)))
@@ -258,18 +483,22 @@ Each rule should match the arguments of `+popup-define' or the
 :popup setting."
   (declare (indent defun))
   `(let ((+popup--display-buffer-alist +popup--old-display-buffer-alist)
-         display-buffer-alist)
+         (+popup--reference-buffers +popup--old-reference-buffers)
+         display-buffer-alist +popup-reference-buffers)
      (set-popup-rules! ,rules)
-     (when (bound-and-true-p popper-mode)
-       (setq display-buffer-alist +popup--display-buffer-alist))
+     (when (bound-and-true-p +popup-mode)
+       (setq display-buffer-alist +popup--display-buffer-alist
+             +popup-reference-buffers +popup--reference-buffers)
+       (+popup-update-reference-vars))
      ,@body))
 
 ;;;###autoload
 (defmacro save-popups! (&rest body)
-  "Sets aside all popups before executing the original
-function,usually to prevent the popup(s) from messing up the
-UI (or vice versa)."
-  `(let* ((in-popup-p (popper-popup-p (current-buffer)))
+  "Set aside all popups before executing BODY.
+
+Usually to prevent the popup(s) from messing up the UI (or vice
+versa)."
+  `(let* ((in-popup-p (+popup-buffer-p (current-buffer)))
           (popups (+popup-windows))
           (+popup--inhibit-transient t)
           buffer-list-update-hook
@@ -287,6 +516,62 @@ UI (or vice versa)."
 
 ;;
 ;;; Hooks
+
+;;;###autoload
+(defun +popup-update-popup-alists-h ()
+  "Update the lists of current popups.
+
+This function will update the variables
+`+popup-open-buffers-alist' and `+popup-buried-buffers-alist'.
+
+ Intended to be added to `window-configuration-change-hook'."
+  (unless (frame-parent)
+    (let ((open-popups (+popup--find-open-popup-buffers)))
+      (if (not +popup-buried-buffers-alist)
+          (setq +popup-buried-buffers-alist (+popup--find-buried-popup-buffers))
+        (let ((closed-popups (cl-remove-if-not
+                              (lambda (win-buf)
+                                (memq (plist-get (buffer-local-value '+popup-buffer-status (cdr win-buf)) :status)
+                                      '(popup user-popup)))
+                              (cl-set-difference +popup-open-buffers-alist open-popups :key #'cdr))))
+          ;; Handle newly opened and closed popups
+          (dolist (popup-entry (append open-popups closed-popups))
+            (let* ((buf (cdr popup-entry))
+                   (group-name (when +popup-group-function
+                                 (with-current-buffer buf
+                                   (funcall +popup-group-function)))))
+              (+popup--update-buried-popup-list
+               group-name buf
+               (if (or (not (buffer-live-p buf))
+                       (member popup-entry open-popups))
+                   'remove 'add))))))
+      (setq +popup-open-buffers-alist open-popups))))
+
+;;;###autoload
+(defun +popup-suppress-popups-h ()
+  "Suppress open popups defined in `+popup-reference-buffers'.
+This should run after `+popup-update-popup-alists-h' in
+`window-configuration-change-hook'."
+  ;; Check if popup-status for any open popup is 'suppressed. If yes, change its
+  ;; popup-status to 'popup and hide it.
+  (let ((configuration-changed-p))
+    (cl-loop for (win . buf) in +popup-open-buffers-alist do
+             (when (eq (plist-get (buffer-local-value '+popup-buffer-status buf) :status) 'suppressed)
+               (setq configuration-changed-p t)
+               (with-selected-window win
+                 (setq-local +popup-buffer-status (plist-put +popup-buffer-status :status 'popup))
+                 ;; Leave the buffer alive
+                 (set-window-parameter win 'ttl nil)
+                 ;; If window was previously showing a different buffer, switch
+                 ;; to it
+                 (if-let ((wpb (window-prev-buffers win))
+                          (switch-to-buffer-preserve-window-point t))
+                     (switch-to-buffer (caar wpb))
+                   ;; otherwise kill this window/frame
+                   (+popup--delete-popup win))
+                 (message (format "Popup suppressed: %s" (buffer-name buf))))))
+    (when configuration-changed-p
+      (+popup-update-popup-alists-h))))
 
 ;;;###autoload
 (defun +popup-adjust-fringes-h ()
@@ -350,17 +635,22 @@ windows (see `+popup/close-all')."
 
 ;;;###autoload
 (defun +popup-cleanup-rules-h ()
-  "Cleans up any duplicate popup rules."
+  "Cleans up any duplicate popup rules.
+The last modification is kept."
   (interactive)
   (setq +popup--display-buffer-alist
         (cl-delete-duplicates +popup--display-buffer-alist
                               :key #'car :test #'equal :from-end t)
         +popup--reference-buffers
         (cl-delete-duplicates +popup--reference-buffers
-                              :test #'equal :from-end t))
-  (when popper-mode
+                              :test (lambda (x y)
+                                      (cond ((consp x) (equal (car x) y))
+                                            ((consp y) (equal x (car y)))
+                                            (t (equal x y))))
+                              :from-end t))
+  (when (bound-and-true-p +popup-mode)
     (setq display-buffer-alist +popup--display-buffer-alist
-          popper-reference-buffers +popup--reference-buffers)))
+          +popup-reference-buffers +popup--reference-buffers)))
 
 ;;;###autoload
 (defun +popup-kill-buffer-hook-h ()
@@ -378,23 +668,45 @@ windows (see `+popup/close-all')."
 (defalias 'other-popup #'+popup/other)
 
 ;;;###autoload
-(defalias '+popup/other #'popper-cycle)
-
-;;;###autoload
 (defun +popup/buffer ()
   "Open this buffer in a popup window."
   (interactive)
   (let ((+popup-default-display-buffer-actions
          '(+popup-display-buffer-stacked-side-window-fn))
         (display-buffer-alist +popup--display-buffer-alist)
-        (popper-reference-buffers +popup--reference-buffers)
+        (+popup-reference-buffers +popup--reference-buffers)
         (buffer (current-buffer)))
-    (push (+popup-make-rule "." +popup-defaults) display-buffer-alist)
-    (push "." popper-reference-buffers)
+    (unless (+popup-buffer-p buffer)
+      (push (+popup-make-rule "." (plist-put +popup-defaults :ttl nil)) display-buffer-alist))
     (bury-buffer)
     (with-current-buffer buffer
-      (setq popper-popup-status 'popup))
-    (pop-to-buffer buffer)))
+      (setq +popup-buffer-status
+            (plist-put +popup-buffer-status :status (if (+popup-buffer-p buffer)
+                                                        'popup
+                                                      'user-popup)))
+      (pop-to-buffer buffer))))
+
+;;;###autoload
+(defun +popup/other ()
+  "Cycle through popup windows, like `other-window'.
+
+Ignores regular windows."
+  (interactive)
+  (if-let (popups (cl-remove-if-not
+                   (lambda (w) (or (+popup-window-p w)
+                                   ;; This command should be able to hop between
+                                   ;; windows with a `no-other-window'
+                                   ;; parameter, since `other-window' won't.
+                                   (window-parameter w 'no-other-window)))
+                   (window-list)))
+      (select-window (if (or (+popup-window-p)
+                             (window-parameter nil 'no-other-window))
+                         (let ((window (selected-window)))
+                           (or (car-safe (cdr (memq window popups)))
+                               (car (delq window popups))
+                               (car popups)))
+                       (car popups)))
+    (user-error "No popups are open")))
 
 (defun +popup--reap-parents (window keep)
   "Close all parent popup buffers of WINDOW.
@@ -404,6 +716,41 @@ will be ignored."
     (dolist (parent parents)
       (unless (memq (cdr parent) keep)
         (+popup--kill-buffer (car parent) 1)))))
+
+(defun +popup--close-tab-current-window (window)
+  (let ((buffer (window-buffer window))
+        next-buf)
+    (with-current-buffer buffer
+      (when (memq (+popup-parameter 'quit buffer)
+                  '(t current))
+        (setq next-buf (car-safe (remq buffer (+popup-tabs-fn))))
+        (setq +popup-buffer-status (plist-put +popup-buffer-status :tab nil))
+        (tab-line-mode -1)
+        (if next-buf
+            (when (switch-to-buffer next-buf)
+              (+popup--delete-window buffer))
+          (set-window-parameter window 'tabbed nil)
+          (+popup--delete-window window))))))
+
+(defun +popup--close-tabs-current-window (window)
+  (with-selected-window window
+    (let ((tabs (+popup-tabs-fn))
+          tab
+          remaining)
+      (while tabs
+        (setq tab (pop tabs))
+        (with-current-buffer tab
+          (if (not (memq (+popup-parameter 'quit tab)
+                         '(t other)))
+              (push tab remaining)
+            (setq +popup-buffer-status (plist-put +popup-buffer-status :tab nil))
+            (tab-line-mode -1)
+            (bury-buffer tab)
+            (+popup--delete-window tab))))
+      (if remaining
+          (switch-to-buffer (car remaining))
+        (set-window-parameter window 'tabbed nil)
+        (+popup--delete-window window)))))
 
 ;;;###autoload
 (defun +popup/close (&optional window force-p)
@@ -416,15 +763,17 @@ FORCE-P is non-nil."
    (list (selected-window)
          current-prefix-arg))
   (let ((window (or window (selected-window))))
-    (when (and (+popup-window-p window)
-               (or force-p
-                   (memq (+popup-parameter-fn 'quit window window)
-                         '(t current))))
+    (when (+popup-window-p window)
       (when +popup--remember-last
         (+popup--remember (list window)))
-      (+popup--reap-parents window '(nil other))
-      (popper--delete-popup window)
-      t)))
+      (if (+popup-parameter 'tabbed window)
+          (+popup--close-tab-current-window window)
+        (when (or force-p
+                  (memq (+popup-parameter-fn 'quit window window)
+                        '(t current)))
+          (+popup--reap-parents window '(nil other))
+          (+popup--delete-window window)
+          t)))))
 
 ;;;###autoload
 (defun +popup/close-all (&optional force-p)
@@ -436,18 +785,27 @@ is non-nil."
   (interactive "P")
   (let (targets +popup--remember-last)
     (dolist (window (+popup-windows))
-      (when (or force-p
-                (memq (+popup-parameter-fn 'quit window window)
-                      '(t other)))
-        (push window targets)))
-    (when targets
-      (+popup--remember targets)
-      (mapc (zenit-rpartial #'+popup--reap-parents '(nil current)) targets)
-      (mapc #'popper--delete-popup targets)
-      t)))
+      (if (+popup-parameter 'tabbed window)
+          (+popup--close-tabs-current-window window)
+        (when (or force-p
+                  (memq (+popup-parameter-fn 'quit window window)
+                        '(t other)))
+          (push window targets)))
+      (when targets
+        (+popup--remember targets)
+        (mapc (zenit-rpartial #'+popup--reap-parents '(nil current)) targets)
+        (mapc #'+popup--delete-window targets)
+        t))))
 
 ;;;###autoload
-(defalias '+popup/toggle #'popper-toggle)
+(defun +popup/toggle ()
+  "Toggle any visible popups.
+If no popups are available, display the *Messages* buffer in a popup window."
+  (interactive)
+  (let ((+popup--inhibit-transient t))
+    (cond ((+popup-windows) (+popup/close-all t))
+          ((ignore-errors (+popup/restore)))
+          ((display-buffer (get-buffer "*Messages*"))))))
 
 ;;;###autoload
 (defun +popup/restore ()
@@ -462,7 +820,40 @@ is non-nil."
   t)
 
 ;;;###autoload
-(defalias '+popup/raise #'popper-toggle-type)
+(defun +popup/raise (window &optional arg)
+  "Raise the current popup window into a regular window and
+return it. If prefix ARG, raise the current popup into a new
+window and return that window."
+  (interactive
+   (list (selected-window) current-prefix-arg))
+  (cl-check-type window window)
+  (unless (+popup-window-p window)
+    (user-error "Cannot raise a non-popup window"))
+  (let ((buffer (current-buffer))
+        (+popup--inhibit-transient t)
+        +popup--remember-last)
+    (+popup/close window 'force)
+    (let (display-buffer-alist)
+      (if arg
+          (pop-to-buffer buffer)
+        (switch-to-buffer buffer))
+      (with-current-buffer buffer
+        (setq +popup-buffer-status
+              (plist-put +popup-buffer-status :status
+                         (when (+popup-buffer-p buffer) 'raised)))
+        (+popup-buffer-mode -1)))
+    (selected-window)))
+
+;;;###autoload
+(defun +popup/toggle-type (window &optional arg)
+  (interactive
+   (list (selected-window) current-prefix-arg))
+  (cl-check-type window window)
+  (let ((buffer (current-buffer)))
+    (with-current-buffer buffer
+      (pcase (plist-get +popup-buffer-status :status)
+        ((or 'popup 'user-popup) (+popup/raise window arg))
+        (_ (+popup/buffer))))))
 
 ;;;###autoload
 (defun +popup/diagnose ()
@@ -483,6 +874,20 @@ is non-nil."
 ;;
 ;;; Advice
 
+(defun +popup--record-parent (parent-buffer &optional buffer)
+  (let ((buffer (or buffer (current-buffer))))
+    (with-current-buffer buffer
+      (let ((parents (buffer-local-value '+popup--parents parent-buffer))
+            (quit (+popup-parameter 'quit parent-buffer)))
+        (when (and (+popup-buffer-p buffer)
+                   ;; Prevent self-reference
+                   (not (eq buffer parent-buffer))
+                   ;; Avoid duplicate parents
+                   (not (assq parent-buffer parents))
+                   (not +popup--ignore-parent))
+          (push (cons parent-buffer quit) parents)
+          (setq +popup--parents parents))))))
+
 ;;;###autoload
 (defun +popup-record-parent-a (fn &rest args)
   "Record popup's parent buffer."
@@ -494,7 +899,7 @@ is non-nil."
         +popup--timer)
     (prog1
         (apply fn args)
-      (when (and (popper-popup-p (current-buffer))
+      (when (and (+popup-buffer-p (current-buffer))
                  ;; Prevent self-reference
                  (not (eq (current-buffer) parent))
                  ;; Avoid duplicate parents
@@ -505,8 +910,8 @@ is non-nil."
         ;;   (setq +popup--timer nil))
         (setq +popup--parents parents)))))
 
-(advice-add #'+popup-buffer :around #'+popup-record-parent-a)
-
+;; (advice-add #'+popup-buffer :around #'+popup-record-parent-a)
+;; (advice-remove #'+popup-buffer #'+popup-record-parent-a)
 ;;;###autoload
 (defun +popup-close-a (&rest _)
   "TODO"

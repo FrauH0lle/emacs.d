@@ -175,6 +175,11 @@ Returns t on success, nil otherwise."
   t)
 
 ;;;###autoload
+(defun +workspaces-rename-tab (name &optional tab-number)
+  (let ((new-name (truncate-string-to-width name tab-bar-tab-name-truncated-max nil nil "...")))
+    (tab-bar-rename-tab new-name tab-number)))
+
+;;;###autoload
 (defun +workspace-new (name &optional clone-p)
   "Create a new workspace named NAME. If one already exists, return
 nil.

@@ -168,7 +168,7 @@
 ;;; :ui
 (map! (:when (modulep! :ui popup)
         "C-`"   #'+popup/toggle
-        "C-~"   #'+popup/raise
+        "C-~"   #'+popup/toggle-type
         "C-x p" #'+popup/other)
 
       (:when (modulep! :ui workspaces)

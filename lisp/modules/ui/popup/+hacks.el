@@ -48,14 +48,16 @@ that by remapping `quit-window' to this commmand."
   (interactive "P")
   (let ((orig-buffer (current-buffer))
         (parent (car +popup--parents)))
-    (quit-window arg)
-    (when (and (eq orig-buffer (current-buffer))
-               (popper-popup-p (current-buffer)))
-      (+popup/close nil 'force))
-    (when-let* ((parent-buffer (car parent))
-                (live-p (buffer-live-p parent-buffer)))
-      (let ((+popup--ignore-parent t))
-        (display-buffer parent-buffer)))))
+    (if (+popup-parameter 'tabbed)
+        (+popup/close)
+      (quit-window arg)
+      (when (and (eq orig-buffer (current-buffer))
+                 (+popup-buffer-p (current-buffer)))
+        (+popup/close nil 'force))
+      (when-let* ((parent-buffer (car parent))
+                  (live-p (buffer-live-p parent-buffer)))
+        (let ((+popup--ignore-parent t))
+          (display-buffer parent-buffer))))))
 (define-key +popup-buffer-mode-map [remap quit-window] #'+popup/quit-window)
 
 
@@ -72,7 +74,7 @@ that by remapping `quit-window' to this commmand."
 time they were followed."
   :around #'compilation-goto-locus
   (letf! (defun pop-to-buffer (buffer &optional action norecord)
-           (let ((pop-up-windows (not (popper-popup-p (current-buffer)))))
+           (let ((pop-up-windows (not (+popup-buffer-p (current-buffer)))))
              (funcall pop-to-buffer buffer action norecord)))
     (apply fn args)))
 
@@ -85,7 +87,7 @@ time they were followed."
      consult--source-buffer
      :items
      (lambda () (consult--buffer-query :sort 'visibility
-                                       :predicate (lambda (x) (not (popper-popup-p x)))
+                                       :predicate (lambda (x) (not (+popup-buffer-p x)))
                                        :as #'buffer-name)))
 
     ;; Add separate source for popups
@@ -100,7 +102,7 @@ time they were followed."
         :items
         ,(lambda () (consult--buffer-query :sort 'visibility
                                            :predicate (lambda (x)
-                                                        (and (popper-popup-p x)
+                                                        (and (+popup-buffer-p x)
                                                              (if (modulep! :ui workspaces)
                                                                  (bufferlo-local-buffer-p x)
                                                                t)))
@@ -258,7 +260,7 @@ frame. No thanks. We can do better."
     :around #'org-goto-location
     :around #'org-fast-tag-selection
     :around #'org-fast-todo-selection
-    (if popper-mode
+    (if +popup-mode
         (letf! ((#'delete-other-windows #'ignore)
                 (#'delete-window        #'ignore))
           (apply fn args))
@@ -270,7 +272,7 @@ buffer,for some reason, which is very unconventional, and so
 requires these gymnastics to tame (i.e. to get the popup manager
 to handle it)."
     :around #'org-goto-location
-    (if popper-mode
+    (if +popup-mode
         (letf! (defun internal-temp-output-buffer-show (buffer)
                  (let ((temp-buffer-show-function
                         (zenit-rpartial #'+popup-display-buffer-stacked-side-window-fn nil)))
@@ -286,7 +288,7 @@ its content and displays it in a side window without deleting all
 other windows. Ugh, such an ugly hack."
     :around #'org-fast-tag-selection
     :around #'org-fast-todo-selection
-    (if popper-mode
+    (if +popup-mode
         (letf! ((defun read-char-exclusive (&rest args)
                   (message nil)
                   (apply read-char-exclusive args))
@@ -396,5 +398,5 @@ other windows. Ugh, such an ugly hack."
   (letf! (defun windmove-find-other-window (dir &optional arg window)
            (window-in-direction
             (pcase dir (`up 'above) (`down 'below) (_ dir))
-            window (bound-and-true-p popper-mode) arg windmove-wrap-around t))
+            window (bound-and-true-p +popup-mode) arg windmove-wrap-around t))
     (apply fn args)))

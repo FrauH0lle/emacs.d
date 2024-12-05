@@ -198,6 +198,7 @@ DIRECTORY is a path; defaults to `default-directory'. Returns the
 last file found to meet the rules set by FILES, which can be a
 single file or nested compound statement of `and' and `or'
 statements."
+  (declare (debug t))
   `(let ((p ,(zenit--resolve-path-forms files directory)))
      (and p (expand-file-name p ,directory))))
 

@@ -40,7 +40,7 @@
     :persist t
     :send-region #'python-shell-send-region
     :send-buffer #'python-shell-send-buffer)
-  ;; (set-docsets! '(python-mode inferior-python-mode) "Python 3" "NumPy" "SciPy" "Pandas")
+  (set-docsets! '(python-mode inferior-python-mode) "Python 3" "NumPy" "SciPy" "Pandas")
 
   (set-ligatures! 'python-mode
     ;; Functional

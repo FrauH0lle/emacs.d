@@ -19,10 +19,11 @@
 
 ;;;###autoload
 (defun +popup-make-rule (predicate plist)
-  (let ((predicate (if (and (symbolp predicate)
-                            (string-suffix-p "-mode" (symbol-name predicate)))
-                       `(major-mode . ,predicate)
-                     predicate)))
+  (let* ((predicate (if (consp predicate) (car predicate) predicate))
+         (predicate (if (and (symbolp predicate)
+                             (string-suffix-p "-mode" (symbol-name predicate)))
+                        `(major-mode . ,predicate)
+                      predicate)))
     (if (plist-get plist :ignore)
         (list predicate nil)
       (let* ((plist (append plist +popup-defaults))
@@ -40,6 +41,7 @@
                 (select   . ,(plist-get plist :select))
                 (modeline . ,(plist-get plist :modeline))
                 (autosave . ,(plist-get plist :autosave))
+                (tabbed   . ,(plist-get plist :tabbed))
                 ,@(plist-get plist :parameters))))
         `(,predicate (+popup-buffer)
           ,@alist
@@ -200,10 +202,9 @@ VSLOT TTL QUIT SELECT MODELINE AUTOSAVE PARAMETERS)"
   (if (plist-get plist :ignore)
       (setq +popup--reference-buffers (delete predicate +popup--reference-buffers))
     (push predicate +popup--reference-buffers))
-  (when (bound-and-true-p popper-mode)
-    (setq display-buffer-alist +popup--display-buffer-alist
-          popper-reference-buffers +popup--reference-buffers)
-    (popper--set-reference-vars))
+  (when (bound-and-true-p +popup-mode)
+    (+popup-cleanup-rules-h)
+    (+popup-update-reference-vars))
   +popup--display-buffer-alist)
 
 ;;;###autodef
@@ -229,8 +230,7 @@ Example:
       (if (plist-get (cdr rule) :ignore)
           (setq +popup--reference-buffers (delete (car rule) +popup--reference-buffers))
         (push (car rule) +popup--reference-buffers))))
-  (when (bound-and-true-p popper-mode)
-    (setq display-buffer-alist +popup--display-buffer-alist
-          popper-reference-buffers +popup--reference-buffers)
-    (popper--set-reference-vars))
+  (when (bound-and-true-p +popup-mode)
+    (+popup-cleanup-rules-h)
+    (+popup-update-reference-vars))
   +popup--display-buffer-alist)

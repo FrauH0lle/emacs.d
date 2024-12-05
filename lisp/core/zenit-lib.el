@@ -76,14 +76,14 @@ You might think this situation is such an edge case that it would
 never happen, but you'd be wrong, unfortunately. In such a
 situation, you must wrap at least the outer macro in this form,
 but can wrap at any higher level up to the top-level form."
-  (declare (indent 0))
+  (declare (indent 0) (debug body))
   `(eval '(progn ,@body) lexical-binding))
 
 (defmacro protect-macros-maybe! (feature &rest body)
   "Same as `protect-macros!', but only if FEATURE is unavailable.
 Otherwise eval BODY normally (subject to eager macroexpansion).
 In either case, eagerly load FEATURE during byte-compilation."
-  (declare (indent 1))
+  (declare (indent 1) (debug (sexp body)))
   (let ((available (featurep feature)))
     (when byte-compile-current-file
       (setq available (require feature nil 'noerror)))
@@ -99,7 +99,7 @@ The macro expands directly to either THEN or ELSE, and the other
 branch is not compiled. This can be helpful to deal with code
 that that can be omitted entirely if a certain feature is not
 available."
-  (declare (indent 2) (debug (sexp sexp &rest sexp)))
+  (declare (indent 2) (debug t))
   (if (eval cond)
       then
     (macroexp-progn else)))
@@ -109,7 +109,7 @@ available."
 
 BODY is only compiled if COND evaluates to non-nil. See
 `eval-if!'."
-  (declare (indent 1) (debug (sexp &rest sexp)))
+  (declare (indent 1) (debug t))
   (when (eval cond)
     (macroexp-progn body)))
 
@@ -118,7 +118,7 @@ BODY is only compiled if COND evaluates to non-nil. See
 
 BODY is only compiled if COND evaluates to non-nil. See
 `eval-if!'."
-  (declare (indent 1) (debug (sexp &rest sexp)))
+  (declare (indent 1) (debug t))
   (unless (eval cond)
     (macroexp-progn body)))
 
@@ -491,7 +491,28 @@ The def* forms accepted are:
 
   (defadvice FUNCTION (HOW LAMBDA-LIST &optional NAME DEPTH) &rest BODY)
     Defines temporary advice with `define-advice'."
-  (declare (indent defun))
+  (declare (indent defun)
+           (debug ((&rest [&or
+                           ;; ((PLACE VALUE))
+                           ;; PLACE can be a symbol or a function (#'PLACE)
+                           ([&or symbolp
+                                 ("function" symbolp)]
+                            form)
+                           ;; (defun ...) or ((defun ...))
+                           [&or [&define "defun" symbolp cl-lambda-list def-body]
+                                (&define "defun" symbolp cl-lambda-list def-body)]
+                           ;; (defun* ...) or ((defun* ...))
+                           [&or [&define "defun*" symbolp cl-lambda-list def-body]
+                                (&define "defun*" symbolp cl-lambda-list def-body)]
+                           ;; (defmacro ...) or ((defmacro ...))
+                           [&or [&define "defmacro" symbolp cl-macro-list def-body]
+                                (&define "defmacro" symbolp cl-macro-list def-body)]
+                           ;; (defadvice ...) or ((defadvice ...))
+                           [&or ["defadvice" [&or [[&or symbolp ("function" symbolp)] keywordp form]
+                                                  [sexp (keywordp sexp [&optional sexp] [&optional integerp]) body]]]
+                                ("defadvice" . [&or ([&or symbolp ("function" symbolp)] keywordp form)
+                                                    (sexp (keywordp sexp [&optional sexp] [&optional integerp]) body)])]])
+                   body)))
   (setq body (macroexp-progn body))
   (when (memq (car bindings) '(defun defun* defmacro defadvice))
     (setq bindings (list bindings)))
@@ -527,7 +548,7 @@ The def* forms accepted are:
                                 (lambda! ,(cadr rest) ,@(cddr rest))))
                        ,body)))
               (`defun*
-               `(cl-labels ((,@rest)) ,body))
+                `(cl-labels ((,@rest)) ,body))
               (_
                (when (eq (car-safe type) 'function)
                  (setq type (list 'symbol-function type)))
@@ -540,6 +561,7 @@ This silences calls to `message', `load', `write-region' and
 anything that writes to `standard-output'. In interactive
 sessions this inhibits output to the echo-area, but not to
 *Messages*."
+  (declare (debug t))
   `(if init-file-debug
        (progn ,@forms)
      ,(if noninteractive
@@ -565,7 +587,8 @@ sessions this inhibits output to the echo-area, but not to
 The closure is wrapped in `cl-function', meaning ARGLIST will
 accept anything `cl-defun' will. Implicitly adds
 `&allow-other-keys' if `&key' is present in ARGLIST."
-  (declare (indent defun) (doc-string 1) (pure t) (side-effect-free t))
+  (declare (indent defun) (doc-string 1) (pure t) (side-effect-free t)
+           (debug (&define cl-lambda-list def-body)))
   `(cl-function
     (lambda
       ,(letf! (defun* allow-other-keys (args)
@@ -656,6 +679,7 @@ which expands to:
 This macro was adapted from llama.el (see URL
 `https://git.sr.ht/~tarsius/llama'), minus font-locking and the
 outer function call, plus some minor optimizations."
+  (declare (debug t))
   `(lambda ,(let ((argv (make-vector 10 nil)))
               (zenit--fn-crawl args argv)
               `(,@(let ((i (1- (length argv)))
@@ -676,7 +700,7 @@ outer function call, plus some minor optimizations."
   "Expands to (lambda () (interactive) ,@BODY).
 A factory for quickly producing interaction commands,
 particularly for keybinds or aliases."
-  (declare (doc-string 1) (pure t) (side-effect-free t))
+  (declare (doc-string 1) (pure t) (side-effect-free t) (debug body))
   `(lambda (&rest _) (interactive) ,@body))
 
 (defmacro cmd!! (command &optional new-prefix-arg &rest args)
@@ -685,7 +709,7 @@ NEW-PREFIX-ARG. Like `cmd!', but allows you to change
 `current-prefix-arg' or pass arguments to COMMAND. This macro is
 meant to be used as a target for keybinds (e.g. with `define-key'
 or `map!')."
-  (declare (doc-string 1) (pure t) (side-effect-free t))
+  (declare (doc-string 1) (pure t) (side-effect-free t) (debug t))
   `(lambda (arg &rest _) (interactive "P")
      (let ((current-prefix-arg (or ,new-prefix-arg arg)))
        (,(if args
@@ -730,10 +754,12 @@ after AFTER."
 (defmacro spliceq! (seq element after &optional before)
   "Splice ELEMENT into SEQ in place.
 See `zenit-splice-into' for details."
+  (declare (debug t))
   `(setq ,seq (zenit-splice-into ,seq ,element ,after ,before)))
 
 (defmacro appendq! (sym &rest lists)
   "Append LISTS to SYM in place."
+  (declare (debug t))
   `(setq ,sym (append ,sym ,@lists)))
 
 (defmacro setq! (&rest settings)
@@ -743,6 +769,7 @@ This can be used as a drop-in replacement for `setq' and *should*
 be used instead of `setopt'. Unlike `setq', this triggers custom
 setters on variables. Unlike `setopt', this won't needlessly pull
 in dependencies."
+  (declare (debug t))
   (macroexp-progn
    (cl-loop for (var val) on settings by 'cddr
             collect `(funcall (or (get ',var 'custom-set) #'set-default-toplevel-value)
@@ -755,6 +782,7 @@ acustomizable variables.
 This behaves the same way as `setq!' but uses `set' instead of
 `set-default-toplevel-value' and will change the local value of a
 buffer-local variable"
+  (declare (debug t))
   (macroexp-progn
    (cl-loop for (var val) on settings by 'cddr
             collect `(funcall (or (get ',var 'custom-set) #'set)
@@ -764,6 +792,7 @@ buffer-local variable"
   "`delq' ELT from LIST in-place.
 If FETCHER is a function, ELT is used as the key in LIST (an
 alist)."
+  (declare (debug t))
   `(setq ,list
          (delq ,(if fetcher
                     `(funcall ,fetcher ,elt ,list)
@@ -773,12 +802,14 @@ alist)."
 (defmacro pushnew! (place &rest values)
   "Push VALUES sequentially into PLACE, if they aren't already present.
 This is a variadic `cl-pushnew'."
+  (declare (debug t))
   (let ((var (make-symbol "result")))
     `(dolist (,var (list ,@values) (with-no-warnings ,place))
        (cl-pushnew ,var ,place :test #'equal))))
 
 (defmacro prependq! (sym &rest lists)
   "Prepend LISTS to SYM in place."
+  (declare (debug t))
   `(setq ,sym (append ,@lists ,sym)))
 
 
@@ -789,6 +820,7 @@ This is a variadic `cl-pushnew'."
   "Add DIRS to `load-path', relative to the current file.
 The current file is the file from which `add-to-load-path!' is
 used."
+  (declare (debug t))
   `(let ((default-directory ,(protect-macros! (dir!)))
          file-name-handler-alist)
      (dolist (dir (list ,@dirs))
@@ -854,6 +886,7 @@ the lookup is relative to either `load-file-name',
 
 If NOERROR is non-nil, don't throw an error if the file doesn't
 exist."
+  (declare (debug t))
   `(zenit-load (file-name-concat ,(or path `(dir!)) ,filename) ,noerror))
 
 (defmacro zenit--with-local-load-history (file &rest body)
@@ -865,7 +898,7 @@ to such a string.
 This macro ensures that defined functions and variables show up
 as being defined in FILE, instead of whatever file they are being
 loaded from."
-  (declare (indent 0))
+  (declare (indent 0) (debug t))
   (let ((file (eval file)))
     `(let ((current-load-list nil))
        ,@body
@@ -878,6 +911,7 @@ loaded from."
 
 Otherwise it delegates to `zenit-load'. If NOERROR, don't throw
 an error if FILE doesn't exist."
+  (declare (debug t))
   (if (not (bound-and-true-p byte-compile-current-file))
       `(zenit-load ,file ,noerror)
     (zenit-log "include: %s %s" (abbreviate-file-name file) noerror)
@@ -899,7 +933,7 @@ for more information.
 
 If NOERROR is non-nil, don't throw an error if the file doesn't
 exist."
-  (declare (indent defun))
+  (declare (indent defun) (debug t))
   (let* ((dir (or path (protect-macros! (dir!))))
          (file (expand-file-name
                 (file-name-with-extension filename ".el")
@@ -925,7 +959,7 @@ directory path).
 
 This macro will not do anything if the file it is used in is not
 getting compiled."
-  (declare (indent defun))
+  (declare (indent defun) (debug t))
   (when (macroexp-compiling-p)
     (let* ((filename (expand-file-name filename (or path (protect-macros! (dir!)))))
            (files))
@@ -957,7 +991,7 @@ Can/should be used in conjunction with `compile-along!' so you
 can profit from compilation.
 
 \(fn FILE &rest FNS [:interactive :type])"
-  (declare (indent defun))
+  (declare (indent defun) (debug t))
   (let ((file (expand-file-name file (protect-macros! (dir!))))
         (autoloads ())
         fns interactive type)
@@ -996,6 +1030,7 @@ alternative to `after!'."
 in HOOKS-OR-FUNCTIONS are executed.
 
 See also `use-package!'."
+  (declare (debug t))
   (let ((fn (make-symbol (format "zenit--after-call-%s-h" feature))))
     (macroexp-progn
      (append
@@ -1039,6 +1074,7 @@ we make Emacs believe FEATURE hasn't been loaded yet, then wait
 until FEATURE-hook (or MODE-hook, if FN is provided) is triggered
 to reverse this and trigger `after!' blocks at a more reasonable
 time."
+  (declare (debug t))
   (let ((advice-fn (intern (format "zenit--defer-feature-%s-a" feature))))
     `(progn
        (delq! ',feature features)
@@ -1087,7 +1123,7 @@ invoked, then never again.
 
 HOOK-OR-FUNCTION can be a quoted hook or a sharp-quoted
 function (which will be advised)."
-  (declare (indent 1))
+  (declare (indent 1) (debug t))
   (let ((append? (if (eq (car forms) :after) (pop forms)))
         (fn (gensym "zenit-transient-hook")))
     `(let ((sym ,hook-or-function))
@@ -1180,7 +1216,7 @@ If N and M = 1, there's no benefit to using this macro over
   "Sets buffer-local variables on HOOKS.
 
 \(fn HOOKS &rest [SYM VAL]...)"
-  (declare (indent 1))
+  (declare (indent 1) (debug t))
   (macroexp-progn
    (cl-loop for (var val hook fn) in (zenit--setq-hook-fns hooks var-vals)
             collect `(defun ,fn (&rest _)
@@ -1193,7 +1229,7 @@ If N and M = 1, there's no benefit to using this macro over
   "Unbind setq hooks on HOOKS for VARS.
 
 \(fn HOOKS &rest [SYM VAL]...)"
-  (declare (indent 1))
+  (declare (indent 1) (debug t))
   (macroexp-progn
    (cl-loop for (_var _val hook fn)
             in (zenit--setq-hook-fns hooks vars 'singles)
@@ -1214,7 +1250,8 @@ advice, like in `advice-add'. DOCSTRING and BODY are as in
 \(fn SYMBOL ARGLIST &optional DOCSTRING &rest [WHERE PLACES...]
 BODY\)"
   (declare (doc-string 3)
-           (indent defun))
+           (indent defun)
+           (debug t))
   (unless (stringp docstring)
     (push docstring body)
     (setq docstring nil))
@@ -1239,7 +1276,8 @@ undefiner when testing advice (when combined with `rotate-text').
 \(fn SYMBOL ARGLIST &optional DOCSTRING &rest [WHERE PLACES...]
 BODY\)"
   (declare (doc-string 3)
-           (indent defun))
+           (indent defun)
+           (debug t))
   (let (where-alist)
     (unless (stringp docstring)
       (push docstring body))

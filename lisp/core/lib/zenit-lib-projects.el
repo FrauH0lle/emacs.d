@@ -138,7 +138,7 @@ If DIR is not a project, it will be indexed (but not cached)."
              (setq projectile-enable-caching nil))
            (call-interactively
             #'projectile-find-file))
-          ((when-let* ((project-current-directory-override t)
+          ((when-let* ((project-current-directory-override dir)
                        (pr (project-current t dir)))
              (condition-case _
                  (project-find-file-in nil nil pr)

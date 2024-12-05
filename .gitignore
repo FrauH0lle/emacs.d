@@ -31,3 +31,5 @@ straight/*
 # Do not sync local and interactively registered package versions
 straight/versions/local.el
 straight/versions/default.el
+.aider*
+.env

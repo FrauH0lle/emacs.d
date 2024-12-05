@@ -94,6 +94,8 @@ will used as candidates."
          (recipe (gethash (symbol-name package) straight--recipe-cache))
          (local-repo (plist-get (gethash (symbol-name package) straight--recipe-cache) :local-repo)))
     (cl-block nil
+      (unless local-repo
+        (cl-return (message "The package %s isn't installed" package)))
       (unless modules
         (cl-return (message "The package %s isn't installed by any module" package)))
       (unless lockfiles
@@ -102,7 +104,7 @@ will used as candidates."
         (setq commit
               (if current-prefix-arg
                   (read-from-minibuffer (format "New commit for %s (leave empty to keep current): " package))
-                (if-let* ((default-directory (straight--repos-dir (plist-get (gethash (symbol-name package) straight--recipe-cache) :local-repo)))
+                (if-let* ((default-directory (straight--repos-dir local-repo))
                           (fetched (straight-vc-fetch-from-remote recipe)))
                     (let* ((candidates (straight--process-with-result
                                            (straight--process-run

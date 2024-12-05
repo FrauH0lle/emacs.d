@@ -19,14 +19,18 @@
   (el-patch-defun tab-bar-tab-name-format-default (tab i)
     (let ((current-p (eq (car tab) 'current-tab)))
       (propertize
-       (concat (if tab-bar-tab-hints (format (el-patch-swap "%d " "  #%d: ") i) "")
-               (alist-get 'name tab)
-               (or (and tab-bar-close-button-show
-                        (not (eq tab-bar-close-button-show
-                                 (if current-p 'non-selected 'selected)))
-                        tab-bar-close-button)
-                   ""))
+       (el-patch-wrap 1 4
+         (truncate-string-to-width
+          (concat (if tab-bar-tab-hints (format (el-patch-swap "%d " "  #%d: ") i) "")
+                  (alist-get 'name tab)
+                  (or (and tab-bar-close-button-show
+                           (not (eq tab-bar-close-button-show
+                                    (if current-p 'non-selected 'selected)))
+                           tab-bar-close-button)
+                      ""))
+          tab-bar-tab-name-truncated-max nil nil "..."))
        'face (funcall tab-bar-tab-face-function tab)))))
+
 
 (use-package! tab-bar
   :defer t

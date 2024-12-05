@@ -82,6 +82,10 @@ PLIST can be made up of any of the following properties:
   `display-buffer-in-side-window' is in :actions or
   `+popup-default-display-buffer-actions'.
 
+:tabbed BOOL
+  Can be t or nil. If t, the popup will displayed in a tabbed
+  window.
+
 :size/:width/:height FLOAT|INT|FN
   Determines the size of the popup. If more than one of these
   size properties are given :size always takes precedence, and is

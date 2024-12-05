@@ -1,7 +1,6 @@
 ;; tools/llm/autoload.el -*- lexical-binding: t; -*-
 
 ;; From `gptel'
-;;;###autoload
 (defun +llm-api-key-from-auth-source (host &optional user)
   "Lookup api key for HOST in the auth source.
 By default \"apikey\" is used as USER."
@@ -31,13 +30,11 @@ configuration."
     (completing-read "Choose model: " (mapcar #'car +llm-aider-arg-list) nil t)))
   ;; Retrieve the configuration plist for the selected model
   (let* ((plist (alist-get model +llm-aider-arg-list nil nil #'equal))
-         ;; Extract the arguments for the model
+         ;; Extract the arguments, host, user, and environment variable name for
+         ;; the API key lookup
          (args (plist-get plist :args))
-         ;; Extract the host for the API key lookup
          (host (plist-get plist :host))
-         ;; Extract the user for the API key lookup
          (user (plist-get plist :user))
-         ;; Extract the environment variable name to set the API key
          (env (plist-get plist :env)))
     ;; Set the environment variable with the API key
     (setenv env (+llm-api-key-from-auth-source host user))

@@ -57,7 +57,9 @@
         (lsp-signature-stop)
         t)))
 
-  (set-popup-rule! "^\\*lsp-\\(help\\|install\\)" :size 0.35 :quit t :select t)
+  (set-popup-rules!
+    '(("^\\*lsp-install" :size 0.35 :quit t :select t)
+      ("^\\*lsp-help" :size 0.35 :quit t :select t :tabbed t)))
   (eval-when! (modulep! :tools lookup)
     (set-lookup-handlers! 'lsp-mode
                           :definition #'+lsp-lookup-definition-handler

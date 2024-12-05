@@ -60,7 +60,7 @@
     :for "for"
     :return "return" :yield "yield")
 
-  (set-popup-rule! "^\\*Python" :side 'bottom :height 0.33 :width 0.5 :quit nil)
+  (set-popup-rule! "^\\*Python" :side 'bottom :height 0.33 :width 0.5 :quit nil :tabbed t)
 
   ;; Stop the spam!
   (setq python-indent-guess-indent-offset-verbose nil)

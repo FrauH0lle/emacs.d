@@ -55,12 +55,13 @@ This plist can have the following properties:
 
     \\='suppressed This popup buffer is suppressed.
 
-  :tab This popup buffer is part of a tabbed window.
+  :tabbed This popup buffer is part of a tabbed window.
 
     Valid values are \\='top, \\='bottom, \\='left, \\='right and
     nil.
 
-  :quit The popup buffer's quit behavior. See `set-popup-rule!'.")
+For :ttl, :quit, :select, :modeline and :autosave see
+`set-popup-rule!'.")
 
 (defvar +popup-group-function nil
   "Function that returns a popup context.
@@ -81,7 +82,6 @@ from a regular buffer is restricted to its associated group.")
 
 If `+popup-group-function' is non-nil, these are
 grouped by the predicate `+popup-group-function'.")
-
 
 
 (defvar +popup--inhibit-transient nil
@@ -161,56 +161,6 @@ See `+popup-mode'.")
            (delq (assq prop window-persistent-parameters)
                  window-persistent-parameters)))))
 
-(defun +popup-tabs-fn ()
-  (let ((grp (when +popup-group-function
-               (funcall +popup-group-function)))
-        (side (plist-get (buffer-local-value '+popup-buffer-status (current-buffer)) :tab)))
-    (cl-sort
-     (cons (current-buffer)
-           (delete-dups
-            (cl-delete-if-not
-             (lambda (b)
-               (and (eq (plist-get (buffer-local-value '+popup-buffer-status b) :tab) side)
-                    (buffer-live-p b)))
-             (mapcar #'cdr (alist-get grp +popup-buried-buffers-alist nil nil #'equal)))))
-     #'string< :key #'buffer-name)))
-
-(defvar +popup-tab-min-width 10
-  "Minimum width of a tab in characters.")
-
-(defvar +popup-tab-max-width 30
-  "Maximum width of a tab in characters.")
-
-(defun +popup-tab-name-fn (buffer &rest _buffers)
-  "Create name for tab with padding and truncation.
-
-If buffer name is shorter than `+popup-tab-max-width' it gets
-centered with spaces, otherwise it is truncated, to preserve
-equal width for all tabs.  This function also tries to fit as
-many tabs in window as possible, so if there are no room for tabs
-with maximum width, it calculates new width for each tab and
-truncates text if needed.  Minimal width can be set with
-`+popup-tab-min-width' variable."
-  (with-current-buffer buffer
-    (let* ((window-width (window-width (get-buffer-window)))
-           (tab-amount (length (tab-line-tabs-window-buffers)))
-           (window-max-tab-width (if (>= (* (+ +popup-tab-max-width 3) tab-amount) window-width)
-                                     (/ window-width tab-amount)
-                                   +popup-tab-max-width))
-           (tab-width (- (cond ((> window-max-tab-width +popup-tab-max-width)
-                                +popup-tab-max-width)
-                               ((< window-max-tab-width +popup-tab-min-width)
-                                +popup-tab-min-width)
-                               (t window-max-tab-width))
-                         3)) ;; compensation for ' x ' button
-           (buffer-name (string-trim (buffer-name)))
-           (name-width (length buffer-name)))
-      (if (>= name-width tab-width)
-          (concat  " " (truncate-string-to-width buffer-name (- tab-width 2)) "…")
-        (let* ((padding (make-string (+ (/ (- tab-width name-width) 2) 1) ?\s))
-               (buffer-name (concat padding buffer-name)))
-          (concat buffer-name (make-string (- tab-width (length buffer-name)) ?\s)))))))
-
 (define-minor-mode +popup-buffer-mode
   "Minor mode for individual popup windows.
 
@@ -222,29 +172,12 @@ disabled when that window has been changed or closed."
          +popup-buffer-mode
 
          (when (and (+popup-parameter 'tabbed)
-                    (plist-get +popup-buffer-status :tab))
+                    (+popup-parameter 'tabbed (current-buffer)))
            (set-window-dedicated-p (selected-window) nil)
            (set-window-parameter (selected-window) 'quit nil)
 
-           (setq-local
-            tab-line-tabs-function #'+popup-tabs-fn
-            tab-line-tab-name-function #'+popup-tab-name-fn
-            tab-line-close-button-show nil
-            tab-line-new-button-show nil)
-
-           (after! tab-line
-             (face-remap-add-relative 'tab-line
-                                      `(:background ,(face-attribute 'mode-line-inactive :background)
-                                        :foreground ,(face-attribute 'mode-line-inactive :foreground)))
-             (face-remap-add-relative 'tab-line-tab-inactive
-                                      `(:background ,(face-attribute 'mode-line-inactive :background)
-                                        :foreground ,(face-attribute 'mode-line-inactive :foreground)))
-             (face-remap-add-relative 'tab-line-tab-current
-                                      `(:background ,(face-attribute 'default :background)
-                                        :foreground ,(face-attribute 'font-lock-keyword-face :foreground nil t))))
-
+           (setq-local tab-line-tabs-function #'+popup-tabs-fn)
            (tab-line-mode +1))
-
 
          (add-hook 'after-change-major-mode-hook #'+popup-set-modeline-on-enable-h
                    nil 'local)
@@ -254,7 +187,7 @@ disabled when that window has been changed or closed."
            (setq +popup--timer nil)))
         (;; Turning OFF
          t
-         (setq +popup-buffer-status (plist-put +popup-buffer-status :tab nil))
+         (setq +popup-buffer-status (plist-put +popup-buffer-status :tabbed nil))
          (when (bound-and-true-p tab-line-mode)
            (tab-line-mode -1))
 
@@ -273,7 +206,7 @@ disabled when that window has been changed or closed."
     ("^\\*Local variables\\*$"
      :vslot -1 :slot 1 :size +popup-shrink-to-fit)
     ("^\\*\\(?:[Cc]ompil\\(?:ation\\|e-Log\\)\\|Messages\\)"
-     :vslot -2 :size 0.3  :autosave t :quit t :ttl nil)
+     :vslot -2 :size 0.33  :autosave t :quit t :ttl nil)
     ("^\\*\\(?:zenit \\|Pp E\\)"  ; transient buffers (no interaction required)
      :vslot -3 :size +popup-shrink-to-fit :autosave t :select ignore :quit t :ttl 0)
     ("^\\*zenit:"  ; editing buffers (interaction required)

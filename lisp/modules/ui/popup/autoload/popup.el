@@ -390,7 +390,7 @@ current window."
          (side (alist-get 'side alist)))
     (letf! ((defun set-popup-buffer-status (buffer side ttl quit select modeline autosave)
               (with-current-buffer buffer
-                (setq +popup-buffer-status (plist-put +popup-buffer-status :tab side)
+                (setq +popup-buffer-status (plist-put +popup-buffer-status :tabbed side)
                       +popup-buffer-status (plist-put +popup-buffer-status :ttl ttl)
                       +popup-buffer-status (plist-put +popup-buffer-status :quit quit)
                       +popup-buffer-status (plist-put +popup-buffer-status :select select)
@@ -724,7 +724,7 @@ will be ignored."
       (when (memq (+popup-parameter 'quit buffer)
                   '(t current))
         (setq next-buf (car-safe (remq buffer (+popup-tabs-fn))))
-        (setq +popup-buffer-status (plist-put +popup-buffer-status :tab nil))
+        (setq +popup-buffer-status (plist-put +popup-buffer-status :tabbed nil))
         (tab-line-mode -1)
         (if next-buf
             (when (switch-to-buffer next-buf)
@@ -743,7 +743,7 @@ will be ignored."
           (if (not (memq (+popup-parameter 'quit tab)
                          '(t other)))
               (push tab remaining)
-            (setq +popup-buffer-status (plist-put +popup-buffer-status :tab nil))
+            (setq +popup-buffer-status (plist-put +popup-buffer-status :tabbed nil))
             (tab-line-mode -1)
             (bury-buffer tab)
             (+popup--delete-window tab))))
@@ -889,30 +889,6 @@ window and return that window."
           (setq +popup--parents parents))))))
 
 ;;;###autoload
-(defun +popup-record-parent-a (fn &rest args)
-  "Record popup's parent buffer."
-  (let ((parent (or (bound-and-true-p describe-function-orig-buffer)
-                    (current-buffer)))
-        (parents +popup--parents)
-        (quit (+popup-parameter 'quit))
-        ;; Do not destroy the parent
-        +popup--timer)
-    (prog1
-        (apply fn args)
-      (when (and (+popup-buffer-p (current-buffer))
-                 ;; Prevent self-reference
-                 (not (eq (current-buffer) parent))
-                 ;; Avoid duplicate parents
-                 (not (assq parent parents))
-                 (not +popup--ignore-parent))
-        (push (cons parent quit) parents)
-        ;; (with-current-buffer parent
-        ;;   (setq +popup--timer nil))
-        (setq +popup--parents parents)))))
-
-;; (advice-add #'+popup-buffer :around #'+popup-record-parent-a)
-;; (advice-remove #'+popup-buffer #'+popup-record-parent-a)
-;;;###autoload
 (defun +popup-close-a (&rest _)
   "TODO"
   (+popup/close nil t))
@@ -923,3 +899,20 @@ window and return that window."
 function, usually to prevent the popup(s) from messing up the
 UI (or vice versa)."
   (save-popups! (apply fn args)))
+
+;;; tab-line
+
+;;;###autoload
+(defun +popup-tabs-fn ()
+  (let ((grp (when +popup-group-function
+               (funcall +popup-group-function)))
+        (side (plist-get (buffer-local-value '+popup-buffer-status (current-buffer)) :tabbed)))
+    (cl-sort
+     (cons (current-buffer)
+           (delete-dups
+            (cl-delete-if-not
+             (lambda (b)
+               (and (eq (plist-get (buffer-local-value '+popup-buffer-status b) :tabbed) side)
+                    (buffer-live-p b)))
+             (mapcar #'cdr (alist-get grp +popup-buried-buffers-alist nil nil #'equal)))))
+     #'string< :key #'buffer-name)))

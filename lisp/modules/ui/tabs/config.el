@@ -80,3 +80,41 @@
         :box (:line-width 3
               :color ,(face-attribute 'mode-line-inactive :background)
               :style nil)))))
+
+
+;; Based on
+;; https://andreyor.st/posts/2020-05-10-making-emacs-tabs-look-like-in-atom/
+(defvar +tab-line-tab-min-width 10
+  "Minimum width of a tab in characters.")
+
+(defvar +tab-line-tab-max-width 30
+  "Maximum width of a tab in characters.")
+
+(use-package! tab-line
+  :defer t
+  :config
+  (setq! tab-line-tab-name-function #'+tab-line-tab-name-fn
+         tab-line-close-button-show nil
+         tab-line-new-button-show nil)
+
+  (protect-macros!
+    (custom-set-faces!
+      ;; The tab-line bar's appearance
+      `(tab-line
+        :background ,(face-attribute 'mode-line-inactive :background)
+        :foreground ,(face-attribute 'mode-line-inactive :foreground))
+      ;; Inactive tabs
+      `(tab-line-tab-inactive
+        :background ,(face-attribute 'mode-line-inactive :background)
+        :foreground ,(face-attribute 'mode-line-inactive :foreground))
+      ;; Active tab
+      `(tab-line-tab-current
+        :background ,(face-attribute 'default :background)
+        :foreground ,(face-attribute 'font-lock-keyword-face :foreground nil t))))
+
+  ;; HACK 2024-12-05: Recalculate tab width on frame or window resize events.
+  (add-hook! 'window-configuration-change-hook
+    (defun +tabs-resest-tab-line-cache-h ()
+      "Reset `tab-line' cache in all windows."
+      (dolist (window (window-list))
+        (set-window-parameter window 'tab-line-cache nil)))))

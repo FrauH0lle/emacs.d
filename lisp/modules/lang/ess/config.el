@@ -167,14 +167,12 @@ variable.")
           (lsp!)))))
 
   ;; Popup rules
-  (eval-when! (modulep! :ui popup)
-    (after! ess-r-mode
-      (set-popup-rule! "^\\*R" :side 'bottom :height 0.33 :width 0.5 :quit nil :ttl nil)
-      (set-popup-rule! "^\\*R dired*" :side 'right :size 0.25 :height 0.5 :vslot 99 :slot 1
-        :select nil :quit nil))
-    (after! ess-help
-      (set-popup-rule! "^\\*help.R.*" :side 'right :size 0.25 :height 0.5 :vslot 100 :slot 1
-        :select t :quit t :transient t)))
+  (after! ess-r-mode
+    (set-popup-rules!
+      '(("^\\*R" :side bottom :height 0.33 :width 0.5 :quit nil :ttl nil :tabbed t)
+        ("^\\*R dired*" :side right :size 0.25 :height 0.5 :vslot 99 :slot 1 :select nil :quit nil))))
+  (after! ess-help
+    (set-popup-rule! "^\\*help.R.*" :side 'bottom :height 0.33 :width 0.5 :select t :quit 'current :tabbed t))
 
   ;; Workspaces integration
   (eval-when! (modulep! :ui workspaces)

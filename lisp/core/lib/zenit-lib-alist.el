@@ -2,20 +2,22 @@
 
 ;;;###autoload
 (defun zenit-alist-set (key val alist &optional symbol)
-  "Set property KEY to VAL in ALIST and return the modified alist.
+  "Set property KEY to VAL in ALIST and return ALIST.
 
-- If an association with KEY exists in ALIST, set its value to
-  VAL.
+If ALIST contains KEY, update its value to VAL. If not, prepend a
+new (KEY . VAL) pair to ALIST.
 
-- If no such association exists, add a new one to the front of
-  ALIST.
+KEY comparison uses `equal' by default. If SYMBOL is non-nil,
+uses `eq' instead.
 
-By default, key comparison is done using `equal'. If SYMBOL is
-non-nil, use `eq' instead.
+Returns the modified ALIST. Note: May mutate the original ALIST,
+so always use the return value rather than assuming the original
+was modified in-place.
 
-Note that this function may modify the original ALIST, but the
-return value should be used instead of the original to ensure
-correct results.
+Example:
+  (setq my-alist \\='((\"a\" . 1) (\"b\" . 2)))
+  (zenit-alist-set \"a\" 3 my-alist)  ; => ((\"a\" . 3) (\"b\" . 2))
+  (zenit-alist-set \"c\" 4 my-alist)  ; => ((\"c\" . 4) (\"a\" . 3) (\"b\" . 2))
 
 Adapted from URL `https://emacs.stackexchange.com/a/33893'."
   (if-let ((pair (if symbol (assq key alist) (assoc key alist))))

@@ -72,6 +72,10 @@ variable.")
   ;; Support Juila only if no dedicated module is used.
   (eval-unless! (modulep! :lang julia)
     (add-to-list 'auto-mode-alist '("\\.[Jj][Ll]\\'" . ess-julia-mode)))
+  ;; Do not use flycheck when +lsp-flymake is set
+  (eval-when! (modulep! :tools lsp +lsp-flymake)
+    (pushnew! +flycheck-disabled-modes 'ess-r-mode))
+
   ;; Tree-sitter support
   (eval-when! (modulep! +tree-sitter)
     (add-hook 'ess-r-mode-local-vars-hook #'tree-sitter! 'append))
@@ -139,7 +143,7 @@ variable.")
   (eval-when! (modulep! :tools lookup)
     (set-docsets! 'ess-r-mode :docsets "R")
     (set-lookup-handlers! '(ess-r-mode ess-julia-mode)
-                          :documentation #'ess-display-help-on-object))
+      :documentation #'ess-display-help-on-object))
   (eval-when! (modulep! :tools eval)
     (set-repl-handler! 'ess-r-mode #'+ess/open-r-repl)
     (set-repl-handler! 'ess-julia-mode #'+ess/open-julia-repl)
@@ -157,9 +161,6 @@ variable.")
 
   ;; LSP
   (eval-when! (modulep! +lsp)
-    (eval-when! (modulep! :tools lsp +lsp-flymake)
-      (pushnew! +flycheck-disabled-modes 'ess-r-mode))
-
     (add-hook! 'ess-r-mode-local-vars-hook
       (defun +ess-lsp-init-maybe-h ()
         "Use LSP mode if the buffer is not a remote."

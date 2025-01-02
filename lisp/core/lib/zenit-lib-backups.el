@@ -42,9 +42,11 @@ The default value is `+backups--backup-files'.")
 ;;; File versions
 
 (defun +backups--full-version-number (file-name start &optional number-str)
-  "Extract the version number from the FILE-NAME starting at position START.
-The version number is constructed by concatenating all consecutive
-numeric characters found in the FILE-NAME after START.
+  "Extract the version number from the FILE-NAME.
+
+The version number is constructed by concatenating all
+consecutive numeric characters found in the FILE-NAME after
+START.
 
 NUMBER-STR is an optional argument that represents an accumulated
 version number string. It is used internally by the function to
@@ -77,10 +79,10 @@ or nil if no version number is found in the FILE-NAME."
 
 
 (defun +backups--file-sort-p (file-name1 file-name2)
-  "Compare the version numbers of two backup files FILE-NAME1 and
-FILE-NAME2. The version number of a file is assumed to be the
-sequence of numeric characters found at the end of the file name
-and enclosed by tilde characters (e.g. \"~123~\").
+  "Compare the version numbers of two backup files.
+The version number of a file is assumed to be the sequence of
+numeric characters found at the end of the file name and enclosed
+by tilde characters (e.g. \"~123~\").
 
 The function returns t if the version number of FILE-NAME1 is
 greater than that of FILE-NAME2, and nil otherwise."

@@ -116,13 +116,6 @@ buffer."
 (eval-when! zenit--system-windows-p
   (setq selection-coding-system 'utf-8))
 
-;; Add support for additional file extensions.
-(dolist (entry '(("/LICENSE\\'" . text-mode)
-                 ("\\.log\\'" . text-mode)
-                 ("rc\\'" . conf-mode)
-                 ("\\.\\(?:hex\\|nes\\)\\'" . hexl-mode)))
-  (push entry auto-mode-alist))
-
 
 ;;
 ;;; MODE-local-vars-hook

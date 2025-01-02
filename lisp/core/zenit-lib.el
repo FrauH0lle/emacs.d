@@ -700,7 +700,7 @@ outer function call, plus some minor optimizations."
   "Expands to (lambda () (interactive) ,@BODY).
 A factory for quickly producing interaction commands,
 particularly for keybinds or aliases."
-  (declare (doc-string 1) (pure t) (side-effect-free t) (debug body))
+  (declare (doc-string 1) (debug body))
   `(lambda (&rest _) (interactive) ,@body))
 
 (defmacro cmd!! (command &optional new-prefix-arg &rest args)
@@ -709,7 +709,7 @@ NEW-PREFIX-ARG. Like `cmd!', but allows you to change
 `current-prefix-arg' or pass arguments to COMMAND. This macro is
 meant to be used as a target for keybinds (e.g. with `define-key'
 or `map!')."
-  (declare (doc-string 1) (pure t) (side-effect-free t) (debug t))
+  (declare (doc-string 1) (debug t))
   `(lambda (arg &rest _) (interactive "P")
      (let ((current-prefix-arg (or ,new-prefix-arg arg)))
        (,(if args

@@ -310,7 +310,6 @@ system."
 (nconc
  auto-mode-alist
  '(("/LICENSE\\'" . text-mode)
-   ("\\.log\\'" . text-mode)
    ("rc\\'" . conf-mode)
    ("\\.\\(?:hex\\|nes\\)\\'" . hexl-mode)))
 

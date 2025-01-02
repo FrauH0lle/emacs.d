@@ -171,6 +171,10 @@
         "C-~"   #'+popup/toggle-type
         "C-x p" #'+popup/other)
 
+      (:when (modulep! :ui transient-state)
+        :m "*" #'+symbol-overlay-transient-state
+        :m "#" #'+symbol-overlay-transient-state)
+
       (:when (modulep! :ui workspaces)
         :n "C-t"   #'+workspace/new
         :n "C-S-t" #'+workspace/display

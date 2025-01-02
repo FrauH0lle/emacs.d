@@ -76,10 +76,13 @@ compressed ones."
   (+vertico/project-search arg initial-query default-directory))
 
 ;;;###autoload
-(defun +vertico/search-symbol-at-point ()
-  "Performs a search in the current buffer for thing at point."
-  (interactive)
-  (consult-line (thing-at-point 'symbol)))
+(defun +vertico/search-symbol-at-point (&optional arg)
+  "Performs a search in the current buffer for thing at point.
+If ARG (universal argument), include all buffers."
+  (interactive "P")
+  (if arg
+      (consult-line-multi t (thing-at-point 'symbol))
+    (consult-line (thing-at-point 'symbol))))
 
 ;;;###autoload
 (defun +vertico-embark-target-package-fn ()

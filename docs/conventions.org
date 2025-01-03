@@ -1,5 +1,27 @@
 #+title: Conventions
 
+* Code documentation and style
+- Everything should have docstring
+- The first line should not be wider than 67 characters
+- For a function, the first line should briefly answer the question, “What does
+  this function do?”
+- For a variable, the first line should briefly answer the question, “What does
+  this value mean?”
+- Follow the Emacs Lisp coding conventions
+  - See also [[https://github.com/bbatsov/emacs-lisp-style-guide][The Emacs Lisp Style Guide]]
+- Macros should declare the debug-specification. If all arguments are evaluated,
+  a simple ~(declare (debug t))~ is enough.
+* Unit tests
+- Use ERT for unit tests
+- Tests which assert a comparison should consistently compare EXPECTED to
+  ACTUAL. This makes reading output of failed tests easier. e.g. ~(should (eq
+  EXPECTED ACTUAL))~.
+- If no other choice, the minimal tests should be:
+  - For variables: Check if the variable is bound via ~boundp~
+  - For functions/macros: Check if the function/macro is bound via ~fboundp~
+  - For hooks: Check that the hook variable is bound and that the function was
+    added to it
+  - For advices: Check the function was adviced via ~advice-member-p~
 * Commit Message Guidelines
 - Follow [[https://www.conventionalcommits.org][Conventional Commits]]
 - Types:
@@ -54,4 +76,5 @@ use
 However, this leads to another issue: The arglist check of the byte compiler
 looks at the expanded form of the definition (~cl-defun foo (x &key y)~ expands
 to ~(defun foo (x &rest --cl-rest--))~). ~check-declare~ on the other hand does
-not and takes the original arglist. And thus, it will complain.
+not and takes the original arglist. And thus, it will complain and not work
+properly. However, this is acceptable.

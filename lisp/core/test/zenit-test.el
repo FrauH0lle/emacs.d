@@ -37,6 +37,46 @@
                                  (input1)
                                  'foo))))
   (should (equal '(progn
+                    (ert-deftest my-function/test nil "Test my-function's behavior" :tags
+                                 '(my-function public integration)
+                                 (let ((foo 1)
+                                       bar)
+                                   (setup)
+                                   (should
+                                    (equal
+                                     (my-function 'foo)
+                                     t))
+                                   (cleanup))))
+                 (macroexpand '(zenit-deftest my-function
+                                 (:before-each (setup)
+                                  :after-each (cleanup)
+                                  :vars ((foo 1) bar)
+                                  :tags (integration)
+                                  :doc "Test my-function's behavior")
+                                 (should (equal (my-function ,input1) t))
+                                 (input1)
+                                 'foo))))
+  (should (equal '(progn
+                    (ert-deftest my-function/test nil "Test my-function's behavior" :tags
+                                 '(my-function public integration)
+                                 (let* ((foo 1)
+                                        bar)
+                                   (setup)
+                                   (should
+                                    (equal
+                                     (my-function 'foo)
+                                     t))
+                                   (cleanup))))
+                 (macroexpand '(zenit-deftest my-function
+                                 (:before-each (setup)
+                                  :after-each (cleanup)
+                                  :vars* ((foo 1) bar)
+                                  :tags (integration)
+                                  :doc "Test my-function's behavior")
+                                 (should (equal (my-function ,input1) t))
+                                 (input1)
+                                 'foo))))
+  (should (equal '(progn
                     (ert-deftest my-function/test@1 nil "Test my-function's behavior, var 1" :tags
                                  '(my-function public integration)
                                  (setup)

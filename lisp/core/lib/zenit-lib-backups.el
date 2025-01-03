@@ -251,7 +251,8 @@ backups. It then restores the previous window configuration."
           (when (buffer-live-p (get-file-buffer buffer))
             (kill-buffer (get-file-buffer buffer))))
         (cdr +backups--assoc-files-alist))
-  (kill-buffer-and-window)
+  (ignore-errors
+    (kill-buffer-and-window))
   (set-window-configuration +backups--saved-wconf))
 
 
@@ -338,7 +339,7 @@ subsequent lines display information about the backups. The index
 number is calculated as the difference between the LINE-NUMBER
 and 2, since the first line in the buffer is not counted in the
 index."
-  (- line-number 2))
+  (max 0 (- line-number 2)))
 
 (defun +backups--get-line-number (index)
   "Return the line number for the backup at INDEX.
@@ -347,7 +348,7 @@ This function takes an INDEX (a zero-based index into the list of
 backups for a file), and returns the corresponding line number in
 the buffer displaying the backups. The first line of the buffer
 corresponds to line number 1."
-  (+ index 2))
+  (max 0 (+ index 2)))
 
 (defun +backups--get-original-file (data)
   "Return the original file from the backups information in DATA.

@@ -7,6 +7,7 @@
 ;;;###autoload
 (defun zenit-call-process (command &rest args)
   "Execute COMMAND with ARGS synchronously.
+
 Returns (STATUS . OUTPUT) when it is done, where STATUS is the
 returned error code of the process and OUTPUT is its stdout
 output."
@@ -36,7 +37,7 @@ Warning: freezes indefinitely on any stdin prompt."
             (set-process-filter
              process (lambda (_process output)
                        (princ output (current-buffer))
-                       (princ (zenit-print--format output))))
+                       (print! output)))
             (set-process-sentinel
              process (lambda (process _event)
                        (when (memq (process-status process) '(exit stop))

@@ -130,7 +130,7 @@ inputs/outputs and optional docstrings."
 
 (cl-defmacro zenit-deftest (object
                             (&key before-each after-each expected-result
-                                  doc tags &allow-other-keys)
+                                  doc tags vars vars* &allow-other-keys)
                             &rest template)
   "Define one or more ERT tests for OBJECT with TEMPLATE.
 
@@ -143,6 +143,12 @@ Keyword arguments:
 :expected-result - Expected result type (:passed, :failed, etc)
 :doc         - Documentation string for the test
 :tags        - List of tags to apply to the test
+:vars        - Variables to bind using `let`
+:vars*       - Variables to bind using `let*`
+
+The `let'/`let*' binding introduced via :vars and :vars* will
+encompass the whole test body, including the code from
+:before-each and :after-each.
 
 TEMPLATE is a list of forms that will be expanded into test cases
 using `zenit-test--template'. Each template form becomes a
@@ -191,26 +197,33 @@ Examples:
     `(progn
        ,@(mapcar
           (lambda (test)
-            `(ert-deftest
-                 ,(intern (concat
-                           (format "%s/test" object)
-                           (when (> (length tests) 1)
-                             (format "@%d" (cl-incf counter)))))
-                 ()
-               ,(or (and (stringp (car test))
-                         (not (string-empty-p (car test)))
-                         (car test))
-                    doc
-                    (when (fboundp object) (documentation object)))
-               ,@(when tags `(:tags ',tags))
-               ,@(when expected-result `(:expected-result ,expected-result))
-               ,@(when before-each (if (cl-every #'listp before-each)
-                                       before-each
-                                     (list before-each)))
-               ,@(cdr test)
-               ,@(when after-each (if (cl-every #'listp after-each)
-                                      after-each
-                                    (list after-each)))))
+            (let ((test-body
+                   `(,@(when before-each
+                         (if (cl-every #'listp before-each)
+                             before-each
+                           (list before-each)))
+                     ,@(cdr test)
+                     ,@(when after-each
+                         (if (cl-every #'listp after-each)
+                             after-each
+                           (list after-each))))))
+              `(ert-deftest
+                   ,(intern (concat
+                             (format "%s/test" object)
+                             (when (> (length tests) 1)
+                               (format "@%d" (cl-incf counter)))))
+                   ()
+                 ,(or (and (stringp (car test))
+                           (not (string-empty-p (car test)))
+                           (car test))
+                      doc
+                      (when (fboundp object) (documentation object)))
+                 ,@(when tags `(:tags ',tags))
+                 ,@(when expected-result `(:expected-result ,expected-result))
+                 ,@(cond
+                   (vars*  `((let* ,vars* ,@test-body)))
+                   (vars   `((let ,vars ,@test-body)))
+                   (t      test-body)))))
           tests))))
 
 (defun zenit-test-enable-fontlocking ()
@@ -226,6 +239,10 @@ Examples:
 ;;; Utilities
 
 (defun zenit-test--make-temp-file (&optional dir-flag suffix text)
+  "Create a temporary file.
+
+Passes DIR-FLAG, SUFFIX and TEXT on to `make-temp-file', which
+see."
   (make-temp-file "zenit-emacs-test-" dir-flag suffix text))
 
 (provide 'zenit-test)

@@ -4,6 +4,14 @@
 (require 'zenit-test)
 (zenit-require 'zenit-lib 'backups)
 
+(dolist (var '(+backups-files-function +backups--saved-wconf
+               +backups--file-info-alist +backups--first-diff-index
+               +backups--assoc-files-alist zenit-file-backups-mode-map
+               +backups--minor-saved-wconf))
+  (eval
+   `(zenit-deftest ,var (:doc ,(format "Test if %s is defined" var))
+      (should (boundp ',var)))))
+
 (zenit-deftest +backups--full-version-number
   (:doc "Test version number extraction from filenames")
   (should (equal ,out (+backups--full-version-number ,@in)))
@@ -201,6 +209,10 @@
     (dolist (buf (list b c d))
       (should-not (buffer-live-p buf)))))
 
+(zenit-deftest zenit-file-backups-mode
+  (:doc "Test if `zenit-file-backups-mode' is defined")
+  (should (fboundp 'zenit-file-backups-mode)))
+
 (zenit-deftest +backups--get-file-name-from-index
   (:doc "Test that it returns the name of the backup file at index")
   (let ((+backups--file-info-alist '((:original-file . "file.txt")
@@ -234,6 +246,10 @@
                                                 (:backups . ((1 "2022-01-01" "file.txt.~1~")
                                                              (2 "2022-02-01" "file.txt.~2~"))))))))
 
+(zenit-deftest +backups/diff
+  (:doc "Test if `+backups/diff' is defined")
+  (should (fboundp '+backups/diff)))
+
 (zenit-deftest +backups--revert-backup-from-file
   (:doc "Test that it reverts the original file to the backup file")
   (let ((orig-file (zenit-test--make-temp-file nil nil "foo"))
@@ -255,6 +271,10 @@
     (delete-file orig-file)
     (delete-file backup-file)))
 
+(zenit-deftest +backups/revert
+  (:doc "Test if `+backups/revert' is defined")
+  (should (fboundp '+backups/revert)))
+
 (zenit-deftest +backups--guess-mode
   (:doc "Test that it guesses file mode based on the file extension")
   (should (equal ,out (+backups--guess-mode ,in)))
@@ -262,3 +282,23 @@
   "foo.el" 'emacs-lisp-mode
   "foo.txt" 'text-mode
   "foo.conf" 'conf-mode-maybe)
+
+(zenit-deftest +backups/view
+  (:doc "Test if `+backups/view' is defined")
+  (should (fboundp '+backups/view)))
+
+(zenit-deftest +backups/list-backups
+  (:doc "Test if `+backups/list-backups' is defined")
+  (should (fboundp '+backups/list-backups)))
+
+(zenit-deftest +backups--collect-orphans
+  (:doc "Test if `+backups--collect-orphans' is defined")
+  (should (fboundp '+backups--collect-orphans)))
+
+(zenit-deftest +backups/list-orphaned
+  (:doc "Test if `+backups/list-orphaned' is defined")
+  (should (fboundp '+backups/list-orphaned)))
+
+(zenit-deftest +backups/remove-orphaned
+  (:doc "Test if `+backups/remove-orphaned' is defined")
+  (should (fboundp '+backups/remove-orphaned)))

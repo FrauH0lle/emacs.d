@@ -1,7 +1,7 @@
 ;; lisp/core/lib/zenit-lib-process.el -*- lexical-binding: t; -*-
 
-;; `zenit-lib-print'
-(declare-function zenit-print--format "zenit-lib-print" (message &rest args))
+;; `print!'
+(autoload #'print! "zenit-lib-print" nil nil 'macro)
 
 
 ;;;###autoload

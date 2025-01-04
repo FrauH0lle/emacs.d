@@ -717,6 +717,9 @@ will be ignored."
       (unless (memq (cdr parent) keep)
         (+popup--kill-buffer (car parent) 1)))))
 
+(defun +popup--last-tab-p ()
+  (not (car-safe (remq (current-buffer) (+popup-tabs-fn)))))
+
 (defun +popup--close-tab-current-window (window)
   (let ((buffer (window-buffer window))
         next-buf)

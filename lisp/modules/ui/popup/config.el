@@ -161,6 +161,14 @@ See `+popup-mode'.")
            (delq (assq prop window-persistent-parameters)
                  window-persistent-parameters)))))
 
+(defvar-local +popup-buffer--old-window-dedicated-p nil)
+(defvar-local +popup-buffer--old-window-quit nil)
+
+(defun +popup-buffer-last-tab-h ()
+  (when (+popup--last-tab-p)
+    (set-window-dedicated-p (selected-window) 'popup)
+    (set-window-parameter (selected-window) 'tabbed nil)))
+
 (define-minor-mode +popup-buffer-mode
   "Minor mode for individual popup windows.
 
@@ -173,9 +181,11 @@ disabled when that window has been changed or closed."
 
          (when (and (+popup-parameter 'tabbed)
                     (+popup-parameter 'tabbed (current-buffer)))
+           (setq +popup-buffer--old-window-dedicated-p (window-dedicated-p)
+                 +popup-buffer--old-window-quit (window-parameter (selected-window) 'quit))
            (set-window-dedicated-p (selected-window) nil)
            (set-window-parameter (selected-window) 'quit nil)
-
+           (add-hook 'kill-buffer-hook #'+popup-buffer-last-tab-h nil t)
            (setq-local tab-line-tabs-function #'+popup-tabs-fn)
            (tab-line-mode +1))
 
@@ -187,9 +197,14 @@ disabled when that window has been changed or closed."
            (setq +popup--timer nil)))
         (;; Turning OFF
          t
-         (setq +popup-buffer-status (plist-put +popup-buffer-status :tabbed nil))
          (when (bound-and-true-p tab-line-mode)
-           (tab-line-mode -1))
+           (tab-line-mode -1)
+           (when (+popup--last-tab-p)
+             (set-window-dedicated-p (selected-window) +popup-buffer--old-window-dedicated-p)
+             (set-window-parameter (selected-window) 'quit +popup-buffer--old-window-quit)
+             (set-window-parameter (selected-window) 'tabbed nil))
+           (setq +popup-buffer-status (plist-put +popup-buffer-status :tabbed nil))
+           (remove-hook 'kill-buffer-hook #'+popup-buffer-last-tab-h t))
 
          (remove-hook 'after-change-major-mode-hook #'+popup-set-modeline-on-enable-h t))))
 

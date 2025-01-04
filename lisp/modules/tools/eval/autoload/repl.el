@@ -54,7 +54,7 @@
    (mapcar (lambda! ((mode fn &rest _)) (list mode fn))
            +eval-repls)))
 
-(defun +zenit-pretty-mode-name (mode)
+(defun +eval-pretty-mode-name (mode)
   "Convert a mode name into a variant nicer for human eyes."
   (let ((mode (if (symbolp mode) (symbol-name mode) mode)))
     (if (not (string-match "^\\([a-z-]+\\)-mode$" mode))
@@ -78,13 +78,16 @@ human-readable variant of its associated major mode name."
   (let ((name (symbol-name fn)))
     (if (not (string-match "^\\(?:\\+\\)?\\([^/]+\\)/open-\\(?:\\(.+\\)-\\)?repl$" name))
         (error "Given symbol is not a repl function: %s" name)
-      (string-join (split-string (capitalize (match-string-no-properties 1 name))
+      (string-join (append (split-string (capitalize (match-string-no-properties 1 name))
                                  "-")
+                           (when-let ((subname (match-string-no-properties 2 name)))
+                             (split-string (capitalize subname)
+                                 "-")))
                    " "))))
 
 (defun +eval-repl-prompt ()
   "Prompt the user for the choice of a repl to open."
-  (let* ((knowns (mapcar (lambda! ((mode fn)) (list (+zenit-pretty-mode-name mode) fn))
+  (let* ((knowns (mapcar (lambda! ((mode fn)) (list (+eval-pretty-mode-name mode) fn))
                          (+eval-repl-known-repls)))
          (founds (mapcar (lambda (fn) (list (+eval-pretty-mode-name-from-fn fn) fn))
                          (+eval-repl-found-repls)))

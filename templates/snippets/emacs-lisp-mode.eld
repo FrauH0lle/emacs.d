@@ -22,18 +22,18 @@ emacs-lisp-mode
 ;; Simple FN test
 (test-fun
  "(zenit-deftest " (r "FUN" fn) n>
- "(:doc \"Test if `" (s fn) "' is defined\")" n>
+ "(:doc \"`" (s fn) "' is defined\")" n>
  "(should (fboundp '" (s fn) ")))" n>
  q)
 ;; Simple VAR test
 (test-var
  "(zenit-deftest " (r "VAR" var) n>
- "(:doc \"Test if `" (s var) "' is defined\")" n>
+ "(:doc \"`" (s var) "' is defined\")" n>
  "(should (boundp '" (s var) ")))" n>
  q)
 ;; Simple ADVICE test
 (test-adv
  "(zenit-deftest " (r "ADVICE" advice) n>
- "(:doc \"Test if `" (s advice) "' advises `" (p "FN" fn) "'\")" n>
+ "(:doc \"`" (s advice) "' advises `" (p "FN" fn) "'\")" n>
  "(should (advice-member-p '" (s advice) " #'" (s fn)")))" n>
  q)

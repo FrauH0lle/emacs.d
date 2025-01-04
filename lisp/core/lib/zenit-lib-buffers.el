@@ -292,9 +292,10 @@ regex PATTERN. Returns the number of killed buffers."
 
 ;;;###autoload
 (defun zenit/kill-this-buffer-in-all-windows (buffer &optional dont-save)
-  "Kill BUFFER globally and ensure all windows previously showing this buffer
-have switched to a real buffer or the fallback buffer.
-If DONT-SAVE, don't prompt to save modified buffers (discarding their changes)."
+  "Kill BUFFER globally and ensure all windows previously showing
+this buffer have switched to a real buffer or the fallback
+buffer. If DONT-SAVE, don't prompt to save modified
+buffers (discarding their changes)."
   (interactive
    (list (current-buffer) current-prefix-arg))
   (cl-assert (bufferp buffer) t)
@@ -313,8 +314,8 @@ If INTERACTIVE is nil, only return COUNT."
 ;;;###autoload
 (defun zenit/kill-all-buffers (&optional buffer-list interactive)
   "Kill all buffers and closes their windows.
-If the prefix arg is passed, doesn't close windows and only kill buffers that
-belong to the current project."
+If the prefix arg is passed, doesn't close windows and only kill
+buffers that belong to the current project."
   (interactive
    (list (if current-prefix-arg
              (zenit-project-buffer-list)
@@ -335,8 +336,8 @@ belong to the current project."
 ;;;###autoload
 (defun zenit/kill-other-buffers (&optional buffer-list interactive)
   "Kill all other buffers (besides the current one).
-If the prefix arg is passed, kill only buffers that belong to the current
-project."
+If the prefix arg is passed, kill only buffers that belong to the
+current project."
   (interactive
    (list (delq (current-buffer)
                (if current-prefix-arg
@@ -352,7 +353,8 @@ project."
 ;;;###autoload
 (defun zenit/kill-matching-buffers (pattern &optional buffer-list interactive)
   "Kill buffers that match PATTERN in BUFFER-LIST.
-If the prefix arg is passed, only kill matching buffers in the current project."
+If the prefix arg is passed, only kill matching buffers in the
+current project."
   (interactive
    (list (read-regexp "Buffer pattern: ")
          (if current-prefix-arg
@@ -368,8 +370,8 @@ If the prefix arg is passed, only kill matching buffers in the current project."
 ;;;###autoload
 (defun zenit/kill-buried-buffers (&optional buffer-list interactive)
   "Kill buffers that are buried.
-If PROJECT-P (universal argument), only kill buried buffers belonging to the
-current project."
+If PROJECT-P (universal argument), only kill buried buffers
+belonging to the current project."
   (interactive
    (list (zenit-buried-buffers
           (if current-prefix-arg (zenit-project-buffer-list)))

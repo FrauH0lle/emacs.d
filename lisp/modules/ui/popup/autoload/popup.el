@@ -286,9 +286,10 @@ window's `select' parameter."
 
 ;;;###autoload
 (defun +popup--init (window &optional alist)
-  "Initializes a popup window. Run any time a popup is opened.
-It sets the default window parameters for popup windows, clears
-leftover transient timers and enables `+popup-buffer-mode'."
+  "Initializes a popup window.
+Run any time a popup is opened. It sets the default window
+parameters for popup windows, clears leftover transient timers
+and enables `+popup-buffer-mode'."
   (with-selected-window window
     (setq alist (delq (assq 'actions alist) alist))
     (set-window-parameter window 'popup t)
@@ -730,8 +731,13 @@ will be ignored."
         (setq +popup-buffer-status (plist-put +popup-buffer-status :tabbed nil))
         (tab-line-mode -1)
         (if next-buf
-            (when (switch-to-buffer next-buf)
-              (+popup--delete-window buffer))
+            (progn
+              (message "win is dedi: %s" (window-dedicated-p window))
+              (when (switch-to-buffer next-buf)
+                (set-window-dedicated-p window 'popup)
+                (message "win is still dedi: %s" (window-dedicated-p window))
+                (+popup--delete-window buffer)))
+
           (set-window-parameter window 'tabbed nil)
           (+popup--delete-window window))))))
 

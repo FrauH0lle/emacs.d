@@ -252,3 +252,89 @@
   (with-current-buffer a
     (emacs-lisp-mode)
     (should (equal (list a b) (zenit-buffers-in-mode 'prog-mode (list a b c) 'derived-p)))))
+
+(zenit-deftest zenit-visible-windows
+  (:vars*
+   ((window-1 (selected-window))
+    (window-2 (split-window-right))
+    (window-3 (split-window-right))
+    (win-list (list window-1 window-2 window-3)))
+   :after-each
+   (delete-other-windows window-1))
+  ,test
+  (test)
+  :doc "`zenit-visible-windows' returns only the visible windows"
+  (progn
+    (set-window-dedicated-p window-1 t)
+    (set-window-dedicated-p window-2 nil)
+    (delete-window window-3)
+    (should (equal (list window-2) (zenit-visible-windows))))
+  :doc "`zenit-visible-windows' returns all windows if all are visible"
+  (should-not (cl-set-exclusive-or win-list (zenit-visible-windows)))
+  :doc "`zenit-visible-windows' returns an empty list if all windows are dedicated"
+  (progn
+    (set-window-dedicated-p window-1 t)
+    (set-window-dedicated-p window-2 t)
+    (set-window-dedicated-p window-3 t)
+    (should (equal nil (zenit-visible-windows win-list)))))
+
+(zenit-deftest zenit-visible-buffers
+  (:doc "`zenit-visible-buffers' returns a list of visible buffers"
+   :vars
+   ((a (get-buffer-create "a"))
+    (b (get-buffer-create "b"))
+    (c (get-buffer-create "c")))
+   :after-each
+   (progn
+     (mapc #'kill-buffer (list a b c)))
+   (delete-other-windows))
+  (progn
+    (set-window-buffer (selected-window) a)
+    (split-window-right)
+    (set-window-buffer (next-window) c)
+    (bury-buffer b)
+    (should (equal (list a c) (zenit-visible-buffers)))))
+
+(zenit-deftest zenit-buried-buffers
+  (:doc "`zenit-buried-buffers' returns a list of buried buffers"
+   :vars
+   ((a (get-buffer-create "a"))
+    (b (get-buffer-create "b"))
+    (c (get-buffer-create "c"))
+    (d (get-buffer-create "d")))
+   :after-each
+   (progn
+     (mapc #'kill-buffer (list a b c d)))
+   (delete-other-windows))
+  (progn
+    (set-window-buffer (selected-window) a)
+    (split-window-right)
+    (set-window-buffer (next-window) c)
+    (bury-buffer b)
+    (bury-buffer d)
+    (should-not (cl-set-difference (list b d) (zenit-buried-buffers)))
+    (should (cl-set-difference (list a c) (zenit-buried-buffers)))))
+
+(zenit-deftest zenit-matching-buffers
+  (:doc "`zenit-matching-buffers' returns a list of buffers matching a pattern"
+   :vars
+   ((a (get-buffer-create "a"))
+    (b (get-buffer-create "b"))
+    (c (get-buffer-create "c"))
+    (d (get-buffer-create "d")))
+   :after-each
+   (mapc #'kill-buffer (list a b c d)))
+  (progn
+    (should (equal (list b d) (zenit-matching-buffers "^[bd]$" (list a b c d))))
+    (should (equal (list a c) (zenit-matching-buffers "^[ac]$" (list a b c d))))))
+
+(zenit-deftest zenit-set-buffer-real
+  (:doc "`zenit-set-buffer-real' sets zenit-real-buffer-p buffer-locally"
+   :vars
+   ((a (get-buffer-create "a")))
+   :after-each
+   (mapc #'kill-buffer (list a)))
+  (progn
+    (should (equal nil (buffer-local-value 'zenit-real-buffer-p a)))
+    (zenit-set-buffer-real a t)
+    (should (buffer-local-value 'zenit-real-buffer-p a))))

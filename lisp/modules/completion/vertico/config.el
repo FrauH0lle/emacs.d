@@ -25,16 +25,6 @@
                            #'completion--in-region)
                          args)))
 
-  ;; Sort directories before files
-  (vertico-multiform-mode)
-  (setq vertico-multiform-categories
-        '((file (vertico-sort-function . sort-directories-first))))
-
-  (defun sort-directories-first (files)
-    (setq files (vertico-sort-alpha files))
-    (nconc (seq-filter (lambda (x) (string-suffix-p "/" x)) files)
-           (seq-remove (lambda (x) (string-suffix-p "/" x)) files)))
-
   (map! :when (modulep! :editor evil)
         :map vertico-map
         "M-RET" #'vertico-exit-input
@@ -246,8 +236,23 @@
 (use-package! embark
   :defer t
   :init
-  (setq which-key-use-C-h-commands nil
+  ;; Allow C-h to open Consult when calling which-key without a prefix.
+  (setq which-key-use-C-h-commands t
         prefix-help-command #'embark-prefix-help-command)
+  (defvar +vertico-which-key-current-keymap nil
+    "The current keymap being displayed by which-key.")
+  (defadvice! +vertico-which-key-update-current-keymap-a (_keymap-name keymap &rest args)
+    :before #'which-key--show-keymap
+    (setq +vertico-which-key-current-keymap keymap))
+  (defadvice! +vertico-which-key-consult-C-h-dispatch (oldfun)
+    :around #'which-key-C-h-dispatch
+    (setq this-command 'embark-prefix-help-command)
+    (cond ((not (which-key--popup-showing-p))
+           (call-interactively #'embark-prefix-help-command))
+          ((string-empty-p (which-key--current-key-string))
+           (embark-bindings-in-keymap +vertico-which-key-current-keymap))
+          (t (call-interactively #'embark-prefix-help-command))))
+
   (map! [remap describe-bindings] #'embark-bindings
         "C-;"               #'embark-act  ; to be moved to :config default if accepted
         (:map minibuffer-local-map
@@ -321,3 +326,50 @@
 (use-package! wgrep
   :commands wgrep-change-to-wgrep-mode
   :config (setq wgrep-auto-save-buffer t))
+
+;; From https://github.com/minad/vertico/wiki#candidate-display-transformations-custom-candidate-highlighting
+;;
+;; Uses `add-face-text-property' instead of `propertize' unlike the above
+;; snippet because `'append' is necessary to not override the match font lock
+;; See: https://github.com/minad/vertico/issues/389
+(use-package! vertico-multiform
+  :hook (vertico-mode . vertico-multiform-mode)
+  :config
+  (defvar +vertico-transform-functions nil)
+
+  (cl-defmethod vertico--format-candidate :around
+    (cand prefix suffix index start &context ((not +vertico-transform-functions) null))
+    (dolist (fun (ensure-list +vertico-transform-functions))
+      (setq cand (funcall fun cand)))
+    (cl-call-next-method cand prefix suffix index start))
+
+  (defun +vertico-sort-directories-first (files)
+    "Sort FILES by alpha and put elements ending with a slash first."
+    (setq files (vertico-sort-alpha files))
+    (nconc (seq-filter (lambda (x) (string-suffix-p "/" x)) files)
+           (seq-remove (lambda (x) (string-suffix-p "/" x)) files)))
+
+  (defun +vertico-highlight-directory (file)
+    "If FILE ends with a slash, highlight it as a directory."
+    (when (string-suffix-p "/" file)
+      (add-face-text-property 0 (length file) 'marginalia-file-priv-dir 'append file))
+    file)
+
+  (defun +vertico-highlight-enabled-mode (cmd)
+    "If MODE is enabled, highlight it as font-lock-constant-face."
+    (let ((sym (intern cmd)))
+      (with-current-buffer (nth 1 (buffer-list))
+        (if (or (eq sym major-mode)
+                (and
+                 (memq sym minor-mode-list)
+                 (boundp sym)
+                 (symbol-value sym)))
+            (add-face-text-property 0 (length cmd) 'font-lock-constant-face 'append cmd)))
+      cmd))
+
+  (pushnew! (alist-get 'file vertico-multiform-categories)
+            '(+vertico-transform-functions . +vertico-highlight-directory)
+            ;; Sort directories before files
+            '(vertico-sort-function . +vertico-sort-directories-first))
+  (pushnew! (alist-get 'execute-extended-command vertico-multiform-commands)
+            '(+vertico-transform-functions . +vertico-highlight-enabled-mode)))

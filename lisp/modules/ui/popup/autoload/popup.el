@@ -717,13 +717,14 @@ will be ignored."
     (dolist (parent parents)
       (unless (memq (cdr parent) keep)
         (+popup--kill-buffer (car parent) 1)))))
-
-(defun +popup--close-tab-current-window (window)
+// Add a docstring to +popup--close-tab-current-window as well as detailed explanations as code comments to every line. AI!
+(defun +popup--close-tab-current-window (window &optional force-p)
   (let ((buffer (window-buffer window))
         next-buf)
     (with-current-buffer buffer
-      (when (memq (+popup-parameter 'quit buffer)
-                  '(t current))
+      (when (or force-p
+                (memq (+popup-parameter 'quit buffer)
+                      '(t current)))
         (setq next-buf (car-safe (remq buffer (+popup-tabs-fn))))
         (setq +popup-buffer-status (plist-put +popup-buffer-status :tabbed nil))
         (tab-line-mode -1)
@@ -736,7 +737,7 @@ will be ignored."
           (set-window-parameter window 'tabbed nil)
           (+popup--delete-window window))))))
 
-(defun +popup--close-tabs-current-window (window)
+(defun +popup--close-tabs-current-window (window &optional force-p)
   (with-selected-window window
     (let ((tabs (+popup-tabs-fn))
           tab
@@ -744,8 +745,9 @@ will be ignored."
       (while tabs
         (setq tab (pop tabs))
         (with-current-buffer tab
-          (if (not (memq (+popup-parameter 'quit tab)
-                         '(t other)))
+          (if (and (not force-p)
+                   (not (memq (+popup-parameter 'quit tab)
+                              '(t other))))
               (push tab remaining)
             (setq +popup-buffer-status (plist-put +popup-buffer-status :tabbed nil))
             (tab-line-mode -1)
@@ -774,7 +776,7 @@ FORCE-P is non-nil."
       (when +popup--remember-last
         (+popup--remember (list window)))
       (if (+popup-parameter 'tabbed window)
-          (+popup--close-tab-current-window window)
+          (+popup--close-tab-current-window window force-p)
         (when (or force-p
                   (memq (+popup-parameter-fn 'quit window window)
                         '(t current)))
@@ -792,17 +794,21 @@ is non-nil."
   (interactive "P")
   (let (targets +popup--remember-last)
     (dolist (window (+popup-windows))
-      (if (+popup-parameter 'tabbed window)
-          (+popup--close-tabs-current-window window)
-        (when (or force-p
-                  (memq (+popup-parameter-fn 'quit window window)
-                        '(t other)))
-          (push window targets)))
-      (when targets
-        (+popup--remember targets)
-        (mapc (zenit-rpartial #'+popup--reap-parents '(nil current)) targets)
-        (mapc #'+popup--delete-window targets)
-        t))))
+      (when (or force-p
+                (+popup-parameter 'tabbed window)
+                (memq (+popup-parameter-fn 'quit window window)
+                      '(t other)))
+        (push window targets)))
+    (when targets
+      (+popup--remember targets)
+      (mapc (lambda (target)
+              (if (and (not force-p)
+                       (+popup-parameter 'tabbed target))
+                  (+popup--close-tabs-current-window target)
+                (+popup--reap-parents target '(nil current))
+                (+popup--delete-window target)))
+            targets)
+      t)))
 
 ;;;###autoload
 (defun +popup/toggle ()

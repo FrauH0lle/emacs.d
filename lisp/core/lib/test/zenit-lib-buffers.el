@@ -47,25 +47,28 @@
 (zenit-deftest zenit-project-buffer-list
   (:vars
    ((a (get-buffer-create "a"))
-    (b (get-buffer-create "b")))
+    (b (get-buffer-create "b"))
+    (c (get-buffer-create "c")))
    :before-each
    (progn
      (require 'projectile)
      (with-current-buffer a (setq default-directory zenit-emacs-dir))
-     (with-current-buffer b (setq default-directory zenit-core-dir))
+     (with-current-buffer b (setq default-directory zenit-emacs-dir))
+     (with-current-buffer c (setq default-directory temporary-file-directory))
      (projectile-mode +1))
    :after-each
    (progn
      (projectile-mode -1)
      (unload-feature 'projectile t)
-     (mapc #'kill-buffer (list a b))))
+     (mapc #'kill-buffer (list a b c))))
   ,test
   (test)
   :doc "`zenit-project-buffer-list' returns buffers in the same project"
   (with-current-buffer a
     (should-not (cl-set-difference (list a b) (zenit-project-buffer-list))))
   :doc "`zenit-project-buffer-list' returns all buffers if not in a project"
-  (should-not (cl-set-difference (buffer-list) (zenit-project-buffer-list))))
+  (with-current-buffer c
+    (should-not (cl-set-difference (buffer-list) (zenit-project-buffer-list)))))
 
 (zenit-deftest zenit-open-projects
   (:vars
@@ -286,8 +289,8 @@
     (c (get-buffer-create "c")))
    :after-each
    (progn
-     (mapc #'kill-buffer (list a b c)))
-   (delete-other-windows))
+     (mapc #'kill-buffer (list a b c))
+     (delete-other-windows)))
   (progn
     (set-window-buffer (selected-window) a)
     (split-window-right)
@@ -304,8 +307,8 @@
     (d (get-buffer-create "d")))
    :after-each
    (progn
-     (mapc #'kill-buffer (list a b c d)))
-   (delete-other-windows))
+     (mapc #'kill-buffer (list a b c d))
+     (delete-other-windows)))
   (progn
     (set-window-buffer (selected-window) a)
     (split-window-right)
@@ -338,3 +341,140 @@
     (should (equal nil (buffer-local-value 'zenit-real-buffer-p a)))
     (zenit-set-buffer-real a t)
     (should (buffer-local-value 'zenit-real-buffer-p a))))
+
+(zenit-deftest zenit-kill-buffer-and-windows
+  (:vars
+   ((a (get-buffer-create "a")))
+   :after-each
+   (progn
+     (mapc #'kill-buffer (list a))
+     (delete-other-windows)))
+  ,test
+  (test)
+  :doc "`zenit-kill-buffer-and-windows' kills the buffer and deletes all windows it's displayed in"
+  (progn
+    (split-window-right)
+    (set-window-buffer (next-window) a)
+    (should (get-buffer-window-list a))
+    (zenit-kill-buffer-and-windows a)
+    (should-error (get-buffer-window-list "a")))
+  :doc "`zenit-kill-buffer-and-windows' does not delete the window if it's the only window"
+  (progn
+    (set-window-buffer (next-window) a)
+    (should (one-window-p t))
+    (zenit-kill-buffer-and-windows a)
+    (should-not (get-buffer "a"))))
+
+(zenit-deftest zenit-fixup-windows
+  (:doc "`zenit-fixup-windows' shows a real or the fallback buffer"
+   :vars
+   ((a (get-buffer-create "a"))
+    (b (get-buffer-create "b")))
+   :after-each
+   (progn
+     (mapc #'kill-buffer (list a b))
+     (delete-other-windows)))
+  (progn
+    (set-window-buffer (selected-window) a)
+    (split-window-right)
+    (set-window-buffer (next-window) b)
+    (with-current-buffer a
+      (zenit-set-buffer-real (current-buffer) t))
+    (zenit-fixup-windows (list (selected-window) (next-window)))
+    (should (equal a (window-buffer (selected-window))))
+    (kill-buffer a)
+    (zenit-fixup-windows (list (selected-window) (next-window)))
+    (should (equal (zenit-fallback-buffer) (window-buffer (next-window))))))
+
+(zenit-deftest zenit-kill-buffer-fixup-windows
+  (:doc "`zenit-kill-buffer-fixup-windows' kills the buffer and shows a real or the fallback buffer"
+   :vars
+   ((a (get-buffer-create "a")))
+   :after-each
+   (progn
+     (mapc #'kill-buffer (list a))
+     (delete-other-windows)))
+  (progn
+    (set-window-buffer (selected-window) a)
+    (split-window-right)
+    (set-window-buffer (next-window) a)
+    (zenit-kill-buffer-fixup-windows a)
+    (should (equal (zenit-fallback-buffer) (window-buffer (selected-window))))
+    (should (equal (zenit-fallback-buffer) (window-buffer (next-window))))))
+
+(zenit-deftest zenit-kill-buffers-fixup-windows
+  (:doc "`zenit-kill-buffers-fixup-windows' kills the buffers and shows a real or the fallback buffer"
+   :vars
+   ((a (get-buffer-create "a"))
+    (b (get-buffer-create "b")))
+   :after-each
+   (progn
+     (mapc #'kill-buffer (list a b))
+     (delete-other-windows)))
+  (progn
+    (set-window-buffer (selected-window) a)
+    (split-window-right)
+    (set-window-buffer (next-window) b)
+    (zenit-kill-buffers-fixup-windows (list a b))
+    (should (equal (zenit-fallback-buffer) (window-buffer (selected-window))))
+    (should (equal (zenit-fallback-buffer) (window-buffer (next-window))))))
+
+(zenit-deftest zenit-kill-matching-buffers
+  (:doc "`zenit-kill-matching-buffers' kills the buffers matching a pattern"
+   :vars
+   ((a (get-buffer-create "a"))
+    (b (get-buffer-create "b")))
+   :after-each
+   (progn
+     (mapc #'kill-buffer (list a b))))
+  (progn
+    (should (equal 2 (zenit-kill-matching-buffers "^[ab]$" (list a b))))))
+
+(zenit-deftest zenit-mark-buffer-as-real-h
+  (:doc "`zenit-mark-buffer-as-real-h' marks buffer as real"
+   :vars
+   ((a (get-buffer-create "a")))
+   :after-each
+   (mapc #'kill-buffer (list a)))
+  (with-current-buffer a
+    (should-not (buffer-local-value 'zenit-real-buffer-p a))
+    (zenit-mark-buffer-as-real-h)
+    (should (buffer-local-value 'zenit-real-buffer-p a))))
+
+(zenit-deftest zenit/save-and-kill-buffer
+  (:doc "`zenit/save-and-kill-buffer' is defined")
+  (should (fboundp 'zenit/save-and-kill-buffer)))
+
+(zenit-deftest zenit/kill-this-buffer-in-all-windows
+  (:doc "`zenit/kill-this-buffer-in-all-windows' is defined")
+  (should (fboundp 'zenit/kill-this-buffer-in-all-windows)))
+
+(zenit-deftest zenit--message-or-count
+  (:doc "`zenit--message-or-count' displays the message with count")
+  (should (equal ,out
+                 (let ((inhibit-message t)
+                       (message-log-max nil))
+                   (zenit--message-or-count ,@in))))
+  (in out)
+  (nil "hello%s" 3) 3
+  (t "hello%s" 3) "hello3")
+
+(zenit-deftest zenit/kill-all-buffers
+  (:doc "`zenit/kill-all-buffers' is defined")
+  (should (fboundp 'zenit/kill-all-buffers)))
+
+(zenit-deftest zenit/kill-other-buffers
+  (:doc "`zenit/kill-other-buffers' is defined")
+  (should (fboundp 'zenit/kill-other-buffers)))
+
+(zenit-deftest zenit/kill-matching-buffers
+  (:doc "`zenit/kill-matching-buffers' is defined")
+  (should (fboundp 'zenit/kill-matching-buffers)))
+
+(zenit-deftest zenit/kill-buried-buffers
+  (:doc "`zenit/kill-buried-buffers' is defined")
+  (should (fboundp 'zenit/kill-buried-buffers)))
+
+(zenit-deftest zenit/kill-project-buffers
+  (:doc "`zenit/kill-project-buffers' is defined")
+  (should (fboundp 'zenit/kill-project-buffers)))

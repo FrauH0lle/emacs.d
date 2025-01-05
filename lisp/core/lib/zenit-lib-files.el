@@ -29,6 +29,9 @@
 ;; `zenit-lib-process'
 (declare-function zenit-call-process "zenit-lib-process" (command &rest args))
 
+;; `zenit-editor'
+(defvar zenit--symlink-origin)
+
 ;; `zenit-modules'
 (declare-function zenit-module-from-path "zenit-modules" (path &optional enabled-only))
 
@@ -563,13 +566,13 @@ allowing the file to be modified with root privileges."
     (cond ((file-symlink-p (buffer-file-name))
            (kill-buffer this-buffer)
            (switch-to-buffer (find-file-noselect true-file))
-           (setq-local zenit--symlink-origin this-file))
+           (setq zenit--symlink-origin this-file))
           ((bound-and-true-p zenit--symlink-origin)
            (let ((origin zenit--symlink-origin)
                  (vc-follow-symlinks nil))
              (kill-buffer this-buffer)
              (switch-to-buffer (find-file-noselect origin))
-             (setq-local zenit--symlink-origin nil)))
+             (setq zenit--symlink-origin nil)))
           (t (message "Could not detect symlink.")))))
 
 (provide 'zenit-lib '(files))

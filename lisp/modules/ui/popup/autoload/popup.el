@@ -718,9 +718,6 @@ will be ignored."
       (unless (memq (cdr parent) keep)
         (+popup--kill-buffer (car parent) 1)))))
 
-(defun +popup--last-tab-p ()
-  (not (car-safe (remq (current-buffer) (+popup-tabs-fn)))))
-
 (defun +popup--close-tab-current-window (window)
   (let ((buffer (window-buffer window))
         next-buf)
@@ -731,13 +728,11 @@ will be ignored."
         (setq +popup-buffer-status (plist-put +popup-buffer-status :tabbed nil))
         (tab-line-mode -1)
         (if next-buf
-            (progn
-              (message "win is dedi: %s" (window-dedicated-p window))
-              (when (switch-to-buffer next-buf)
-                (set-window-dedicated-p window 'popup)
-                (message "win is still dedi: %s" (window-dedicated-p window))
-                (+popup--delete-window buffer)))
-
+            (when (switch-to-buffer next-buf)
+              ;; HACK 2025-01-05: For whatever reason this is necessary as
+              ;;   otherwise the window with the tabs won't stay dedicated.
+              (set-window-dedicated-p window 'popup)
+              (+popup--delete-window buffer))
           (set-window-parameter window 'tabbed nil)
           (+popup--delete-window window))))))
 
@@ -757,7 +752,10 @@ will be ignored."
             (bury-buffer tab)
             (+popup--delete-window tab))))
       (if remaining
-          (switch-to-buffer (car remaining))
+          (when (switch-to-buffer (car remaining))
+            ;; HACK 2025-01-05: For whatever reason this is necessary as
+            ;;   otherwise the window with the tabs won't stay dedicated.
+            (set-window-dedicated-p window 'popup))
         (set-window-parameter window 'tabbed nil)
         (+popup--delete-window window)))))
 
@@ -916,12 +914,16 @@ UI (or vice versa)."
   (let ((grp (when +popup-group-function
                (funcall +popup-group-function)))
         (side (plist-get (buffer-local-value '+popup-buffer-status (current-buffer)) :tabbed)))
-    (cl-sort
-     (cons (current-buffer)
-           (delete-dups
-            (cl-delete-if-not
-             (lambda (b)
-               (and (eq (plist-get (buffer-local-value '+popup-buffer-status b) :tabbed) side)
-                    (buffer-live-p b)))
-             (mapcar #'cdr (alist-get grp +popup-buried-buffers-alist nil nil #'equal)))))
-     #'string< :key #'buffer-name)))
+    (when side
+      (cl-sort
+       (cons (current-buffer)
+             (delete-dups
+              (cl-delete-if-not
+               (lambda (b)
+                 (and (eq (plist-get (buffer-local-value '+popup-buffer-status b) :tabbed) side)
+                      (buffer-live-p b)))
+               (mapcar #'cdr (alist-get grp +popup-buried-buffers-alist nil nil #'equal)))))
+       #'string< :key #'buffer-name))))
+
+(defun +popup--single-tab-p ()
+  (length= (+popup-tabs-fn) 1))

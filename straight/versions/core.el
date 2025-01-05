@@ -16,7 +16,6 @@
  ("gnu-elpa-mirror" . "1d6212f9a78a521d1fddbeb4d03c4d67fe4d7a78")
  ("helpful" . "4ba24cac9fb14d5fdc32582cd947572040e82b2c")
  ("highlight-numbers" . "8b4744c7f46c72b1d3d599d4fb75ef8183dee307")
- ("melpa" . "403d06d358f7675cb403bcb09e7abf94053f8448")
  ("nerd-icons.el" . "4322290303f2e12efd5685a0d22d76ed76ec7349")
  ("nongnu-elpa" . "f6c211cdfafdc2f000589edb604c6e166de1216b")
  ("projectile" . "0163b335a18af0f077a474d4dc6b36e22b5e3274")

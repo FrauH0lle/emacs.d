@@ -161,14 +161,14 @@ See `+popup-mode'.")
            (delq (assq prop window-persistent-parameters)
                  window-persistent-parameters)))))
 
-(defvar-local +popup-buffer--old-window-dedicated-p nil)
-(defvar-local +popup-buffer--old-window-quit nil)
-
-(defun +popup-buffer-last-tab-h ()
-  (when (+popup--last-tab-p)
+(defun +popup-buffer--kill-last-tab-h ()
+  "Intended to run on `kill-buffer-hook'."
+  (when (+popup--single-tab-p)
     (set-window-dedicated-p (selected-window) 'popup)
     (set-window-parameter (selected-window) 'tabbed nil)))
 
+;; HACK 2025-01-05: For whatever reason this is necessary as otherwise the
+;;   window with the tabs won't stay dedicated.
 (defun +tab-line-temp-undedicate-win-a (fn &rest args)
   (if +popup-mode
       (let* ((window (cadr args))
@@ -178,11 +178,8 @@ See `+popup-mode'.")
             (apply fn args)
           (set-window-dedicated-p window old-dedicated)))
     (apply fn args)))
-
 (advice-add #'tab-line-select-tab-buffer :around #'+tab-line-temp-undedicate-win-a)
 
-;; (tab-line-select-tab-buffer)
-;; (cadr '(a f))
 (define-minor-mode +popup-buffer-mode
   "Minor mode for individual popup windows.
 
@@ -195,11 +192,8 @@ disabled when that window has been changed or closed."
 
          (when (and (+popup-parameter 'tabbed)
                     (+popup-parameter 'tabbed (current-buffer)))
-           ;; (setq +popup-buffer--old-window-dedicated-p (window-dedicated-p)
-           ;;       +popup-buffer--old-window-quit (window-parameter (selected-window) 'quit))
-           ;; (set-window-dedicated-p (selected-window) nil)
            (set-window-parameter (selected-window) 'quit nil)
-           (add-hook 'kill-buffer-hook #'+popup-buffer-last-tab-h nil t)
+           (add-hook 'kill-buffer-hook #'+popup-buffer--kill-last-tab-h nil t)
            (setq-local tab-line-tabs-function #'+popup-tabs-fn)
            (tab-line-mode +1))
 
@@ -214,12 +208,8 @@ disabled when that window has been changed or closed."
          (setq +popup-buffer-status (plist-put +popup-buffer-status :tabbed nil))
          (when (bound-and-true-p tab-line-mode)
            (tab-line-mode -1)
-           ;; (when (+popup--last-tab-p)
-           ;;   ;; (set-window-dedicated-p (selected-window) +popup-buffer--old-window-dedicated-p)
-           ;;   (set-window-parameter (selected-window) 'quit +popup-buffer--old-window-quit)
-           ;;   (set-window-parameter (selected-window) 'tabbed nil))
            (setq +popup-buffer-status (plist-put +popup-buffer-status :tabbed nil))
-           (remove-hook 'kill-buffer-hook #'+popup-buffer-last-tab-h t))
+           (remove-hook 'kill-buffer-hook #'+popup-buffer--kill-last-tab-h t))
 
          (remove-hook 'after-change-major-mode-hook #'+popup-set-modeline-on-enable-h t))))
 

@@ -16,14 +16,6 @@
 
 
 ;;;###autoload
-(defvar zenit-reload-hook nil
-  "A list of hooks to run when `zenit/reload' is called.")
-
-;;;###autoload
-(defvar zenit-reloading-p nil
-  "TODO")
-
-;;;###autoload
 (defun zenit/open-local-config ()
   "Browse your `zenit-local-conf-dir'."
   (interactive)
@@ -94,6 +86,8 @@ If prefix ARG is set, include ignored/hidden files."
 
 ;;;###autoload
 (defun zenit/insert-date (&optional arg)
+  "Insert the current date at cursor position.
+If ARG use the date format DD.MM.YYYY, else YYYY-MM-DD."
   (interactive "P")
   (insert (if arg
               (format-time-string "%d.%m.%Y")

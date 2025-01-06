@@ -37,3 +37,19 @@ emacs-lisp-mode
  "(:doc \"`" (s advice) "' advises `" (p "FN" fn) "'\")" n>
  "(should (advice-member-p '" (s advice) " #'" (s fn)")))" n>
  q)
+;; Simple DEFADVICE test
+(test-defadv
+ "(zenit-deftest " (r "ADVICE" advice) n>
+ "(:doc \"`" (s advice) "' advises `" (p "FN" fn) "'\")" n>
+ "(progn" n>
+ "(should (fboundp '" (s advice) "))" n>
+ "(should (advice-member-p '" (s advice) " #'" (s fn)"))))" n>
+ q)
+;; Simple MINOR MODE test
+(test-minor-mode
+ "(zenit-deftest " (r "MINOR-MODE" minor-mode) n>
+ "(:doc \"`" (s minor-mode) "' is defined\")" n>
+ "(progn" n>
+ "(should (fboundp '" (s minor-mode) "))" n>
+ "(should (boundp '" (s minor-mode) "))))" n>
+ q)

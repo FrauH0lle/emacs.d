@@ -28,10 +28,13 @@
 ;;
 ;;; Profiling
 
-(defvar zenit--profiler nil)
+(defvar zenit--profiler nil
+  "Tracks whether the profiler is running.
+Used by `zenit/toggle-profiler' to manage profiler state.")
 ;;;###autoload
 (defun zenit/toggle-profiler ()
-  "Toggle the Emacs profiler. Run it again to see the profiling report."
+  "Toggle the Emacs profiler.
+Run it again to see the profiling report."
   (interactive)
   (if (not zenit--profiler)
       (profiler-start 'cpu+mem)
@@ -63,18 +66,34 @@
     use-package-verbose
     (warning-suppress-types . nil))
   "A list of variable to toggle on `zenit-debug-mode'.
-Each entry can be a variable symbol or a cons cell whose CAR is the variable
-symbol and CDR is the value to set it to when `zenit-debug-mode' is activated.")
+Each entry can be a variable symbol or a cons cell whose CAR is
+the variable symbol and CDR is the value to set it to when
+`zenit-debug-mode' is activated.")
 
-(defvar zenit-debug--unbound-vars nil)
+(defvar zenit-debug--unbound-vars nil
+  "Tracks unbound variables in `zenit-debug-variables'.
+When `zenit-debug-mode' is enabled, this stores variables from
+`zenit-debug-variables' that weren't bound at the time. They are
+watched and set once they become available.")
 
 (defun zenit-debug--watch-vars-h (&rest _)
+  "Handle unbound variables from `zenit-debug-variables'.
+When called, checks if any previously unbound variables are now
+available and sets them according to their specification in
+`zenit-debug-variables'. This function is used as a watcher for
+both variable changes and after-load events."
   (when-let (vars (copy-sequence zenit-debug--unbound-vars))
     (setq zenit-debug--unbound-vars nil)
     (mapc #'zenit-debug--set-var vars)))
 
 (defvar zenit-debug-mode)
 (defun zenit-debug--set-var (spec)
+  "Set debug variables according to SPEC.
+SPEC can be either a variable symbol or a cons cell (VAR . VAL).
+For cons cells, the variable VAR will be set to VAL when debug
+mode is active, and restored to its initial value when debug mode
+is inactive. Unbound variables are tracked in
+`zenit-debug--unbound-vars' to be set when they become available."
   (cond ((listp spec)
          (pcase-let ((`(,var . ,val) spec))
            (if (boundp var)
@@ -93,7 +112,7 @@ symbol and CDR is the value to set it to when `zenit-debug-mode' is activated.")
 
 ;;;###autoload
 (define-minor-mode zenit-debug-mode
-  "Toggle `debug-on-error' and `init-file-debug' for verbose logging."
+  "Toggle `debug-on-error' and `init-file-debug' for logging."
   :global t
   :group 'zenit
   (let ((enabled zenit-debug-mode))
@@ -187,7 +206,7 @@ symbol and CDR is the value to set it to when `zenit-debug-mode' is activated.")
 ;;; Time-stamped *Message* logs
 
 (defun zenit--timestamped-message-a (format-string &rest _args)
-  "Advice to run before `message' that prepends a timestamp to each message.
+  "`message' :before advice prepending a timestamp to each message.
 
 Activate this advice with:
 (advice-add \\='message :before \\='zenit--timestamped-message-a)"

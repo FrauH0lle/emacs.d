@@ -193,7 +193,7 @@ disabled when that window has been changed or closed."
          (when (and (+popup-parameter 'tabbed)
                     (+popup-parameter 'tabbed (current-buffer)))
            (set-window-parameter (selected-window) 'quit nil)
-           (add-hook 'kill-buffer-hook #'+popup-buffer--kill-last-tab-h nil t)
+           (add-hook 'kill-buffer-hook #'+popup-buffer--kill-last-tab-h -90 t)
            (setq-local tab-line-tabs-function #'+popup-tabs-fn)
            (tab-line-mode +1))
 

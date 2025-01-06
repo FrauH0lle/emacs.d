@@ -717,23 +717,38 @@ will be ignored."
     (dolist (parent parents)
       (unless (memq (cdr parent) keep)
         (+popup--kill-buffer (car parent) 1)))))
-// Add a docstring to +popup--close-tab-current-window as well as detailed explanations as code comments to every line. AI!
+
 (defun +popup--close-tab-current-window (window &optional force-p)
+  "Close the current tab in WINDOW if it's part of a tabbed popup.
+  
+If FORCE-P is non-nil, close the tab regardless of its quit
+parameter. Otherwise, only close tabs whose quit parameter is t
+or \\='current. When closing, switch to the next available tab if
+one exists."
+  ;; Get the buffer currently displayed in the window
   (let ((buffer (window-buffer window))
         next-buf)
+    ;; Work with the current buffer's settings
     (with-current-buffer buffer
+      ;; Check if we should close based on force flag or quit parameter
       (when (or force-p
                 (memq (+popup-parameter 'quit buffer)
                       '(t current)))
+        ;; Get the next buffer in the tab list (if any)
         (setq next-buf (car-safe (remq buffer (+popup-tabs-fn))))
+        ;; Clear the tabbed status from the buffer's popup status
         (setq +popup-buffer-status (plist-put +popup-buffer-status :tabbed nil))
+        ;; Disable tab-line mode for this buffer
         (tab-line-mode -1)
+        ;; If there's a next buffer to switch to
         (if next-buf
             (when (switch-to-buffer next-buf)
               ;; HACK 2025-01-05: For whatever reason this is necessary as
               ;;   otherwise the window with the tabs won't stay dedicated.
               (set-window-dedicated-p window 'popup)
+              ;; Close the current buffer's window
               (+popup--delete-window buffer))
+          ;; If no next buffer, clear tabbed parameter and close window
           (set-window-parameter window 'tabbed nil)
           (+popup--delete-window window))))))
 

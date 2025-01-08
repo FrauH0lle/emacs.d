@@ -307,11 +307,8 @@ system."
 ;;
 ;;; Extra file extensions to support
 
-(nconc
- auto-mode-alist
- '(("/LICENSE\\'" . text-mode)
-   ("rc\\'" . conf-mode)
-   ("\\.\\(?:hex\\|nes\\)\\'" . hexl-mode)))
+(add-to-list 'auto-mode-alist '("/LICENSE\\'" . text-mode))
+(add-to-list 'auto-mode-alist '("rc\\'" . conf-mode) 'append)
 
 
 ;;
@@ -496,7 +493,7 @@ faster `prin1'."
   :after-call zenit-first-input-hook zenit-first-file-hook
   :defer 1
   :config
-  (when-let (name (getenv "EMACS_SERVER_NAME"))
+  (when-let* ((name (getenv "EMACS_SERVER_NAME")))
     (setq server-name name))
   (unless (server-running-p)
     (server-start)))

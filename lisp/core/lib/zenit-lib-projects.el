@@ -70,7 +70,7 @@ project, a .project file will be created within it so that it
 will always be treated as one. This command will throw an error
 if a parent of DIR is a valid project (which would mask DIR)."
   (interactive "D")
-  (when-let ((proj-dir (zenit-project-root dir)))
+  (when-let* ((proj-dir (zenit-project-root dir)))
     (if (file-equal-p proj-dir dir)
         (user-error "ERROR: Directory is already a project: %s" proj-dir)
       (user-error "ERROR: Directory is already inside another project: %s" proj-dir)))

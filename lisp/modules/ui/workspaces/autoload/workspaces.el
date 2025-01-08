@@ -61,7 +61,7 @@
   "Return a workspace named NAME. Unless NOERROR is non-nil, this
 throws an error if NAME doesn't exist."
   (cl-check-type name string)
-  (if-let ((ws (car-safe (+workspace-exists-p name))))
+  (if-let* ((ws (car-safe (+workspace-exists-p name))))
       ws
     (cond ((not noerror)
            (error "No workspace called '%s' was found" name)))))
@@ -444,10 +444,10 @@ A negative number will start from the end of the workspace list."
       ('error (+workspace-error ex t)))))
 
 ;;;###autoload
-(defun +workspace/switch-left ()  (interactive) (+workspace/cycle -1))
+(defun +workspace/switch-left (&optional n)  (interactive "p") (+workspace/cycle (- n)))
 
 ;;;###autoload
-(defun +workspace/switch-right () (interactive) (+workspace/cycle +1))
+(defun +workspace/switch-right (&optional n) (interactive "p") (+workspace/cycle n))
 
 ;;;###autoload
 (defun +workspace/close-window-or-workspace ()

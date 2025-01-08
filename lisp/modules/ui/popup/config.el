@@ -163,7 +163,7 @@ See `+popup-mode'.")
 
 (defun +popup-buffer--kill-last-tab-h ()
   "Intended to run on `kill-buffer-hook'."
-  (when (+popup--single-tab-p)
+  (when (+popup-tab-single-tab-p)
     (set-window-dedicated-p (selected-window) 'popup)
     (set-window-parameter (selected-window) 'tabbed nil)))
 
@@ -194,7 +194,7 @@ disabled when that window has been changed or closed."
                     (+popup-buffer-parameter 'tabbed))
            (set-window-parameter (selected-window) 'quit nil)
            (add-hook 'kill-buffer-hook #'+popup-buffer--kill-last-tab-h -90 t)
-           (setq-local tab-line-tabs-function #'+popup-tabs-fn)
+           (setq-local tab-line-tabs-function #'+popup-tab-get-tabs-fn)
            (tab-line-mode +1))
 
          (add-hook 'after-change-major-mode-hook #'+popup-set-modeline-on-enable-h
@@ -205,7 +205,7 @@ disabled when that window has been changed or closed."
            (setq +popup--timer nil)))
         (;; Turning OFF
          t
-         (+popup-buffer-set-status (current-buffer) :tabbed nil)
+         (+popup-buffer-set-parameter (current-buffer) :tabbed nil)
          (when (bound-and-true-p tab-line-mode)
            (tab-line-mode -1)
            (remove-hook 'kill-buffer-hook #'+popup-buffer--kill-last-tab-h t))
@@ -268,6 +268,8 @@ disabled when that window has been changed or closed."
            #'+popup-set-modeline-on-enable-h
            #'+popup-unset-modeline-on-disable-h)
 
+(compile-along! "autoload/")
+
 
 ;;
 ;;; Hacks
@@ -279,6 +281,5 @@ disabled when that window has been changed or closed."
 (autoload! "+popup-display-func" #'+popup-display-buffer-stacked-side-window-fn)
 
 (compile-along! "+hacks")
-
 (add-hook! '+popup-mode-hook :append
   (load! "+hacks"))

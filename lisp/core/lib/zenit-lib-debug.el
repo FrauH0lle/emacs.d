@@ -82,7 +82,7 @@ When called, checks if any previously unbound variables are now
 available and sets them according to their specification in
 `zenit-debug-variables'. This function is used as a watcher for
 both variable changes and after-load events."
-  (when-let (vars (copy-sequence zenit-debug--unbound-vars))
+  (when-let* ((vars (copy-sequence zenit-debug--unbound-vars)))
     (setq zenit-debug--unbound-vars nil)
     (mapc #'zenit-debug--set-var vars)))
 

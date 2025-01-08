@@ -85,7 +85,7 @@ a symlink. It respects `doom-modeline-icon'."
       (defsubst +doom-modeline--buffer-symlink-icon ()
         "The icon of the current buffer symlink."
         (when +doom-modeline-buffer-symlink-icon
-          (when-let ((icon (+doom-modeline-update-buffer-file-symlink-icon)))
+          (when-let* ((icon (+doom-modeline-update-buffer-file-symlink-icon)))
             (unless (string-empty-p icon)
               (concat
                (doom-modeline-display-icon icon)

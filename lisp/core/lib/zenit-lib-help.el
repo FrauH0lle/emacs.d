@@ -324,7 +324,7 @@ The return value depends on the ACTION:
   (let ((alist
          (append (apply #'zenit--org-headings files plist)
                  extra-candidates)))
-    (if-let (result (completing-read prompt alist nil nil initial-input))
+    (if-let* ((result (completing-read prompt alist nil nil initial-input)))
         (cl-destructuring-bind (file &optional location)
             (cdr (assoc result alist))
           (if action
@@ -469,10 +469,10 @@ available."
                (when (memq (car-safe sexp) '(modulep!))
                  (format "%s %s" (nth 1 sexp) (nth 2 sexp)))))))
         ((when buffer-file-name
-           (when-let (mod (zenit-module-from-path buffer-file-name))
+           (when-let* ((mod (zenit-module-from-path buffer-file-name)))
              (unless (memq (car mod) '(:core :local-conf))
                (format "%s %s" (car mod) (cdr mod))))))
-        ((when-let (mod (cdr (assq major-mode zenit--help-major-mode-module-alist)))
+        ((when-let* ((mod (cdr (assq major-mode zenit--help-major-mode-module-alist))))
            (format "%s %s"
                    (symbol-name (car mod))
                    (symbol-name (cadr mod)))))))
@@ -667,7 +667,7 @@ If prefix arg is present, refresh the cache."
           (`straight
            (insert "Straight\n")
            (package--print-help-section "Pinned")
-           (if-let ((lockfiles (delq nil (mapcar #'straight--versions-lockfile (zenit-package-get package :lockfile)))))
+           (if-let* ((lockfiles (delq nil (mapcar #'straight--versions-lockfile (zenit-package-get package :lockfile)))))
                (dotimes (i (length lockfiles))
                  (let* ((lf (nth i lockfiles))
                         (pin (alist-get (symbol-name package) (straight--lockfile-read lf) nil nil #'equal)))
@@ -759,7 +759,7 @@ If prefix arg is present, refresh the cache."
               (insert ")\n"))))
 
         (package--print-help-section "Configs")
-        (if-let ((configs (zenit--help-package-configs package)))
+        (if-let* ((configs (zenit--help-package-configs package)))
             (progn
               (insert "This package is configured in the following locations:")
               (dolist (location configs)

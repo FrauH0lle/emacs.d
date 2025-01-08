@@ -91,7 +91,7 @@ the local one)."
   "Return t if CATEGORY MODULE is enabled (ie. present in
 `zenit-modules')."
   (declare (pure t) (side-effect-free t))
-  (when-let (plist (gethash (cons category module) zenit-modules))
+  (when-let* ((plist (gethash (cons category module) zenit-modules)))
     (or (null flag)
         (and (memq flag (plist-get plist :flags))
              t))))
@@ -101,7 +101,7 @@ the local one)."
 
 If INITDEPTH? is non-nil, use the CAR if a module was given two depths (see
 `zenit-module-set')."
-  (if-let (depth (zenit-module-get category module :depth))
+  (if-let* ((depth (zenit-module-get category module :depth)))
       (or (if initdepth?
               (car-safe depth)
             (cdr-safe depth))
@@ -125,7 +125,7 @@ If INITDEPTH? is non-nil, use the CAR if a module was given two depths (see
   "Returns the plist for CATEGORY MODULE. Gets PROPERTY,
 specifically, if set."
   (declare (pure t) (side-effect-free t))
-  (when-let (plist (gethash (cons category module) zenit-modules))
+  (when-let* ((plist (gethash (cons category module) zenit-modules)))
     (if property
         (plist-get plist property)
       plist)))
@@ -136,7 +136,7 @@ additional pairs of PROPERTY and VALUEs.
 
 \(fn CATEGORY MODULE PROPERTY VALUE &rest [PROPERTY VALUE [...]])"
   (puthash (cons category module)
-           (if-let (old-plist (zenit-module-get category module))
+           (if-let* ((old-plist (zenit-module-get category module)))
                (if (null plist)
                    old-plist
                  (when (cl-oddp (length plist))
@@ -228,7 +228,7 @@ than their configdepth. See `zenit-module-set' for details."
 CATEGORY is a keyword. MODULE is a symbol. FILE is an optional
 string path. If the category isn't enabled this returns nil. For
 finding disabled modules use `zenit-module-locate-path'."
-  (when-let (path (zenit-module-get category module :path))
+  (when-let* ((path (zenit-module-get category module :path)))
     (if file
         (file-name-concat path file)
       path)))
@@ -241,7 +241,7 @@ CATEGORY is a keyword (e.g. :lang) and MODULE is a symbol (e.g.
 resulting path. If no path exists, this returns nil, otherwise an
 absolute path."
   (let (file-name-handler-alist)
-    (if-let (path (zenit-module-expand-path category module file))
+    (if-let* ((path (zenit-module-expand-path category module file)))
         (if (or (null file)
                 (file-exists-p path))
             path)
@@ -508,12 +508,13 @@ module key."
           (aref context (zenit-module--context-field :name)))))
 
 (defmacro zenit-module-context-with (module-key &rest body)
-  "Evaluate BODY with `zenit-module-context' informed by
- MODULE-KEY."
+  "Evaluate BODY with `zenit-module-context' informed by MODULE-KEY."
   (declare (indent 1))
-  `(let ((zenit-module-context (zenit-module-context ,module-key)))
-     (zenit-log ":context:module: =%s" zenit-module-context)
-     ,@body))
+  `(let ((zenit-module-context
+          (let ((module-key ,module-key))
+            (zenit-module-context module-key))))
+         (zenit-log ":context:module: =%s" zenit-module-context)
+         ,@body))
 
 (defmacro modulep! (category &optional module &rest flags)
     "Return t if :CATEGORY MODULE (and +FLAGS) are enabled.
@@ -557,7 +558,7 @@ For more about modules and flags, see `modules!'."
                       (zenit-module--context-field :flags))
               (backquote ,flags))
           `(let ((file (file!)))
-             (if-let ((module (zenit-module-from-path file)))
+             (if-let* ((module (zenit-module-from-path file)))
                  (zenit-module--has-flag-p
                   (aref (or (get (car module) (cdr module))
                             zenit--empty-module-context)

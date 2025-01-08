@@ -4,13 +4,13 @@
 (defun +llm-api-key-from-auth-source (host &optional user)
   "Lookup api key for HOST in the auth source.
 By default \"apikey\" is used as USER."
-  (if-let ((secret
-            (plist-get
-             (car (auth-source-search
-                   :host host
-                   :user (or user "apikey")
-                   :require '(:secret)))
-             :secret)))
+  (if-let* ((secret
+             (plist-get
+              (car (auth-source-search
+                    :host host
+                    :user (or user "apikey")
+                    :require '(:secret)))
+              :secret)))
       (if (functionp secret)
           (encode-coding-string (funcall secret) 'utf-8)
         secret)

@@ -233,8 +233,8 @@ Also adds support for a `:sync' parameter to override `:async'."
                ;; buffer where `buffer-file-name' is nil).
                (string-match-p "^ \\*temp" (buffer-name)))
         (save-excursion
-          (when-let ((beg (org-babel-where-is-src-block-result))
-                     (end (progn (goto-char beg) (forward-line) (org-babel-result-end))))
+          (when-let* ((beg (org-babel-where-is-src-block-result))
+                      (end (progn (goto-char beg) (forward-line) (org-babel-result-end))))
             (org-display-inline-images nil nil (min beg end) (max beg end)))))))
 
   (after! python
@@ -630,7 +630,7 @@ buffer, so to avoid that, install a hook to restart `org-mode'
 when they're switched to so they can grow up to be fully-fledged
 org-mode buffers."
       :around #'org-get-agenda-file-buffer
-      (if-let (buf (org-find-base-buffer-visiting file))
+      (if-let* ((buf (org-find-base-buffer-visiting file)))
           buf
         (let ((recentf-exclude '(always))
               (zenit-inhibit-large-file-detection t)
@@ -639,7 +639,7 @@ org-mode buffers."
               vc-handled-backends
               enable-local-variables
               find-file-hook)
-          (when-let ((buf (delay-mode-hooks (funcall fn file))))
+          (when-let* ((buf (delay-mode-hooks (funcall fn file))))
             (with-current-buffer buf
               (add-hook 'zenit-switch-buffer-hook #'+org--restart-mode-h
                         nil 'local))

@@ -32,7 +32,7 @@
    epa-file-encrypt-to
    (or (default-value 'epa-file-encrypt-to)
        (unless (string-empty-p user-full-name)
-         (when-let (context (ignore-errors (epg-make-context)))
+         (when-let* ((context (ignore-errors (epg-make-context))))
            (cl-loop for key in (epg-list-keys context user-full-name 'public)
                     for subkey = (car (epg-key-sub-key-list key))
                     if (not (memq 'disabled (epg-sub-key-capability subkey)))
@@ -372,8 +372,8 @@ Continues comments if executed from a commented line. Consults
 
   ;; A convention where C-s on popups and interactive searches will invoke
   ;; ivy/helm/vertico for their superior filtering.
-  (when-let (command (cond ((modulep! :completion vertico)
-                            #'consult-history)))
+  (when-let* ((command (cond ((modulep! :completion vertico)
+                              #'consult-history))))
     (define-key!
       :keymaps (append +default-minibuffer-maps
                        (when (modulep! :editor evil)

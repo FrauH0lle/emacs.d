@@ -16,7 +16,7 @@
   (ring-remove+insert+extend +eshell-buffers buf 'grow))
 
 (defun +eshell--remove-buffer (buf)
-  (when-let (idx (ring-member +eshell-buffers buf))
+  (when-let* ((idx (ring-member +eshell-buffers buf)))
     (ring-remove +eshell-buffers idx)
     t))
 
@@ -28,7 +28,7 @@
       (switch-to-buffer (zenit-fallback-buffer)))
     (when +eshell-enable-new-shell-on-split
       (let ((default-directory directory))
-        (when-let (win (get-buffer-window (+eshell/here)))
+        (when-let* ((win (get-buffer-window (+eshell/here))))
           (set-window-dedicated-p win dedicated-p))))))
 
 (defun +eshell--setup-window (window &optional flag)
@@ -93,13 +93,13 @@
         confirm-kill-processes
         current-prefix-arg)
     (when arg
-      (when-let (win (get-buffer-window eshell-buffer))
+      (when-let* ((win (get-buffer-window eshell-buffer)))
         (delete-window win))
       (when (buffer-live-p eshell-buffer)
         (with-current-buffer eshell-buffer
           (fundamental-mode)
           (erase-buffer))))
-    (if-let (win (get-buffer-window eshell-buffer))
+    (if-let* ((win (get-buffer-window eshell-buffer)))
         (let (confirm-kill-processes)
           (delete-window win)
           (ignore-errors (kill-buffer eshell-buffer)))
@@ -149,24 +149,7 @@ Once the eshell process is killed, the previous frame layout is restored."
 (defun +eshell/search-history ()
   "Search the eshell command history with helm, ivy or `eshell-list-history'."
   (interactive)
-  (cond ((modulep! :completion ivy)
-         (require 'em-hist)
-         (let* ((ivy-completion-beg (eshell-bol))
-                (ivy-completion-end (point-at-eol))
-                (input (buffer-substring-no-properties
-                        ivy-completion-beg
-                        ivy-completion-end)))
-           ;; Better than `counsel-esh-history' because that doesn't
-           ;; pre-populate the initial input or selection.
-           (ivy-read "Command: "
-                     (delete-dups
-                      (when (> (ring-size eshell-history-ring) 0)
-                        (ring-elements eshell-history-ring)))
-                     :initial-input input
-                     :action #'ivy-completion-in-region-action)))
-        ((modulep! :completion helm)
-         (helm-eshell-history))
-        ((modulep! :completion vertico)
+  (cond ((modulep! :completion vertico)
          (forward-char 1) ;; Move outside of read only prompt text.
          (consult-history))
         ((eshell-list-history))))
@@ -285,7 +268,7 @@ delete."
   "Close window (or workspace) on quit."
   (let ((buf (current-buffer)))
     (when (+eshell--remove-buffer buf)
-      (when-let (win (get-buffer-window buf))
+      (when-let* ((win (get-buffer-window buf)))
         (+eshell--setup-window win nil)
         (cond ((and (one-window-p t)
                     (window-configuration-p (frame-parameter nil 'saved-wconf)))

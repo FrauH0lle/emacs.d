@@ -97,7 +97,7 @@ declaration.")
 
 Returns nil if the profile does not exist or does not have a
 lockfile."
-  (if-let ((filename (alist-get profile straight-profiles)))
+  (if-let* ((filename (alist-get profile straight-profiles)))
       (straight--versions-file filename)
     nil))
 
@@ -323,7 +323,7 @@ internally)."
 ;;; native-comp
 
 (when (featurep 'native-compile)
-  (after! comp
+  (with-eval-after-load 'comp
     ;; HACK Disable native-compilation for some troublesome packages
     (mapc (zenit-partial #'add-to-list 'native-comp-jit-compilation-deny-list)
           (list "/emacs-jupyter.*\\.el\\'"
@@ -514,15 +514,15 @@ installed."
                   (goto-char (match-beginning 0))
                   (cl-destructuring-bind (_ name . plist)
                       (read (current-buffer))
-                    (when-let ((lockfile (plist-get plist :lockfile)))
+                    (when-let* ((lockfile (plist-get plist :lockfile)))
                       (setq plist (plist-put plist :lockfile (ensure-list lockfile))))
                     ;; Record what module this declaration was found in
                     (setq plist (plist-put plist :modules (list (zenit-module-context-key))))
                     ;; When a package is already registered in `zenit-packages',
                     ;; merge the :lockfile and :modules properties
-                    (if-let ((old-plist (cdr (assq name zenit-packages))))
-                      (dolist (key '(:lockfile :modules))
-                        (setq plist (plist-put plist key (append (plist-get old-plist key) (plist-get plist key))))))
+                    (if-let* ((old-plist (cdr (assq name zenit-packages))))
+                        (dolist (key '(:lockfile :modules))
+                          (setq plist (plist-put plist key (append (plist-get old-plist key) (plist-get plist key))))))
                     (setf (alist-get name zenit-packages) plist))))))))
     (user-error
      (user-error (error-message-string e)))
@@ -547,8 +547,8 @@ also be a list of module keys."
         zenit-packages)
     (letf! (defun read-packages (key)
              (zenit-module-context-with key
-               (when-let (file (zenit-module-locate-path
-                                (car key) (cdr key) packages-file))
+               (when-let* ((file (zenit-module-locate-path
+                                  (car key) (cdr key) packages-file)))
                  (zenit-packages--read file))))
       (zenit-context-with 'packages
         (let ((user? (assq :local-conf module-list)))

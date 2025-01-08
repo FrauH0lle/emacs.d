@@ -25,6 +25,9 @@
 (eval-when-compile
   (require 'cl-lib))
 
+;; `popup/config.el'
+(defvar +popup--ignore-parent)
+
 
 ;;
 ;;; Core functions
@@ -226,8 +229,8 @@ window."
         origin)
     (save-popups!
      (find-file path)
-     (when-let (pos (get-text-property button 'position
-                                       (marker-buffer button)))
+     (when-let* ((pos (get-text-property button 'position
+                                         (marker-buffer button))))
        (goto-char pos))
      (setq origin (selected-window))
      (recenter))
@@ -237,7 +240,7 @@ window."
 ;;;###package Info
 (defadvice! +popup--switch-to-info-window-a (&rest _)
   :after #'info-lookup-symbol
-  (when-let (win (get-buffer-window "*info*"))
+  (when-let* ((win (get-buffer-window "*info*")))
     (when (+popup-window-p win)
       (select-window win))))
 
@@ -295,8 +298,8 @@ other windows. Ugh, such an ugly hack."
                   (apply read-char-exclusive args))
                 (defun split-window-vertically (&optional _size)
                   (funcall split-window-vertically (- 0 window-min-height 1)))
-                (defun org-fit-window-to-buffer (&optional window max-height min-height shrink-only)
-                  (when-let (buf (window-buffer window))
+                (defun org-fit-window-to-buffer (&optional window _max-height _min-height _shrink-only)
+                  (when-let* ((buf (window-buffer window)))
                     (with-current-buffer buf
                       (+popup-buffer-mode)))
                   (when (> (window-buffer-height window)

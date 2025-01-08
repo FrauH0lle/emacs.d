@@ -120,7 +120,7 @@ Only has an effect in GUI Emacs.")
   ;; git executable isn't in the exact same location.
   (add-hook! 'magit-status-mode-hook
     (defun +magit-optimize-process-calls-h ()
-      (when-let (path (executable-find magit-git-executable t))
+      (when-let* ((path (executable-find magit-git-executable t)))
         (setq-local magit-git-executable path))))
 
   (add-hook! 'magit-diff-visit-file-hook
@@ -217,7 +217,7 @@ Only has an effect in GUI Emacs.")
 
   (after! git-rebase
     (dolist (key '(("M-k" . "gk") ("M-j" . "gj")))
-      (when-let (desc (assoc (car key) evil-collection-magit-rebase-commands-w-descriptions))
+      (when-let* ((desc (assoc (car key) evil-collection-magit-rebase-commands-w-descriptions)))
         (setcar desc (cdr key))))
     (evil-define-key* evil-collection-magit-state git-rebase-mode-map
       "gj" #'git-rebase-move-line-down

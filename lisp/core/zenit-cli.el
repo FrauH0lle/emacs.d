@@ -103,7 +103,7 @@ and the log type.")
                                         zenit-print-indent
                                         1)
                                      "..."))))
-           (when-let (backtrace-file (zenit-backtrace-write-to-file backtrace error-file))
+           (when-let* ((backtrace-file (zenit-backtrace-write-to-file backtrace error-file)))
              (print! (warn "Wrote extended backtrace to %s")
                      (path backtrace-file))))))))))
 
@@ -172,7 +172,7 @@ See `zenit-cli-log-file-format' for details."
   ;; (quiet!
    (require 'cl nil t)    ; "Package cl is deprecated"
    (unless site-run-file  ; unset in zenit-core.el
-     (when-let ((site-run-file (get 'site-run-file 'initial-value)))
+     (when-let* ((site-run-file (get 'site-run-file 'initial-value)))
        (load site-run-file t inhibit-message)))
    ;; )
 

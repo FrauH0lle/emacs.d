@@ -33,7 +33,7 @@ This function sets the buffer-local
 `flyspell-generic-check-word-predicate' to the predicate
 associated with the current major mode in
 `+spell--flyspell-predicate-alist', if one exists."
-  (when-let (pred (assq major-mode +spell--flyspell-predicate-alist))
+  (when-let* ((pred (assq major-mode +spell--flyspell-predicate-alist)))
     (setq-local flyspell-generic-check-word-predicate (cdr pred))))
 
 ;;;###autoload

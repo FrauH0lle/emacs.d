@@ -194,54 +194,54 @@ already been."
   ;; Collect package versions
   (let ((pinned (straight--lockfile-read-all)))
     (print-group!
-      (if-let (built
-               (zenit--with-package-recipes (zenit-package-recipe-list)
-                   (recipe package type local-repo)
-                 (let ((repo-dir (straight--repos-dir local-repo))
-                       (build-dir (straight--build-dir package))
-                       (need-rebuild-p))
-                   ;; Package is installed when both build and repo directories
-                   ;; are present
-                   (cond ((and (file-directory-p repo-dir)
-                               (file-directory-p build-dir))
-                          (zenit-log "%s already installed" package))
-                         ;; Only repo directory present, simply rebuild
-                         ((and (file-directory-p repo-dir)
-                               (not (file-directory-p build-dir)))
-                          (zenit-log "Rebuilding %s" package)
-                          (setq need-rebuild-p t))
-                         ;; Otherwise, try to install packge
-                         (t (setq need-rebuild-p t)))
-                   (when need-rebuild-p
-                     ;; If local repo is not present, update recipes before
-                     ;; cloning
-                     (unless (file-directory-p (straight--repos-dir local-repo))
-                       (zenit--cli-recipes-update))
-                     (condition-case-unless-debug e
-                         (let ((straight-use-package-pre-build-functions
-                                (cons (lambda (pkg &rest _)
-                                        (when-let (commit (cdr (assoc pkg pinned)))
-                                          (print! (item "Checked out %s: %s") pkg commit)))
-                                      straight-use-package-pre-build-functions)))
-                           (straight-use-package (intern package))
-                           ;; HACK Line encoding issues can plague repos with
-                           ;;   dirty worktree prompts when updating packages or
-                           ;;   "Local variables entry is missing the suffix"
-                           ;;   errors when installing them (see
-                           ;;   hlissner/zenit-emacs#2637), so have git handle
-                           ;;   conversion by force.
-                           (when (and zenit--system-windows-p (stringp local-repo))
-                             (let ((default-directory (straight--repos-dir local-repo)))
-                               (when (file-in-directory-p default-directory straight-base-dir)
-                                 (straight--process-run "git" "config" "core.autocrlf" "true"))))
+      (if-let* ((built
+                 (zenit--with-package-recipes (zenit-package-recipe-list)
+                     (recipe package type local-repo)
+                   (let ((repo-dir (straight--repos-dir local-repo))
+                         (build-dir (straight--build-dir package))
+                         (need-rebuild-p))
+                     ;; Package is installed when both build and repo directories
+                     ;; are present
+                     (cond ((and (file-directory-p repo-dir)
+                                 (file-directory-p build-dir))
+                            (zenit-log "%s already installed" package))
+                           ;; Only repo directory present, simply rebuild
+                           ((and (file-directory-p repo-dir)
+                                 (not (file-directory-p build-dir)))
+                            (zenit-log "Rebuilding %s" package)
+                            (setq need-rebuild-p t))
+                           ;; Otherwise, try to install packge
+                           (t (setq need-rebuild-p t)))
+                     (when need-rebuild-p
+                       ;; If local repo is not present, update recipes before
+                       ;; cloning
+                       (unless (file-directory-p (straight--repos-dir local-repo))
+                         (zenit--cli-recipes-update))
+                       (condition-case-unless-debug e
+                           (let ((straight-use-package-pre-build-functions
+                                  (cons (lambda (pkg &rest _)
+                                          (when-let* ((commit (cdr (assoc pkg pinned))))
+                                            (print! (item "Checked out %s: %s") pkg commit)))
+                                        straight-use-package-pre-build-functions)))
+                             (straight-use-package (intern package))
+                             ;; HACK Line encoding issues can plague repos with
+                             ;;   dirty worktree prompts when updating packages or
+                             ;;   "Local variables entry is missing the suffix"
+                             ;;   errors when installing them (see
+                             ;;   hlissner/zenit-emacs#2637), so have git handle
+                             ;;   conversion by force.
+                             (when (and zenit--system-windows-p (stringp local-repo))
+                               (let ((default-directory (straight--repos-dir local-repo)))
+                                 (when (file-in-directory-p default-directory straight-base-dir)
+                                   (straight--process-run "git" "config" "core.autocrlf" "true"))))
 
-                           ;; Remove any existing .eln files. Compilation is done
-                           ;; in async mode and thus, remaining .eln files can
-                           ;; trigger rebuilds.
-                           (when (featurep 'native-compile)
-                             (zenit--remove-eln-files build-dir)))
-                       (error
-                        (signal 'zenit-package-error (list package e))))))))
+                             ;; Remove any existing .eln files. Compilation is done
+                             ;; in async mode and thus, remaining .eln files can
+                             ;; trigger rebuilds.
+                             (when (featurep 'native-compile)
+                               (zenit--remove-eln-files build-dir)))
+                         (error
+                          (signal 'zenit-package-error (list package e)))))))))
           (progn
             (print! (success "\rInstalled %d packages") (length built)))
         (print! (item "No packages need to be installed"))
@@ -273,68 +273,68 @@ already been."
 
       (unless force-p
         (straight--make-build-cache-available))
-      (if-let (built
-               (zenit--with-package-recipes recipes (package local-repo recipe)
-                 (unless force-p
-                   ;; Ensure packages with outdated files/bytecode are rebuilt
-                   (let* ((build-dir (straight--build-dir package))
-                          (repo-dir  (straight--repos-dir local-repo))
-                          (build (if (plist-member recipe :build)
-                                     (plist-get recipe :build)
-                                   t))
-                          (want-byte-compile
-                           (or (eq build t)
-                               (memq 'compile build)))
-                          (want-native-compile
-                           (or (eq build t)
-                               (memq 'native-compile build)))
-                          rebuild-reason)
-                     (and (eq (car-safe build) :not)
-                          (setq want-byte-compile (not want-byte-compile)
-                                want-native-compile (not want-native-compile)))
-                     (unless (featurep 'native-compile)
-                       (setq want-native-compile nil))
-                     (and (or want-byte-compile want-native-compile)
-                          (or (when (file-newer-than-file-p repo-dir build-dir)
-                                (setq rebuild-reason "Repository newer than build directory") t)
-                              (when (file-exists-p (straight--modified-dir (or local-repo package)))
-                                (setq rebuild-reason "Entry in 'straight/modified/' exists") t)
-                              (when (cl-loop with outdated = nil
-                                             for file in (zenit-files-in build-dir :match "\\.el$" :full t)
-                                             if (or (when want-byte-compile
-                                                      (zenit--elc-file-outdated-p file))
-                                                    ;; Only check .eln files if
-                                                    ;; .elc file actually exists.
-                                                    ;; Otherwise you can get a
-                                                    ;; bunch of unncessary
-                                                    ;; rebuilds because a file in
-                                                    ;; the eln cache is missing.
-                                                    (when (and want-native-compile
-                                                               (file-exists-p (byte-compile-dest-file file)))
-                                                      (zenit--eln-file-outdated-p file)))
-                                             do (setq outdated t)
-                                             (when want-native-compile
-                                               (push file zenit--eln-output-expected))
-                                             finally return outdated)
-                                (setq rebuild-reason ".eln/.elc outdated") t))
-                          (progn (zenit-log "%s is outdated, rebuilding" package)
-                                 (zenit-log "Reason: %s" rebuild-reason)
-                                 (puthash package t straight--packages-to-rebuild)
-                                 (when (featurep 'native-compile)
-                                   (zenit--remove-eln-files build-dir))))))
-                 (if force-p
-                     (progn
-                       (when (featurep 'native-compile)
-                         (zenit--remove-eln-files t 'all))
-                       ;; NOTE 2024-05-02: This is the same as what
-                       ;;   `straight-rebuild-all' does but we reverse the order
-                       ;;   of the packages such that they are build in the order
-                       ;;   they were declared.
-                       (dolist (package (nreverse (hash-table-keys straight--recipe-cache)))
-                         (straight-use-package (intern package))))
-                   (when (gethash package straight--packages-to-rebuild)
-                     (straight-register-repo-modification local-repo)
-                     (straight-use-package (intern package))))))
+      (if-let* ((built
+                 (zenit--with-package-recipes recipes (package local-repo recipe)
+                   (unless force-p
+                     ;; Ensure packages with outdated files/bytecode are rebuilt
+                     (let* ((build-dir (straight--build-dir package))
+                            (repo-dir  (straight--repos-dir local-repo))
+                            (build (if (plist-member recipe :build)
+                                       (plist-get recipe :build)
+                                     t))
+                            (want-byte-compile
+                             (or (eq build t)
+                                 (memq 'compile build)))
+                            (want-native-compile
+                             (or (eq build t)
+                                 (memq 'native-compile build)))
+                            rebuild-reason)
+                       (and (eq (car-safe build) :not)
+                            (setq want-byte-compile (not want-byte-compile)
+                                  want-native-compile (not want-native-compile)))
+                       (unless (featurep 'native-compile)
+                         (setq want-native-compile nil))
+                       (and (or want-byte-compile want-native-compile)
+                            (or (when (file-newer-than-file-p repo-dir build-dir)
+                                  (setq rebuild-reason "Repository newer than build directory") t)
+                                (when (file-exists-p (straight--modified-dir (or local-repo package)))
+                                  (setq rebuild-reason "Entry in 'straight/modified/' exists") t)
+                                (when (cl-loop with outdated = nil
+                                               for file in (zenit-files-in build-dir :match "\\.el$" :full t)
+                                               if (or (when want-byte-compile
+                                                        (zenit--elc-file-outdated-p file))
+                                                      ;; Only check .eln files if
+                                                      ;; .elc file actually exists.
+                                                      ;; Otherwise you can get a
+                                                      ;; bunch of unncessary
+                                                      ;; rebuilds because a file in
+                                                      ;; the eln cache is missing.
+                                                      (when (and want-native-compile
+                                                                 (file-exists-p (byte-compile-dest-file file)))
+                                                        (zenit--eln-file-outdated-p file)))
+                                               do (setq outdated t)
+                                               (when want-native-compile
+                                                 (push file zenit--eln-output-expected))
+                                               finally return outdated)
+                                  (setq rebuild-reason ".eln/.elc outdated") t))
+                            (progn (zenit-log "%s is outdated, rebuilding" package)
+                                   (zenit-log "Reason: %s" rebuild-reason)
+                                   (puthash package t straight--packages-to-rebuild)
+                                   (when (featurep 'native-compile)
+                                     (zenit--remove-eln-files build-dir))))))
+                   (if force-p
+                       (progn
+                         (when (featurep 'native-compile)
+                           (zenit--remove-eln-files t 'all))
+                         ;; NOTE 2024-05-02: This is the same as what
+                         ;;   `straight-rebuild-all' does but we reverse the order
+                         ;;   of the packages such that they are build in the order
+                         ;;   they were declared.
+                         (dolist (package (nreverse (hash-table-keys straight--recipe-cache)))
+                           (straight-use-package (intern package))))
+                     (when (gethash package straight--packages-to-rebuild)
+                       (straight-register-repo-modification local-repo)
+                       (straight-use-package (intern package)))))))
 
           (progn
             ;; HACK Every time you save a file in a package that straight tracks,

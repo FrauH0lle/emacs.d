@@ -80,7 +80,7 @@ human-readable variant of its associated major mode name."
         (error "Given symbol is not a repl function: %s" name)
       (string-join (append (split-string (capitalize (match-string-no-properties 1 name))
                                  "-")
-                           (when-let ((subname (match-string-no-properties 2 name)))
+                           (when-let* ((subname (match-string-no-properties 2 name)))
                              (split-string (capitalize subname)
                                  "-")))
                    " "))))

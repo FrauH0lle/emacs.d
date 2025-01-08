@@ -131,9 +131,9 @@ BODY is only compiled if COND evaluates to non-nil. See
 
 (defvar zenit-log-level
   (if init-file-debug
-      (if-let ((level (getenv-internal "DEBUG"))
-               (level (string-to-number level))
-               ((not (zerop level))))
+      (if-let* ((level (getenv-internal "DEBUG"))
+                (level (string-to-number level))
+                ((not (zerop level))))
           level
         2)
     0)
@@ -356,7 +356,7 @@ changed."
         (signal 'file-error (list "No envvar file exists" file)))
     (with-temp-buffer
       (insert-file-contents file)
-      (when-let (env (read (current-buffer)))
+      (when-let* ((env (read (current-buffer))))
         (let ((tz (getenv-internal "TZ")))
           (setq-default
            process-environment
@@ -367,7 +367,7 @@ changed."
            shell-file-name
            (or (getenv "SHELL")
                (default-value 'shell-file-name)))
-          (when-let (newtz (getenv-internal "TZ"))
+          (when-let* ((newtz (getenv-internal "TZ")))
             (unless (equal tz newtz)
               (set-time-zone-rule newtz))))
         env))))
@@ -525,7 +525,7 @@ The def* forms accepted are:
               (`defadvice
                   (if (keywordp (cadr rest))
                       (cl-destructuring-bind (target where fn) rest
-                        `(when-let (fn ,fn)
+                        `(when-let* ((fn ,fn))
                            (advice-add ,target ,where fn)
                            (unwind-protect ,body (advice-remove ,target fn))))
                     (let* ((fn (pop rest))
@@ -543,6 +543,8 @@ The def* forms accepted are:
                              ,(if name `(fmakunbound ',name))))))))
               (`defun
                   `(cl-letf ((,(car rest) (symbol-function #',(car rest))))
+                     (eval-when-compile
+                       (declare-function ,(car rest) nil))
                      (ignore ,(car rest))
                      (cl-letf (((symbol-function #',(car rest))
                                 (lambda! ,(cadr rest) ,@(cddr rest))))
@@ -962,7 +964,7 @@ getting compiled."
   (declare (indent defun) (debug t))
   (when (macroexp-compiling-p)
     (let* ((filename (expand-file-name filename (or path (protect-macros! (dir!)))))
-           (files))
+           files)
       (if (not (file-directory-p filename))
           `(eval-when-compile
              (async-get (apply #'zenit-async-byte-compile-file
@@ -1045,7 +1047,7 @@ See also `use-package!'."
                  (require ',feature))
              ((debug error)
               (message "Failed to load deferred package %s: %s" ',feature e)))
-           (when-let (deferral-list (assq ',feature zenit--deferred-packages-alist))
+           (when-let* ((deferral-list (assq ',feature zenit--deferred-packages-alist)))
              (dolist (hook (cdr deferral-list))
                (advice-remove hook #',fn)
                (remove-hook hook #',fn))
@@ -1099,7 +1101,7 @@ time."
   "Queue FNS to be byte/natively-compiled after a brief delay."
   (with-memoization (get 'zenit-compile-function 'timer)
     (run-with-idle-timer
-     1.5 t (fn! (when-let (fn (pop fns))
+     1.5 t (fn! (when-let* ((fn (pop fns)))
                   (zenit-log "compile-functions: %s" fn)
                   (or (if (featurep 'native-compile)
                           (or (subr-native-elisp-p (indirect-function fn))

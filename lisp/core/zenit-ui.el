@@ -50,10 +50,12 @@
 ;;; Variables
 
 (defcustom zenit-theme nil
-  "A symbol representing the Emacs theme to load at startup.
+  "The Emacs theme or themes to load at startup.
+Is either a symbol representing the name of an Emacs theme, or a
+list thereof (to enable in order).
 
-Set to `nil' to load no theme at all. This variable is changed by
-`load-theme'."
+Set to nil to load no theme at all. This variable is changed by
+`load-theme' and `enable-theme'."
   :group 'zenit
   :type 'symbol)
 
@@ -266,7 +268,7 @@ file-visiting."
       ;; never automatically recentered. The default (0) triggers this too
       ;; aggressively, so I've set it to 10 to recenter if scrolling too far
       ;; off-screen.
-      scroll-conservatively 10
+      scroll-conservatively 101
       scroll-margin 0
       scroll-preserve-screen-position t
       ;; Reduce cursor lag by a tiny bit by not auto-adjusting `window-vscroll'
@@ -675,39 +677,78 @@ buffers are visible in other windows, switch to
 
 (defun zenit-init-theme-h (&rest _)
   "Load the theme specified by `zenit-theme' in FRAME."
-  (when (and zenit-theme (not (custom-theme-enabled-p zenit-theme)))
-    (load-theme zenit-theme t)))
+  (dolist (th (ensure-list zenit-theme))
+    (unless (custom-theme-enabled-p th)
+      (if (custom-theme-p th)
+          (enable-theme th)
+        (load-theme th t)))))
 
-(defadvice! zenit--load-theme-a (fn theme &optional no-confirm no-enable)
-  "Record `zenit-theme', disable old themes, and trigger
-`zenit-load-theme-hook'."
-  :around #'load-theme
-  ;; Run `load-theme' from an estranged buffer, where we can ensure that
-  ;; buffer-local face remaps (by `mixed-pitch-mode', for instance) won't
-  ;; interfere with recalculating faces in new themes.
-  (with-temp-buffer
-    (let ((last-themes (copy-sequence custom-enabled-themes)))
-      ;; Disable previous themes so there are no conflicts. If you truly want
-      ;; multiple themes enabled, then use `enable-theme' instead.
-      (mapc #'disable-theme custom-enabled-themes)
-      (prog1 (funcall fn theme no-confirm no-enable)
-        (when (and (not no-enable) (custom-theme-enabled-p theme))
-          (setq zenit-theme theme)
-          (put 'zenit-theme 'previous-themes (or last-themes 'none))
-          ;; DEPRECATED Hook into `enable-theme-functions' when we target 29
-          (zenit-run-hooks 'zenit-load-theme-hook)
-          ;; Fix incorrect fg/bg in new frames created after the initial frame
-          ;; (which are reroneously displayed as black).
-          (pcase-dolist (`(,param ,fn ,face)
-                         '((foreground-color face-foreground default)
-                           (background-color face-background default)
-                           (cursor-color face-background cursor)
-                           (border-color face-background border)
-                           (mouse-color face-background mouse)))
-            (when-let* ((color (funcall fn face nil t))
-                        ((stringp color))
-                        ((not (string-prefix-p "unspecified-" color))))
-              (setf (alist-get param default-frame-alist) color))))))))
+(defadvice! zenit--detect-colorscheme-a (theme)
+  "Add :kind \\='color-scheme to THEME if it doesn't have one.
+
+Themes wouldn't call `provide-theme' unless they were a
+color-scheme, so treat them as such. Also intended as a helper
+for `zenit--theme-is-colorscheme-p'."
+  :after #'provide-theme
+  (with-memoization (plist-get (get theme 'theme-properties) :kind)
+    'color-scheme))
+
+(defun zenit--theme-is-colorscheme-p (theme)
+  "Non-nil if THEME is a colorschema."
+  (unless (memq theme '(nil user changed use-package))
+    (if-let* ((kind (plist-get (get theme 'theme-properties) :kind)))
+        ;; Some newer themes announce that they are colorschemes. Also, we've
+        ;; advised `provide-theme' (only used by colorschemes) to give these
+        ;; themes this property (see `zenit--detect-colorscheme-a').
+        (eq kind 'color-scheme)
+      ;; HACK: If by some chance a legit (probably very old) theme isn't using
+      ;;   `provide-theme' (ugh), fall back to this hail mary heuristic to
+      ;;   detect colorscheme themes:
+      (let ((feature (get theme 'theme-feature)))
+        (and
+         ;; Colorschemes always have a theme-feature (possible to define them
+         ;; without one with `custom-declare-theme' + a nil second argument):
+         feature
+         ;; ...and they always end in -theme (this is hardcoded into `deftheme'
+         ;; and others in Emacs' theme API).
+         (string-suffix-p "-theme" (symbol-name feature))
+         ;; ...and any theme (deftheme X) will have a corresponding `X-theme'
+         ;; package loaded when it's enabled.
+         (featurep feature))))))
+
+(add-hook! 'enable-theme-functions :depth -90
+  (defun zenit-enable-theme-h (theme)
+    "Record themes and trigger `zenit-load-theme-hook'."
+    (when (zenit--theme-is-colorscheme-p theme)
+      (ring-insert (with-memoization (get 'zenit-theme 'history) (make-ring 8))
+                   (copy-sequence custom-enabled-themes))
+      ;; Functions in `zenit-load-theme-hook' may trigger face recalculations,
+      ;; which can be contaminated by buffer-local face remaps (e.g. by
+      ;; `mixed-pitch-mode'); this prevents that contamination:
+      (with-temp-buffer
+        (let ((enable-theme-functions
+               (remq 'zenit-enable-theme-h enable-theme-functions)))
+          (zenit-run-hooks 'zenit-load-theme-hook))))))
+
+(add-hook! 'after-make-frame-functions :depth -90
+  (defun zenit-fix-frame-color-parameters-h (f)
+    ;; HACK: Some window systems produce new frames (after the initial one) with
+    ;;   incorrect color parameters (black).
+    (when (display-graphic-p f)
+      (letf! (defun invalid-p (color)
+               (or (equal color "black")
+                   (string-prefix-p "unspecified-" color)))
+        (pcase-dolist (`(,param ,fn ,face)
+                       '((foreground-color face-foreground default)
+                         (background-color face-background default)
+                         (cursor-color face-background cursor)
+                         (border-color face-background border)
+                         (mouse-color face-background mouse)))
+          (when-let* ((color (frame-parameter f param))
+                      ((invalid-p color))
+                      (color (funcall fn face nil t))
+                      ((not (invalid-p color))))
+            (set-frame-parameter f param color)))))))
 
 
 ;;

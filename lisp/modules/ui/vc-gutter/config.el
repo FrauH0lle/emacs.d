@@ -131,7 +131,6 @@ Respects `diff-hl-disable-on-remote'."
                        (diff-hl-update-once))))))
   ;; Update diff-hl when magit alters git state.
   (eval-when! (modulep! :tools magit)
-    (add-hook 'magit-pre-refresh-hook  #'diff-hl-magit-pre-refresh)
     (add-hook 'magit-post-refresh-hook #'diff-hl-magit-post-refresh))
 
   ;; The revert popup consumes 50% of the frame, whether or not you're reverting
@@ -170,7 +169,7 @@ Respects `diff-hl-disable-on-remote'."
   ;;   kill buffers with a thread associated with it. Chaos ensues (see #7991
   ;;   and #7954).
   (defun +vc-gutter--kill-thread (&optional block?)
-    (when-let ((th +vc-gutter--diff-hl-thread))
+    (when-let* ((th +vc-gutter--diff-hl-thread))
       (when (thread-live-p th)
         (thread-signal th 'quit nil)
         (when block?
@@ -212,6 +211,6 @@ Respects `diff-hl-disable-on-remote'."
   ;;   triggered from Elisp's buffer API (from what I can tell).
   (defadvice! +vc-gutter--kill-diff-hl-thread-a (&optional buf)
     :before #'kill-buffer
-    (when-let ((buf (ignore-errors (window-normalize-buffer buf))))
+    (when-let* ((buf (ignore-errors (window-normalize-buffer buf))))
       (with-current-buffer buf
         (+vc-gutter--kill-thread t)))))

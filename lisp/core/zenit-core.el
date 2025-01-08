@@ -111,9 +111,9 @@
 
 ;; $HOME isn't normally defined on Windows, but many unix tools expect it.
 (when zenit--system-windows-p
-  (when-let (realhome
-             (and (null (getenv-internal "HOME"))
-                  (getenv "USERPROFILE")))
+  (when-let* ((realhome
+               (and (null (getenv-internal "HOME"))
+                    (getenv "USERPROFILE"))))
     (setenv "HOME" realhome)
     (setq abbreviated-home-dir nil)))
 
@@ -125,6 +125,9 @@
 ;; the configuration.
 (add-to-list 'load-path (file-name-directory load-file-name))
 (add-to-list 'load-path (file-name-concat (file-name-directory load-file-name) "lib"))
+;; Backports from later Emacs versions
+(when (< emacs-major-version 30)
+  (require 'zenit-compat))
 (require 'zenit-lib)
 
 
@@ -553,7 +556,11 @@ sessions, so guard hooks appropriately against `noninteractive'."
   (defun zenit--end-init-h ()
     "Set `zenit-init-time'."
     (when (zenit-context-pop 'init)
-      (setq zenit-init-time (float-time (time-subtract (current-time) before-init-time))))))
+      (setq zenit-init-time (float-time (time-subtract (current-time) before-init-time)))
+      ;; If `gc-cons-threshold' hasn't been reset at this point, we reset it by
+      ;; force.
+      (when (eq (default-value 'gc-cons-threshold) most-positive-fixnum)
+        (setq-default gc-cons-threshold (* 16 1024 1024))))))
 
 (unless noninteractive
   ;; This is the absolute latest a hook can run in Emacs' startup process.

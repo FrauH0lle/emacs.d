@@ -58,7 +58,7 @@
                               :as #'buffer-name
                               :predicate
                               (lambda (buf)
-                                (when-let (workspace (+workspace-get name t))
+                                (when-let* ((workspace (+workspace-get name t)))
                                   (+workspace-contains-buffer-p buf workspace)))))))
             (+workspace-list-names))))
 
@@ -106,6 +106,6 @@ configuration of the virtual buffer sources.")
             (consult--buffer-action (car selected))
           (+workspace-switch origin-workspace)
           (+workspace-message (format "Switched to %S workspace" origin-workspace) 'success)
-          (if-let (window (get-buffer-window (car selected)))
+          (if-let* ((window (get-buffer-window (car selected))))
               (select-window window)
             (consult--buffer-action (car selected))))))))

@@ -60,7 +60,7 @@ seperate buffer."
          (let ((versions-alist (straight--lockfile-read lockfile)))
            (dolist (spec versions-alist)
              (cl-destructuring-bind (local-repo . commit) spec
-               (when-let ((dup (alist-get local-repo versions nil nil #'equal)))
+               (when-let* ((dup (alist-get local-repo versions nil nil #'equal)))
                  (let ((old (or (alist-get local-repo duplicates nil nil #'equal)
                                 (alist-get local-repo last-version nil nil #'equal))))
                    (setq duplicates (straight--alist-set
@@ -119,7 +119,7 @@ will used as candidates."
                       (or (car (alist-get choice candidates nil nil #'equal)) ""))
                   ""))))
       (dolist (lockfile lockfiles)
-        (when-let ((pin-list (straight--lockfile-read lockfile)))
+        (when-let* ((pin-list (straight--lockfile-read lockfile)))
           (let* ((old-commit (alist-get local-repo pin-list nil nil #'equal))
                  (new-commit (if (string-blank-p commit) old-commit commit)))
             (if (null new-commit)
@@ -162,7 +162,7 @@ for each package."
      (list (intern (car module))
            (ignore-errors (intern (cadr module))))))
   (mapc (lambda! ((cat . mod))
-          (if-let ((packages (zenit-package-list (list (cons cat mod)))))
+          (if-let* ((packages (zenit-package-list (list (cons cat mod)))))
               (dolist (package packages)
                 (let ((current-prefix-arg current-prefix-arg))
                   (zenit/bump-package (car package))))
@@ -182,7 +182,7 @@ for each package."
   (zenit-initialize-packages)
   (or (get package 'homepage)
       (put package 'homepage
-           (cond ((when-let (location (locate-library (symbol-name package)))
+           (cond ((when-let* ((location (locate-library (symbol-name package))))
                     (with-temp-buffer
                       (if (string-match-p "\\.gz$" location)
                           (jka-compr-insert-file-contents location)
@@ -191,7 +191,7 @@ for each package."
                       (let ((case-fold-search t))
                         (when (re-search-forward " \\(?:URL\\|homepage\\|Website\\): \\(http[^\n]+\\)\n" nil t)
                           (match-string-no-properties 1))))))
-                 ((when-let ((recipe (straight-recipes-retrieve package)))
+                 ((when-let* ((recipe (straight-recipes-retrieve package)))
                     (straight--with-plist (straight--convert-recipe recipe)
                         (host repo)
                       (pcase host
@@ -211,7 +211,7 @@ for each package."
                     ("gnu"
                      (format "https://elpa.gnu.org/packages/%s.html" package))
                     (archive
-                     (if-let (src (cdr (assoc package package-archives)))
+                     (if-let* ((src (cdr (assoc package package-archives))))
                          (format "%s" src)
                        (user-error "%S isn't installed through any known source (%s)"
                                    package archive)))))

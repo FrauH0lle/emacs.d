@@ -59,7 +59,7 @@
 (buttercup-define-matcher :to-contain-items (items expected)
   (cl-destructuring-bind (items expected)
       (mapcar #'funcall (list items expected))
-    (if-let (missing (cl-set-difference expected items))
+    (if-let* ((missing (cl-set-difference expected items)))
         (cons nil (format "Expected list to contain %S, but it was missing %S"
                           expected missing))
       (cons t (format "Expected list to not contain %S, but it did: %S"

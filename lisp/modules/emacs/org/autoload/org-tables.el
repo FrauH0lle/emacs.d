@@ -63,7 +63,7 @@ table cell."
     (save-match-data
       (when (and (org-at-table-p)
                  (not (org-region-active-p))
-                 (string-match-p "|" (buffer-substring (point-at-bol) (point)))
+                 (string-match-p "|" (buffer-substring (pos-bol) (point)))
                  (looking-at-p ".*?|"))
         (let ((pos (point))
               (noalign (looking-at-p "[^|\n\r]*  |"))

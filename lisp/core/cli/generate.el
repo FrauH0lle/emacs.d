@@ -158,7 +158,7 @@ autoloads are always met."
   "Delete FILE (an autoloads file) and accompanying *.elc file, if any."
   (cl-check-type file string)
   (when (file-exists-p file)
-    (when-let (buf (find-buffer-visiting file))
+    (when-let* ((buf (find-buffer-visiting file)))
       (with-current-buffer buf
         (set-buffer-modified-p nil))
       (kill-buffer buf))

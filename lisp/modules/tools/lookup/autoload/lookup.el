@@ -170,14 +170,14 @@ REFERENCES DOCUMENTATION FILE XREF-BACKEND ASYNC)"
                      prop))
          (result
           (if arg
-              (if-let
-                  (handler
-                   (intern-soft
-                    (completing-read "Select lookup handler: "
-                                     (delete-dups
-                                      (remq t (append (symbol-value handlers)
-                                                      (default-value handlers))))
-                                     nil t)))
+              (if-let*
+                  ((handler
+                    (intern-soft
+                     (completing-read "Select lookup handler: "
+                                      (delete-dups
+                                       (remq t (append (symbol-value handlers)
+                                                       (default-value handlers))))
+                                      nil t))))
                   (+lookup--run-handlers handler identifier origin)
                 (user-error "No lookup handler selected"))
             (run-hook-wrapped handlers #'+lookup--run-handlers identifier origin))))
@@ -300,7 +300,7 @@ falling back to `find-file-at-point''s file prompt."
                 ;; Only do this with paths that contain segments, to reduce
                 ;; false positives.
                 (string-match-p "/" guess)
-                (when-let ((dir (locate-dominating-file default-directory guess)))
+                (when-let* ((dir (locate-dominating-file default-directory guess)))
                   (when (file-in-directory-p dir (zenit-project-root))
                     (find-file (zenit-path dir guess))
                     t))))
@@ -327,7 +327,7 @@ opens it in the browser."
               (bug-reference-fontify (line-beginning-position) (line-end-position))
               (dolist (o (overlays-at (point)))
                 ;; It should only be possible to have one URL overlay.
-                (when-let (url (overlay-get o 'bug-reference-url))
+                (when-let* ((url (overlay-get o 'bug-reference-url)))
                   (browse-url url)
 
                   (throw 'found t)))))

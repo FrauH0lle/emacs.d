@@ -58,7 +58,7 @@ CALLBACK is the function that we need to call when we are done, on all the error
   (defun +lsp-eglot-prefer-flycheck-h ()
     (when eglot--managed-mode
       (flymake-mode -1)
-      (when-let ((current-checker (flycheck-get-checker-for-buffer)))
+      (when-let* ((current-checker (flycheck-get-checker-for-buffer)))
         (unless (equal current-checker 'eglot)
           (flycheck-add-next-checker 'eglot current-checker)))
       (flycheck-add-mode 'eglot major-mode)

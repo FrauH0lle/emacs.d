@@ -67,7 +67,7 @@ If prefix ARG is set, include ignored/hidden files."
          (current-prefix-arg (unless (eq arg 'other) arg))
          (default-directory
            (if (eq arg 'other)
-               (if-let (projects (projectile-relevant-known-projects))
+               (if-let* ((projects (projectile-relevant-known-projects)))
                    (completing-read "Search project: " projects nil t)
                  (user-error "There are no known projects"))
              default-directory)))
@@ -89,7 +89,7 @@ If prefix ARG is set, prompt for a known project to search from."
    (list (or (zenit-thing-at-point-or-region) "")
          (let ((projectile-project-root nil))
            (if current-prefix-arg
-               (if-let (projects (projectile-relevant-known-projects))
+               (if-let* ((projects (projectile-relevant-known-projects)))
                    (completing-read "Search project: " projects nil t)
                  (user-error "There are no known projects"))
              (zenit-project-root default-directory)))))

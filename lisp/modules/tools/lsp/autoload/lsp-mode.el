@@ -5,7 +5,7 @@
 (defun set-lsp-priority! (client priority)
   "Change the PRIORITY of lsp CLIENT."
   (require 'lsp-mode)
-  (if-let (client (gethash client lsp-clients))
+  (if-let* ((client (gethash client lsp-clients)))
       (setf (lsp--client-priority client)
             priority)
     (error "No LSP client named %S" client)))
@@ -56,8 +56,8 @@
 (defun +lsp-lookup-definition-handler ()
   "Find definition of the symbol at point using LSP."
   (interactive)
-  (when-let (loc (lsp-request "textDocument/definition"
-                              (lsp--text-document-position-params)))
+  (when-let* ((loc (lsp-request "textDocument/definition"
+                                (lsp--text-document-position-params))))
     (lsp-show-xrefs (lsp--locations-to-xref-items loc) nil nil)
     'deferred))
 

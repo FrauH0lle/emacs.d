@@ -112,7 +112,7 @@ looking up a C function.")
   (defadvice! +emacs-lisp-append-value-to-eldoc-a (fn sym)
     "Display variable value next to documentation in eldoc."
     :around #'elisp-get-var-docstring
-    (when-let (ret (funcall fn sym))
+    (when-let* ((ret (funcall fn sym)))
       (if (boundp sym)
           (concat ret " "
                   (let* ((truncated " [...]")

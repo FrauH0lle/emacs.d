@@ -1,10 +1,14 @@
 ;; ui/popup/autoload/settings.el -*- lexical-binding: t; -*-
 
 ;;;###autoload
-(defvar +popup--display-buffer-alist nil)
+(defvar +popup--display-buffer-alist nil
+  "Equivalent of `display-buffer-alist'.
+Created by `set-popup-rule!' and `set-popup-rules!'.")
 
 ;;;###autoload
-(defvar +popup--reference-buffers nil)
+(defvar +popup--reference-buffers nil
+  "Equivalent of `+popup-reference-buffers'.
+Created by `set-popup-rule!' and `set-popup-rules!'.")
 
 ;;;###autoload
 (defvar +popup-defaults
@@ -19,6 +23,17 @@
 
 ;;;###autoload
 (defun +popup-make-rule (predicate plist)
+  "Create a popup display rule from PREDICATE and PLIST.
+PREDICATE is a condition to match buffers, which can be:
+- A symbol (treated as major-mode if name ends with '-mode')
+- A cons cell (treated as (MAJOR-MODE . PREDICATE))
+- Any valid condition for `buffer-match-p'
+
+PLIST is a property list containing popup configuration options.
+See `set-popup-rule!' for details on available properties.
+
+Returns a display-buffer action list suitable for
+`display-buffer-alist'."
   (let* ((predicate (if (consp predicate) (car predicate) predicate))
          (predicate (if (and (symbolp predicate)
                              (string-suffix-p "-mode" (symbol-name predicate)))

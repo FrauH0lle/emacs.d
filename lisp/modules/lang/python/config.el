@@ -60,7 +60,8 @@
     :for "for"
     :return "return" :yield "yield")
 
-  (set-popup-rule! "^\\*Python" :side 'bottom :height 0.33 :width 0.5 :quit nil :tabbed t)
+  (set-popup-rule!
+    "^\\*Python" :side 'bottom :height 0.33 :width 0.5 :quit nil :tabbed t :ttl nil)
 
   ;; Stop the spam!
   (setq python-indent-guess-indent-offset-verbose nil)
@@ -368,5 +369,5 @@
   :defer t
   :init
   (add-hook! 'python-mode-local-vars-hook
-    (when-let ((exe (executable-find "basedpyright")))
+    (when-let* ((exe (executable-find "basedpyright")))
       (setq lsp-pyright-langserver-command (file-name-nondirectory exe)))))

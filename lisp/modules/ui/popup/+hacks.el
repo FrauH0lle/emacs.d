@@ -48,16 +48,17 @@ that by remapping `quit-window' to this commmand."
   (interactive "P")
   (let ((orig-buffer (current-buffer))
         (parent (car +popup--parents)))
-    (if (+popup-parameter 'tabbed)
+    (if (+popup-window-parameter 'tabbed)
         (+popup/close)
       (quit-window arg)
       (when (and (eq orig-buffer (current-buffer))
                  (+popup-buffer-p (current-buffer)))
-        (+popup/close nil 'force))
-      (when-let* ((parent-buffer (car parent))
+        (+popup/close nil 'force)))
+    (when-let* ((parent-buffer (car parent))
                   (live-p (buffer-live-p parent-buffer)))
         (let ((+popup--ignore-parent t))
-          (display-buffer parent-buffer))))))
+          (select-window
+           (display-buffer parent-buffer))))))
 (define-key +popup-buffer-mode-map [remap quit-window] #'+popup/quit-window)
 
 
@@ -327,7 +328,7 @@ other windows. Ugh, such an ugly hack."
   :after #'bufferlo-bookmark-tab-load
   :after #'bufferlo-bookmark-frame-load
   (dolist (window (window-list))
-    (when (+popup-parameter 'popup window)
+    (when (+popup-window-parameter 'popup window)
       (+popup--init window nil))))
 
 

@@ -190,8 +190,8 @@ disabled when that window has been changed or closed."
   (cond (;; Turning ON
          +popup-buffer-mode
 
-         (when (and (+popup-parameter 'tabbed)
-                    (+popup-parameter 'tabbed (current-buffer)))
+         (when (and (+popup-window-parameter 'tabbed)
+                    (+popup-buffer-parameter 'tabbed))
            (set-window-parameter (selected-window) 'quit nil)
            (add-hook 'kill-buffer-hook #'+popup-buffer--kill-last-tab-h -90 t)
            (setq-local tab-line-tabs-function #'+popup-tabs-fn)
@@ -205,10 +205,9 @@ disabled when that window has been changed or closed."
            (setq +popup--timer nil)))
         (;; Turning OFF
          t
-         (setq +popup-buffer-status (plist-put +popup-buffer-status :tabbed nil))
+         (+popup-buffer-set-status (current-buffer) :tabbed nil)
          (when (bound-and-true-p tab-line-mode)
            (tab-line-mode -1)
-           (setq +popup-buffer-status (plist-put +popup-buffer-status :tabbed nil))
            (remove-hook 'kill-buffer-hook #'+popup-buffer--kill-last-tab-h t))
 
          (remove-hook 'after-change-major-mode-hook #'+popup-set-modeline-on-enable-h t))))

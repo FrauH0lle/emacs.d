@@ -364,7 +364,8 @@ as `+emacs-lisp-non-package-mode' will enable it and disable the other checkers.
                           (require 'zenit-core)
                           (require 'zenit-cli)
                           (require 'zenit-start)
-                          (require 'zenit-use-package))
+                          (require 'zenit-use-package)
+                          (require 'zenit-el-patch))
                       (error
                        (princ
                         (format "%s:%d:%d:Error:Failed to load Emacs config: %s\n"

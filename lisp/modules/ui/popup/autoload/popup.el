@@ -31,8 +31,6 @@ should be considered a popup.")
   "List of predicates to test if a buffer will be suppressed popup
 buffers.")
 
-(load! "popup-buffers.el")
-(load! "popup-windows.el")
 
 ;;
 ;;; Buffers

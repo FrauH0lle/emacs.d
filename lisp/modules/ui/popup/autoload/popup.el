@@ -50,9 +50,9 @@ resulting list is sorted by buffer access time."
                    (not (eq popup-status 'raised))
                    (or (member popup-status '(popup user-popup))
                        (+popup-buffer-p b)))
-          (+popup-buffer-set-parameter b :status
-                                    (cond ((+popup-buffer-suppress-p b) 'suppressed)
-                                          (t (or popup-status 'popup))))
+          (+popup-buffer-set-parameter
+           b :status (cond ((+popup-buffer-suppress-p b) 'suppressed)
+                           (t (or popup-status 'popup))))
           (push (cons (get-buffer-window b) b)
                 open-popups))))
     (cl-sort open-popups
@@ -177,9 +177,7 @@ return value."
   "Predicate to test if buffer BUF qualifies for popup handling.
 Criteria are listed in `+popup-reference-buffers' and :status in
 `+popup-buffer-status'."
-  (or (member (+popup-buffer-parameter 'status buf)
-              '(popup raised user-popup))
-      (seq-some (lambda (buf-regexp)
+  (or (seq-some (lambda (buf-regexp)
                   (string-match-p buf-regexp (buffer-name buf)))
                 +popup--reference-names)
       (member (buffer-local-value 'major-mode buf) +popup--reference-modes)
@@ -188,9 +186,7 @@ Criteria are listed in `+popup-reference-buffers' and :status in
 ;;;###autoload
 (defun +popup-buffer-suppress-p (buf)
   "Predicate to check if popup buffer BUF needs to be suppressed."
-  (or (eq (+popup-buffer-parameter 'status buf)
-          'suppressed)
-      (seq-some (lambda (buf-regexp)
+  (or (seq-some (lambda (buf-regexp)
                   (string-match-p buf-regexp (buffer-name buf)))
                 +popup--suppressed-names)
       (member (buffer-local-value 'major-mode buf) +popup--suppressed-modes)
@@ -858,8 +854,8 @@ The last modification is kept."
     (bury-buffer)
     ;; If this buffer was not a popup before, make it a user popup
     (+popup-buffer-set-parameter buffer :status (if (+popup-buffer-p buffer)
-                                                 'popup
-                                               'user-popup))
+                                                    'popup
+                                                  'user-popup))
     (pop-to-buffer buffer)))
 
 ;;;###autoload
@@ -924,8 +920,7 @@ This will ignore popups with an `quit' parameter that is either
 nil or \\='current. This window parameter is ignored if FORCE-P
 is non-nil."
   (interactive "P")
-  (let (targets ;; +popup--remember-last
-                )
+  (let (targets)
     (dolist (window (+popup-windows))
       (when (or force-p
                 (+popup-window-parameter 'tabbed window)

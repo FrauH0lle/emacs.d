@@ -56,40 +56,52 @@ fail."
   (print-group!
     (with-temp-buffer
       ;; Get list of test files to run (either provided or all in test directory)
-      (let ((files (or files (append (zenit-glob zenit-core-dir "lib/test/*.el")
-                                     (zenit-glob zenit-core-dir "test/zenit-test.el"))))
+      (let ((files (or (when files
+                         (cl-loop for file in files
+                                  collect (cons (zenit-module-from-path file) file)))
+                       (append (cl-loop for file in (zenit-glob zenit-core-dir "lib/test/*.el")
+                                        collect (cons (cons :core nil) file))
+                               (cl-loop for (cat . mod) in (zenit-module-list 'all)
+                                        if (zenit-module-expand-path cat mod)
+                                        append (cl-loop for file in (zenit-glob (zenit-module-expand-path cat mod) "test" "*.el")
+                                                        collect (cons (cons cat mod) file))))))
             read-files)
         ;; Run each test file in a clean Emacs process
-        (dolist (file files)
-          (cl-destructuring-bind (_status . output)
-              (apply #'zenit-exec-process
-                     (zenit--emacs-binary)
-                     ;; Start with no init file
-                     "-Q"
-                     ;; Run in batch mode
-                     "--batch"
-                     ;; Set init directory
-                     (concat "--init-directory=" (expand-file-name user-emacs-directory))
-                     ;; Always load newest files
-                     "--eval" (prin1-to-string '(setq load-prefer-newer t))
-                     ;; Load core
-                     "-l" (concat zenit-core-dir "zenit-core.el")
-                     ;; Set context
-                     "--eval" (prin1-to-string '(zenit-context-push 'init))
-                     ;; Load `zenit-cache-generators'
-                     "-l" (file-name-concat zenit-local-dir (car (mapcar #'car zenit-cache-generators)))
-                     ;; Set test context
-                     "--eval" (prin1-to-string '(zenit-context-push 'tests))
-                     ;; Load test framework
-                     "-l" (concat zenit-core-dir "zenit-test.el")
-                     ;; Load test file
-                     (list "-l" file
-                           ;; Run tests and exit
-                           "-f" "ert-run-tests-batch-and-exit"))
-            ;; Remove ANSI color codes from output and insert into buffer
-            (insert (replace-regexp-in-string ansi-color-control-seq-regexp "" output))
-            ;; Track which files we've processed
-            (push file read-files)))
+        (cl-loop for ((cat . mod) . file) in files
+                 do
+                 (cl-destructuring-bind (_status . output)
+                     (apply #'zenit-exec-process
+                            (zenit--emacs-binary)
+                            ;; Start with no init file
+                            "-Q"
+                            ;; Run in batch mode
+                            "--batch"
+                            ;; Set init directory
+                            (concat "--init-directory=" (expand-file-name user-emacs-directory))
+                            ;; Always load newest files
+                            "--eval" (prin1-to-string '(setq load-prefer-newer t))
+                            ;; Load core
+                            "-l" (concat zenit-core-dir "zenit-core.el")
+                            ;; Set context
+                            "--eval" (prin1-to-string '(zenit-context-push 'init))
+                            ;; Load `zenit-cache-generators'
+                            "-l" (file-name-concat zenit-local-dir (car (mapcar #'car zenit-cache-generators)))
+                            ;; Set test context
+                            "--eval" (prin1-to-string '(zenit-context-push 'tests))
+                            ;; Load test framework
+                            "-l" (concat zenit-core-dir "zenit-test.el")
+
+                            ;; Load test file
+                            `(;; ,@(when (not (eq cat :core))
+                              ;;     (list "-l" (concat zenit-core-dir "zenit-start.el")
+                              ;;           "-l" (concat zenit-core-dir "init.el")))
+                              "-l" ,file
+                              ;; Run tests and exit
+                              "-f" "ert-run-tests-batch-and-exit"))
+                   ;; Remove ANSI color codes from output and insert into buffer
+                   (insert (replace-regexp-in-string ansi-color-control-seq-regexp "" output))
+                   ;; Track which files we've processed
+                   (push file read-files)))
 
         ;; Initialize counters for test results
         (let ((total 0)

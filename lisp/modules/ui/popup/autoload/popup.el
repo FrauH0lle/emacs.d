@@ -64,7 +64,7 @@ resulting list is sorted by buffer access time."
 (defun +popup--find-buried-popup-buffers ()
   "Update the list of currently buried popups.
 
- Meant to be run when starting command `+popup-mode'."
+Meant to be run when starting command `+popup-mode'."
   (let ((buried-popups (+popup--find-popup-buffers
                         (cl-set-difference
                          (buffer-list)
@@ -322,7 +322,7 @@ window."
 
 ;;;###autoload
 (defun +popup-window-parameter (parameter &optional window)
-  "Fetch the PARAMETER (symbol) of BUFFER.
+  "Fetch the PARAMETER (symbol) of WINDOW.
 WINDOW defaults to the `selected-window'. If the returned
 parameter value is a function, run it with WINDOW to get its
 return value."
@@ -334,8 +334,8 @@ return value."
 
 ;;;###autoload
 (defun +popup-window-p (&optional window)
-  "Return non-nil if WINDOW is a popup window. Defaults to the
-current window."
+  "Return non-nil if WINDOW is a popup window.
+Defaults to the current window."
   (when +popup-mode
     (let* ((window (or window (selected-window))))
       (and (windowp window)
@@ -350,8 +350,7 @@ current window."
 
 ;;;###autoload
 (defun +popup-shrink-to-fit (&optional window)
-  "Shrinks WINDOW to fit the buffer contents, if the buffer isn't
-empty.
+  "Shrinks WINDOW to fit the buffer contents, if it isn't empty.
 
 Uses `shrink-window-if-larger-than-buffer'."
   (unless window

@@ -57,9 +57,10 @@
   ,test
   (test)
   :doc "`+popup--find-popup-buffers' returns popup buffers"
-  (should-not (cl-set-difference `((nil . ,a) (nil . ,c))
-                                 (+popup--find-popup-buffers (list a b c d))
-                                 :test #'equal))
+  (should (zenit-test-same-items-p
+           `((nil . ,a) (nil . ,c) (nil . ,d))
+           (+popup--find-popup-buffers (list a b c d))
+           :test #'equal))
   :doc "`+popup--find-popup-buffers' marks buffers which should be suppressed"
   (should (eq 'suppressed
               (progn
@@ -89,17 +90,19 @@
   ,test
   (test)
   :doc "`+popup--find-buried-popup-buffers' returns buried popup buffers"
-  (should-not (cl-set-difference `((nil (nil . ,c) (nil . ,a)))
-                                 (+popup--find-buried-popup-buffers)
-                                 :test #'equal))
+  (should (zenit-test-same-items-p
+           `((nil (nil . ,c) (nil . ,a)))
+           (+popup--find-buried-popup-buffers)
+           :test #'equal))
   :doc "`+popup--find-buried-popup-buffers' returns buried popup buffers by group"
   (let ((+popup-group-function (lambda ()
                                  (when (equal (buffer-name (current-buffer)) "c")
                                    "test-group"))))
-    (should-not (cl-set-difference `((nil (nil . ,a))
-                                     ("test-group" (nil . ,c)))
-                                   (+popup--find-buried-popup-buffers)
-                                   :test #'equal))))
+    (should (zenit-test-same-items-p
+             `((nil (nil . ,a))
+               ("test-group" (nil . ,c)))
+             (+popup--find-buried-popup-buffers)
+             :test #'equal))))
 
 (zenit-deftest +popup--find-open-popup-buffers
   (:doc "`+popup--find-open-popup-buffers' returns popup buffers displayed in a window"
@@ -124,9 +127,10 @@
   (test)
   (progn
     (set-window-buffer (selected-window) a)
-    (should-not (cl-set-difference `((,(selected-window) . ,a))
-                                   (+popup--find-open-popup-buffers)
-                                   :test #'equal))))
+    (should (zenit-test-same-items-p
+             `((,(selected-window) . ,a))
+             (+popup--find-open-popup-buffers)
+             :test #'equal))))
 
 (zenit-deftest +popup--update-buried-popup-list
   (:vars
@@ -146,9 +150,11 @@
     (+popup--update-buried-popup-list nil a 'add)
     (+popup--update-buried-popup-list "test-group" b 'add)
     (+popup--update-buried-popup-list nil c 'add)
-    (should (cl-set-difference `((nil (nil . ,a) (nil . ,c))
-                                 ("test-group" (nil . ,b)))
-                               +popup-buried-buffers-alist)))
+    (should (zenit-test-same-items-p
+             `(("test-group" (nil . ,b))
+               (nil (nil . ,c) (nil . ,a)))
+             +popup-buried-buffers-alist
+             :test #'equal)))
   :doc "`+popup--update-buried-popup-list' removes from `+popup-buried-buffers-alist'"
   (progn
     (+popup--update-buried-popup-list nil a 'add)
@@ -156,8 +162,10 @@
     (+popup--update-buried-popup-list nil c 'add)
     (+popup--update-buried-popup-list nil a 'remove)
     (+popup--update-buried-popup-list nil c 'remove)
-    (should (cl-set-difference `(("test-group" (nil . ,b)))
-                               +popup-buried-buffers-alist))))
+    (should (zenit-test-same-items-p
+             `(("test-group" (nil . ,b)) (nil))
+             +popup-buried-buffers-alist
+             :test #'equal))))
 
 (zenit-deftest +popup--record-parent
   (:vars
@@ -184,18 +192,19 @@
      (mapc #'kill-buffer (list a b c))))
   (let ((+popup--ignore-parent ,ignore))
     (+popup--record-parent ,parent ,buffer)
-    (should-not (cl-set-difference ,expected
-                                   (buffer-local-value '+popup--parents ,buffer)
-                                   :test #'equal)))
+    (should (zenit-test-same-items-p
+             ,expected
+             (buffer-local-value '+popup--parents ,buffer)
+             :test #'equal)))
   (parent buffer ignore expected)
   :doc "`+popup--record-parent' records the parent buffer"
   a b nil `((,a . nil))
   :doc "`+popup--record-parent' does not record when `+popup--ignore-parent' is nil"
-  a b t nil
+  a c t nil
   :doc "`+popup--record-parent' does not record when buffer and parent are equal"
   a a nil nil
   :doc "`+popup--record-parent' does not record duplicates"
-  b c nil `((,b . nil))
+  b c nil `((,b . nil) (,a . nil))
   :doc "`+popup--record-parent' does not record when buffer is not a popup buffer"
   a (get-buffer "*Messages*") nil nil
   :doc "`+popup--record-parent' adds to previous records"
@@ -219,14 +228,15 @@
   (progn
     (+popup--kill-buffer a 1)
     (should-not (buffer-live-p a)))
-  :doc "`+popup--kill-buffer' kills buffer as soon as it is not visible"
+  :doc "`+popup--kill-buffer' kills buffer as soon as it is not visible via a timer"
   (progn
     (set-window-buffer (selected-window) a)
+    (with-current-buffer a
+      (should-not (timerp +popup--timer)))
     (+popup--kill-buffer a 1)
-    (should (buffer-live-p a))
-    (scratch-buffer)
-    (sleep-for 1.5)
-    (should-not (buffer-live-p a))))
+    (with-current-buffer a
+      (should (timerp +popup--timer)))
+    (should (buffer-live-p a))))
 
 (zenit-deftest +popup-buffer-parameter
   (:vars
@@ -337,3 +347,123 @@
   (should (+popup-buffer-suppress-p c))
   :doc "`+popup-buffer-suppress-p' returns nil for non-suppressed buffers"
   (should-not (+popup-buffer-suppress-p (get-buffer "*Messages*"))))
+
+(zenit-deftest +popup--maybe-select-window
+  (:vars
+   ((a (get-buffer-create "a"))
+    (b (get-buffer-create "b")))
+   :before-each
+   (progn
+     (defvar +popup--inhibit-select nil)
+     (defvar-local +popup-buffer-status nil)
+     (with-current-buffer a
+       (setq +popup-buffer-status '(:status popup :select t)))
+     (with-current-buffer b
+       (setq +popup-buffer-status '(:status raised :select nil))))
+   :after-each
+   (progn
+     (makunbound '+popup-buffer-status)
+     (makunbound '+popup--inhibit-select)
+     (mapc #'kill-buffer (list a b))
+     (delete-other-windows)))
+  ,test
+  (test)
+  :doc "`+popup--maybe-select-window' selects window based `select' parameter for popup buffers"
+  (let* ((win1 (split-window))
+         (win2 (split-window)))
+    (set-window-buffer win1 a)
+    (set-window-buffer win2 b)
+    (+popup--maybe-select-window win1 (selected-window))
+    (should (eq (selected-window) win1))
+    (+popup--maybe-select-window win2 (selected-window))
+    (should (eq (selected-window) win1)))
+  :doc "`+popup--maybe-select-window' respects `+popup--inhibit-select'"
+  (let* ((win1 (split-window))
+         (win2 (split-window))
+         (+popup--inhibit-select t))
+    (set-window-buffer win1 a)
+    (set-window-buffer win2 b)
+    (+popup--maybe-select-window win1 (selected-window))
+    (should-not (eq (selected-window) win1))))
+
+(zenit-deftest +popup--delete-popup
+  (:doc "`+popup--delete-popup' is defined")
+  (should (fboundp '+popup--delete-popup)))
+
+(zenit-deftest +popup--delete-window
+  (:doc "`+popup--delete-window' is defined")
+  (should (fboundp '+popup--delete-window)))
+
+(zenit-deftest +popup--delete-other-windows
+  (:doc "`+popup--delete-other-windows' is defined")
+  (should (fboundp '+popup--delete-other-windows)))
+
+(zenit-deftest +popup--split-window
+  (:doc "`+popup--split-window' is defined")
+  (should (fboundp '+popup--split-window)))
+
+(zenit-deftest +popup-window-parameter
+  (:doc "`+popup-window-parameter' fetches specified parameter"
+   :after-each
+   (delete-other-windows))
+  (let* ((win1 (selected-window))
+         (win2 (split-window-right))
+         (win3 (split-window-right)))
+    (set-window-parameter win2 'test-param t)
+    (set-window-parameter win3 'test-param (lambda (&rest _) (concat "hello")))
+    (should-not (+popup-window-parameter 'test-param win1))
+    (should (+popup-window-parameter 'test-param win2))
+    (should (equal "hello" (+popup-window-parameter 'test-param win3)))))
+
+(zenit-deftest +popup-window-p
+  (:doc "`+popup-window-p' returns non-nil if window is a popup"
+   :before-each
+   (progn
+     (defvar +popup-mode t)
+     (set-window-parameter (selected-window) 'popup t))
+   :after-each
+   (progn
+     (makunbound '+popup-mode)
+     (set-window-parameter (selected-window) 'popup nil)
+     (delete-other-windows)))
+  (should (+popup-window-p (selected-window))))
+
+(zenit-deftest +popup-windows
+  (:doc "`+popup-windows' returns a list of popup windows"
+   :vars*
+   ((win1 (selected-window))
+    (win2 (split-window-right))
+    (win3 (split-window-right)))
+   :before-each
+   (progn
+     (defvar +popup-mode t)
+     (set-window-parameter win2 'popup t)
+     (set-window-parameter win3 'popup t))
+   :after-each
+   (progn
+     (makunbound '+popup-mode)
+     (delete-other-windows)))
+  (should (zenit-test-same-items-p (list win2 win3) (+popup-windows))))
+
+(zenit-deftest +popup-shrink-to-fit
+  (:doc "`+popup-shrink-to-fit' is defined")
+  (should (fboundp '+popup-shrink-to-fit)))
+
+(zenit-deftest +popup-alist-from-window-state
+  (:doc "`+popup-alist-from-window-state' convert window state to alist"
+   :vars*
+   ((win1 (selected-window))
+    (win2 (split-window-right)))
+   :before-each
+   (progn
+     (defvar +popup-mode t)
+     (push (cons 'test-param 'writable) window-persistent-parameters)
+     (set-window-parameter win2 'test-param 900))
+   :after-each
+   (progn
+     (makunbound '+popup-mode)
+       (setq foo '((a . 1) (b . 2)))
+       (setf (alist-get 'test-param window-persistent-parameters nil 'remove) nil)
+     (delete-other-windows)))
+  (let ((params (+popup-alist-from-window-state (window-state-get win2))))
+    (should (alist-get 'test-param (alist-get 'window-parameters params)))))

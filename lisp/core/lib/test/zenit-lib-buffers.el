@@ -65,10 +65,10 @@
   (test)
   :doc "`zenit-project-buffer-list' returns buffers in the same project"
   (with-current-buffer a
-    (should-not (cl-set-difference (list a b) (zenit-project-buffer-list))))
+    (should (zenit-test-same-items-p (list a b) (zenit-project-buffer-list))))
   :doc "`zenit-project-buffer-list' returns all buffers if not in a project"
   (with-current-buffer c
-    (should-not (cl-set-difference (buffer-list) (zenit-project-buffer-list)))))
+    (should (zenit-test-same-items-p (buffer-list) (zenit-project-buffer-list)))))
 
 (zenit-deftest zenit-open-projects
   (:vars
@@ -273,7 +273,7 @@
     (delete-window window-3)
     (should (equal (list window-2) (zenit-visible-windows))))
   :doc "`zenit-visible-windows' returns all windows if all are visible"
-  (should-not (cl-set-exclusive-or win-list (zenit-visible-windows)))
+  (should (zenit-test-same-items-p win-list (zenit-visible-windows)))
   :doc "`zenit-visible-windows' returns an empty list if all windows are dedicated"
   (progn
     (set-window-dedicated-p window-1 t)
@@ -315,8 +315,8 @@
     (set-window-buffer (next-window) c)
     (bury-buffer b)
     (bury-buffer d)
-    (should-not (cl-set-difference (list b d) (zenit-buried-buffers)))
-    (should (cl-set-difference (list a c) (zenit-buried-buffers)))))
+    (should (zenit-test-contains-items-p (list b d) (zenit-buried-buffers)))
+    (should-not (zenit-test-contains-items-p (list a c) (zenit-buried-buffers)))))
 
 (zenit-deftest zenit-matching-buffers
   (:doc "`zenit-matching-buffers' returns a list of buffers matching a pattern"

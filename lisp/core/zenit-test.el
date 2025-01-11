@@ -245,4 +245,23 @@ Passes DIR-FLAG, SUFFIX and TEXT on to `make-temp-file', which
 see."
   (make-temp-file "zenit-emacs-test-" dir-flag suffix text))
 
+(defun zenit-test-same-items-p (expected actual &rest cl-keys)
+  "Verify that EXPECTED and ACTUAL have the same items.
+The order of items does not matter. Returns t if lists match, nil
+otherwise.
+CL-KEYS as in `cl-set-difference'.
+\nKeywords supported:  :test :test-not :key
+\n(fn EXPECTED ACTUAL [KEYWORD VALUE]...)"
+  (and (null (apply #'cl-set-difference expected actual cl-keys))
+       (null (apply #'cl-set-difference actual expected cl-keys))))
+
+(defun zenit-test-contains-items-p (expected actual &rest cl-keys)
+  "Verify that ACTUAL contains EXPECTED.
+The order of items does not matter. Returns t if lists match, nil
+otherwise.
+CL-KEYS as in `cl-set-difference'. \nKeywords
+supported: :test :test-not :key \n(fn EXPECTED ACTUAL [KEYWORD
+VALUE]...)"
+  (null (apply #'cl-set-difference expected actual cl-keys)))
+
 (provide 'zenit-test)

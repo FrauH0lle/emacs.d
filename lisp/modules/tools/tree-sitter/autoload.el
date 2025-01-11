@@ -10,12 +10,12 @@ according to `+tree-sitter-hl-enabled-modes'"
   (turn-on-tree-sitter-mode)
   ;; conditionally enable `tree-sitter-hl-mode'
   (let ((mode (bound-and-true-p tree-sitter-hl-mode)))
-    (when-let (mode (if (pcase +tree-sitter-hl-enabled-modes
-                          (`(not . ,modes) (not (memq major-mode modes)))
-                          ((and `(,_ . ,_) modes) (memq major-mode modes))
-                          (bool bool))
-                        (unless mode +1)
-                      (if mode -1)))
+    (when-let* ((mode (if (pcase +tree-sitter-hl-enabled-modes
+                            (`(not . ,modes) (not (memq major-mode modes)))
+                            ((and `(,_ . ,_) modes) (memq major-mode modes))
+                            (bool bool))
+                          (unless mode +1)
+                        (if mode -1))))
       (tree-sitter-hl-mode mode))))
 
 ;;;###autodef (fset 'set-tree-sitter-lang! #'ignore)

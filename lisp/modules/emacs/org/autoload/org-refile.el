@@ -50,7 +50,7 @@ If prefix ARG, copy instead of move."
         org-refile-targets
         current-prefix-arg)
     (dolist (buf (delq (current-buffer) (zenit-buffers-in-mode 'org-mode)))
-      (when-let (file (buffer-file-name (buffer-base-buffer buf)))
+      (when-let* ((file (buffer-file-name (buffer-base-buffer buf))))
         (cl-pushnew (cons file (cons :maxlevel 10))
                     org-refile-targets)))
     (call-interactively #'org-refile)))
@@ -86,7 +86,7 @@ If prefix ARG, copy instead of move."
   "Refile current heading as first child of visible heading selected
 with Avy."
   (interactive)
-  (when-let (marker (+org-headline-avy))
+  (when-let* ((marker (+org-headline-avy)))
     (let* ((buffer (marker-buffer marker))
            (filename
             (buffer-file-name (or (buffer-base-buffer buffer)

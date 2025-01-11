@@ -1,15 +1,20 @@
 ;; lisp/core/zenit-el-patch.el -*- lexical-binding: t; -*-
 
-
 ;;
 ;;; el-patch definitions
 
 ;; `el-patch' is great! We add extra `el-patch-deftype's early, so we can use
 ;; them.
 
-(use-package! el-patch
-  :defer t
-  :config
+(eval-when-compile
+  (require 'cl-lib))
+
+(cl-eval-when (compile)
+  (require 'el-patch))
+
+(defvar el-patch-variant nil)
+
+(with-eval-after-load 'el-patch
   ;; Add `cl-defmacro'
   (el-patch-deftype cl-defmacro
     :classify el-patch-classify-function

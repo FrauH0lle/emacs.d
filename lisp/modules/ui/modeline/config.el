@@ -1,7 +1,7 @@
 ;; ui/modeline/config.el -*- lexical-binding: t; -*-
 
 (use-package! doom-modeline
-  :hook (zenit-after-init . doom-modeline-mode)
+  :hook (zenit-first-buffer . doom-modeline-mode)
   :hook (doom-modeline-mode . size-indication-mode) ; filesize in modeline
   :hook (doom-modeline-mode . column-number-mode)   ; cursor column in modeline
   :init
@@ -18,8 +18,7 @@
         ;; Only show file encoding if it's non-UTF-8 and different line endings
         ;; than the current OSes preference
         doom-modeline-buffer-encoding 'nondefault
-        doom-modeline-default-eol-type
-        (pcase zenit-system ('macos 2) ('windows 1) (_ 0)))
+        doom-modeline-default-eol-type (if (featurep :system 'windows) 1 0))
 
   :config
   ;; Fix an issue where these two variables aren't defined in TTY Emacs on MacOS
@@ -86,7 +85,7 @@ a symlink. It respects `doom-modeline-icon'."
       (defsubst +doom-modeline--buffer-symlink-icon ()
         "The icon of the current buffer symlink."
         (when +doom-modeline-buffer-symlink-icon
-          (when-let ((icon (+doom-modeline-update-buffer-file-symlink-icon)))
+          (when-let* ((icon (+doom-modeline-update-buffer-file-symlink-icon)))
             (unless (string-empty-p icon)
               (concat
                (doom-modeline-display-icon icon)

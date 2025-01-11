@@ -4,9 +4,16 @@
   "If non-nil, the package management system has been
 initialized.")
 
-(defvar zenit-mandatory-packages '(straight)
+(defvar zenit-mandatory-packages '(straight async)
   "A list of packages that must be installed (and will be
 auto-installed if missing) and shouldn't be deleted.")
+
+(defvar zenit-packages ()
+  "A list of enabled packages.
+
+ Each element is a sublist, whose CAR is the package's name as a
+symbol, and whose CDR is the plist supplied to its `package!'
+declaration.")
 
 (defvar zenit-disabled-packages ()
   "A list of packages that should be ignored by `use-package!'
@@ -73,27 +80,26 @@ auto-installed if missing) and shouldn't be deleted.")
 
 (with-eval-after-load 'straight
   ;; HACK: We want to defer the compilation of the .elc files in order to save
-  ;; some minutes during config creation. To complete this, straight.el needs to
-  ;; be told not to do native-compilation, but it won't obey
-  ;; `straight-disable-native-compile', but `straight--native-comp-available',
-  ;; though. Trouble is: it's a constant; it resets itself when straight is
-  ;; loaded, so it must be changed afterwards.
-  (setq straight--native-comp-available nil
-        comp-enable-subr-trampolines nil)
+  ;;   some minutes during config creation. To complete this, straight.el needs
+  ;;   to be told not to do native-compilation, but it won't obey
+  ;;   `straight-disable-native-compile', but `straight--native-comp-available',
+  ;;   though. Trouble is: it's a constant; it resets itself when straight is
+  ;;   loaded, so it must be changed afterwards.
+  (setq straight--native-comp-available nil)
   ;; `let-alist' is built into Emacs 26 and onwards
   (add-to-list 'straight-built-in-pseudo-packages 'let-alist))
 
 
 ;;;; Straight hacks
 
-(defadvice! +straight--ignore-missing-lockfile-a (orig-fn profile)
-  "If a profile is not defined in `straight-profiles', return a
-random string which should never exist as a file name."
-  :around #'straight--versions-lockfile
-  (condition-case _
-      (funcall orig-fn profile)
-    (error
-     (md5 (format "%s%s%s%s" (system-name) (emacs-pid) (current-time) (random))))))
+(defun zenit-packages-get-lockfile (profile)
+  "Get the version lockfile for given PROFILE, a symbol.
+
+Returns nil if the profile does not exist or does not have a
+lockfile."
+  (if-let* ((filename (alist-get profile straight-profiles)))
+      (straight--versions-file filename)
+    nil))
 
 (defun +straight--normalize-profiles ()
   "Normalize packages profiles.
@@ -155,7 +161,7 @@ This involves
 
 (defvar +straight--auto-options
   '(("has diverged from"
-     . "^Reset [^ ]+ to branch")
+     . "^Reset [^ ]+ to ")
     ("but recipe specifies a URL of"
      . "Delete remote \"[^\"]+\", re-create it with correct URL")
     ("has a merge conflict:"
@@ -317,7 +323,7 @@ internally)."
 ;;; native-comp
 
 (when (featurep 'native-compile)
-  (after! comp
+  (with-eval-after-load 'comp
     ;; HACK Disable native-compilation for some troublesome packages
     (mapc (zenit-partial #'add-to-list 'native-comp-jit-compilation-deny-list)
           (list "/emacs-jupyter.*\\.el\\'"
@@ -370,7 +376,9 @@ initialized and available for them."
     (package-initialize))
   (when (or force-p (not (fboundp 'straight--reset-caches)))
     (zenit-log "Initializing straight")
-    (setq zenit-init-packages-p t)
+    (setq zenit-init-packages-p t
+          zenit-disabled-packages nil
+          zenit-packages (zenit-package-list))
     (setq straight-current-profile 'core)
     (zenit-bootstrap-straight)
     (zenit-log "Installing mandatory packages")
@@ -429,6 +437,25 @@ version of Emacs."
           (eval-print-last-sexp)))
     (load bootstrap-file nil 'nomessage)))
 
+
+;;
+;;; Package management API
+
+(defun zenit-package-get (package &optional prop nil-value)
+  "Returns PACKAGE's `package!' recipe from `zenit-packages'."
+  (let ((plist (cdr (assq package zenit-packages))))
+    (if prop
+        (if (plist-member plist prop)
+            (plist-get plist prop)
+          nil-value)
+      plist)))
+
+(defun zenit-package-set (package prop value)
+  "Set PROPERTY in PACKAGE's recipe to VALUE."
+  (setf (alist-get package zenit-packages)
+        (plist-put (alist-get package zenit-packages)
+                   prop value)))
+
 (autoload 'straight--convert-recipe "straight")
 (defun zenit-package-recipe-repo (package)
   "Resolve and return PACKAGE's (symbol) local-repo property."
@@ -436,6 +463,105 @@ version of Emacs."
             (repo (straight--with-plist recipe (local-repo) local-repo)))
       repo
     (symbol-name package)))
+
+(defun zenit-package-build-recipe (package &optional prop nil-value)
+  "Returns the `straight' recipe PACKAGE was installed with."
+  (let ((plist (nth 2 (gethash (symbol-name package) straight--build-cache))))
+    (if prop
+        (if (plist-member plist prop)
+            (plist-get plist prop)
+          nil-value)
+      plist)))
+
+
+;;
+;;; Predicate functions
+
+(defun zenit-package-built-in-p (package)
+  "Return non-nil if PACKAGE (a symbol) is built-in."
+  (eq (zenit-package-build-recipe package :type)
+      'built-in))
+
+(defun zenit-package-backend (package)
+  "Return 'straight, 'builtin, 'elpa or 'other, depending on how PACKAGE is
+installed."
+  (cond ((gethash (symbol-name package) straight--build-cache)
+         'straight)
+        ((or (zenit-package-built-in-p package)
+             (assq package package--builtins))
+         'builtin)
+        ((assq package package-alist)
+         'elpa)
+        ((locate-library (symbol-name package))
+         'other)))
+
+;;
+;;; Package getters
+
+(defun zenit-packages--read (file)
+  (condition-case-unless-debug e
+      (with-temp-buffer ; prevent buffer-local state from propagating
+        (when (file-exists-p file)
+          (insert-file-contents file)
+          (with-syntax-table emacs-lisp-mode-syntax-table
+            ;; Scrape `package!' blocks from FILE for a comprehensive listing of
+            ;; packages used by this module.
+            (while (search-forward "(package!" nil t)
+              (let ((ppss (save-excursion (syntax-ppss))))
+                ;; Don't collect packages in comments or strings
+                (unless (or (nth 3 ppss)
+                            (nth 4 ppss))
+                  (goto-char (match-beginning 0))
+                  (cl-destructuring-bind (_ name . plist)
+                      (read (current-buffer))
+                    (when-let* ((lockfile (plist-get plist :lockfile)))
+                      (setq plist (plist-put plist :lockfile (ensure-list lockfile))))
+                    ;; Record what module this declaration was found in
+                    (setq plist (plist-put plist :modules (list (zenit-module-context-key))))
+                    ;; When a package is already registered in `zenit-packages',
+                    ;; merge the :lockfile and :modules properties
+                    (if-let* ((old-plist (cdr (assq name zenit-packages))))
+                        (dolist (key '(:lockfile :modules))
+                          (setq plist (plist-put plist key (append (plist-get old-plist key) (plist-get plist key))))))
+                    (setf (alist-get name zenit-packages) plist))))))))
+    (user-error
+     (user-error (error-message-string e)))
+    (error
+     (signal 'zenit-package-error
+             (list (zenit-module-context-key)
+                   file e)))))
+
+(defun zenit-package-list (&optional module-list)
+  "Retrieve a list of explicitly declared packages from MODULE-LIST.
+
+If MODULE-LIST is omitted, read enabled module list in
+configdepth order (see `zenit-module-set'). Otherwise,
+MODULE-LIST may be any symbol (or t) to mean read all modules in
+`zenit-modules-dir', including :core and :user. MODULE-LIST may
+also be a list of module keys."
+  (let ((module-list (cond ((null module-list) (zenit-module-list))
+                           ((symbolp module-list) (zenit-module-list 'all))
+                           (module-list)))
+        (packages-file zenit-module-packages-file)
+        zenit-disabled-packages
+        zenit-packages)
+    (letf! (defun read-packages (key)
+             (zenit-module-context-with key
+               (when-let* ((file (zenit-module-locate-path
+                                  (car key) (cdr key) packages-file)))
+                 (zenit-packages--read file))))
+      (zenit-context-with 'packages
+        (let ((user? (assq :local-conf module-list)))
+          (when user?
+            ;; We load the private packages file twice to populate
+            ;; `zenit-disabled-packages' disabled packages are seen ASAP...
+            (let (zenit-packages)
+              (read-packages (cons :local-conf nil))))
+          (mapc #'read-packages module-list)
+          ;; ...Then again to ensure privately overriden packages are properly
+          ;; overwritten.
+          (if user? (read-packages (cons :local-conf nil)))
+          (nreverse zenit-packages))))))
 
 
 ;;

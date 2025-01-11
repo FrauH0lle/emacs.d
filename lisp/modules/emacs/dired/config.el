@@ -34,7 +34,7 @@
       ;; Use GNU ls as `gls' from `coreutils' if available. Add `(setq
       ;; dired-use-ls-dired nil)' to your config to suppress the Dired warning
       ;; when not using GNU ls.
-      (if-let (gls (executable-find "gls"))
+      (if-let* ((gls (executable-find "gls")))
           (setq insert-directory-program gls)
         ;; BSD ls doesn't support -v or --group-directories-first
         (setq args (list (car args)))))
@@ -101,7 +101,7 @@ Fixes #3939: unsortable dired entries on Windows."
 
 
 (use-package! fd-dired
-  :when zenit-projectile-fd-binary
+  :when zenit-fd-executable
   :defer t
   :init
   (global-set-key [remap find-dired] #'fd-dired)

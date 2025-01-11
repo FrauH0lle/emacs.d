@@ -144,8 +144,14 @@ must be non-read-only, empty, and there must be a rule in
        (not (file-exists-p buffer-file-name))
        (not (buffer-modified-p))
        (null (buffer-base-buffer))
-       (when-let (rule (cl-find-if #'+file-template-p +file-templates-alist))
-         (apply #'+file-templates--expand rule))))
+       (+file-templates/apply)))
+
+
+(defun +file-templates/apply ()
+  "Expand a file template if one exists."
+  (interactive)
+  (when-let* ((rule (cl-find-if #'+file-template-p +file-templates-alist)))
+    (apply #'+file-templates--expand rule)))
 
 
 ;;

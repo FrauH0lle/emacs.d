@@ -1,6 +1,7 @@
 ;; lang/org/contrib/dragndrop.el -*- lexical-binding: t; -*-
 ;;;###if (modulep! +dragndrop)
-
+(eval-when-compile
+  (message "in file: (modulep! +dragndrop) is: %s" (modulep! +dragndrop)))
 (use-package! org-download
   :commands
   org-download-dnd
@@ -44,7 +45,7 @@
             ;; Handle non-image files a little differently. Images should be
             ;; inserted as normal with previews. Other files, like pdfs or zips,
             ;; should be linked to, with an icon indicating the type of file.
-            (format (concat (unless (image-type-from-file-name filename)
+            (format (concat (unless (image-supported-file-p filename)
                               (concat (+org-attach-icon-for filename)
                                       " "))
                             org-download-link-format)

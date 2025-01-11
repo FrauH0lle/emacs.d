@@ -1,5 +1,35 @@
 ;; lisp/core/zenit-editor.el -*- lexical-binding: t; -*-
 
+(eval-when-compile
+  (require 'cl-lib))
+
+;; `bookmark'
+(defvar bookmark-default-file)
+
+;; `evil'
+(defvar evil--jumps-jumping)
+
+;; `smie'
+(declare-function smie-config-guess "smie" ())
+
+;; `tabify'
+(defvar tabify-regexp)
+
+;; `tramp'
+(declare-function tramp-file-name-localname "tramp" t t)
+(defvar tramp-backup-directory-alist)
+(defvar tramp-auto-save-directory)
+
+;; `zenit-lib-buffers'
+(declare-function zenit-visible-buffers "zenit-lib-buffers" (&optional buffer-list all-frames))
+
+;; `zenit-lib-ui'
+(declare-function zenit-recenter-a "zenit-lib-ui" (&rest _))
+(declare-function zenit-shut-up-a "zenit-lib-ui" (orig-fn &rest args))
+
+;; `zenit-start'
+(declare-function zenit-load-packages-incrementally "zenit-start" (packages &optional now))
+
 
 (defvar zenit-detect-indentation-excluded-modes
   '(pascal-mode
@@ -9,7 +39,6 @@
     org-mode)
   "A list of major modes where indentation shouldn't be
  auto-detected.")
-
 
 (defvar-local zenit-inhibit-indent-detection nil
   "A buffer-local flag that indicates whether `dtrt-indent' should
@@ -278,12 +307,8 @@ system."
 ;;
 ;;; Extra file extensions to support
 
-(nconc
- auto-mode-alist
- '(("/LICENSE\\'" . text-mode)
-   ("\\.log\\'" . text-mode)
-   ("rc\\'" . conf-mode)
-   ("\\.\\(?:hex\\|nes\\)\\'" . hexl-mode)))
+(add-to-list 'auto-mode-alist '("/LICENSE\\'" . text-mode))
+(add-to-list 'auto-mode-alist '("rc\\'" . conf-mode) 'append)
 
 
 ;;
@@ -294,8 +319,15 @@ system."
   :hook (after-save . zenit-auto-revert-buffers-h)
   :hook (zenit-switch-buffer . zenit-auto-revert-buffer-h)
   :hook (zenit-switch-window . zenit-auto-revert-buffer-h)
+  :commands zenit-auto-revert-buffers-h
   :init
-  (add-function :after after-focus-change-function #'zenit-auto-revert-buffers-h)
+  (with-no-warnings
+    (when (boundp 'after-focus-change-function)
+      (add-function
+       :after after-focus-change-function
+       (lambda ()
+         (when (frame-focus-state)
+           (zenit-auto-revert-buffers-h))))))
   :config
   (setq auto-revert-verbose t ; let us know when it happens
         auto-revert-use-notify nil
@@ -351,6 +383,8 @@ system."
             (equal "sudo" (file-remote-p file 'method)))
         (abbreviate-file-name (file-truename (tramp-file-name-localname file)))
       file))
+  (eval-when-compile
+    (declare-function zenit--recentf-file-truename-fn nil))
 
   ;; Anything in runtime folders
   (add-to-list 'recentf-exclude
@@ -456,10 +490,10 @@ faster `prin1'."
 
 (use-package! server
   :when (display-graphic-p)
-  :after-call zenit-first-input-hook zenit-first-file-hook after-focus-change-function ; focus-out-hook
+  :after-call zenit-first-input-hook zenit-first-file-hook
   :defer 1
   :config
-  (when-let (name (getenv "EMACS_SERVER_NAME"))
+  (when-let* ((name (getenv "EMACS_SERVER_NAME")))
     (setq server-name name))
   (unless (server-running-p)
     (server-start)))
@@ -480,6 +514,10 @@ faster `prin1'."
 (use-package! better-jumper
   :hook (zenit-first-input . better-jumper-mode)
   :commands zenit-set-jump-a zenit-set-jump-maybe-a zenit-set-jump-h
+  :preface
+  ;; REVIEW: Remove if/when https://github.com/gilbertw1/better-jumper/pull/26
+  ;;   is addressed.
+  (defvaralias 'evil--jumps-jump-command 'evil--jumps-jumping-backward)
   :init
   (global-set-key [remap evil-jump-forward]  #'better-jumper-jump-forward)
   (global-set-key [remap evil-jump-backward] #'better-jumper-jump-backward)
@@ -515,7 +553,8 @@ faster `prin1'."
   (defun zenit-set-jump-h ()
     "Run `better-jumper-set-jump' but return nil, for
 short-circuiting hooks."
-    (better-jumper-set-jump)
+    (when (get-buffer-window)
+      (better-jumper-set-jump))
     nil)
 
   ;; Creates a jump point before killing a buffer. This allows you to undo
@@ -524,7 +563,7 @@ short-circuiting hooks."
   ;;
   ;; I'm not advising `kill-buffer' because I only want this to affect
   ;; interactively killed buffers.
-  (advice-add #'kill-current-buffer :around #'zenit-set-jump-a)
+  (add-hook 'kill-buffer-hook #'zenit-set-jump-h)
 
   ;; Create a jump point before jumping with imenu.
   (advice-add #'imenu :around #'zenit-set-jump-a)
@@ -578,88 +617,9 @@ Emacs in a broken state."
                          (message "[WARNING] Indent detection: %s"
                                   (error-message-string e))
                          (message ""))))) ; warn silently
-        (funcall fn arg)))))
-
-(defvar zenit-clone-emacs-C-src nil
-  "If non-nil, prompt user to clone the Emacs source repository when
-looking up a C function.")
-
-(use-package! helpful
-  ;; a better *help* buffer
-  :commands helpful--read-symbol
-  :hook (helpful-mode . visual-line-mode)
-  :init
-  ;; Make `apropos' et co search more extensively. They're more useful this way.
-  (setq apropos-do-all t)
-
-  (global-set-key [remap describe-function] #'helpful-callable)
-  (global-set-key [remap describe-command]  #'helpful-command)
-  (global-set-key [remap describe-variable] #'helpful-variable)
-  (global-set-key [remap describe-key]      #'helpful-key)
-  (global-set-key [remap describe-symbol]   #'helpful-symbol)
-
-  (defun zenit-use-helpful-a (fn &rest args)
-    "Force FN to use helpful instead of the old describe-* commands."
-    (letf! ((#'describe-function #'helpful-function)
-            (#'describe-variable #'helpful-variable))
-      (apply fn args)))
-
-  (after! apropos
-    ;; Patch apropos buttons to call helpful instead of help
-    (dolist (fun-bt '(apropos-function apropos-macro apropos-command))
-      (button-type-put
-       fun-bt 'action
-       (lambda (button)
-         (helpful-callable (button-get button 'apropos-symbol)))))
-    (dolist (var-bt '(apropos-variable apropos-user-option))
-      (button-type-put
-       var-bt 'action
-       (lambda (button)
-         (helpful-variable (button-get button 'apropos-symbol))))))
-
-  :config
-  ;; Function used by `helpful--set' to interactively set variables
-  (setq helpful-set-variable-function #'setq!)
-
-  (when zenit-clone-emacs-C-src
-    ;; Standard location for the Emacs source code
-    (setq source-directory (file-name-concat zenit-data-dir "src/"))
-
-    ;; This is initialized to nil by `find-func' if the source is not cloned when
-    ;; the library is loaded
-    (setq find-function-C-source-directory
-          (expand-file-name "src" source-directory))
-
-    (defun zenit--clone-emacs-source-maybe ()
-      "Prompt user to clone Emacs source repository if needed."
-      (when (and (not (file-directory-p source-directory))
-                 (not (get-buffer "*zenit clone emacs src*"))
-                 (yes-or-no-p "Clone Emacs source repository? "))
-        (make-directory (file-name-directory source-directory) 'parents)
-        (let ((branch (concat "emacs-" (prin1-to-string emacs-major-version)))
-              (compilation-buffer-name-function
-               (lambda (&rest _)
-                 "*zenit clone emacs src*")))
-          (save-current-buffer
-            (compile
-             (format
-              "git clone -b %s --depth 1 https://github.com/emacs-mirror/emacs.git %s"
-              (shell-quote-argument branch)
-              (shell-quote-argument source-directory)))))))
-
-    (after! find-func
-      (defadvice! +find-func--clone-emacs-source-a (&rest _)
-        "Clone Emacs source if needed to view definition."
-        :before #'find-function-C-source
-        (zenit--clone-emacs-source-maybe)))
-
-    (defadvice! +helpful--clone-emacs-source-a (library-name)
-      "Prompt user to clone Emacs source code when looking up functions.
-Otherwise, it only happens when looking up variables, for some
-bizarre reason."
-      :before #'helpful--library-path
-      (when (member (file-name-extension library-name) '("c" "rs"))
-        (zenit--clone-emacs-source-maybe)))))
+        (funcall fn arg))
+      (eval-when-compile
+        (declare-function symbol-config--guess nil)))))
 
 
 (use-package! smartparens
@@ -765,7 +725,7 @@ current buffer.")
               ws-butler-mode
               auto-composition-mode
               undo-tree-mode
-              highlight-indent-guides-mode
+              indent-bars-mode
               hl-fill-column-mode
               ;; These are redundant on Emacs 29+
               flycheck-mode

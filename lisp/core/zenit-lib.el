@@ -3,13 +3,51 @@
 ;; This file contains many helper functions and macros which are used throughout
 ;; the configuration.
 
+(eval-when-compile
+  (require 'cl-lib))
+
+;; `cl-extra'
+(declare-function cl-some "cl-extra" (cl-pred cl-seq &rest cl-rest))
+(declare-function cl-subseq "cl-extra" (seq start &optional end))
+
+;; `cl-lib'
+(declare-function cl-evenp "cl-lib" (integer))
+
+;; `cl-seq'
+(declare-function cl-position "cl-seq" (cl-item cl-seq &rest cl-keys))
+
+;; `subr-x'
+(declare-function string-remove-prefix "subr-x" (prefix string))
+(autoload #'string-remove-prefix "subr-x")
+(declare-function string-remove-suffix "subr-x" (suffix string))
+(autoload #'string-remove-suffix "subr-x")
+
+;; `zenit-core'
+(defvar zenit-core-dir)
+(defvar zenit-local-conf-dir)
+(defvar zenit-modules-dir)
+
+;; `zenit-lib-compile'
+(declare-function zenit-async-byte-compile-file "zenit-lib-compile" (file &rest kwargs))
+(autoload #'zenit-async-byte-compile-file "zenit-lib-compile")
+(declare-function zenit-compile-generate-args "zenit-lib-compile" (target))
+(autoload #'zenit-compile-generate-args "zenit-lib-compile")
+
+;; `zenit-lib-files'
+(declare-function zenit-files-in "zenit-lib-files" (paths &rest rest))
+(declare-function zenit-file-read "zenit-lib-files" (file &rest kwargs))
+
+;; `zenit-modules'
+(declare-function zenit-module-context-key "zenit-modules" (&optional context))
+
+
 ;;
 ;;; Custom error types
 
 (define-error 'zenit-error "Error in Emacs")
 (define-error 'zenit-nosync-error "Config could not be initialized; did you remember to run 'make refresh' in the shell?" 'zenit-error)
 (define-error 'zenit-core-error "Unexpected error in core directory" 'zenit-error)
-(define-error 'zenit-context-error "Invalid context" 'zenit-error)
+(define-error 'zenit-context-error "Incorrect context error" 'zenit-error)
 (define-error 'zenit-hook-error "Error in a startup hook" 'zenit-error)
 (define-error 'zenit-autoload-error "Error in an autoloads file" 'zenit-error)
 (define-error 'zenit-module-error "Error in a module" 'zenit-error)
@@ -18,12 +56,95 @@
 
 
 ;;
+;;; Eval/compilation
+
+(defmacro protect-macros! (&rest body)
+  "Eval BODY, protecting macros from incorrect expansion.
+This macro should be used in the following situation:
+
+Some form is being evaluated, and this form contains as a
+sub-form some code that will not be evaluated immediately, but
+will be evaluated later. The code uses a macro that is not
+defined at the time the top-level form is evaluated, but will be
+defined by time the sub-form's code is evaluated. This macro
+handles its arguments in some way other than evaluating them
+directly. And finally, one of the arguments of this macro could
+be interpreted itself as a macro invocation, and expanding the
+invocation would break the evaluation of the outer macro.
+
+You might think this situation is such an edge case that it would
+never happen, but you'd be wrong, unfortunately. In such a
+situation, you must wrap at least the outer macro in this form,
+but can wrap at any higher level up to the top-level form."
+  (declare (indent 0) (debug body))
+  `(eval '(progn ,@body) lexical-binding))
+
+(defmacro protect-macros-maybe! (feature &rest body)
+  "Same as `protect-macros!', but only if FEATURE is unavailable.
+Otherwise eval BODY normally (subject to eager macroexpansion).
+In either case, eagerly load FEATURE during byte-compilation."
+  (declare (indent 1) (debug (sexp body)))
+  (let ((available (featurep feature)))
+    (when byte-compile-current-file
+      (setq available (require feature nil 'noerror)))
+    (if available
+        `(progn ,@body)
+      `(protect-macros!
+         (progn ,@body)))))
+
+(defmacro eval-if! (cond then &rest else)
+  "Like `if', but COND is evaluated at compile/expansion time.
+
+The macro expands directly to either THEN or ELSE, and the other
+branch is not compiled. This can be helpful to deal with code
+that that can be omitted entirely if a certain feature is not
+available."
+  (declare (indent 2) (debug t))
+  (if (eval cond)
+      then
+    (macroexp-progn else)))
+
+(defmacro eval-when! (cond &rest body)
+  "Like `when', but COND is checked at compile/expansion time.
+
+BODY is only compiled if COND evaluates to non-nil. See
+`eval-if!'."
+  (declare (indent 1) (debug t))
+  (when (eval cond)
+    (macroexp-progn body)))
+
+(defmacro eval-unless! (cond &rest body)
+  "Like `unless', but COND is checked at compile/expansion time.
+
+BODY is only compiled if COND evaluates to non-nil. See
+`eval-if!'."
+  (declare (indent 1) (debug t))
+  (unless (eval cond)
+    (macroexp-progn body)))
+
+
+;;
 ;;; Logging
 
 (defvar zenit-inhibit-log (not (or noninteractive init-file-debug))
-  "If non-nil, suppress `zenit-log' output.")
+  "If non-nil, suppress `zenit-log' output completely.")
 
-(defun zenit--log (text &rest args)
+(defvar zenit-log-level
+  (if init-file-debug
+      (if-let* ((level (getenv-internal "DEBUG"))
+                (level (string-to-number level))
+                ((not (zerop level))))
+          level
+        2)
+    0)
+  "How verbosely to log from `zenit-log' calls.
+
+0 -- No logging at all.
+1 -- Only warnings.
+2 -- Warnings and notices.
+3 -- Debug info, warnings, and notices.")
+
+(defun zenit--log (level text &rest args)
   "Log a message with the given TEXT and ARGS.
 
 The message will be formatted with a timestamp, and optionally
@@ -34,9 +155,13 @@ If the TEXT starts with a colon, it is considered an absolute
 context and the current `zenit-module-context' will not be used.
 In this case, the colon will be removed from the logged message.
 
+If LEVEL is below `zenit-log-level', do not log the output.
+
 Any additional arguments to be used for formatting the message
 text can be passed via ARGS."
-  (let ((inhibit-message (not init-file-debug))
+  (let ((inhibit-message (if noninteractive
+                             (not init-file-debug)
+                           (> level zenit-log-level)))
         (absolute? (string-prefix-p ":" text)))
     (apply #'message
            (propertize (concat "* %.06f:%s" (if (not absolute?) ":") text)
@@ -52,19 +177,26 @@ text can be passed via ARGS."
            args)))
 
 (defmacro zenit-log (message &rest args)
-  "Log a message in *Messages*.
-Does not emit the message in the echo area. This is a macro instead of a
-function to prevent the potentially expensive evaluation of its arguments when
-debug mode is off. Return non-nil."
+  "Log a MESSAGE in *Messages*.
+Does not emit the message in the echo area. This is a macro
+instead of a function to prevent the potentially expensive
+evaluation of its ARGS when debug mode is off. Return non-nil."
   (declare (debug t))
-  `(unless zenit-inhibit-log (zenit--log ,message ,@args)))
+  (let ((level (if (integerp message)
+                   (prog1 message
+                     (setq message (pop args)))
+                 2)))
+    `(when (and (not zenit-inhibit-log)
+                (or (not noninteractive)
+                    (<= ,level zenit-log-level)))
+       (zenit--log ,level ,message ,@args))))
 
 
 ;;
 ;;; Helpers
 
 (defun zenit--resolve-hook-forms (hooks)
-  "Converts a list of modes into a list of hook symbols.
+  "Convert a list of modes into a list of hook symbols.
 
 If a mode is quoted, it is left as is. If the entire HOOKS list
 is quoted, the list is returned as-is."
@@ -78,8 +210,7 @@ is quoted, the list is returned as-is."
                else collect (intern (format "%s-hook" (symbol-name hook)))))))
 
 (defun zenit--setq-hook-fns (hooks rest &optional singles)
-  "Generate a list of hook setting functions for the given HOOKS and
-REST.
+  "Generate a list of hook setting functions for HOOKS and REST.
 
 HOOKS can be a list of hooks or a single hook symbol. REST is a
 list of variable-value pairs or a list of variables if SINGLES is
@@ -125,14 +256,15 @@ MODE is derived from the hook name."
   exp)
 
 (defun zenit-keyword-intern (str)
-  "Converts STR (a string) into a keyword (`keywordp')."
+  "Convert STR (a string) into a keyword (`keywordp')."
   (declare (pure t) (side-effect-free t))
   (cl-check-type str string)
   (intern (concat ":" str)))
 
 (defun zenit-keyword-name (keyword)
-  "Returns the string name of KEYWORD (`keywordp') minus the
-leading colon."
+  "Return the string name of KEYWORD (`keywordp').
+
+Removes the leading colon."
   (declare (pure t) (side-effect-free t))
   (cl-check-type keyword keyword)
   (substring (symbol-name keyword) 1))
@@ -140,10 +272,10 @@ leading colon."
 (defalias 'zenit-partial #'apply-partially)
 
 (defun zenit-rpartial (fn &rest args)
-  "Return a partial application of FUN to right-hand ARGS.
+  "Return a partial application of FN to right-hand ARGS.
 
-ARGS is a list of the last N arguments to pass to FUN. The result
-is a new function which does the same as FUN, except that the
+ARGS is a list of the last N arguments to pass to FN. The result
+is a new function which does the same as FN, except that the
 last N arguments are fixed at the values with which this function
 was called."
   (declare (side-effect-free t))
@@ -151,7 +283,10 @@ was called."
     (apply fn (append pre-args args))))
 
 (defun zenit-lookup-key (keys &rest keymaps)
-  "Like `lookup-key', but search active keymaps if KEYMAP is omitted."
+  "Look up key sequence KEYS in KEYMAPS.
+
+Like `lookup-key', but search active keymaps, if KEYMAPS is
+omitted."
   (if keymaps
       (cl-some (zenit-rpartial #'lookup-key keys) keymaps)
     (cl-loop for keymap
@@ -179,79 +314,37 @@ If NOERROR, don't throw an error if PATH doesn't exist."
      (signal (car e) (cdr e)))
     (error
      (setq path (locate-file path load-path (get-load-suffixes)))
-     (signal (cond ((not (and path (featurep 'zenit-core)))
-                    'error)
-                   ((file-in-directory-p path (expand-file-name "cli" zenit-core-dir))
-                    'zenit-cli-error)
-                   ((file-in-directory-p path zenit-core-dir)
-                    'zenit-core-error)
-                   ((file-in-directory-p path zenit-local-conf-dir)
-                    'zenit-local-conf-error)
-                   ((file-in-directory-p path zenit-modules-dir)
-                    'zenit-module-error)
-                   ('zenit-error))
-             (list path e)))))
+     (if (not (and path (featurep 'zenit-core)))
+         (signal (car e) (cdr e))
+       (cl-loop for (err . dir)
+                in `((zenit-cli-error        . ,(expand-file-name "cli" zenit-core-dir))
+                     (zenit-core-error       . ,zenit-core-dir)
+                     (zenit-local-conf-error . ,zenit-local-conf-dir)
+                     (zenit-module-error     . ,zenit-modules-dir))
+                if (file-in-directory-p path dir)
+                do (signal err (list (file-relative-name path (expand-file-name "../" dir))
+                                     e)))))))
 
-(defmacro zenit--with-local-load-history (file &rest body)
-  "Evaluate BODY as part of FILE.
+(defun zenit-require (feature &optional filename noerror)
+  "Like `require', but handles subfeatures.
 
-FILE is either a file path string or a form that should evaluate
-to such a string.
+This will load FEATURE if not already present in `features'.
+FILENAME works either as in `require' or can be a subfeature as a
+symbol. For example
 
-This macro ensures that defined functions and variables show up
-as being defined in FILE, instead of whatever file they are being
-loaded from."
-  (declare (indent 0))
-  (let ((file (if (stringp file)
-                  file
-                (apply (car file) (cdr file)))))
-    `(let ((current-load-list nil))
-       ,@body
-       (push (cons ',file current-load-list) load-history))))
+  (zenit-require \\='zenit-lib \\='files)
 
-(defvar zenit-include--current-file nil
-  "Stores the filename of the file to be included.")
-(defmacro zenit-include (file &optional noerror)
-  "Include file contents from FILE when byte-compiling.
-
-Otherwise it delegates to `zenit-load'. If NOERROR, don't throw
-an error if FILE doesn't exist."
-  (if (not (bound-and-true-p byte-compile-current-file))
-      `(zenit-load ,file ,noerror)
-    (zenit-log "include: %s %s" (abbreviate-file-name file) noerror)
-    (let ((forms (zenit-file-read file :by 'read*)))
-      `(zenit--with-local-load-history ,file ,@forms))))
-
-(defvar zenit-include--previous-file nil
-  "Stores the filename of the previously included file.")
-(defmacro include! (filename &optional path noerror)
-  "Include a file relative to the current executing
-file (`load-file-name').
-
-Embeds file contents directly when byte-compiling, otherwise it
-delegates to `zenit-load'.
-
-FILENAME is either a file path string or a form that should
-evaluate to such a string at run time. PATH is where to look for
-the file (a string representing a directory path). See `load!'
-for more information.
-
-If NOERROR is non-nil, don't throw an error if the file doesn't
-exist."
-  (let* ((dir (or path (protect-macros! (dir!))))
-         (file (expand-file-name
-                (file-name-with-extension filename ".el")
-                dir)))
-    `(progn
-       ;; Set `zenit-include--current-file' only during compilation
-       (cl-eval-when (compile)
-         (setq zenit-include--previous-file ,zenit-include--current-file
-               zenit-include--current-file ,file))
-       ;; Include the file
-       (zenit-include ,file ,noerror)
-       ;; Reset `zenit-include--current-file' to the previous one
-       (cl-eval-when (compile)
-         (setq zenit-include--current-file zenit-include--previous-file)))))
+If NOERROR is non-nil, it will simply return nil instead of an
+error."
+  (let ((subfeature (if (symbolp filename) filename)))
+    (or (featurep feature subfeature)
+        (zenit-load
+         (if subfeature
+             (file-name-concat zenit-core-dir
+                               (string-remove-prefix "zenit-" (symbol-name feature))
+                               (concat "zenit-lib-" (symbol-name filename)))
+           (symbol-name feature))
+         noerror))))
 
 (defun zenit-load-envvars-file (file &optional noerror)
   "Read and set envvars from FILE.
@@ -263,7 +356,7 @@ changed."
         (signal 'file-error (list "No envvar file exists" file)))
     (with-temp-buffer
       (insert-file-contents file)
-      (when-let (env (read (current-buffer)))
+      (when-let* ((env (read (current-buffer))))
         (let ((tz (getenv-internal "TZ")))
           (setq-default
            process-environment
@@ -274,7 +367,7 @@ changed."
            shell-file-name
            (or (getenv "SHELL")
                (default-value 'shell-file-name)))
-          (when-let (newtz (getenv-internal "TZ"))
+          (when-let* ((newtz (getenv-internal "TZ")))
             (unless (equal tz newtz)
               (set-time-zone-rule newtz))))
         env))))
@@ -356,41 +449,70 @@ functions."
   "Return the filename of the file this macro was called."
   (or
    (bound-and-true-p zenit-include--current-file)
-   (macroexp-file-name)
    (bound-and-true-p byte-compile-current-file)
    load-file-name
-   buffer-file-name   ; for `eval'
+   (buffer-file-name (buffer-base-buffer))   ; for `eval'
+   (macroexp-file-name)
    (error "file!: cannot deduce the current file path")))
 
 (defmacro dir! ()
   "Return the directory of the file this macro was called."
-  (file-name-directory (macroexpand '(file!))))
+  (let (file-name-handler-alist)
+    (file-name-directory (macroexpand '(file!)))))
 
+(put 'defun* 'lisp-indent-function 'defun)
 (defmacro letf! (bindings &rest body)
   "Temporarily rebind function, macros, and advice in BODY.
 
 Intended as syntax sugar for `cl-letf', `cl-labels',
-`cl-macrolet', and temporary advice.
+`cl-macrolet', and temporary advice (`define-advice').
 
 BINDINGS is either:
 
+  A list of (PLACE VALUE) bindings as `cl-letf*' would accept.
   A list of, or a single, `defun', `defun*', `defmacro', or
-  `defadvice' forms. A list of (PLACE VALUE) bindings as
-  `cl-letf*' would accept.
+  `defadvice' forms.
 
-TYPE is one of:
 
-  `defun' (uses `cl-letf')
-  `defun*' (uses `cl-labels'; allows recursive references),
-  `defmacro' (uses `cl-macrolet')
-  `defadvice' (uses `defadvice!' before BODY, then `undefadvice!'
-  after)
+The def* forms accepted are:
 
-NAME, ARGLIST, and BODY are the same as `defun', `defun*',
-`defmacro', and `defadvice!', respectively.
+  (defun NAME (ARGS...) &rest BODY)
+    Defines a temporary function with `cl-letf'
 
-\(fn ((TYPE NAME ARGLIST &rest BODY) ...) BODY...)"
-  (declare (indent defun))
+  (defun* NAME (ARGS...) &rest BODY)
+    Defines a temporary function with `cl-labels' (allows
+    recursive definitions).
+
+  (defmacro NAME (ARGS...) &rest BODY)
+    Uses `cl-macrolet'.
+
+  (defadvice FUNCTION WHERE ADVICE)
+    Uses `advice-add' (then `advice-remove' afterwards).
+
+  (defadvice FUNCTION (HOW LAMBDA-LIST &optional NAME DEPTH) &rest BODY)
+    Defines temporary advice with `define-advice'."
+  (declare (indent defun)
+           (debug ((&rest [&or
+                           ;; ((PLACE VALUE))
+                           ;; PLACE can be a symbol or a function (#'PLACE)
+                           ([&or symbolp
+                                 ("function" symbolp)]
+                            form)
+                           ;; (defun ...) or ((defun ...))
+                           [&or [&define "defun" symbolp cl-lambda-list def-body]
+                                (&define "defun" symbolp cl-lambda-list def-body)]
+                           ;; (defun* ...) or ((defun* ...))
+                           [&or [&define "defun*" symbolp cl-lambda-list def-body]
+                                (&define "defun*" symbolp cl-lambda-list def-body)]
+                           ;; (defmacro ...) or ((defmacro ...))
+                           [&or [&define "defmacro" symbolp cl-macro-list def-body]
+                                (&define "defmacro" symbolp cl-macro-list def-body)]
+                           ;; (defadvice ...) or ((defadvice ...))
+                           [&or ["defadvice" [&or [[&or symbolp ("function" symbolp)] keywordp form]
+                                                  [sexp (keywordp sexp [&optional sexp] [&optional integerp]) body]]]
+                                ("defadvice" . [&or ([&or symbolp ("function" symbolp)] keywordp form)
+                                                    (sexp (keywordp sexp [&optional sexp] [&optional integerp]) body)])]])
+                   body)))
   (setq body (macroexp-progn body))
   (when (memq (car bindings) '(defun defun* defmacro defadvice))
     (setq bindings (list bindings)))
@@ -400,16 +522,35 @@ NAME, ARGLIST, and BODY are the same as `defun', `defun*',
       (setq
        body (pcase type
               (`defmacro `(cl-macrolet ((,@rest)) ,body))
-              (`defadvice `(progn (defadvice! ,@rest)
-                                  (unwind-protect ,body (undefadvice! ,@rest))))
-              ((or `defun `defun*)
-               `(cl-letf ((,(car rest) (symbol-function #',(car rest))))
-                  (ignore ,(car rest))
-                  ,(if (eq type 'defun*)
-                       `(cl-labels ((,@rest)) ,body)
-                     `(cl-letf (((symbol-function #',(car rest))
-                                 (lambda! ,(cadr rest) ,@(cddr rest))))
-                        ,body))))
+              (`defadvice
+                  (if (keywordp (cadr rest))
+                      (cl-destructuring-bind (target where fn) rest
+                        `(when-let* ((fn ,fn))
+                           (advice-add ,target ,where fn)
+                           (unwind-protect ,body (advice-remove ,target fn))))
+                    (let* ((fn (pop rest))
+                           (argspec (pop rest)))
+                      (when (< (length argspec) 3)
+                        (setq argspec
+                              (list (nth 0 argspec)
+                                    (nth 1 argspec)
+                                    (or (nth 2 argspec) (gensym (format "%s-a" (symbol-name fn)))))))
+                      (let ((name (nth 2 argspec)))
+                        `(progn
+                           (define-advice ,fn ,argspec ,@rest)
+                           (unwind-protect ,body
+                             (advice-remove #',fn #',name)
+                             ,(if name `(fmakunbound ',name))))))))
+              (`defun
+                  `(cl-letf ((,(car rest) (symbol-function #',(car rest))))
+                     (eval-when-compile
+                       (declare-function ,(car rest) nil))
+                     (ignore ,(car rest))
+                     (cl-letf (((symbol-function #',(car rest))
+                                (lambda! ,(cadr rest) ,@(cddr rest))))
+                       ,body)))
+              (`defun*
+                `(cl-labels ((,@rest)) ,body))
               (_
                (when (eq (car-safe type) 'function)
                  (setq type (list 'symbol-function type)))
@@ -422,12 +563,13 @@ This silences calls to `message', `load', `write-region' and
 anything that writes to `standard-output'. In interactive
 sessions this inhibits output to the echo-area, but not to
 *Messages*."
+  (declare (debug t))
   `(if init-file-debug
        (progn ,@forms)
      ,(if noninteractive
           `(letf! ((standard-output (lambda (&rest _)))
                    (defun message (&rest _))
-                   (defun load (file &optional noerror nomessage nosuffix must-suffix)
+                   (defun load (file &optional noerror _nomessage nosuffix must-suffix)
                      (funcall load file noerror t nosuffix must-suffix))
                    (defun write-region (start end filename &optional append visit lockname mustbenew)
                      (unless visit (setq visit 'no-message))
@@ -442,12 +584,13 @@ sessions this inhibits output to the echo-area, but not to
 ;;; Closure factories
 
 (defmacro lambda! (arglist &rest body)
-  "Returns (cl-function (lambda ARGLIST BODY...)).
+  "Return (cl-function (lambda ARGLIST BODY...)).
 
 The closure is wrapped in `cl-function', meaning ARGLIST will
 accept anything `cl-defun' will. Implicitly adds
 `&allow-other-keys' if `&key' is present in ARGLIST."
-  (declare (indent defun) (doc-string 1) (pure t) (side-effect-free t))
+  (declare (indent defun) (doc-string 1) (pure t) (side-effect-free t)
+           (debug (&define cl-lambda-list def-body)))
   `(cl-function
     (lambda
       ,(letf! (defun* allow-other-keys (args)
@@ -468,12 +611,18 @@ accept anything `cl-defun' will. Implicitly adds
                                  (nreverse newargs))
                              (append args (list '&allow-other-keys)))
                          args)))
+         (eval-when-compile
+           (declare-function allow-other-keys nil))
          (allow-other-keys arglist))
       ,@body)))
 
 (setplist 'zenit--fn-crawl '(%2 2 %3 3 %4 4 %5 5 %6 6 %7 7 %8 8 %9 9))
-(defun zenit--fn-crawl (data args)
-  "Recursively crawl DATA and populate ARGS array based on special
+;; NOTE 2024-08-05: The `eval-and-compile' is necessary so
+;;   `zenit-compile-functions' defined below does not complain that
+;;   `zenit--fn-crawl' is not defined dring compilation.
+(eval-and-compile
+  (defun zenit--fn-crawl (data args)
+    "Recursively crawl DATA and populate ARGS array based on special
 symbols found in DATA.
 
 DATA is a nested list or vector structure containing symbols,
@@ -486,24 +635,24 @@ at their respective positions:
 - '%%' or '%%1' at position 1.
 
 If both '%*' and '%1' are found in DATA, an error is raised."
-  (cond ((symbolp data)
-         (when-let
-             (pos (cond ((eq data '%*) 0)
-                        ((memq data '(% %1)) 1)
-                        ((get 'zenit--fn-crawl data))))
-           (when (and (= pos 1)
-                      (aref args 1)
-                      (not (eq data (aref args 1))))
-             (error "%% and %%1 are mutually exclusive"))
-           (aset args pos data)))
-        ((and (not (eq (car-safe data) 'fn!))
-              (or (listp data)
-                  (vectorp data)))
-         (let ((len (length data))
-               (i 0))
-           (while (< i len)
-             (zenit--fn-crawl (elt data i) args)
-             (cl-incf i))))))
+    (cond ((symbolp data)
+           (when-let
+               (pos (cond ((eq data '%*) 0)
+                          ((memq data '(% %1)) 1)
+                          ((get 'zenit--fn-crawl data))))
+             (when (and (= pos 1)
+                        (aref args 1)
+                        (not (eq data (aref args 1))))
+               (error "%% and %%1 are mutually exclusive"))
+             (aset args pos data)))
+          ((and (not (eq (car-safe data) 'fn!))
+                (or (listp data)
+                    (vectorp data)))
+           (let ((len (length data))
+                 (i 0))
+             (while (< i len)
+               (zenit--fn-crawl (elt data i) args)
+               (cl-incf i)))))))
 
 (defmacro fn! (&rest args)
   "Return an lambda with implicit, positional arguments.
@@ -532,6 +681,7 @@ which expands to:
 This macro was adapted from llama.el (see URL
 `https://git.sr.ht/~tarsius/llama'), minus font-locking and the
 outer function call, plus some minor optimizations."
+  (declare (debug t))
   `(lambda ,(let ((argv (make-vector 10 nil)))
               (zenit--fn-crawl args argv)
               `(,@(let ((i (1- (length argv)))
@@ -549,19 +699,19 @@ outer function call, plus some minor optimizations."
      ,@args))
 
 (defmacro cmd! (&rest body)
-  "Expands to (lambda () (interactive) ,@body).
+  "Expands to (lambda () (interactive) ,@BODY).
 A factory for quickly producing interaction commands,
 particularly for keybinds or aliases."
-  (declare (doc-string 1) (pure t) (side-effect-free t))
+  (declare (doc-string 1) (debug body))
   `(lambda (&rest _) (interactive) ,@body))
 
 (defmacro cmd!! (command &optional new-prefix-arg &rest args)
-  "Returns a closure that interactively calls COMMAND with ARGS and
+  "Return a closure that interactively calls COMMAND with ARGS and
 NEW-PREFIX-ARG. Like `cmd!', but allows you to change
 `current-prefix-arg' or pass arguments to COMMAND. This macro is
 meant to be used as a target for keybinds (e.g. with `define-key'
 or `map!')."
-  (declare (doc-string 1) (pure t) (side-effect-free t))
+  (declare (doc-string 1) (debug t))
   `(lambda (arg &rest _) (interactive "P")
      (let ((current-prefix-arg (or ,new-prefix-arg arg)))
        (,(if args
@@ -606,10 +756,12 @@ after AFTER."
 (defmacro spliceq! (seq element after &optional before)
   "Splice ELEMENT into SEQ in place.
 See `zenit-splice-into' for details."
+  (declare (debug t))
   `(setq ,seq (zenit-splice-into ,seq ,element ,after ,before)))
 
 (defmacro appendq! (sym &rest lists)
   "Append LISTS to SYM in place."
+  (declare (debug t))
   `(setq ,sym (append ,sym ,@lists)))
 
 (defmacro setq! (&rest settings)
@@ -619,6 +771,7 @@ This can be used as a drop-in replacement for `setq' and *should*
 be used instead of `setopt'. Unlike `setq', this triggers custom
 setters on variables. Unlike `setopt', this won't needlessly pull
 in dependencies."
+  (declare (debug t))
   (macroexp-progn
    (cl-loop for (var val) on settings by 'cddr
             collect `(funcall (or (get ',var 'custom-set) #'set-default-toplevel-value)
@@ -631,6 +784,7 @@ acustomizable variables.
 This behaves the same way as `setq!' but uses `set' instead of
 `set-default-toplevel-value' and will change the local value of a
 buffer-local variable"
+  (declare (debug t))
   (macroexp-progn
    (cl-loop for (var val) on settings by 'cddr
             collect `(funcall (or (get ',var 'custom-set) #'set)
@@ -640,6 +794,7 @@ buffer-local variable"
   "`delq' ELT from LIST in-place.
 If FETCHER is a function, ELT is used as the key in LIST (an
 alist)."
+  (declare (debug t))
   `(setq ,list
          (delq ,(if fetcher
                     `(funcall ,fetcher ,elt ,list)
@@ -649,12 +804,14 @@ alist)."
 (defmacro pushnew! (place &rest values)
   "Push VALUES sequentially into PLACE, if they aren't already present.
 This is a variadic `cl-pushnew'."
+  (declare (debug t))
   (let ((var (make-symbol "result")))
     `(dolist (,var (list ,@values) (with-no-warnings ,place))
        (cl-pushnew ,var ,place :test #'equal))))
 
 (defmacro prependq! (sym &rest lists)
   "Prepend LISTS to SYM in place."
+  (declare (debug t))
   `(setq ,sym (append ,@lists ,sym)))
 
 
@@ -665,7 +822,8 @@ This is a variadic `cl-pushnew'."
   "Add DIRS to `load-path', relative to the current file.
 The current file is the file from which `add-to-load-path!' is
 used."
-  `(let ((default-directory ,(dir!))
+  (declare (debug t))
+  `(let ((default-directory ,(protect-macros! (dir!)))
          file-name-handler-alist)
      (dolist (dir (list ,@dirs))
        (cl-pushnew (expand-file-name dir) load-path))))
@@ -673,15 +831,14 @@ used."
 (defmacro after! (package &rest body)
   "Evaluate BODY after PACKAGE have loaded.
 
-PACKAGE is a symbol or filename as a string (or list of them)
-referring to Emacs features (aka packages). PACKAGE may use
-:or/:any and :and/:all operators. The precise format is:
+PACKAGE is a symbol (or list of them) referring to Emacs
+features (aka packages). PACKAGE may use :or/:any and :and/:all
+operators. The precise format is:
 
 - An unquoted package symbol (the name of a package)
     (after! helm BODY...)
 - An unquoted, nested list of compound package lists, using any
-  combination of
-  :or/:any and :and/:all
+  combination of :or/:any and :and/:all
     (after! (:or package-a package-b ...)  BODY...)
     (after! (:and package-a package-b ...) BODY...)
     (after! (:and package-a (:or package-b package-c) ...) BODY...)
@@ -694,79 +851,161 @@ This emulates `eval-after-load' with a few key differences:
 
 1. No-ops for package that are disabled by the user (via
    `package!') or not installed yet.
+
 2. Supports compound package statements (see :or/:any and
    :and/:all above).
-3. If a package is already loaded, execute the body immediately
-   and don't always to `after-load-alist'.
 
 Since the contents of these blocks will never by byte-compiled,
 avoid putting things you want byte-compiled in them! Like
 function/macro definitions."
   (declare (indent defun) (debug t))
-  (cond ((symbolp package)
-         (unless (memq package (bound-and-true-p zenit-disabled-packages))
-           (list (if (or (not (bound-and-true-p byte-compile-current-file))
-                         (require package nil 'noerror))
-                     #'progn
-                   #'with-no-warnings)
-                 `(if (featurep ',package)
-                      (progn ,@body)
-                    (eval-after-load ',package (lambda () ,@body))))))
-        ((stringp package)
-         `(if (load-history-filename-element
-               (purecopy (load-history-regexp ,package)))
-              (progn ,@body)
-            (eval-after-load ,package (lambda () ,@body))))
-        (t
-         (let ((p (car package)))
-           (cond ((memq p '(:or :any))
-                  (macroexp-progn
-                   (cl-loop for next in (cdr package)
-                            collect `(after! ,next ,@body))))
-                 ((memq p '(:and :all))
-                  (dolist (next (reverse (cdr package)) (car body))
-                    (setq body `((after! ,next ,@body)))))
-                 (`(after! (:and ,@package) ,@body)))))))
+  (if (symbolp package)
+      (unless (memq package (bound-and-true-p zenit-disabled-packages))
+        (list (if (or (not (bound-and-true-p byte-compile-current-file))
+                      (require package nil 'noerror))
+                  #'progn
+                #'with-no-warnings)
+              `(with-eval-after-load ',package ,@body)))
+    (let ((p (car package)))
+      (cond ((memq p '(:or :any))
+             (macroexp-progn
+              (cl-loop for next in (cdr package)
+                       collect `(after! ,next ,@body))))
+            ((memq p '(:and :all))
+             (dolist (next (reverse (cdr package)) (car body))
+               (setq body `((after! ,next ,@body)))))
+            (`(after! (:and ,@package) ,@body))))))
 
 (defmacro load! (filename &optional path noerror)
-  "Load a file relative to the current executing
-file (`load-file-name').
+  "Load a file relative to the current file (`load-file-name').
 
 FILENAME is either a file path string or a form that should
 evaluate to such a string at run time. PATH is where to look for
 the file (a string representing a directory path). If omitted,
 the lookup is relative to either `load-file-name',
-`byte-compile-current-file' or `buffer-file-name' (checked in
-that order).
+`byte-compile-current-file' or variable
+`buffer-file-name' (checked in that order).
 
 If NOERROR is non-nil, don't throw an error if the file doesn't
 exist."
+  (declare (debug t))
   `(zenit-load (file-name-concat ,(or path `(dir!)) ,filename) ,noerror))
+
+(defmacro zenit--with-local-load-history (file &rest body)
+  "Evaluate BODY as part of FILE.
+
+FILE is either a file path string or a form that should evaluate
+to such a string.
+
+This macro ensures that defined functions and variables show up
+as being defined in FILE, instead of whatever file they are being
+loaded from."
+  (declare (indent 0) (debug t))
+  (let ((file (eval file)))
+    `(let ((current-load-list nil))
+       ,@body
+       (push (cons ',file current-load-list) load-history))))
+
+(defvar zenit-include--current-file nil
+  "Stores the filename of the file to be included.")
+(defmacro zenit-include (file &optional noerror)
+  "Include file contents from FILE when byte-compiling.
+
+Otherwise it delegates to `zenit-load'. If NOERROR, don't throw
+an error if FILE doesn't exist."
+  (declare (debug t))
+  (if (not (bound-and-true-p byte-compile-current-file))
+      `(zenit-load ,file ,noerror)
+    (zenit-log "include: %s %s" (abbreviate-file-name file) noerror)
+    (let ((forms (zenit-file-read file :by 'read*)))
+      `(zenit--with-local-load-history ,file ,@forms))))
+
+(defvar zenit-include--previous-file nil
+  "Stores the filename of the previously included file.")
+(defmacro include! (filename &optional path noerror)
+  "Include file contents relative to the current file.
+
+Embeds file contents directly when byte-compiling, otherwise it
+delegates to `zenit-load'.
+
+FILENAME is either a file path string or a form that should
+evaluate to such a string at run time. PATH is where to look for
+the file (a string representing a directory path). See `load!'
+for more information.
+
+If NOERROR is non-nil, don't throw an error if the file doesn't
+exist."
+  (declare (indent defun) (debug t))
+  (let* ((dir (or path (protect-macros! (dir!))))
+         (file (expand-file-name
+                (file-name-with-extension filename ".el")
+                dir)))
+    `(progn
+       (eval-when-compile
+         (setq zenit-include--previous-file ,zenit-include--current-file
+               zenit-include--current-file ,file))
+       ;; Include the file
+       (zenit-include ,file ,noerror)
+       (eval-when-compile
+         (setq zenit-include--current-file zenit-include--previous-file)))))
 
 (defmacro compile-along! (filename &optional path)
   "Compile FILENAME along the file this macro was called from.
 
-PATH is where to look for the file (a string representing a
-directory path). This macro will not do anything if the file it
-is used in is not getting compiled."
-  `(cl-eval-when (compile)
-     (byte-compile-file
-      (file-name-concat
-       ,(or path `(dir!))
-       (file-name-with-extension ,filename ".el")))))
+FILENAME can be either a file or a directory. If it is a
+directory, all files found in this directory will be compiled
+along. The macro does not recurse into subdirectories.
 
-(defmacro autoload! (file &rest fns)
-  "Generate autoloads for FNS from FILE.
+PATH is where to look for FILENAME (a string representing a
+directory path).
 
-FILE needs to be given without extension.
+This macro will not do anything if the file it is used in is not
+getting compiled."
+  (declare (indent defun) (debug t))
+  (when (macroexp-compiling-p)
+    (let* ((filename (expand-file-name filename (or path (protect-macros! (dir!)))))
+           files)
+      (if (not (file-directory-p filename))
+          `(eval-when-compile
+             (async-get (apply #'zenit-async-byte-compile-file
+                               '(,(file-name-with-extension filename ".el")
+                                 ,@(zenit-compile-generate-args
+                                    (file-name-with-extension filename ".el"))))))
+        (dolist (f (zenit-files-in filename :match ".el$" :depth 0) files)
+          (push `(async-get (apply #'zenit-async-byte-compile-file
+                                   '(,(file-name-with-extension f ".el")
+                                     ,@(zenit-compile-generate-args
+                                        (file-name-with-extension f ".el")))))
+                files))
+        `(eval-when-compile
+           ,@files)))))
+
+(defmacro autoload! (file &rest rest)
+  "Generate autoloads from FILE.
+
+FILE needs to be given without extension. REST can be mulitple
+function symbols. Optionally the keywords :interactive and :type
+can be specifed similar to the corresponding positional arguments
+in `autoload'. Note, that the optional arguments apply to all
+given FNS.
 
 Can/should be used in conjunction with `compile-along!' so you
-can profit from compilation. "
-  (declare (indent defun))
-  (let ((autoloads ()))
+can profit from compilation.
+
+\(fn FILE &rest FNS [:interactive :type])"
+  (declare (indent defun) (debug t))
+  (let ((file (expand-file-name file (protect-macros! (dir!))))
+        (autoloads ())
+        fns interactive type)
+    (while rest
+      (if (keywordp (car rest))
+          (pcase (pop rest)
+            (:interactive (setq interactive (pop rest)))
+            (:type  (setq type (pop rest))))
+        (push (pop rest) fns)))
     (while fns
       (let ((fn (pop fns)))
-        (push `(autoload ,fn ,file) autoloads)))
+        (push `(autoload ,fn ,file nil ,interactive ,type) autoloads)))
     `(progn
        ,@autoloads)))
 
@@ -793,6 +1032,7 @@ alternative to `after!'."
 in HOOKS-OR-FUNCTIONS are executed.
 
 See also `use-package!'."
+  (declare (debug t))
   (let ((fn (make-symbol (format "zenit--after-call-%s-h" feature))))
     (macroexp-progn
      (append
@@ -807,12 +1047,13 @@ See also `use-package!'."
                  (require ',feature))
              ((debug error)
               (message "Failed to load deferred package %s: %s" ',feature e)))
-           (when-let (deferral-list (assq ',feature zenit--deferred-packages-alist))
+           (when-let* ((deferral-list (assq ',feature zenit--deferred-packages-alist)))
              (dolist (hook (cdr deferral-list))
                (advice-remove hook #',fn)
                (remove-hook hook #',fn))
              (delq! deferral-list zenit--deferred-packages-alist)
-             (unintern ',fn nil)))))
+             (unintern ',fn nil))))
+        (eval-when-compile (declare-function ,fn nil)))
       (let (forms)
         (dolist (hook hooks-or-functions forms)
           (push (if (string-match-p "-\\(?:functions\\|hook\\)$" (symbol-name hook))
@@ -835,6 +1076,7 @@ we make Emacs believe FEATURE hasn't been loaded yet, then wait
 until FEATURE-hook (or MODE-hook, if FN is provided) is triggered
 to reverse this and trigger `after!' blocks at a more reasonable
 time."
+  (declare (debug t))
   (let ((advice-fn (intern (format "zenit--defer-feature-%s-a" feature))))
     `(progn
        (delq! ',feature features)
@@ -853,6 +1095,26 @@ time."
 
 
 ;;
+;;; Compilation
+
+(defun zenit-compile-functions (&rest fns)
+  "Queue FNS to be byte/natively-compiled after a brief delay."
+  (with-memoization (get 'zenit-compile-function 'timer)
+    (run-with-idle-timer
+     1.5 t (fn! (when-let* ((fn (pop fns)))
+                  (zenit-log "compile-functions: %s" fn)
+                  (or (if (featurep 'native-compile)
+                          (or (subr-native-elisp-p (indirect-function fn))
+                              (ignore-errors (native-compile fn))))
+                      (byte-code-function-p fn)
+                      (let (byte-compile-warnings)
+                        (byte-compile fn))))
+                (unless fns
+                  (cancel-timer (get 'zenit-compile-function 'timer))
+                  (put 'zenit-compile-function 'timer nil))))))
+
+
+;;
 ;;; Hooks
 
 (defmacro add-transient-hook! (hook-or-function &rest forms)
@@ -863,7 +1125,7 @@ invoked, then never again.
 
 HOOK-OR-FUNCTION can be a quoted hook or a sharp-quoted
 function (which will be advised)."
-  (declare (indent 1))
+  (declare (indent 1) (debug t))
   (let ((append? (if (eq (car forms) :after) (pop forms)))
         (fn (gensym "zenit-transient-hook")))
     `(let ((sym ,hook-or-function))
@@ -874,6 +1136,7 @@ function (which will be advised)."
            (cond ((functionp sym) (advice-remove sym #',fn))
                  ((symbolp sym)   (remove-hook sym #',fn))))
          (unintern ',fn nil))
+       (eval-when-compile (declare-function ,fn nil))
        (cond ((functionp sym)
               (advice-add ,hook-or-function ,(if append? :after :before) #',fn))
              ((symbolp sym)
@@ -925,6 +1188,7 @@ This macro accepts, in order:
                            (setq rest (cons (list first (cdr quoted)) rest)))
                          (list first (car quoted)))))
                     ((memq first '(defun cl-defun))
+                     (push `(eval-when-compile (declare-function ,(nth 1 next) nil)) defn-forms)
                      (push next defn-forms)
                      (list 'function (cadr next)))
                     ((prog1 `(lambda (&rest _) ,@(cons next rest))
@@ -932,7 +1196,7 @@ This macro accepts, in order:
               func-forms)))
     `(progn
        ,@defn-forms
-       (dolist (hook (nreverse ',hook-forms))
+       (dolist (hook ',(nreverse hook-forms))
          (dolist (func (list ,@func-forms))
            ,(if remove-p
                 `(remove-hook hook func ,local-p)
@@ -954,19 +1218,20 @@ If N and M = 1, there's no benefit to using this macro over
   "Sets buffer-local variables on HOOKS.
 
 \(fn HOOKS &rest [SYM VAL]...)"
-  (declare (indent 1))
+  (declare (indent 1) (debug t))
   (macroexp-progn
    (cl-loop for (var val hook fn) in (zenit--setq-hook-fns hooks var-vals)
             collect `(defun ,fn (&rest _)
                        ,(format "%s = %s" var (pp-to-string val))
                        (setq-local ,var ,val))
+            collect `(eval-when-compile (declare-function ,fn nil))
             collect `(add-hook ',hook #',fn -90))))
 
 (defmacro unsetq-hook! (hooks &rest vars)
   "Unbind setq hooks on HOOKS for VARS.
 
 \(fn HOOKS &rest [SYM VAL]...)"
-  (declare (indent 1))
+  (declare (indent 1) (debug t))
   (macroexp-progn
    (cl-loop for (_var _val hook fn)
             in (zenit--setq-hook-fns hooks vars 'singles)
@@ -987,7 +1252,8 @@ advice, like in `advice-add'. DOCSTRING and BODY are as in
 \(fn SYMBOL ARGLIST &optional DOCSTRING &rest [WHERE PLACES...]
 BODY\)"
   (declare (doc-string 3)
-           (indent defun))
+           (indent defun)
+           (debug t))
   (unless (stringp docstring)
     (push docstring body)
     (setq docstring nil))
@@ -1012,7 +1278,8 @@ undefiner when testing advice (when combined with `rotate-text').
 \(fn SYMBOL ARGLIST &optional DOCSTRING &rest [WHERE PLACES...]
 BODY\)"
   (declare (doc-string 3)
-           (indent defun))
+           (indent defun)
+           (debug t))
   (let (where-alist)
     (unless (stringp docstring)
       (push docstring body))
@@ -1022,90 +1289,6 @@ BODY\)"
     `(dolist (targets (list ,@(nreverse where-alist)))
        (dolist (target (cdr targets))
          (advice-remove target #',symbol)))))
-
-
-;;
-;;; Eval/compilation
-
-(defmacro protect-macros! (&rest body)
-  "Eval BODY, protecting macros from incorrect expansion.
-This macro should be used in the following situation:
-
-Some form is being evaluated, and this form contains as a
-sub-form some code that will not be evaluated immediately, but
-will be evaluated later. The code uses a macro that is not
-defined at the time the top-level form is evaluated, but will be
-defined by time the sub-form's code is evaluated. This macro
-handles its arguments in some way other than evaluating them
-directly. And finally, one of the arguments of this macro could
-be interpreted itself as a macro invocation, and expanding the
-invocation would break the evaluation of the outer macro.
-
-You might think this situation is such an edge case that it would
-never happen, but you'd be wrong, unfortunately. In such a
-situation, you must wrap at least the outer macro in this form,
-but can wrap at any higher level up to the top-level form."
-  (declare (indent 0))
-  `(eval '(progn ,@body) lexical-binding))
-
-(defmacro protect-macros-maybe! (feature &rest body)
-  "Same as `protect-macros!', but only if FEATURE is unavailable.
-Otherwise eval BODY normally (subject to eager macroexpansion).
-In either case, eagerly load FEATURE during byte-compilation."
-  (declare (indent 1))
-  (let ((available (featurep feature)))
-    (when byte-compile-current-file
-      (setq available (require feature nil 'noerror)))
-    (if available
-        `(progn ,@body)
-      `(protect-macros!
-         (progn ,@body)))))
-
-(defmacro eval-if! (cond then &rest else)
-  "Like `if', but COND is evaluated at compile/expansion time.
-
-The macro expands directly to either THEN or ELSE, and the other
-branch is not compiled. This can be helpful to deal with code
-that that can be omitted entirely if a certain feature is not
-available."
-  (declare (indent 2))
-  (if (eval cond)
-      then
-    (macroexp-progn else)))
-
-(defmacro eval-when! (cond &rest body)
-  "Like `when', but COND is checked at compile/expansion time.
-
-BODY is only compiled if COND evaluates to non-nil. See
-`eval-if!'."
-  (declare (indent 1))
-  (when (eval cond)
-    (macroexp-progn body)))
-
-(defmacro eval-unless! (cond &rest body)
-  "Like `unless', but COND is checked at compile/expansion time.
-
-BODY is only compiled if COND evaluates to non-nil. See
-`eval-if!'."
-  (declare (indent 1))
-  (unless (eval cond)
-    (macroexp-progn body)))
-
-(defun zenit-compile-functions (&rest fns)
-  "Queue FNS to be byte/natively-compiled after a brief delay."
-  (with-memoization (get 'zenit-compile-function 'timer)
-    (run-with-idle-timer
-     1.5 t (fn! (when-let (fn (pop fns))
-                  (zenit-log "compile-functions: %s" fn)
-                  (or (if (featurep 'native-compile)
-                          (or (subr-native-elisp-p (indirect-function fn))
-                              (ignore-errors (native-compile fn))))
-                      (byte-code-function-p fn)
-                      (let (byte-compile-warnings)
-                        (byte-compile fn))))
-                (unless fns
-                  (cancel-timer (get 'zenit-compile-function 'timer))
-                  (put 'zenit-compile-function 'timer nil))))))
 
 
 ;;

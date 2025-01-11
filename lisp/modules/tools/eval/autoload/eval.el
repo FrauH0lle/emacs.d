@@ -3,7 +3,7 @@
 ;;;###autoload
 (defun +eval-display-results-in-popup (output &optional _source-buffer)
   "Display OUTPUT in a popup buffer."
-  (let ((output-buffer (get-buffer-create "*doom eval*"))
+  (let ((output-buffer (get-buffer-create "*zenit eval*"))
         (origin (selected-window)))
     (with-current-buffer output-buffer
       (setq-local scroll-margin 0)
@@ -13,7 +13,7 @@
       (if (fboundp '+word-wrap-mode)
           (+word-wrap-mode +1)
         (visual-line-mode +1)))
-    (when-let (win (display-buffer output-buffer))
+    (when-let* ((win (display-buffer output-buffer)))
       (fit-window-to-buffer
        win (/ (frame-height) 2)
        nil (/ (frame-width) 2)))
@@ -92,14 +92,14 @@ use major-mode of the buffer instead."
                         #'+eval/send-region-to-repl)
                     beg end))
           ((let (lang)
-             (if-let ((runner
-                       (or (alist-get runner-major-mode +eval-runners)
-                           (and (require 'quickrun nil t)
-                                (equal (setq
-                                        lang (quickrun--command-key
-                                              (buffer-file-name (buffer-base-buffer))))
-                                       "emacs")
-                                (alist-get 'emacs-lisp-mode +eval-runners)))))
+             (if-let* ((runner
+                        (or (alist-get runner-major-mode +eval-runners)
+                            (and (require 'quickrun nil t)
+                                 (equal (setq
+                                         lang (quickrun--command-key
+                                               (buffer-file-name (buffer-base-buffer))))
+                                        "emacs")
+                                 (alist-get 'emacs-lisp-mode +eval-runners)))))
                  (funcall runner beg end)
                (let ((quickrun-option-cmdkey lang))
                  (quickrun-region beg end))))))))
@@ -126,7 +126,7 @@ use major-mode of the buffer instead."
                           (buffer-file-name (buffer-base-buffer))))
                         "emacs")
                  (alist-get 'emacs-lisp-mode +eval-runners)))
-        (if-let ((buffer-handler (plist-get (cdr (alist-get major-mode +eval-repls)) :send-buffer)))
+        (if-let* ((buffer-handler (plist-get (cdr (alist-get major-mode +eval-repls)) :send-buffer)))
             (funcall buffer-handler)
           (+eval/region (point-min) (point-max)))
       (quickrun))))

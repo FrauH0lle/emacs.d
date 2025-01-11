@@ -22,6 +22,13 @@
 ;; modify, and should follow a ;;;## package-name header line (if not using
 ;; `after!' or `use-package!').
 
+(eval-when-compile
+  (require 'cl-lib))
+
+;; `popup/config.el'
+(defvar +popup--ignore-parent)
+
+
 ;;
 ;;; Core functions
 
@@ -37,30 +44,25 @@ To reduce fewer edge cases and improve performance when
 ;; Don't try to resize popup windows
 (advice-add #'balance-windows :around #'+popup-save-a)
 
-(defun +popup/quit-window ()
+(defun +popup/quit-window (&optional arg)
   "The regular `quit-window' sometimes kills the popup buffer and
 switches to a buffer that shouldn't be in a popup. We prevent
 that by remapping `quit-window' to this commmand."
-  (interactive)
+  (interactive "P")
   (let ((orig-buffer (current-buffer))
         (parent (car +popup--parents)))
-    (quit-window)
-    (when (and (eq orig-buffer (current-buffer))
-               (popper-popup-p (current-buffer)))
-      (+popup/close nil 'force))
+    (if (+popup-window-parameter 'tabbed)
+        (+popup/close)
+      (quit-window arg)
+      (when (and (eq orig-buffer (current-buffer))
+                 (+popup-buffer-p (current-buffer)))
+        (+popup/close nil 'force)))
     (when-let* ((parent-buffer (car parent))
-                (live-p (buffer-live-p parent-buffer)))
-      (display-buffer parent-buffer))))
-(global-set-key [remap quit-window] #'+popup/quit-window)
-
-(defadvice! +popup-override-display-buffer-alist-a (fn &rest args)
-  "When `pop-to-buffer' is called with non-nil ACTION, that ACTION should
-override `display-buffer-alist'."
-  :around #'switch-to-buffer-other-tab
-  :around #'switch-to-buffer-other-window
-  :around #'switch-to-buffer-other-frame
-  (let ((display-buffer-alist nil))
-    (apply fn args)))
+                  (live-p (buffer-live-p parent-buffer)))
+        (let ((+popup--ignore-parent t))
+          (select-window
+           (display-buffer parent-buffer))))))
+(define-key +popup-buffer-mode-map [remap quit-window] #'+popup/quit-window)
 
 
 ;;
@@ -76,7 +78,7 @@ override `display-buffer-alist'."
 time they were followed."
   :around #'compilation-goto-locus
   (letf! (defun pop-to-buffer (buffer &optional action norecord)
-           (let ((pop-up-windows (not (popper-popup-p (current-buffer)))))
+           (let ((pop-up-windows (not (+popup-buffer-p (current-buffer)))))
              (funcall pop-to-buffer buffer action norecord)))
     (apply fn args)))
 
@@ -89,7 +91,7 @@ time they were followed."
      consult--source-buffer
      :items
      (lambda () (consult--buffer-query :sort 'visibility
-                                       :predicate (lambda (x) (not (popper-popup-p x)))
+                                       :predicate (lambda (x) (not (+popup-buffer-p x)))
                                        :as #'buffer-name)))
 
     ;; Add separate source for popups
@@ -104,7 +106,7 @@ time they were followed."
         :items
         ,(lambda () (consult--buffer-query :sort 'visibility
                                            :predicate (lambda (x)
-                                                        (and (popper-popup-p x)
+                                                        (and (+popup-buffer-p x)
                                                              (if (modulep! :ui workspaces)
                                                                  (bufferlo-local-buffer-p x)
                                                                t)))
@@ -227,8 +229,8 @@ window."
         origin)
     (save-popups!
      (find-file path)
-     (when-let (pos (get-text-property button 'position
-                                       (marker-buffer button)))
+     (when-let* ((pos (get-text-property button 'position
+                                         (marker-buffer button))))
        (goto-char pos))
      (setq origin (selected-window))
      (recenter))
@@ -238,7 +240,7 @@ window."
 ;;;###package Info
 (defadvice! +popup--switch-to-info-window-a (&rest _)
   :after #'info-lookup-symbol
-  (when-let (win (get-buffer-window "*info*"))
+  (when-let* ((win (get-buffer-window "*info*")))
     (when (+popup-window-p win)
       (select-window win))))
 
@@ -262,7 +264,7 @@ frame. No thanks. We can do better."
     :around #'org-goto-location
     :around #'org-fast-tag-selection
     :around #'org-fast-todo-selection
-    (if popper-mode
+    (if +popup-mode
         (letf! ((#'delete-other-windows #'ignore)
                 (#'delete-window        #'ignore))
           (apply fn args))
@@ -274,7 +276,7 @@ buffer,for some reason, which is very unconventional, and so
 requires these gymnastics to tame (i.e. to get the popup manager
 to handle it)."
     :around #'org-goto-location
-    (if popper-mode
+    (if +popup-mode
         (letf! (defun internal-temp-output-buffer-show (buffer)
                  (let ((temp-buffer-show-function
                         (zenit-rpartial #'+popup-display-buffer-stacked-side-window-fn nil)))
@@ -290,14 +292,14 @@ its content and displays it in a side window without deleting all
 other windows. Ugh, such an ugly hack."
     :around #'org-fast-tag-selection
     :around #'org-fast-todo-selection
-    (if popper-mode
+    (if +popup-mode
         (letf! ((defun read-char-exclusive (&rest args)
                   (message nil)
                   (apply read-char-exclusive args))
                 (defun split-window-vertically (&optional _size)
                   (funcall split-window-vertically (- 0 window-min-height 1)))
-                (defun org-fit-window-to-buffer (&optional window max-height min-height shrink-only)
-                  (when-let (buf (window-buffer window))
+                (defun org-fit-window-to-buffer (&optional window _max-height _min-height _shrink-only)
+                  (when-let* ((buf (window-buffer window)))
                     (with-current-buffer buf
                       (+popup-buffer-mode)))
                   (when (> (window-buffer-height window)
@@ -313,21 +315,12 @@ other windows. Ugh, such an ugly hack."
            (popup-p (+popup-window-p window)))
       (prog1 (apply fn args)
         (when (and popup-p (window-live-p window))
-          (delete-window window)))))
-
-  ;; Ensure todo, agenda, and other minor popups are delegated to the popup
-  ;; system.
-  (defadvice! +popup--org-pop-to-buffer-a (fn buf &optional norecord)
-    "Use `pop-to-buffer' instead of `switch-to-buffer' to open buffer.'"
-    :around #'org-switch-to-buffer-other-window
-    (if popper-mode
-        (pop-to-buffer buf nil norecord)
-      (funcall fn buf norecord))))
+          (delete-window window))))))
 
 
 ;;;###package org-journal
 (defadvice! +popup--use-popup-window-a (fn &rest args)
-  :around #'org-journal-search-by-string
+  :around #'org-journal--search-by-string
   (letf! ((#'switch-to-buffer #'pop-to-buffer))
     (apply fn args)))
 
@@ -338,7 +331,7 @@ other windows. Ugh, such an ugly hack."
   :after #'bufferlo-bookmark-tab-load
   :after #'bufferlo-bookmark-frame-load
   (dolist (window (window-list))
-    (when (+popup-parameter 'popup window)
+    (when (+popup-window-parameter 'popup window)
       (+popup--init window nil))))
 
 
@@ -409,5 +402,5 @@ other windows. Ugh, such an ugly hack."
   (letf! (defun windmove-find-other-window (dir &optional arg window)
            (window-in-direction
             (pcase dir (`up 'above) (`down 'below) (_ dir))
-            window (bound-and-true-p popper-mode) arg windmove-wrap-around t))
+            window (bound-and-true-p +popup-mode) arg windmove-wrap-around t))
     (apply fn args)))

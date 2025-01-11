@@ -3,4 +3,4 @@
 
 (package! indent-bars
   :recipe (:type git :host github :repo "jdtsmith/indent-bars")
-  :lockfile ui-indent-guides)
+  :lockfile ui_indent-guides)

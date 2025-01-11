@@ -76,10 +76,13 @@ compressed ones."
   (+vertico/project-search arg initial-query default-directory))
 
 ;;;###autoload
-(defun +vertico/search-symbol-at-point ()
-  "Performs a search in the current buffer for thing at point."
-  (interactive)
-  (consult-line (thing-at-point 'symbol)))
+(defun +vertico/search-symbol-at-point (&optional arg)
+  "Performs a search in the current buffer for thing at point.
+If ARG (universal argument), include all buffers."
+  (interactive "P")
+  (if arg
+      (consult-line-multi t (thing-at-point 'symbol))
+    (consult-line (thing-at-point 'symbol))))
 
 ;;;###autoload
 (defun +vertico-embark-target-package-fn ()
@@ -224,8 +227,8 @@ See URL `https://github.com/minad/consult/issues/770'."
           ((bin (if (ignore-errors (file-remote-p default-directory nil t))
                     (cl-find-if (zenit-rpartial #'executable-find t)
                                 (list "fdfind" "fd"))
-                  zenit-projectile-fd-binary))
-           (version (with-memoization zenit-projects--fd-version
+                  zenit-fd-executable))
+           (version (with-memoization (get 'zenit-fd-executable 'version)
                       (cadr (split-string (cdr (zenit-call-process bin "--version"))
                                           " " t))))
            ((ignore-errors (version-to-list version))))
@@ -244,3 +247,27 @@ See URL `https://github.com/minad/consult/issues/770'."
 (defun +vertico-basic-remote-all-completions (string table pred point)
   (and (vertico--remote-p string)
        (completion-basic-all-completions string table pred point)))
+
+;;;###autoload
+(defun +vertico-orderless-dispatch (pattern _index _total)
+  "Like `orderless-affix-dispatch', but allows affixes to be escaped."
+  (let ((len (length pattern))
+        (alist orderless-affix-dispatch-alist))
+    (when (> len 0)
+      (cond
+       ;; Ignore single dispatcher character
+       ((and (= len 1) (alist-get (aref pattern 0) alist)) #'ignore)
+       ;; Prefix
+       ((when-let* ((style (alist-get (aref pattern 0) alist))
+                    ((not (char-equal (aref pattern (max (1- len) 1)) ?\\))))
+          (cons style (substring pattern 1))))
+       ;; Suffix
+       ((when-let* ((style (alist-get (aref pattern (1- len)) alist))
+                    ((not (char-equal (aref pattern (max 0 (- len 2))) ?\\))))
+          (cons style (substring pattern 0 -1))))))))
+
+;;;###autoload
+(defun +vertico-orderless-disambiguation-dispatch (pattern _index _total)
+  "Ensure $ works with Consult commands, which add disambiguation suffixes."
+  (when (char-equal (aref pattern (1- (length pattern))) ?$)
+    `(orderless-regexp . ,(concat (substring pattern 0 -1) "[\x200000-\x300000]*$"))))

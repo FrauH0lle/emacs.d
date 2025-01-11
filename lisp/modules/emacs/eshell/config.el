@@ -1,5 +1,8 @@
 ;; emacs/eshell/config.el -*- lexical-binding: t; -*-
 
+(eval-when-compile
+  (require 'cl-lib))
+
 ;; See:
 ;;   + `+eshell/here': open eshell in the current window
 ;;   + `+eshell/toggle': toggles an eshell popup
@@ -194,26 +197,28 @@ You should use `set-eshell-alias!' to change this.")
   :config (setup-esh-help-eldoc))
 
 
-(use-package! eshell-did-you-mean
-  ;; Specifically esh-mode, not eshell
-  :after esh-mode
-  :config/el-patch
-  ;; PATCH 2024-06-22: The way `pcomplete-completions' is originally used is
-  ;;   probably outdated.
-  (defun eshell-did-you-mean--get-all-commands ()
+;; PATCH 2024-06-22: The way `pcomplete-completions' is originally used is
+;;   probably outdated.
+(cl-eval-when (compile)
+  (require 'el-patch)
+  (require 'eshell-did-you-mean))
+
+(el-patch-feature eshell-did-you-mean)
+
+(after! eshell-did-you-mean
+  (el-patch-defun eshell-did-you-mean--get-all-commands ()
     "Feed `eshell-did-you-mean--all-commands'."
     (el-patch-swap
       (unless eshell-did-you-mean--all-commands
         (setq eshell-did-you-mean--all-commands (pcomplete-completions)))
       (with-memoization eshell-did-you-mean--all-commands
-        (all-completions "" (pcomplete-completions)))))
+        (all-completions "" (pcomplete-completions))))))
+
+(use-package! eshell-did-you-mean
+  ;; Specifically esh-mode, not eshell
+  :after esh-mode
   :config
-  (eshell-did-you-mean-setup)
-  ;; HACK There is a known issue with `eshell-did-you-mean' where it does not
-  ;;   work on first invocation, so we invoke it once manually by setting the
-  ;;   last command and then calling the output filter.
-  (setq eshell-last-command-name "catt")
-  (eshell-did-you-mean-output-filter "catt: command not found"))
+  (eshell-did-you-mean-setup))
 
 
 (use-package eshell-syntax-highlighting

@@ -32,26 +32,63 @@
 ;;     X On first switched-to buffer: `zenit-first-buffer-hook'
 ;;     X On first opened file:        `zenit-first-file-hook'
 
-(eval-when-compile (require 'subr-x))
+(eval-when-compile
+  (require 'cl-lib))
+
+;; `async'
+(defvar async-byte-compile-log-file)
+
+;; `desktop'
+(defvar desktop-dirname)
+(defvar desktop-base-file-name)
+(defvar desktop-base-lock-name)
+
+(defvar pcache-directory)
+(defvar request-storage-directory)
+
+;; `auth-source'
+(defvar auth-sources)
+
+;; `comp'
+(defvar native-comp-async-report-warnings-errors)
+(defvar native-comp-warning-on-missing-source)
+(defvar comp-num-cpus)
+(defvar native-comp-async-jobs-number)
+
+;; `gnutls'
+(defvar gnutls-verify-error)
+(defvar gnutls-algorithm-priority)
+(defvar gnutls-min-prime-bits)
+(defvar gnutls-verify-error)
+
+(defvar tls-checktrust)
+(defvar tls-program)
+
+;; `novice'
+(declare-function en/disable-command "novice" (command disable))
+
+;; `warnings'
+(defvar warning-suppress-types)
 
 
 ;;
 ;;; Custom features & Global constants
 
-(defconst zenit-operating-system
+(defconst zenit-os-type
   (pcase system-type
     ('darwin                           '(macos unix))
     ((or 'cygwin 'windows-nt 'ms-dos)  '(windows))
     ((or 'gnu 'gnu/linux)              '(linux unix))
-    ((or 'gnu/kfreebsd 'berkeley-unix) '(bsd unix)))
+    ((or 'gnu/kfreebsd 'berkeley-unix) '(bsd unix))
+    ('android                          '(android)))
   "A list of symbols denoting the current operating system.")
 
 ;; Make the operating system available to `featurep'
 (push :system features)
-(put :system 'subfeatures zenit-operating-system)
+(put :system 'subfeatures zenit-os-type)
 
 ;; Convenience aliases for internal use
-(defconst zenit-system            (car zenit-operating-system))
+(defconst zenit-system            (car zenit-os-type))
 (defconst zenit--system-windows-p (featurep :system 'windows))
 (defconst zenit--system-macos-p   (featurep :system 'macos))
 (defconst zenit--system-linux-p   (featurep :system 'linux))
@@ -74,9 +111,9 @@
 
 ;; $HOME isn't normally defined on Windows, but many unix tools expect it.
 (when zenit--system-windows-p
-  (when-let (realhome
-             (and (null (getenv-internal "HOME"))
-                  (getenv "USERPROFILE")))
+  (when-let* ((realhome
+               (and (null (getenv-internal "HOME"))
+                    (getenv "USERPROFILE"))))
     (setenv "HOME" realhome)
     (setq abbreviated-home-dir nil)))
 
@@ -87,6 +124,10 @@
 ;; Load the standard library early, so the macros and functions can be used for
 ;; the configuration.
 (add-to-list 'load-path (file-name-directory load-file-name))
+(add-to-list 'load-path (file-name-concat (file-name-directory load-file-name) "lib"))
+;; Backports from later Emacs versions
+(when (< emacs-major-version 30)
+  (require 'zenit-compat))
 (require 'zenit-lib)
 
 
@@ -183,10 +224,17 @@ autoloaded functions.")
            (locate-file-internal "calc-loaddefs.el" load-path))
          nil
        (list (rassq 'jka-compr-handler old-value))))
-    ;; Make sure the new value survives any current let-binding.
-    (set-default-toplevel-value 'file-name-handler-alist file-name-handler-alist)
     ;; Remember it ...
     (put 'file-name-handler-alist 'initial-value old-value)
+    ;; Emacs will process any files passed to it via the command line, and will
+    ;; do so *really* early in the startup process. These might contain special
+    ;; file paths like TRAMP paths, so restore `file-name-handler-alist' just
+    ;; for this portion of startup.
+    (define-advice command-line-1 (:around (fn args-left) respect-file-handlers)
+      (let ((file-name-handler-alist (if args-left old-value file-name-handler-alist)))
+        (funcall fn args-left)))
+    (eval-when-compile
+      (declare-function command-line-1@respect-file-handlers nil))
     ;; ... so it can be reset where needed.
     (add-hook! 'emacs-startup-hook :depth 101
       (defun zenit--reset-file-handler-alist-h ()
@@ -222,49 +270,33 @@ handling encrypted or compressed files, among other things."
         (advice-remove #'tty-run-terminal-initialization #'tty-run-terminal-initialization@defer)
         (add-hook 'window-setup-hook
                   (zenit-partial #'tty-run-terminal-initialization
-                                 (selected-frame) nil t))))
+                                 (selected-frame) nil t)))
+      (eval-when-compile
+        (declare-function tty-run-terminal-initialization@defer nil)))
 
-    ;; `load-suffixes' and `load-file-rep-suffixes' are consulted on each
-    ;; `require' and `load'. Removing .so gives a small boost. This is later
-    ;; restored in zenit-start.el.
-    (put 'load-suffixes 'initial-value (default-toplevel-value 'load-suffixes))
-    (put 'load-file-rep-suffixes 'initial-value (default-toplevel-value 'load-file-rep-suffixes))
-    (set-default-toplevel-value 'load-suffixes '(".elc" ".el"))
-    (set-default-toplevel-value 'load-file-rep-suffixes '(""))
+    (unless init-file-debug
+      ;; The mode-line procs a couple dozen times during startup. This is
+      ;; normally quite fast, but disabling the default mode-line and reducing
+      ;; the update delay timer seems to stave off ~30-50ms.
+      (put 'mode-line-format 'initial-value (default-toplevel-value 'mode-line-format))
+      (setq-default mode-line-format nil)
+      (dolist (buf (buffer-list))
+        (with-current-buffer buf (setq mode-line-format nil)))
 
-    (add-hook! 'zenit-before-init-hook
-      (defun zenit--reset-load-suffixes-h ()
-        "Undo any problematic startup optimizations."
-        (setq load-suffixes (get 'load-suffixes 'initial-value)
-              load-file-rep-suffixes (get 'load-file-rep-suffixes 'initial-value))))
+      ;; Premature redisplays can substantially affect startup times and produce
+      ;; ugly flashes of unstyled Emacs.
+      (setq-default inhibit-redisplay t
+                    inhibit-message t)
 
-    ;; Defer the initialization of `defcustom'.
-    (setq custom-dont-initialize t)
-    (add-hook! 'zenit-before-init-hook
-      (defun zenit--reset-custom-dont-initialize-h ()
-        (setq custom-dont-initialize nil)))
-
-    ;; The mode-line procs a couple dozen times during startup. This is
-    ;; normally quite fast, but disabling the default mode-line and reducing
-    ;; the update delay timer seems to stave off ~30-50ms.
-    (put 'mode-line-format 'initial-value (default-toplevel-value 'mode-line-format))
-    (setq-default mode-line-format nil)
-    (dolist (buf (buffer-list))
-      (with-current-buffer buf (setq mode-line-format nil)))
-
-    ;; Premature redisplays can substantially affect startup times and produce
-    ;; ugly flashes of unstyled Emacs.
-    (setq-default inhibit-redisplay t
-                  inhibit-message t)
-
-    ;; If the above vars aren't reset, Emacs could appear frozen or garbled
-    ;; after startup (or in case of an startup error).
-    (defun zenit--reset-inhibited-vars-h ()
-      (setq-default inhibit-redisplay nil
-                    ;; Inhibiting `message' only prevents redraws and
-                    inhibit-message nil)
-      (redraw-frame))
-    (add-hook 'after-init-hook #'zenit--reset-inhibited-vars-h)
+      ;; If the above vars aren't reset, Emacs could appear frozen or garbled
+      ;; after startup (or in case of an startup error).
+      (defun zenit--reset-inhibited-vars-h ()
+        (setq-default inhibit-redisplay nil
+                      inhibit-message nil)
+        (remove-hook 'post-command-hook #'zenit--reset-inhibited-vars-h))
+      (eval-when-compile
+        (declare-function zenit--reset-inhibited-vars-h nil))
+      (add-hook 'post-command-hook #'zenit--reset-inhibited-vars-h -100))
 
     ;; Lazy load the toolbar until tool-bar-mode is actually used (see
     ;; `startup--load-user-init-file@undo-hacks').
@@ -280,33 +312,32 @@ handling encrypted or compressed files, among other things."
     (put 'site-run-file 'initial-value site-run-file)
     (setq site-run-file nil)
 
-    (define-advice startup--load-user-init-file (:around (fn &rest args) undo-hacks)
+    (define-advice startup--load-user-init-file (:around (fn &rest args) undo-hacks 95)
       "Undo startup optimizations to prep for the user's session."
-      (let (init)
-        (unwind-protect
-            (progn
-              (when (setq site-run-file (get 'site-run-file 'initial-value))
-                (let ((inhibit-startup-screen inhibit-startup-screen))
-                  (letf! ((defun load-file (file) (load file nil 'nomessage))
-                          (defun load (file &optional noerror _nomessage &rest args)
-                            (apply load file noerror t args)))
-                    (load site-run-file t t))))
-              (apply fn args)  ; start up as normal
-              (setq init t))
-          (when (or (not init) init-file-had-error)
-            ;; If we don't undo our inhibit-{message,redisplay} and there's an
-            ;; error, we'll see nothing but a blank Emacs frame.
-            (zenit--reset-inhibited-vars-h))
-          ;; Once startup is sufficiently complete, undo our earlier
-          ;; optimizations to reduce the scope of potential edge cases.
-          (advice-remove #'tool-bar-setup #'ignore)
-          (add-transient-hook! 'tool-bar-mode (tool-bar-setup))
-          (unless (default-toplevel-value 'mode-line-format)
-            (setq-default mode-line-format (get 'mode-line-format 'initial-value))))))
+      (unwind-protect
+          (progn
+            (when (setq site-run-file (get 'site-run-file 'initial-value))
+              (let ((inhibit-startup-screen inhibit-startup-screen))
+                (letf! ((defun load-file (file)
+                          (load file nil (not init-file-debug)))
+                        (defun load (file &optional noerror _nomessage &rest args)
+                          (apply load file noerror (not init-file-debug) args)))
+                  (load site-run-file t))))
+            (apply fn args))
+        ;; Now it's safe to be verbose.
+        (setq-default inhibit-message nil)
+        ;; Once startup is sufficiently complete, undo our earlier optimizations
+        ;; to reduce the scope of potential edge cases.
+        (advice-remove #'tool-bar-setup #'ignore)
+        (add-transient-hook! 'tool-bar-mode (tool-bar-setup))
+        (unless (default-toplevel-value 'mode-line-format)
+          (setq-default mode-line-format (get 'mode-line-format 'initial-value)))))
+    (eval-when-compile
+      (declare-function startup--load-user-init-file@undo-hacks nil))
 
     ;; Unset a non-trivial list of command line options that aren't relevant
     ;; to our current OS, but `command-line-1' still processes.
-    (eval-unless! zenit--system-macos-p
+    (eval-unless! (featurep :system 'macos)
       (setq command-line-ns-option-alist nil))
     (eval-unless! (memq initial-window-system '(x pgtk))
       (setq command-line-x-option-alist nil))))
@@ -437,7 +468,9 @@ them otherwise."
     (and (null comp-num-cpus)
          (zerop native-comp-async-jobs-number)
          (setq comp-num-cpus
-               (max 1 (/ (num-processors) (if noninteractive 1 4)))))))
+               (max 1 (/ (num-processors) (if noninteractive 1 4))))))
+  (eval-when-compile
+    (declare-function comp-effective-async-max-jobs@set-default-cpus nil)))
 
 ;; Suppress package.el
 (setq package-enable-at-startup nil)
@@ -500,7 +533,7 @@ site-lisp/config.el are loaded."
 (defcustom zenit-after-init-hook ()
   "A hook run once core, modules and local config are loaded.
 
-This triggers at the absolutel atest point in the eager startup
+This triggers at the absolute latest point in the eager startup
 process, and runs in both interactive and non-interactive
 sessions, so guard hooks appropriately against `noninteractive'."
   :group 'zenit
@@ -523,11 +556,17 @@ sessions, so guard hooks appropriately against `noninteractive'."
   (defun zenit--end-init-h ()
     "Set `zenit-init-time'."
     (when (zenit-context-pop 'init)
-      (setq zenit-init-time (float-time (time-subtract (current-time) before-init-time))))))
+      (setq zenit-init-time (float-time (time-subtract (current-time) before-init-time)))
+      ;; If `gc-cons-threshold' hasn't been reset at this point, we reset it by
+      ;; force.
+      (when (eq (default-value 'gc-cons-threshold) most-positive-fixnum)
+        (setq-default gc-cons-threshold (* 16 1024 1024))))))
 
 (unless noninteractive
   ;; This is the absolute latest a hook can run in Emacs' startup process.
   (define-advice command-line-1 (:after (&rest _) run-after-init-hook)
-    (zenit-run-hooks 'zenit-after-init-hook)))
+    (zenit-run-hooks 'zenit-after-init-hook))
+  (eval-when-compile
+    (declare-function command-line-1@run-after-init-hook nil)))
 
 (provide 'zenit-core)

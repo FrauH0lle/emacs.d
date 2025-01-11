@@ -2,5 +2,6 @@
 ;; lang/python/control.el
 
 (:depends
- ((+lsp :tools lsp)
+ ((+pyright :lang python +lsp)
+  (+lsp :tools lsp)
   (+tree-sitter :tools tree-sitter)))

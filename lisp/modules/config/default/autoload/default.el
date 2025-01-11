@@ -61,7 +61,7 @@ current project. Otherwise list them for the current buffer"
               (modulep! :tools lsp)
               (bound-and-true-p lsp-mode))
          (consult-lsp-diagnostics arg))
-        ((and (modulep! :checkers syntax)
+        ((and (modulep! :checkers syntax -flymake)
               (bound-and-true-p flycheck-mode))
          (if (modulep! :completion vertico)
              (consult-flycheck)

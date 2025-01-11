@@ -2,10 +2,7 @@
 
 (defvar +popup--internal nil)
 
-;; Customized display buffer function
-(compile-along! "+popup-display-func")
-
-(defconst +popup-window-parameters '(ttl quit select modeline popup)
+(defconst +popup-window-parameters '(ttl quit select modeline popup tabbed)
   "A list of custom parameters to be added to
 `window-persistent-parameters'. Modifying this has no
 effect, unless done before ui/popup loads.")
@@ -30,6 +27,63 @@ effect, unless done before ui/popup loads.")
   "Size of the margins to give popup windows. Set this to nil to
 disable margin adjustment.")
 
+(defvar +popup-reference-buffers nil
+  "List of buffer designators that should be treated as popups.
+
+Each entry can be a
+
+  - regexp (string) matching buffer name
+  - major mode (symbol)
+  - predicate function taking a buffer
+  - (cons (regexp/mode/fn) \\='hide) to suppress the popup")
+
+(defvar-local +popup-buffer-status nil
+  "Property list describing a popup buffer.
+This plist can have the following properties:
+
+  :status Identifies a buffer as a popup
+    Valid values are \\='popup, \\='raised, \\='user-popup or nil.
+
+    \\='popup This is a popup buffer specified in
+    `+popup-reference-buffers'.
+
+    \\='raised This is a popup buffer raised to regular status by
+    the user.
+
+    \\='user-popup This is a regular buffer lowered to popup
+    status by the user.
+
+    \\='suppressed This popup buffer is suppressed.
+
+  :tabbed This popup buffer is part of a tabbed window.
+
+    Valid values are \\='top, \\='bottom, \\='left, \\='right and
+    nil.
+
+For :ttl, :quit, :select, :modeline and :autosave see
+`set-popup-rule!'.")
+
+(defvar +popup-group-function nil
+  "Function that returns a popup context.
+
+When set to nil popups are not grouped by context.
+
+This function is called with no arguments and should return a
+string or symbol identifying a popup buffer's group. This
+identifier is used to associate popups with regular buffers (such
+as by project, directory, or `major-mode') so that popup-cycling
+from a regular buffer is restricted to its associated group.")
+
+(defvar +popup-open-buffers-alist nil
+  "Alist of currently live (window . buffer)s that are treated as popups.")
+
+(defvar +popup-buried-buffers-alist nil
+  "Alist of currently buried (window . buffer)s that are treated as popups.
+
+If `+popup-group-function' is non-nil, these are
+grouped by the predicate `+popup-group-function'.")
+
+
 (defvar +popup--inhibit-transient nil
   "If non-nil, do not kill popup buffer (window parameter ttl).")
 (defvar +popup--inhibit-select nil
@@ -38,59 +92,25 @@ disable margin adjustment.")
 (defvar +popup--old-display-buffer-alist nil
   "Alist storing old `display-buffer-alist'.")
 (defvar +popup--old-reference-buffers nil
-  "Alist storing old `popper-reference-buffers'.")
+  "Alist storing old `+popup-reference-buffers'.")
 (defvar +popup--remember-last t
   "If non-nil, store last popup.")
 (defvar +popup--last nil
   "Stores the last popup configuration.")
 (defvar-local +popup--parents nil
   "Stores the popup's parent buffers.")
+(defvar +popup--ignore-parent nil
+  "If non-nil, do not record parent buffer.")
 (defvar-local +popup--timer nil
   "Stores current timer for killing the buffer.")
 
 
 ;;
-;;; Packages
-
-(use-package! popper
-  :defer t
-  :custom
-  (popper-display-control nil)
-  (popper-mode-line t)
-  :config
-  (defadvice! +popper-setup-reference-buffers-a (fn &rest args)
-    "Populate `popper-reference-buffers'."
-    :around #'popper-mode
-    (unless popper-mode
-      (setq +popup--old-reference-buffers popper-reference-buffers
-            popper-reference-buffers +popup--reference-buffers))
-    (apply fn args))
-
-  (add-hook! 'popper-mode-hook
-    (defun +popup-init-h ()
-      "Initialize our modifications."
-      (cond (;; Turning ON
-             popper-mode
-             (add-hook 'zenit-escape-hook #'+popup-close-on-escape-h 'append)
-             (setq +popup--old-display-buffer-alist display-buffer-alist
-                   display-buffer-alist +popup--display-buffer-alist
-                   window--sides-inhibit-check t)
-             (dolist (prop +popup-window-parameters)
-               (push (cons prop 'writable) window-persistent-parameters)))
-            (;; Turning OFF
-             t
-             (remove-hook 'zenit-escape-hook #'+popup-close-on-escape-h)
-             (setq display-buffer-alist +popup--old-display-buffer-alist
-                   popper-reference-buffers +popup--old-reference-buffers
-                   window--sides-inhibit-check nil)
-             (+popup-cleanup-rules-h)
-             (dolist (prop +popup-window-parameters)
-               (delq (assq prop window-persistent-parameters)
-                     window-persistent-parameters)))))))
-
-
-;;
 ;;; Global modes
+
+(defvar +popup-mode-map (make-sparse-keymap)
+  "Active keymap in a session with the popup system enabled.
+See `+popup-mode'.")
 
 (defvar +popup-buffer-mode-map
   (let ((map (make-sparse-keymap)))
@@ -101,6 +121,65 @@ disable margin adjustment.")
     map)
   "Active keymap in popup windows. See `+popup-buffer-mode'.")
 
+(define-minor-mode +popup-mode
+  "Global minor mode representing Doom's popup management system."
+  :init-value nil
+  :global t
+  :group 'zenit
+  :keymap +popup-mode-map
+  (cond (;; Turning ON
+         +popup-mode
+         (+popup-update-reference-vars)
+         (+popup-update-popup-alists-h)
+
+         (add-hook 'window-configuration-change-hook #'+popup-suppress-popups-h)
+         (add-hook 'window-configuration-change-hook #'+popup-update-popup-alists-h)
+         (add-hook 'zenit-switch-buffer-hook #'+popup-update-popup-alists-h)
+         (add-hook 'select-frame-hook #'+popup-update-popup-alists-h)
+
+         (add-hook 'zenit-escape-hook #'+popup-close-on-escape-h 'append)
+         (setq +popup--old-display-buffer-alist display-buffer-alist
+               display-buffer-alist +popup--display-buffer-alist
+               +popup--old-reference-buffers +popup-reference-buffers
+               +popup-reference-buffers +popup--reference-buffers
+               window--sides-inhibit-check t)
+         (dolist (prop +popup-window-parameters)
+           (push (cons prop 'writable) window-persistent-parameters)))
+        (;; Turning OFF
+         t
+         (remove-hook 'zenit-switch-buffer-hook #'+popup-update-popup-alists-h)
+         (remove-hook 'window-configuration-change-hook #'+popup-update-popup-alists-h)
+         (remove-hook 'window-configuration-change-hook #'+popup-suppress-popups-h)
+         (remove-hook 'select-frame-hook #'+popup-update-popup-alists-h)
+
+         (remove-hook 'zenit-escape-hook #'+popup-close-on-escape-h)
+         (setq display-buffer-alist +popup--old-display-buffer-alist
+               +popup-reference-buffers +popup--old-reference-buffers
+               window--sides-inhibit-check nil)
+         (+popup-cleanup-rules-h)
+         (dolist (prop +popup-window-parameters)
+           (delq (assq prop window-persistent-parameters)
+                 window-persistent-parameters)))))
+
+(defun +popup-buffer--kill-last-tab-h ()
+  "Intended to run on `kill-buffer-hook'."
+  (when (+popup-tab-single-tab-p)
+    (set-window-dedicated-p (selected-window) 'popup)
+    (set-window-parameter (selected-window) 'tabbed nil)))
+
+;; HACK 2025-01-05: For whatever reason this is necessary as otherwise the
+;;   window with the tabs won't stay dedicated.
+(defun +tab-line-temp-undedicate-win-a (fn &rest args)
+  (if +popup-mode
+      (let* ((window (cadr args))
+             (old-dedicated (window-dedicated-p window)))
+        (set-window-dedicated-p window nil)
+        (prog1
+            (apply fn args)
+          (set-window-dedicated-p window old-dedicated)))
+    (apply fn args)))
+(advice-add #'tab-line-select-tab-buffer :around #'+tab-line-temp-undedicate-win-a)
+
 (define-minor-mode +popup-buffer-mode
   "Minor mode for individual popup windows.
 
@@ -110,7 +189,14 @@ disabled when that window has been changed or closed."
   :keymap +popup-buffer-mode-map
   (cond (;; Turning ON
          +popup-buffer-mode
-         (setq popper-popup-status 'popup)
+
+         (when (and (+popup-window-parameter 'tabbed)
+                    (+popup-buffer-parameter 'tabbed))
+           (set-window-parameter (selected-window) 'quit nil)
+           (add-hook 'kill-buffer-hook #'+popup-buffer--kill-last-tab-h -90 t)
+           (setq-local tab-line-tabs-function #'+popup-tab-get-tabs-fn)
+           (tab-line-mode +1))
+
          (add-hook 'after-change-major-mode-hook #'+popup-set-modeline-on-enable-h
                    nil 'local)
          (when (timerp +popup--timer)
@@ -119,6 +205,11 @@ disabled when that window has been changed or closed."
            (setq +popup--timer nil)))
         (;; Turning OFF
          t
+         (+popup-buffer-set-parameter (current-buffer) :tabbed nil)
+         (when (bound-and-true-p tab-line-mode)
+           (tab-line-mode -1)
+           (remove-hook 'kill-buffer-hook #'+popup-buffer--kill-last-tab-h t))
+
          (remove-hook 'after-change-major-mode-hook #'+popup-set-modeline-on-enable-h t))))
 
 (put '+popup-buffer-mode 'permanent-local t)
@@ -134,7 +225,7 @@ disabled when that window has been changed or closed."
     ("^\\*Local variables\\*$"
      :vslot -1 :slot 1 :size +popup-shrink-to-fit)
     ("^\\*\\(?:[Cc]ompil\\(?:ation\\|e-Log\\)\\|Messages\\)"
-     :vslot -2 :size 0.3  :autosave t :quit t :ttl nil)
+     :vslot -2 :size 0.33  :autosave t :quit t :ttl nil)
     ("^\\*\\(?:zenit \\|Pp E\\)"  ; transient buffers (no interaction required)
      :vslot -3 :size +popup-shrink-to-fit :autosave t :select ignore :quit t :ttl 0)
     ("^\\*zenit:"  ; editing buffers (interaction required)
@@ -169,7 +260,7 @@ disabled when that window has been changed or closed."
     ("^\\*Process List\\*" :side bottom :vslot 101 :size 0.25 :select t :quit t)
     ("^\\*\\(?:Proced\\|timer-list\\|Abbrevs\\|Output\\|Occur\\|unsent mail.*?\\|message\\)\\*" :ignore t)))
 
-(add-hook 'zenit-init-ui-hook #'popper-mode 'append)
+(add-hook 'zenit-init-ui-hook #'+popup-mode 'append)
 
 (add-hook! '+popup-buffer-mode-hook
            #'+popup-adjust-fringes-h
@@ -177,11 +268,17 @@ disabled when that window has been changed or closed."
            #'+popup-set-modeline-on-enable-h
            #'+popup-unset-modeline-on-disable-h)
 
+(compile-along! "autoload")
 
 ;;
 ;;; Hacks
 
+;; Customized display buffer function
+;; PATCH 2024-08-02: `window'
+(el-patch-feature window)
+(compile-along! "+popup-display-func")
+(autoload! "+popup-display-func" #'+popup-display-buffer-stacked-side-window-fn)
+
 (compile-along! "+hacks")
-(add-hook! 'popper-mode-hook :append
-  (load! "+hacks")
-  (load! "+popup-display-func"))
+(add-hook! '+popup-mode-hook :append
+  (load! "+hacks"))

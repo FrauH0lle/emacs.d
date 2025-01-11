@@ -1,5 +1,28 @@
 ;; lisp/core/zenit-keybinds.el -*- lexical-binding: t; -*-
 
+(eval-when-compile
+  (require 'cl-lib))
+
+(defvar mac-command-modifier)
+(defvar ns-command-modifier)
+(defvar mac-option-modifier)
+(defvar ns-option-modifier)
+(defvar mac-right-option-modifier)
+(defvar ns-right-option-modifier)
+(defvar w32-lwindow-modifier)
+(defvar w32-rwindow-modifier)
+
+;; `cl-extra'
+(declare-function cl-subseq "cl-extra" (seq start &optional end))
+
+;; `cl-seq'
+(declare-function cl-position "cl-seq" (cl-item cl-seq &rest cl-keys))
+
+;; `which-key'
+(declare-function which-key-add-key-based-replacements "ext:which-key" (key-sequence replacement &rest more))
+(declare-function which-key-setup-side-window-bottom "ext:which-key" ())
+(declare-function which-key-key-order-alpha "ext:which-key" (acons bcons))
+
 
 ;; A centralized keybinds system, integrated with `which-key' to preview
 ;; available keybindings. All built into one powerful macro: `map!'. If evil is
@@ -42,28 +65,29 @@ Used for Insert and Emacs states, and for non-evil users.")
   (setq w32-lwindow-modifier 'super
         w32-rwindow-modifier 'super)))
 
-;; HACK: Emacs cannot distinguish between C-i from TAB. This is largely a
-;;   byproduct of its history in the terminal, which can't distinguish them
-;;   either, however, when GUIs came about Emacs created separate input events
-;;   for more contentious keys like TAB and RET. Therefore [return] != RET,
-;;   [tab] != TAB, and [backspace] != DEL.
-;;
-;;   In the same vein, this keybind adds a [C-i] event, so users can bind to it.
-;;   Otherwise, it falls back to regular C-i keybinds.
-(define-key key-translation-map [?\C-i]
-            (cmd!
-             (if (let ((keys (this-single-command-raw-keys)))
-                   (and keys
-                        (not (cl-position 'tab    keys))
-                        (not (cl-position 'kp-tab keys))
-                        (display-graphic-p)
-                        ;; Fall back if no <C-i> keybind can be found, otherwise
-                        ;; we've broken all pre-existing C-i keybinds.
-                        (let ((key
-                               (zenit-lookup-key
-                                (vconcat (cl-subseq keys 0 -1) [C-i]))))
-                          (not (or (numberp key) (null key))))))
-                 [C-i] [?\C-i])))
+;; HACK: Emacs can't distinguish C-i from TAB, or C-m from RET, in either GUI or
+;;   TTY frames. This is a byproduct of its history with the terminal, which
+;;   can't distinguish them either, however, Emacs has separate input events for
+;;   many contentious keys like TAB and RET (like [tab] and [return], aka
+;;   "<tab>" and "<return>"), which are only triggered in GUI frames, so here, I
+;;   create one for C-i. Won't work in TTY frames, though. The :os tty module
+;;   has a workaround for that though.
+(pcase-dolist (`(,key ,fallback . ,events)
+               '(([C-i] [?\C-i] tab kp-tab)
+                 ([C-m] [?\C-m] return kp-return)))
+  (define-key
+   input-decode-map fallback
+   (cmd! (if (when-let* ((keys (this-single-command-raw-keys)))
+               (and (display-graphic-p)
+                    (not (cl-loop for event in events
+                                  if (cl-position event keys)
+                                  return t))
+                    ;; Use FALLBACK if nothing is bound to KEY, otherwise we've
+                    ;; broken all pre-existing FALLBACK keybinds.
+                    (key-binding
+                     (vconcat (if (= 0 (length keys)) [] (cl-subseq keys 0 -1))
+                              key) nil t)))
+             key fallback))))
 
 
 ;;
@@ -143,13 +167,6 @@ can be specified as a description for the menu item.")
                                      defs)
                            (t ,fallback-def))))))))
 
-(add-hook! 'zenit-first-input-hook
-  (defun +general-predicate-dispatch-fix-load-history-h ()
-    "Add `general-predicate-dispatch' explicitly to load-history so
-the patch can be validated."
-    (push
-     `(,(locate-library "general") (defun . general-predicate-dispatch)) load-history)))
-
 ;; Convenience aliases
 (defalias 'define-key! #'general-def)
 (defalias 'undefine-key! #'general-unbind)
@@ -185,7 +202,7 @@ consume the following argument.
               (push `(define-key zenit-leader-map (general--kbd ,key)
                       ,bdef)
                     forms))
-            (when-let (desc (cadr (memq :which-key udef)))
+            (when-let* ((desc (cadr (memq :which-key udef))))
               (prependq!
                wkforms `((which-key-add-key-based-replacements
                            (general--concat t zenit-leader-alt-key ,key)
@@ -221,7 +238,7 @@ for a more convenient interface.
 
 See `zenit-localleader-key' and `zenit-localleader-alt-key' to
 change the localleader prefix."
-  (eval-if! (modulep! :editor evil)
+  (eval-if! (zenit-module-p :editor 'evil)
       ;; :non-normal-prefix doesn't apply to non-evil sessions (only evil's
       ;; emacs state)
       `(general-define-key
@@ -247,7 +264,7 @@ change the localleader prefix."
   (defun zenit-init-leader-keys-h ()
     "Bind `zenit-leader-key' and `zenit-leader-alt-key'."
     (let ((map general-override-mode-map))
-      (if (not (modulep! :editor evil))
+      (if (not (zenit-module-p :editor 'evil))
           (progn
             (cond ((equal zenit-leader-alt-key "C-c")
                    (set-keymap-parent zenit-leader-map mode-specific-map))
@@ -325,7 +342,7 @@ For example, :nvi will map to (list \\='normal \\='visual \\='insert). See
 `map!' block.")
 (defvar zenit--map-evil-p nil
   "Non-nil if the :editor evil module is active.")
-(when (modulep! :editor evil) (setq zenit--map-evil-p t))
+(when (zenit-module-p :editor 'evil) (setq zenit--map-evil-p t))
 
 (defun zenit--map-process (rest)
   "Process the rest of a `map!' block. REST is the forms to be
@@ -353,7 +370,7 @@ processed."
                  (:desc
                   (setq desc (pop rest)))
                  (:map
-                  (zenit--map-set :keymaps `(quote ,(ensure-list (pop rest)))))
+                  (zenit--map-set :keymaps `(backquote ,(ensure-list (pop rest)))))
                  (:mode
                   (push (cl-loop for m in (ensure-list (pop rest))
                                  collect (intern (concat (symbol-name m) "-map")))
@@ -432,10 +449,11 @@ pending definitions in `zenit--map-batch-forms'."
   (setq zenit--map-state (plist-put zenit--map-state prop value)))
 
 (defun zenit--map-def (key def &optional states desc)
-  "Add a key-definition to `zenit--map-batch-forms'. KEY is the
-key-chord, DEF is the command to be bound to KEY, STATES are the
-evil states to bind under, and DESC is a description for
-which-key."
+  "Add a key-definition to `zenit--map-batch-forms'.
+
+KEY is the key-chord, DEF is the command to be bound to KEY,
+STATES are the evil states to bind under, and DESC is a
+description for which-key."
   (when (or (memq 'global states)
             (null states))
     (setq states (cons 'nil (delq 'global states))))
@@ -536,7 +554,7 @@ States
   Don't
     (map! :n :leader :desc \"Description\" \"C-c\" #\\='dosomething)
     (map! :leader :n :desc \"Description\" \"C-c\" #\\='dosomething)"
-  (eval-if! (modulep! :editor evil)
+  (eval-if! (zenit-module-p :editor 'evil)
       `(general-with-eval-after-load 'evil
          ,(when (or (bound-and-true-p byte-compile-current-file)
                     (not noninteractive))

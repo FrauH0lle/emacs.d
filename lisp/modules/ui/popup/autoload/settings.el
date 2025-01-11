@@ -1,10 +1,14 @@
 ;; ui/popup/autoload/settings.el -*- lexical-binding: t; -*-
 
 ;;;###autoload
-(defvar +popup--display-buffer-alist nil)
+(defvar +popup--display-buffer-alist nil
+  "Equivalent of `display-buffer-alist'.
+Created by `set-popup-rule!' and `set-popup-rules!'.")
 
 ;;;###autoload
-(defvar +popup--reference-buffers nil)
+(defvar +popup--reference-buffers nil
+  "Equivalent of `+popup-reference-buffers'.
+Created by `set-popup-rule!' and `set-popup-rules!'.")
 
 ;;;###autoload
 (defvar +popup-defaults
@@ -14,15 +18,26 @@
         :quit   t
         :select #'ignore
         :ttl    5)
-  "Default properties for popup rules defined with
-`set-popup-rule!'.")
+  "Default properties for popup rules for `set-popup-rule!'.")
 
 ;;;###autoload
 (defun +popup-make-rule (predicate plist)
-  (let ((predicate (if (and (symbolp predicate)
-                            (string-suffix-p "-mode" (symbol-name predicate)))
-                       `(major-mode . ,predicate)
-                     predicate)))
+  "Create a popup display rule from PREDICATE and PLIST.
+PREDICATE is a condition to match buffers, which can be:
+- A symbol (treated as major-mode if name ends with '-mode')
+- A cons cell (treated as (MAJOR-MODE . PREDICATE))
+- Any valid condition for `buffer-match-p'
+
+PLIST is a property list containing popup configuration options.
+See `set-popup-rule!' for details on available properties.
+
+Returns a display-buffer action list suitable for
+`display-buffer-alist'."
+  (let* ((predicate (if (consp predicate) (car predicate) predicate))
+         (predicate (if (and (symbolp predicate)
+                             (string-suffix-p "-mode" (symbol-name predicate)))
+                        `(major-mode . ,predicate)
+                      predicate)))
     (if (plist-get plist :ignore)
         (list predicate nil)
       (let* ((plist (append plist +popup-defaults))
@@ -40,6 +55,7 @@
                 (select   . ,(plist-get plist :select))
                 (modeline . ,(plist-get plist :modeline))
                 (autosave . ,(plist-get plist :autosave))
+                (tabbed   . ,(plist-get plist :tabbed))
                 ,@(plist-get plist :parameters))))
         `(,predicate (+popup-buffer)
           ,@alist
@@ -79,6 +95,10 @@ PLIST can be made up of any of the following properties:
   respected if `+popup-display-buffer-stacked-side-window-fn' or
   `display-buffer-in-side-window' is in :actions or
   `+popup-default-display-buffer-actions'.
+
+:tabbed BOOL
+  Can be t or nil. If t, the popup will displayed in a tabbed
+  window.
 
 :size/:width/:height FLOAT|INT|FN
   Determines the size of the popup. If more than one of these
@@ -200,10 +220,9 @@ VSLOT TTL QUIT SELECT MODELINE AUTOSAVE PARAMETERS)"
   (if (plist-get plist :ignore)
       (setq +popup--reference-buffers (delete predicate +popup--reference-buffers))
     (push predicate +popup--reference-buffers))
-  (when (bound-and-true-p popper-mode)
-    (setq display-buffer-alist +popup--display-buffer-alist
-          popper-reference-buffers +popup--reference-buffers)
-    (popper--set-reference-vars))
+  (when (bound-and-true-p +popup-mode)
+    (+popup-cleanup-rules-h)
+    (+popup-update-reference-vars))
   +popup--display-buffer-alist)
 
 ;;;###autodef
@@ -229,8 +248,7 @@ Example:
       (if (plist-get (cdr rule) :ignore)
           (setq +popup--reference-buffers (delete (car rule) +popup--reference-buffers))
         (push (car rule) +popup--reference-buffers))))
-  (when (bound-and-true-p popper-mode)
-    (setq display-buffer-alist +popup--display-buffer-alist
-          popper-reference-buffers +popup--reference-buffers)
-    (popper--set-reference-vars))
+  (when (bound-and-true-p +popup-mode)
+    (+popup-cleanup-rules-h)
+    (+popup-update-reference-vars))
   +popup--display-buffer-alist)

@@ -1,13 +1,61 @@
 ;; lisp/core/zenit-keybinds.el -*- lexical-binding: t; -*-
 
+(eval-when-compile
+  (require 'cl-lib))
+
+;; `ansi-color'
+(defvar ansi-color-for-comint-mode)
+
+;; `cl-seq'
+(declare-function cl-delete-if-not "cl-seq" (cl-pred cl-list &rest cl-keys))
+(declare-function cl-find-if "cl-seq" (cl-pred cl-list &rest cl-keys))
+(declare-function cl-set-difference "cl-seq" (cl-list1 cl-list2 &rest cl-keys))
+(declare-function cl-union "cl-seq" (cl-list1 cl-list2 &rest cl-keys))
+
+;; `hide-mode-line'
+(declare-function hide-mode-line-mode "ext:hide-mode-line" (&optional arg))
+
+;; `image'
+(defvar image-animate-loop)
+
+;; `profiler'
+(defvar profiler-report-cpu-line-format)
+(defvar profiler-report-memory-line-format)
+
+;; `rainbow-delimiters'
+(defvar rainbow-delimiters-max-face-count)
+
+;; `whitespace'
+(defvar whitespace-active-style)
+(defvar whitespace-display-mappings)
+(defvar whitespace-line-column)
+(defvar whitespace-mode)
+(defvar whitespace-style)
+
+;; `zenit-core'
+(declare-function zenit--reset-inhibited-vars-h "zenit-core" ())
+
+;; `zenit-lib-buffers'
+(declare-function zenit-fallback-buffer "zenit-lib-buffers" ())
+(declare-function zenit-visible-buffers "zenit-lib-buffers" (&optional buffer-list all-frames))
+(declare-function zenit-real-buffer-list "zenit-lib-buffers" (&optional buffer-list))
+(declare-function zenit-real-buffer-p "zenit-lib-buffers" (buffer-or-name))
+
+;; `zenit-lib-buffers'
+(declare-function zenit/delete-frame-with-prompt "zenit-lib-ui" ())
+(declare-function zenit-quit-p "zenit-lib-ui" (&optional prompt))
+
+
 ;;
 ;;; Variables
 
 (defcustom zenit-theme nil
-  "A symbol representing the Emacs theme to load at startup.
+  "The Emacs theme or themes to load at startup.
+Is either a symbol representing the name of an Emacs theme, or a
+list thereof (to enable in order).
 
-Set to `nil' to load no theme at all. This variable is changed by
-`load-theme'."
+Set to nil to load no theme at all. This variable is changed by
+`load-theme' and `enable-theme'."
   :group 'zenit
   :type 'symbol)
 
@@ -220,7 +268,7 @@ file-visiting."
       ;; never automatically recentered. The default (0) triggers this too
       ;; aggressively, so I've set it to 10 to recenter if scrolling too far
       ;; off-screen.
-      scroll-conservatively 10
+      scroll-conservatively 101
       scroll-margin 0
       scroll-preserve-screen-position t
       ;; Reduce cursor lag by a tiny bit by not auto-adjusting `window-vscroll'
@@ -422,9 +470,9 @@ buffers are visible in other windows, switch to
       org-agenda-mode dired-mode)
     "What modes to enable `hl-line-mode' in.")
   :config
-  ;; HACK I reimplement `global-hl-line-mode' so we can white/blacklist modes
-  ;;      in `global-hl-line-modes' _and_ so we can use `global-hl-line-mode',
-  ;;      which users expect to control hl-line in Emacs.
+  ;; HACK I reimplement `global-hl-line-mode' so we can white/blacklist modes in
+  ;;   `global-hl-line-modes' _and_ so we can use `global-hl-line-mode', which
+  ;;   users expect to control hl-line in Emacs.
   (defun +hl-line--turn-on-global-hl-line-mode ()
     "Turn on global `hl-line-mode' if conditions are met."
     (and (cond (hl-line-mode nil)
@@ -434,10 +482,18 @@ buffers are visible in other windows, switch to
                 (not (derived-mode-p global-hl-line-modes)))
                ((apply #'derived-mode-p global-hl-line-modes)))
          (hl-line-mode +1)))
+  (eval-when-compile
+    (declare-function +hl-line--turn-on-global-hl-line-mode nil))
+
   (define-globalized-minor-mode global-hl-line-mode hl-line-mode
     (lambda ()
       (+hl-line--turn-on-global-hl-line-mode))
     :group 'hl-line)
+  (eval-when-compile
+    (declare-function hl-line-mode-set-explicitly nil)
+    (declare-function global-hl-line-mode-cmhh nil)
+    (declare-function global-hl-line-mode-check-buffers nil)
+    (declare-function global-hl-line-mode-enable-in-buffers nil))
 
   ;; Temporarily disable `hl-line' when selection is active, since it doesn't
   ;; serve much purpose when the selection is so much more visible.
@@ -448,13 +504,13 @@ buffers are visible in other windows, switch to
       (unless hl-line-mode
         (setq-local zenit--hl-line-mode nil))))
 
-  (add-hook! '(evil-visual-state-entry-hook activate-mark-hook)
+  (add-hook! 'evil-visual-state-entry-hook
     (defun zenit-disable-hl-line-h ()
       (when hl-line-mode
         (hl-line-mode -1)
         (setq-local zenit--hl-line-mode t))))
 
-  (add-hook! '(evil-visual-state-exit-hook deactivate-mark-hook)
+  (add-hook! 'evil-visual-state-exit-hook
     (defun zenit-enable-hl-line-maybe-h ()
       (when zenit--hl-line-mode
         (hl-line-mode +1)))))
@@ -558,88 +614,141 @@ buffers are visible in other windows, switch to
       (cons 'custom-theme-directory
             (delq 'custom-theme-directory custom-theme-load-path)))
 
-(defun zenit--make-font-specs (face font)
-  "Create font specifications for a given FACE and FONT.
-
-The function will generate new specifications for FACE, taking
-into account the display conditions for the current frame."
-  (let* ((base-specs (cadr (assq 'user (get face 'theme-face))))
-         (base-specs (or base-specs '((t nil))))
-         (attrs '(:family :foundry :slant :weight :height :width))
-         (new-specs nil))
-    (dolist (spec base-specs)
-      ;; Each SPEC has the form (DISPLAY ATTRIBUTE-PLIST)
-      (let ((display (car spec))
-            (plist   (copy-tree (nth 1 spec))))
-        ;; Alter only DISPLAY conditions matching this frame.
-        (when (or (memq display '(t default))
-                  (face-spec-set-match-display display this-frame))
-          (dolist (attr attrs)
-            (setq plist (plist-put plist attr (face-attribute face attr)))))
-        (push (list display plist) new-specs)))
-    (nreverse new-specs)))
-
 (defun zenit-init-fonts-h (&optional reload)
-  "Loads `zenit-font'."
-  (dolist (map `((default . ,zenit-font)
-                 (fixed-pitch . ,zenit-font)
-                 (fixed-pitch-serif . ,zenit-serif-font)
-                 (variable-pitch . ,zenit-variable-pitch-font)))
-    (when-let* ((face (car map))
-                (font (cdr map)))
-      (dolist (frame (frame-list))
-        (when (display-multi-font-p frame)
-          (set-face-attribute face frame
-                              :width 'normal :weight 'normal
-                              :slant 'normal :font font)))
-      (let ((new-specs (zenit--make-font-specs face font)))
-        ;; Don't save to `customized-face' so it's omitted from `custom-file'
-        ;;(put face 'customized-face new-specs)
-        (custom-push-theme 'theme-face face 'user 'set new-specs)
-        (put face 'face-modified nil))))
-  (when (fboundp 'set-fontset-font)
-    (let* ((fn (zenit-rpartial #'member (font-family-list)))
-           (symbol-font (or zenit-symbol-font
-                            (cl-find-if fn zenit-symbol-fallback-font-families)))
-           (emoji-font (or zenit-emoji-font
-                           (cl-find-if fn zenit-emoji-fallback-font-families))))
-      (when symbol-font
-        (dolist (script '(symbol mathematical))
-          (set-fontset-font t script symbol-font)))
-      (when emoji-font
-        (set-fontset-font t 'emoji emoji-font)
-        ;; some characters in the Emacs symbol script are often covered by emoji
-        ;; fonts
-        (set-fontset-font t 'symbol emoji-font nil 'append)))
-    ;; Nerd Fonts use these Private Use Areas
-    (dolist (range '((#xe000 . #xf8ff) (#xf0000 . #xfffff)))
-      (set-fontset-font t range "Symbols Nerd Font Mono")))
-  ;; Users should inject their own font logic in `after-setting-font-hook'
-  (run-hooks 'after-setting-font-hook))
+  "Load `zenit-font', `zenit-serif-font', and `zenit-variable-pitch-font'."
+  (let ((initialized-frames (unless reload (get 'zenit-font 'initialized-frames))))
+    (dolist (frame (if reload (frame-list) (list (selected-frame))))
+      (unless (member frame initialized-frames)
+        (dolist (map `((default . ,zenit-font)
+                       (fixed-pitch . ,zenit-font)
+                       (fixed-pitch-serif . ,zenit-serif-font)
+                       (variable-pitch . ,zenit-variable-pitch-font)))
+          (condition-case e
+              (when-let* ((face (car map))
+                          (font (cdr map)))
+                (when (display-multi-font-p frame)
+                  (set-face-attribute face frame
+                                      :width 'normal :weight 'normal
+                                      :slant 'normal :font font))
+                (custom-push-theme
+                 'theme-face face 'user 'set
+                 (let* ((base-specs (cadr (assq 'user (get face 'theme-face))))
+                        (base-specs (or base-specs '((t nil))))
+                        (attrs '(:family :foundry :slant :weight :height :width))
+                        (new-specs nil))
+                   (dolist (spec base-specs)
+                     (let ((display (car spec))
+                           (plist (copy-tree (nth 1 spec))))
+                       (when (or (memq display '(t default))
+                                 (face-spec-set-match-display display frame))
+                         (dolist (attr attrs)
+                           (setq plist (plist-put plist attr (face-attribute face attr)))))
+                       (push (list display plist) new-specs)))
+                   (nreverse new-specs)))
+                (put face 'face-modified nil))
+            (error
+             (if (string-prefix-p "Font not available" (error-message-string e))
+                 (signal 'zenit-font-error (list (font-get (cdr map) :family)))
+               (signal (car e) (cdr e))))))
+        (put 'zenit-font 'initialized-frames
+             (cons frame (cl-delete-if-not #'frame-live-p initialized-frames))))))
+  ;; Only do this once per session (or on `zenit/reload-fonts'); superfluous
+  ;; `set-fontset-font' calls may segfault in some contexts.
+  (when (or reload (not (get 'zenit-font 'initialized)))
+    (when (fboundp 'set-fontset-font)  ; unavailable in emacs-nox
+      (let* ((fn (zenit-rpartial #'member (font-family-list)))
+             (symbol-font (or zenit-symbol-font
+                              (cl-find-if fn zenit-symbol-fallback-font-families)))
+             (emoji-font (or zenit-emoji-font
+                             (cl-find-if fn zenit-emoji-fallback-font-families))))
+        (when symbol-font
+          (dolist (script '(symbol mathematical))
+            (set-fontset-font t script symbol-font)))
+        (when emoji-font
+          (set-fontset-font t 'emoji emoji-font)
+          ;; some characters in the Emacs symbol script are often covered by
+          ;; emoji fonts
+          (set-fontset-font t 'symbol emoji-font nil 'append)))
+      ;; Nerd Fonts use these Private Use Areas
+      (dolist (range '((#xe000 . #xf8ff) (#xf0000 . #xfffff)))
+        (set-fontset-font t range "Symbols Nerd Font Mono")))
+    (run-hooks 'after-setting-font-hook))
+  (put 'zenit-font 'initialized t))
 
 (defun zenit-init-theme-h (&rest _)
   "Load the theme specified by `zenit-theme' in FRAME."
-  (when (and zenit-theme (not (custom-theme-enabled-p zenit-theme)))
-    (load-theme zenit-theme t)))
+  (dolist (th (ensure-list zenit-theme))
+    (unless (custom-theme-enabled-p th)
+      (if (custom-theme-p th)
+          (enable-theme th)
+        (load-theme th t)))))
 
-(defadvice! zenit--load-theme-a (fn theme &optional no-confirm no-enable)
-  "Record `zenit-theme', disable old themes, and trigger
-`zenit-load-theme-hook'."
-  :around #'load-theme
-  ;; Run `load-theme' from an estranged buffer, where we can ensure that
-  ;; buffer-local face remaps (by `mixed-pitch-mode', for instance) won't
-  ;; interfere with recalculating faces in new themes.
-  (with-temp-buffer
-    (let ((last-themes (copy-sequence custom-enabled-themes)))
-      ;; Disable previous themes so there are no conflicts. If you truly want
-      ;; multiple themes enabled, then use `enable-theme' instead.
-      (mapc #'disable-theme custom-enabled-themes)
-      (prog1 (funcall fn theme no-confirm no-enable)
-        (when (and (not no-enable) (custom-theme-enabled-p theme))
-          (setq zenit-theme theme)
-          (put 'zenit-theme 'previous-themes (or last-themes 'none))
-          ;; DEPRECATED Hook into `enable-theme-functions' when we target 29
+(defadvice! zenit--detect-colorscheme-a (theme)
+  "Add :kind \\='color-scheme to THEME if it doesn't have one.
+
+Themes wouldn't call `provide-theme' unless they were a
+color-scheme, so treat them as such. Also intended as a helper
+for `zenit--theme-is-colorscheme-p'."
+  :after #'provide-theme
+  (with-memoization (plist-get (get theme 'theme-properties) :kind)
+    'color-scheme))
+
+(defun zenit--theme-is-colorscheme-p (theme)
+  "Non-nil if THEME is a colorschema."
+  (unless (memq theme '(nil user changed use-package))
+    (if-let* ((kind (plist-get (get theme 'theme-properties) :kind)))
+        ;; Some newer themes announce that they are colorschemes. Also, we've
+        ;; advised `provide-theme' (only used by colorschemes) to give these
+        ;; themes this property (see `zenit--detect-colorscheme-a').
+        (eq kind 'color-scheme)
+      ;; HACK: If by some chance a legit (probably very old) theme isn't using
+      ;;   `provide-theme' (ugh), fall back to this hail mary heuristic to
+      ;;   detect colorscheme themes:
+      (let ((feature (get theme 'theme-feature)))
+        (and
+         ;; Colorschemes always have a theme-feature (possible to define them
+         ;; without one with `custom-declare-theme' + a nil second argument):
+         feature
+         ;; ...and they always end in -theme (this is hardcoded into `deftheme'
+         ;; and others in Emacs' theme API).
+         (string-suffix-p "-theme" (symbol-name feature))
+         ;; ...and any theme (deftheme X) will have a corresponding `X-theme'
+         ;; package loaded when it's enabled.
+         (featurep feature))))))
+
+(add-hook! 'enable-theme-functions :depth -90
+  (defun zenit-enable-theme-h (theme)
+    "Record themes and trigger `zenit-load-theme-hook'."
+    (when (zenit--theme-is-colorscheme-p theme)
+      (ring-insert (with-memoization (get 'zenit-theme 'history) (make-ring 8))
+                   (copy-sequence custom-enabled-themes))
+      ;; Functions in `zenit-load-theme-hook' may trigger face recalculations,
+      ;; which can be contaminated by buffer-local face remaps (e.g. by
+      ;; `mixed-pitch-mode'); this prevents that contamination:
+      (with-temp-buffer
+        (let ((enable-theme-functions
+               (remq 'zenit-enable-theme-h enable-theme-functions)))
           (zenit-run-hooks 'zenit-load-theme-hook))))))
+
+(add-hook! 'after-make-frame-functions :depth -90
+  (defun zenit-fix-frame-color-parameters-h (f)
+    ;; HACK: Some window systems produce new frames (after the initial one) with
+    ;;   incorrect color parameters (black).
+    (when (display-graphic-p f)
+      (letf! (defun invalid-p (color)
+               (or (equal color "black")
+                   (string-prefix-p "unspecified-" color)))
+        (pcase-dolist (`(,param ,fn ,face)
+                       '((foreground-color face-foreground default)
+                         (background-color face-background default)
+                         (cursor-color face-background cursor)
+                         (border-color face-background border)
+                         (mouse-color face-background mouse)))
+          (when-let* ((color (frame-parameter f param))
+                      ((invalid-p color))
+                      (color (funcall fn face nil t))
+                      ((not (invalid-p color))))
+            (set-frame-parameter f param color)))))))
 
 
 ;;
@@ -702,10 +811,12 @@ prematurely triggering hooks during startup."
   (fset 'define-fringe-bitmap #'ignore))
 
 (after! whitespace
-  (defun zenit-is-childframes-p ()
+  (defun zenit--in-parent-frame-p ()
     "`whitespace-mode' inundates child frames with whitespace
 markers, so disable it to fix all that visual noise."
     (null (frame-parameter nil 'parent-frame)))
-  (add-function :before-while whitespace-enable-predicate #'zenit-is-childframes-p))
+  (eval-when-compile
+    (declare-function zenit--in-parent-frame-p nil))
+  (add-function :before-while whitespace-enable-predicate #'zenit--in-parent-frame-p))
 
 (provide 'zenit-ui)

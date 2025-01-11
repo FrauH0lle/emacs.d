@@ -46,8 +46,11 @@
   (member name (+workspace-list-names)))
 
 ;;;###autoload
-(defalias #'+workspace-contains-buffer-p #'bufferlo-local-buffer-p
-  "Return non-nil if BUFFER is in WORKSPACE (defaults to current workspace).")
+(cl-defun +workspace-contains-buffer-p
+    (&optional (buff-or-name (current-buffer)) (workspace (+workspace-current-name)))
+  "Return non-nil if BUFF-OR-NAME is in WORKSPACE.
+ Defaults to current workspace."
+  (bufferlo-local-buffer-p (get-buffer buff-or-name) nil (+workspaces--get-tabnum workspace)))
 
 
 ;;
@@ -58,7 +61,7 @@
   "Return a workspace named NAME. Unless NOERROR is non-nil, this
 throws an error if NAME doesn't exist."
   (cl-check-type name string)
-  (if-let ((ws (car-safe (+workspace-exists-p name))))
+  (if-let* ((ws (car-safe (+workspace-exists-p name))))
       ws
     (cond ((not noerror)
            (error "No workspace called '%s' was found" name)))))
@@ -170,6 +173,11 @@ Returns t on success, nil otherwise."
     (when (file-exists-p fname)
       (rename-file fname (concat fname (number-to-string 1)) t)))
   t)
+
+;;;###autoload
+(defun +workspaces-rename-tab (name &optional tab-number)
+  (let ((new-name (truncate-string-to-width name tab-bar-tab-name-truncated-max nil nil "...")))
+    (tab-bar-rename-tab new-name tab-number)))
 
 ;;;###autoload
 (defun +workspace-new (name &optional clone-p)
@@ -436,10 +444,10 @@ A negative number will start from the end of the workspace list."
       ('error (+workspace-error ex t)))))
 
 ;;;###autoload
-(defun +workspace/switch-left ()  (interactive) (+workspace/cycle -1))
+(defun +workspace/switch-left (&optional n)  (interactive "p") (+workspace/cycle (- n)))
 
 ;;;###autoload
-(defun +workspace/switch-right () (interactive) (+workspace/cycle +1))
+(defun +workspace/switch-right (&optional n) (interactive "p") (+workspace/cycle n))
 
 ;;;###autoload
 (defun +workspace/close-window-or-workspace ()

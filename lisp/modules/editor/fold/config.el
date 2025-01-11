@@ -1,6 +1,23 @@
 ;; editor/fold/config.el -*- lexical-binding: t; -*-
 
-(when (modulep! :editor evil)
+(defcustom +fold-ellipsis " [...] "
+  "The ellipsis to show for ellided regions (folds).
+
+`org-ellipsis', `truncate-string-ellipsis', and
+`ts-fold-replacement' are set to this."
+  :type 'string
+  :group '+fold)
+
+(defface +fold-hideshow-folded-face
+  `((t (:inherit font-lock-comment-face :weight light)))
+  "Face to hightlight `hideshow' overlays."
+  :group 'zenit-themes)
+
+
+;;
+;;; Global config
+
+(eval-when! (modulep! :editor evil)
   (after! evil
     ;; Add vimish-fold, outline-mode & hideshow support to folding commands
     (define-key! 'global
@@ -17,6 +34,12 @@
       "zF" #'evil-vimish-fold/create-line
       "zd" #'vimish-fold-delete
       "zE" #'vimish-fold-delete-all)))
+
+(after! org
+  (setq org-ellipsis +fold-ellipsis))
+
+(after! mule-util
+  (setq truncate-string-ellipsis +fold-ellipsis))
 
 
 ;;
@@ -37,8 +60,7 @@
     "Ensure `hs-minor-mode' is enabled when we need it, no sooner or
 later."
     :before '(hs-toggle-hiding hs-hide-block hs-hide-level hs-show-all hs-hide-all)
-    (unless (bound-and-true-p hs-minor-mode)
-      (hs-minor-mode +1)))
+    (+fold--ensure-hideshow-mode))
 
   ;; extra folding support for more languages
   (unless (assq 't hs-special-modes-alist)
@@ -92,15 +114,13 @@ later."
   :when (modulep! :tools tree-sitter)
   :after tree-sitter
   :config
-  ;; we want to use our own face so we nullify this one to have no effect and
-  ;; make it more similar to hideshows
-  (protect-macros!
-    (custom-set-faces! '(ts-fold-replacement-face :foreground unspecified
-                         :box nil
-                         :inherit font-lock-comment-face
-                         :weight light)))
-  (setq ts-fold-replacement "  [...]  ")
+  (setq ts-fold-replacement +fold-ellipsis)
   (global-ts-fold-mode +1))
+
 
 (use-package! outline-minor-faces
   :hook (outline-minor-mode . outline-minor-faces-mode))
+
+(use-package! backline
+  :after outline
+  :config (advice-add #'outline-flag-region :after #'backline-update))

@@ -1,5 +1,28 @@
 ;; lisp/core/zenit-use-package.el -*- lexical-binding: t; -*-
 
+;; `use-package'
+(declare-function use-package-concat "use-package-core" (&rest elems))
+(declare-function use-package-handle-mode "use-package-core" (name alist args rest state))
+(declare-function use-package-list-insert "use-package-core" (elem xs &optional anchor after test))
+(declare-function use-package-normalize-mode "use-package-core" (name keyword args))
+(declare-function use-package-normalize-paths "use-package-core" (label arg &optional recursed))
+(declare-function use-package-normalize-symlist "use-package-core" (_name keyword args))
+(declare-function use-package-process-keywords "use-package-core" (name plist &optional state))
+(declare-function use-package-ensure-elpa "use-package-ensure" (name args _state &optional _no-refresh))
+(defvar use-package-compute-statistics)
+(defvar use-package-deferring-keywords)
+(defvar use-package-ensure-function)
+(defvar use-package-expand-minimally)
+(defvar use-package-font-lock-keywords)
+(defvar use-package-keywords)
+(defvar use-package-minimum-reported-time)
+(defvar use-package-verbose)
+
+;; `zenit-start'
+(declare-function zenit-load-packages-incrementally "zenit-start" (packages &optional now))
+(autoload #'zenit-load-packages-incrementally "zenit-start")
+
+
 (defvar zenit--deferred-packages-alist '(t)
   "Alist of packages that are deferred for loading at a later
  point in time. Packages are added by `after-call!' or the
@@ -86,23 +109,24 @@
       (let ((fn (make-symbol (format "zenit--after-call-%s-h" name))))
         (use-package-concat
          `((fset ',fn
-                 (lambda (&rest _)
-                   (zenit-log "use-package: lazy loading %s from %s" ',name ',fn)
-                   (condition-case e
-                       ;; If `default-directory' is a directory that doesn't
-                       ;; exist or is unreadable, Emacs throws up file-missing
-                       ;; errors, so we set it to a directory we know exists and
-                       ;; is readable.
-                       (let ((default-directory zenit-emacs-dir))
-                         (require ',name))
-                     ((debug error)
-                      (message "Failed to load deferred package %s: %s" ',name e)))
-                   (when-let (deferral-list (assq ',name zenit--deferred-packages-alist))
-                     (dolist (hook (cdr deferral-list))
-                       (advice-remove hook #',fn)
-                       (remove-hook hook #',fn))
-                     (delq! deferral-list zenit--deferred-packages-alist)
-                     (unintern ',fn nil)))))
+            (lambda (&rest _)
+              (zenit-log "use-package: lazy loading %s from %s" ',name ',fn)
+              (condition-case e
+                  ;; If `default-directory' is a directory that doesn't
+                  ;; exist or is unreadable, Emacs throws up file-missing
+                  ;; errors, so we set it to a directory we know exists and
+                  ;; is readable.
+                  (let ((default-directory zenit-emacs-dir))
+                    (require ',name))
+                ((debug error)
+                 (message "Failed to load deferred package %s: %s" ',name e)))
+              (when-let* ((deferral-list (assq ',name zenit--deferred-packages-alist)))
+                (dolist (hook (cdr deferral-list))
+                  (advice-remove hook #',fn)
+                  (remove-hook hook #',fn))
+                (delq! deferral-list zenit--deferred-packages-alist)
+                (unintern ',fn nil))))
+           (eval-when-compile (declare-function ,fn nil)))
          (let (forms)
            (dolist (hook hooks forms)
              (push (if (string-match-p "-\\(?:functions\\|hook\\)$" (symbol-name hook))
@@ -114,6 +138,7 @@
            (nconc (assq ',name zenit--deferred-packages-alist)
                   '(,@hooks)))
          (use-package-process-keywords name rest state))))))
+
 
 ;;
 ;;; Macros

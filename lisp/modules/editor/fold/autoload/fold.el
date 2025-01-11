@@ -8,9 +8,18 @@
 ;;
 ;;; Helpers
 
+;;;###autoload
 (defun +fold--ensure-hideshow-mode ()
-  (unless (bound-and-true-p hs-minor-mode)
-    (hs-minor-mode +1)))
+  "Enable `hs-minor-mode' if not already enabled.
+
+Return non-nil if successful in doing so."
+  (if (not (bound-and-true-p hs-minor-mode))
+      ;; `hs-grok-mode-type' applies this test; if it fails, it produces an
+      ;; error indicating that `hs-minor-mode' is not supported here.
+      (when (and (bound-and-true-p comment-start)
+                 (bound-and-true-p comment-end))
+        (hs-minor-mode +1))
+    t))
 
 ;;;###autoload
 (defun +fold--vimish-fold-p ()
@@ -26,35 +35,60 @@
 
 ;;;###autoload
 (defun +fold--hideshow-fold-p ()
-  (+fold--ensure-hideshow-mode)
-  (save-excursion
-    (ignore-errors
-      (or (hs-looking-at-block-start-p)
-          (hs-find-block-beginning)
-          (unless (eolp)
-            (end-of-line)
-            (+fold--hideshow-fold-p))))))
+  (when (+fold--ensure-hideshow-mode)
+    (save-excursion
+      (ignore-errors
+        (or (hs-looking-at-block-start-p)
+            (hs-find-block-beginning)
+            (unless (eolp)
+              (end-of-line)
+              (+fold--hideshow-fold-p)))))))
 
 ;; NOTE: does this need more?
-;;;###autoload
+;;;###autoload 
 (defun +fold--ts-fold-p ()
+  "Return non-nil when point is at a tree-sitter fold.
+This requires both `tree-sitter-mode' to be enabled and the
+`ts-fold' package to be loaded."
   (and (bound-and-true-p tree-sitter-mode)
        (featurep 'ts-fold)))
 
 (defun +fold--invisible-points (count)
+  "Find and return a list of invisible points based on COUNT.
+
+COUNT determines the number of invisible points to find. If COUNT
+is positive, it searches forward; if negative, it searches
+backward. The function returns a list of points where the text is
+invisible due to folding."
   (let (points)
+    ;; Save the current position and search for invisible points.
     (save-excursion
       (catch 'abort
-        (if (< count 0) (beginning-of-line))
+        ;; Start searching from the next/previous line based on the direction of
+        ;; COUNT.
+        (forward-line (if (> count 0) 1 -1))
+        ;; If the current point is inside an overlay, move to the end or start
+        ;; of the overlay.
+        (when-let* ((ov (hs-overlay-at (point))))
+          (if (> count 0)
+              (goto-char (overlay-end ov))
+            (goto-char (overlay-start ov))))
+        ;; Search for block start markers and check for invisible points.
         (while (re-search-forward hs-block-start-regexp nil t
                                   (if (> count 0) 1 -1))
-          (unless (invisible-p (point))
-            (end-of-line)
+
+          (end-of-line)
+          ;; If the current point is invisible, add it to the list of points.
+          (when (invisible-p (point))
             (when (hs-already-hidden-p)
-              (push (point) points)
+              (push (overlay-start (hs-overlay-at (point)))
+                    points)
+              ;; If we've found enough points, abort the search.
               (when (>= (length points) count)
                 (throw 'abort nil))))
+          ;; Move to the next/previous line based on the direction of COUNT.
           (forward-line (if (> count 0) 1 -1)))))
+    ;; Return the list of invisible points.
     points))
 
 (defmacro +fold-from-eol (&rest body)
@@ -85,7 +119,7 @@
         (let ((beg (progn (outline-back-to-heading) (point)))
               (end (progn (outline-end-of-subtree) (point))))
           (list (cons beg end)))))
-    (when-let ((start (+fold--hideshow-fold-p)))
+    (when-let* ((start (+fold--hideshow-fold-p)))
       ;; `start' could be start of the block, or 't' if that wasn't found. In
       ;; either case, we know the fold is on the same line.
       (let* ((start (or (and (numberp start) start)
@@ -107,10 +141,7 @@
   "Recursively open all folds betwen BEG and END."
   (when (featurep 'vimish-fold)
     ;; from `vimish-fold-unfold-all'
-    (mapc #'vimish-fold--unfold
-          (vimish-fold--folds-in
-           (point-min)
-           (point-max))))
+    (mapc #'vimish-fold--unfold (vimish-fold--folds-in beg end)))
   (and (+fold--outline-fold-p)
        (outline-show-subtree))
   (hs-life-goes-on
@@ -121,11 +152,11 @@
   (when (bound-and-true-p ts-fold-mode)
     ;; from `ts-fold-open-all'
     (ts-fold--ensure-ts
-      (thread-last (overlays-in (point-min) (point-max))
-                   (seq-filter
-                    (lambda (ov)
-                      (eq (overlay-get ov 'invisible) 'ts-fold)))
-                   (mapc #'delete-overlay)))))
+     (thread-last (overlays-in beg end)
+                  (seq-filter
+                   (lambda (ov)
+                     (eq (overlay-get ov 'invisible) 'ts-fold)))
+                  (mapc #'delete-overlay)))))
 
 
 ;;
@@ -139,13 +170,13 @@ Targets `vimmish-fold', `hideshow', `ts-fold' and `outline'
 folds."
   (interactive)
   (save-excursion
-    (cond ((+fold--vimish-fold-p) (vimish-fold-toggle))
+    (cond ((+fold--ts-fold-p) (ts-fold-toggle))
+          ((+fold--vimish-fold-p) (vimish-fold-toggle))
           ((+fold--outline-fold-p)
            (cl-letf (((symbol-function #'outline-hide-subtree)
                       (symbol-function #'outline-hide-entry)))
              (outline-toggle-children)))
-          ((+fold--hideshow-fold-p) (+fold-from-eol (hs-toggle-hiding)))
-          ((+fold--ts-fold-p) (ts-fold-toggle)))))
+          ((+fold--hideshow-fold-p) (+fold-from-eol (hs-toggle-hiding))))))
 
 ;;;###autoload
 (defun +fold/open-rec ()
@@ -165,12 +196,12 @@ Targets `vimmish-fold', `hideshow', `ts-fold' and `outline'
 folds."
   (interactive)
   (save-excursion
-    (cond ((+fold--vimish-fold-p) (vimish-fold-unfold))
+    (cond ((+fold--ts-fold-p) (ts-fold-open))
+          ((+fold--vimish-fold-p) (vimish-fold-unfold))
           ((+fold--outline-fold-p)
            (outline-show-branches)
            (outline-show-entry))
-          ((+fold--hideshow-fold-p) (+fold-from-eol (hs-show-block)))
-          ((+fold--ts-fold-p) (ts-fold-open)))))
+          ((+fold--hideshow-fold-p) (+fold-from-eol (hs-show-block))))))
 
 ;;;###autoload
 (defun +fold/close ()
@@ -180,10 +211,10 @@ Targets `vimmish-fold', `hideshow', `ts-fold' and `outline'
 folds."
   (interactive)
   (save-excursion
-    (cond ((+fold--vimish-fold-p) (vimish-fold-refold))
+    (cond ((+fold--ts-fold-p) (ts-fold-close))
+          ((+fold--vimish-fold-p) (vimish-fold-refold))
           ((+fold--outline-fold-p) (outline-hide-subtree))
-          ((+fold--hideshow-fold-p) (+fold-from-eol (hs-hide-block)))
-          ((+fold--ts-fold-p) (ts-fold-close)))))
+          ((+fold--hideshow-fold-p) (+fold-from-eol (hs-hide-block))))))
 
 ;;;###autoload
 (defun +fold/open-all (&optional level)
@@ -195,13 +226,13 @@ folds."
         ((and (featurep 'vimish-fold) (+fold--vimish-fold-p))
          (vimish-fold-unfold-all))
         ((save-excursion
-           (+fold--ensure-hideshow-mode)
+           (when (+fold--ensure-hideshow-mode)
+             (hs-life-goes-on
+              (if (integerp level)
+                  (hs-hide-level-recursive level (point-min) (point-max))
+                (hs-show-all))))
            (if (integerp level)
-               (progn
-                 (outline-hide-sublevels (max 1 level))
-                 (hs-life-goes-on
-                  (hs-hide-level-recursive level (point-min) (point-max))))
-             (hs-show-all)
+               (outline-hide-sublevels (max 1 level))
              (when (fboundp 'outline-show-all)
                (outline-show-all)))))))
 
@@ -216,15 +247,15 @@ folds."
       (progn
         (when (featurep 'vimish-fold)
           (vimish-fold-refold-all))
-        (+fold--ensure-hideshow-mode)
-        (hs-life-goes-on
-         (if (integerp level)
-             (progn
-               (outline--show-headings-up-to-level level)
-               (hs-hide-level-recursive level (point-min) (point-max)))
-           (hs-hide-all)
-           (when (fboundp 'outline-hide-sublevels)
-             (outline-show-only-headings))))))))
+        (when (+fold--ensure-hideshow-mode)
+          (hs-life-goes-on
+           (if (integerp level)
+               (hs-hide-level-recursive level (point-min) (point-max))
+             (hs-hide-all))))
+        (if (integerp level)
+            (outline--show-headings-up-to-level level)
+          (when (fboundp 'outline-hide-sublevels)
+            (outline-show-only-headings)))))))
 
 ;;;###autoload
 (defun +fold/next (count)
@@ -251,14 +282,15 @@ region."
                             (if (> count 0)
                                 (list count
                                       #'outline-next-visible-heading #'eobp)
-                              (list (- count)
+                              (list count
                                     #'outline-previous-visible-heading #'bobp))
-                          (dotimes (_ count)
+                          (dotimes (_ (abs count))
                             (funcall fn 1)
-                            (outline-end-of-heading))
+                            (when (> count 0)
+                              (outline-end-of-heading)))
                           (if (and (/= (point) orig-pt)
-                                 (not (funcall bound-fn)))
-                            (point)))))
+                                   (not (funcall bound-fn)))
+                              (point)))))
                     (lambda ()
                       ;; ts-fold does not define movement functions so we need
                       ;; to do it ourselves
@@ -287,7 +319,7 @@ region."
            collect it into points
            finally do
            (if-let* ((pt (car (sort points (if (> count 0) #'< #'>)))))
-               (goto-char pt)
+               (goto-char (nth 1 (zenit--bol-bot-eot-eol pt)))
              (message "No more folds %s point" (if (> count 0) "after" "before"))
              (goto-char orig-pt))))
 

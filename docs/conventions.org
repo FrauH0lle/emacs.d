@@ -1,0 +1,80 @@
+#+title: Conventions
+
+* Code documentation and style
+- Everything should have docstring
+- The first line should not be wider than 67 characters
+- For a function, the first line should briefly answer the question, “What does
+  this function do?”
+- For a variable, the first line should briefly answer the question, “What does
+  this value mean?”
+- Follow the Emacs Lisp coding conventions
+  - See also [[https://github.com/bbatsov/emacs-lisp-style-guide][The Emacs Lisp Style Guide]]
+- Macros should declare the debug-specification. If all arguments are evaluated,
+  a simple ~(declare (debug t))~ is enough.
+* Unit tests
+- Use ERT for unit tests
+- Tests which assert a comparison should consistently compare EXPECTED to
+  ACTUAL. This makes reading output of failed tests easier. e.g. ~(should (eq
+  EXPECTED ACTUAL))~.
+- If no other choice, the minimal tests should be:
+  - For variables: Check if the variable is bound via ~boundp~
+  - For functions/macros: Check if the function/macro is bound via ~fboundp~
+  - For hooks: Check that the hook variable is bound and that the function was
+    added to it
+  - For advices: Check the function was adviced via ~advice-member-p~
+* Commit Message Guidelines
+- Follow [[https://www.conventionalcommits.org][Conventional Commits]]
+- Types:
+  - ci: Changes to our CI configuration files and scripts.
+  - docs: Documentation only changes.
+  - feat: A new feature.
+  - fix: A bug fix.
+  - pkg: Addition of package or version change.
+  - perf: A code change that improves performance.
+  - refactor: A code change that neither fixes a bug nor adds a feature.
+  - revert: Undoes a previous change. Must be followed by the full subject of
+    the reverted commit (and add Revert HASH to FOOTER).
+  - style: Changes that do not affect the meaning of the code (white-space,
+    formatting, missing semi-colons, etc).
+  - test: Adding missing tests or correcting existing tests.
+  - tweak: Code changes that changes defaults and user-facing behavior, but not
+    drastically.
+* Files in ~core/lib~
+- Are added to the load path but should be required via ~zenit-require~ as they
+  are sub-features of ~zenit-lib~
+- However, using them in ~declare-function~ requires their file name, e.g.
+  ~zenit-lib-files~
+* Async byte compilation
+- Order matters!
+  - Make sure macros are defined before their use
+  - If you use a function in a macro which gets expanded you might need
+    `eval-and-compile`
+    - See [[help:zenit--fn-crawl]]
+- The async process is non-interactive
+* Compile-time evaluation
+- Remember: ~eval-when-compile~ evaluates its body at compile time AND at load
+  time, like progn
+  - Same as ~(cl-eval-when (compile load) ...)~
+- ~(cl-eval-when (compile) ...)~ evaluates its body ONLY at compile time
+  - And needs ~cl-lib~ or ~cl-macs~ at compile time :)
+  - Thus, you need ~(eval-when-compile (require 'cl-lib))~ followed by
+    ~(cl-eval-when (compile) ...)~
+* modulep!
+- Use ~zenit-module-p~ instead for everything which is compiled BEFORE init.el
+  is processed. ~modulep!~ uses its own API to determine if modules are
+  available!
+* declare-function
+It seems that ~declare-function~ does not understand cl-defun's, etc. extended
+argument list. Thus, instead of
+#+begin_src emacs-lisp
+(declare-function zenit-async-byte-compile-file "zenit-lib-compile" (file &key (req-core-lib nil) (req-core nil) (req-core-libs nil) (req-extra nil) (modulep nil) (autoloads nil)))
+#+end_src
+use
+#+begin_src emacs-lisp
+(declare-function zenit-async-byte-compile-file "zenit-lib-compile" (file &rest kwargs))
+#+end_src
+However, this leads to another issue: The arglist check of the byte compiler
+looks at the expanded form of the definition (~cl-defun foo (x &key y)~ expands
+to ~(defun foo (x &rest --cl-rest--))~). ~check-declare~ on the other hand does
+not and takes the original arglist. And thus, it will complain and not work
+properly. However, this is acceptable.

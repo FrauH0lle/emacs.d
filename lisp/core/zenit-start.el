@@ -1,5 +1,20 @@
 ;; lisp/core/zenit-start.el -*- lexical-binding: t; -*-
 
+(eval-when-compile
+  (require 'cl-lib))
+
+(defvar ffap-machine-p-known)
+
+;; `gcmh'
+(declare-function gcmh-mode "ext:gcmh" (&optional arg))
+(defvar gcmh-idle-delay)
+(defvar gcmh-auto-idle-delay-factor)
+(defvar gcmh-high-cons-threshold)
+
+;; `subr-x'
+(declare-function string-remove-suffix "subr-x" (suffix string))
+
+
 ;;
 ;;; Custom hooks
 
@@ -47,12 +62,6 @@ buffer."
 ;; quickly self-correct.
 (setq fast-but-imprecise-scrolling t)
 
-;; Don't ping things that look like domain names.
-(setq ffap-machine-p-known 'reject)
-
-;; Emacs "updates" its ui more often than it needs to, so slow it down slightly.
-(setq idle-update-delay 1.0)
-
 ;; Font compacting can be terribly expensive, especially for rendering icon
 ;; fonts on Windows.
 (setq inhibit-compacting-font-caches t)
@@ -86,7 +95,7 @@ buffer."
 ;; not be using gcmh at all.
 (setq gcmh-idle-delay 'auto  ; default is 15s
       gcmh-auto-idle-delay-factor 10
-      gcmh-high-cons-threshold (* 16 1024 1024))  ; 16mb
+      gcmh-high-cons-threshold (* 64 1024 1024))  ; 64mb
 (add-hook 'zenit-first-buffer-hook #'gcmh-mode)
 
 ;; Disable UI elements
@@ -106,13 +115,6 @@ buffer."
 ;; leave Emacs to its own devices.
 (eval-when! zenit--system-windows-p
   (setq selection-coding-system 'utf-8))
-
-;; Add support for additional file extensions.
-(dolist (entry '(("/LICENSE\\'" . text-mode)
-                 ("\\.log\\'" . text-mode)
-                 ("rc\\'" . conf-mode)
-                 ("\\.\\(?:hex\\|nes\\)\\'" . hexl-mode)))
-  (push entry auto-mode-alist))
 
 
 ;;
@@ -135,13 +137,15 @@ Default value is nil, allowing the hooks to run.")
                " " (buffer-name (or (buffer-base-buffer)
                                     (current-buffer)))))
     (setq-local zenit-inhibit-local-var-hooks t)
+    (zenit-run-hooks (intern-soft (format "%s-local-vars-hook" major-mode)))
     ;; The tree-sitter supported modes are usually derived from a common base
     ;; mode. Thus, instead of having to add to the non-ts-mode and normal-mode
     ;; hooks, we run the parent hooks as well.
-    (let ((parent (get major-mode 'derived-mode-parent)))
-      (when (string-suffix-p "base-mode" (symbol-name parent))
-        (zenit-run-hooks (intern-soft (format "%s-local-vars-hook" parent))))
-      (zenit-run-hooks (intern-soft (format "%s-local-vars-hook" major-mode))))))
+    ;; (let ((parent (get major-mode 'derived-mode-parent)))
+    ;;   (when (string-suffix-p "base-mode" (symbol-name parent))
+    ;;     (zenit-run-hooks (intern-soft (format "%s-local-vars-hook" parent))))
+    ;;   (zenit-run-hooks (intern-soft (format "%s-local-vars-hook" major-mode))))
+    ))
 
 ;; If the user has disabled `enable-local-variables', then
 ;; `hack-local-variables-hook' is never triggered, so we trigger it at the end
@@ -197,7 +201,7 @@ If NOW is non-nil, load PACKAGES incrementally, in
       (while packages
         (let ((req (pop packages))
               idle-time)
-          (if (featurep req)
+          (if (and (locate-library (symbol-name req)) (featurep req))
               (zenit-log "start:inc-loader: Already loaded %s (%d left)" req (length packages))
             (condition-case-unless-debug e
                 (and
@@ -212,7 +216,9 @@ If NOW is non-nil, load PACKAGES incrementally, in
                               (inhibit-message t)
                               (file-name-handler-alist
                                (list (rassq 'jka-compr-handler file-name-handler-alist))))
-                          (require req nil t)
+                          (if (locate-library (symbol-name req))
+                              (require req nil t)
+                            (funcall req))
                           t))))
                  (push req packages))
               (error
@@ -233,7 +239,11 @@ If NOW is non-nil, load PACKAGES incrementally, in
 If this is a daemon session, load them all immediately instead."
   (when (numberp zenit-incremental-first-idle-timer)
     (if (zerop zenit-incremental-first-idle-timer)
-        (mapc #'require (cdr zenit-incremental-packages))
+        (mapc (lambda (p)
+                (if (locate-library (symbol-name p))
+                    (require p nil t)
+                  (funcall p)))
+              (cdr zenit-incremental-packages))
       (run-with-idle-timer zenit-incremental-first-idle-timer
                            nil #'zenit-load-packages-incrementally
                            (cdr zenit-incremental-packages) t))))
@@ -288,6 +298,14 @@ it."
 (zenit-run-hook-on 'zenit-first-file-hook   '(find-file-hook dired-initial-position-hook))
 (zenit-run-hook-on 'zenit-first-input-hook  '(pre-command-hook))
 
+;; If the user's already opened something (e.g. with command-line arguments),
+;; then we should assume nothing about the user's intentions and simply treat
+;; this session as fully initialized.
+(add-hook! 'zenit-after-init-hook :depth 100
+  (defun zenit-run-first-hooks-if-files-open-h ()
+    (when file-name-history
+      (zenit-run-hooks 'zenit-first-file-hook 'zenit-first-buffer-hook))))
+
 ;; Activate these later, otherwise they'll fire for every buffer created between
 ;; now and the end of startup.
 (add-hook! 'after-init-hook
@@ -298,21 +316,9 @@ it."
     (add-hook 'hack-local-variables-hook #'zenit-run-local-var-hooks-h)))
 
 ;; Load site-lisp/init.el early, but only when not in CLI mode.
-(when (not (zenit-context-p 'cli))
+(when (and (not noninteractive)
+           (not (or (zenit-context-p 'cli) (zenit-context-p 'compile))))
   (load! (string-remove-suffix ".el" zenit-module-init-file) zenit-local-conf-dir t))
-
-;; Load the rest of site-lisp/ + modules if noninteractive and not in CLI mode.
-;; The idea is to be able to use this file in Emacs' batch mode and initialize
-;; the local configuraton.
-(when (and noninteractive (not (zenit-context-p 'cli)))
-  (let ((init-file (file-name-concat zenit-emacs-dir "init.el")))
-    (unless (file-exists-p init-file)
-      (user-error "Init file hasn't been generated. Did you forgot to run 'make refresh'?"))
-    (let (kill-emacs-query-functions
-          kill-emacs-hook)
-      ;; Loads modules, then site-lisp/config.el
-      (zenit-load init-file 'noerror)
-      (zenit-initialize-packages))))
 
 ;; Entry point
 ;; HACK: This advice hijacks Emacs' initfile loader to accomplish the following:
@@ -347,25 +353,30 @@ it."
               ;; the next file it loads into `user-init-file'.
               (setq user-init-file t)
               (when init-file-name
-                (load init-file-name 'noerror 'nomessage 'nosuffix))
-              ;; (when init-file-name
-              ;;   (load (concat (string-remove-suffix ".elc" init-file-name)
-              ;;               ".el") 'noerror 'nomessage 'nosuffix))
+                (load init-file-name 'noerror 'nomessage 'nosuffix)
+                ;; HACK 2024-09-02: If `init-file-name' happens to be higher in
+                ;;   `load-history' than a symbol's actual definition,
+                ;;   `symbol-file' (and help/helpful buffers) will report the
+                ;;   source of a symbol as `init-file-name', rather than it's
+                ;;   true source. By removing this file from `load-history', no
+                ;;   one will make that mistake.
+                (setq load-history (delete (assoc init-file-name load-history)
+                                           load-history)))
               ;; If it's still `t', then it failed to load the profile initfile.
               (when (eq user-init-file t)
                 (signal 'zenit-nosync-error (list init-file-name)))
               ;; If we loaded a compiled file, set `user-init-file' to the
               ;; source version if that exists.
               (setq user-init-file
-                    (concat (string-remove-suffix ".elc" user-init-file)
+                    (concat (string-remove-suffix ".elc" init-file-name)
                             ".el"))))
         (error
          (display-warning
           'initialization
           (format-message "\
-An error occurred while loading `%s':\n\n%s%s%s\n\n\
+An error occurred while booting Emacs `%s':\n\n%s%s%s\n\n\
 To ensure normal operation, you should investigate and remove the
-cause of the error in your initialization file.  Start Emacs with
+cause of the error in your Emacs config files.  Start Emacs with
 the `--debug-init' option to view a complete error backtrace."
                           user-init-file
                           (get (car error) 'error-message)

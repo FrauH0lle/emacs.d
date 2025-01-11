@@ -190,9 +190,9 @@ PLIST can have the following properties:
   (setq-local auto-hscroll-mode nil)
   ;; Line numbers are ugly with large margins
   (setq-local display-line-numbers-type nil)
-  (cl-loop for (car . _cdr) in fringe-indicator-alist
-           collect (cons car nil) into alist
-           finally do (setq-local fringe-indicator-alist alist))
+  ;; Ensure the ever-changing margins don't screw with the mode-line's
+  ;; right-alignment
+  (setq-local mode-line-right-align-edge 'right-margin)
   ;; Ensure point is always on a button
   (add-hook 'post-command-hook #'+doom-dashboard-reposition-point-h nil 'local)
   ;; hl-line produces an ugly cut-off line highlight in the dashboard, so don't
@@ -279,7 +279,7 @@ run."
   (let (buffer-list-update-hook
         window-configuration-change-hook
         window-size-change-functions)
-    (when-let (windows (get-buffer-window-list (zenit-fallback-buffer) nil t))
+    (when-let* ((windows (get-buffer-window-list (zenit-fallback-buffer) nil t)))
       (dolist (win windows)
         (set-window-start win 0)
         (set-window-fringes win 0 0)
@@ -313,7 +313,7 @@ This and `+doom-dashboard--tab-bar-record-project-a' provides
 the dashboard is always in the correct project (which may be
 different across tabs)."
   (when (bound-and-true-p bufferlo-mode)
-    (when-let (pwd (alist-get 'last-project-root (cdr (bufferlo--current-tab))))
+    (when-let* ((pwd (alist-get 'last-project-root (cdr (bufferlo--current-tab)))))
       (+doom-dashboard-update-pwd-h pwd))))
 
 

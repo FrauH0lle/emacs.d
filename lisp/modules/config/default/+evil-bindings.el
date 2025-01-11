@@ -1,6 +1,15 @@
 ;; config/default/+bindings.el -*- lexical-binding: t; -*-
 
-(when (modulep! :editor evil)
+(defvar +default-minibuffer-maps
+  (append '(minibuffer-local-map
+            minibuffer-local-ns-map
+            minibuffer-local-completion-map
+            minibuffer-local-must-match-map
+            minibuffer-local-isearch-map
+            read-expression-map))
+  "A list of all the keymaps used for the minibuffer.")
+
+(eval-when! (modulep! :editor evil)
   ;; NOTE SPC u replaces C-u as the universal argument.
 
   ;; Minibuffer
@@ -71,8 +80,6 @@
 
       (:after help :map help-mode-map
        :n "o"       #'link-hint-open-link)
-      (:after helpful :map helpful-mode-map
-       :n "o"       #'link-hint-open-link)
       (:after info :map Info-mode-map
        :n "o"       #'link-hint-open-link)
       (:after apropos :map apropos-mode-map
@@ -129,6 +136,8 @@
        (:after corfu
         (:map corfu-mode-map
          :i "C-." #'completion-at-point
+         :i "C-n" #'+corfu/dabbrev-or-next
+         :i "C-p" #'+corfu/dabbrev-or-last
          :n "C-." (cmd! (call-interactively #'evil-insert-state)
                         (call-interactively #'completion-at-point))
          :v "C-." (cmd! (call-interactively #'evil-change)
@@ -159,8 +168,12 @@
 ;;; :ui
 (map! (:when (modulep! :ui popup)
         "C-`"   #'+popup/toggle
-        "C-~"   #'+popup/raise
+        "C-~"   #'+popup/toggle-type
         "C-x p" #'+popup/other)
+
+      (:when (modulep! :ui transient-state)
+        :m "*" #'+symbol-overlay-transient-state
+        :m "#" #'+symbol-overlay-transient-state)
 
       (:when (modulep! :ui workspaces)
         :n "C-t"   #'+workspace/new
@@ -209,12 +222,7 @@
                 (:map evil-multiedit-mode-map
                  :nv "M-d" #'evil-multiedit-match-and-next
                  :nv "M-D" #'evil-multiedit-match-and-prev
-                 [return]  #'evil-multiedit-toggle-or-restrict-region)))
-
-      (:when (modulep! :editor snippets)
-        ;; auto-yasnippet
-        :i  [C-tab] #'aya-expand
-        :nv [C-tab] #'aya-create))
+                 [return]  #'evil-multiedit-toggle-or-restrict-region))))
 
 ;;; :tools
 (when (modulep! :tools eval)
@@ -224,9 +232,15 @@
 ;;
 ;;; <leader>
 
+;; HACK 2024-08-02: The declaration and autoload are necessary because
+;;   `general-simulate-key' calls `evil-set-command-property' wrapped in an
+;;   `eval-after-load'. Well, the byte-compiler does not like that, even though
+;;   my understanding is that code within `eval-after-load' does not get
+;;   compiled ...
+(declare-function evil-set-command-property "evil-common")
+(autoload #'evil-set-command-property "evil-common" nil t)
 ;; Make "," in normal and visual mode the localleader key
-(map!
- :nv "," (general-simulate-key "SPC m"))
+(map! :nv "," (general-simulate-key "SPC m"))
 
 (map! :leader
       :desc "Eval expression"       ":"    #'pp-eval-expression
@@ -318,7 +332,7 @@
 
       ;;; <leader> c --- code
       (:prefix-map ("c" . "code")
-        (:when (and (modulep! :tools lsp) (not (modulep! :tools lsp +eglot)))
+        (:when (modulep! :tools lsp -eglot)
           :desc "LSP Execute code action" "a" #'lsp-execute-code-action
           :desc "LSP Organize imports" "o" #'lsp-organize-imports
           (:when (modulep! :completion vertico)
@@ -411,12 +425,10 @@
        :desc "Revert file"                 "R"   #'vc-revert
        :desc "Copy link to remote"         "y"   #'+vc/browse-at-remote-kill
        :desc "Copy link to homepage"       "Y"   #'+vc/browse-at-remote-kill-homepage
-       (:when (modulep! :ui hydra)
-         :desc "SMerge"                    "m"   #'+vc/smerge-hydra/body)
        (:when (modulep! :ui vc-gutter)
          (:when (modulep! :ui hydra)
            :desc "VCGutter"                "."   #'+vc/gutter-hydra/body)
-         :desc "Revert hunk at point"      "r"   #'+vc-gutter/revert-hunk
+         :desc "Revert hunk at point"      "r"   #'+vc-gutter/save-and-revert-hunk
          :desc "stage hunk at point"       "s"   #'+vc-gutter/stage-hunk
          :desc "Git time machine"          "t"   #'git-timemachine-toggle
          :desc "Jump to next hunk"         "]"   #'+vc-gutter/next-hunk
@@ -472,7 +484,7 @@
        :desc "Current file path"             "F"   (cmd!! #'+default/insert-file-path t)
        :desc "Evil ex path"                  "p"   (cmd! (evil-ex "R!echo "))
        :desc "From evil register"            "r"   #'evil-show-registers
-       :desc "Snippet"                       "s"   #'yas-insert-snippet
+       :desc "Snippet"                       "s"   #'tempel-insert
        :desc "Unicode"                       "u"   #'insert-char
        :desc "From clipboard"                "y"   #'+default/yank-pop)
 
@@ -675,13 +687,14 @@
       (:prefix-map ("t" . "toggle")
        :desc "Big mode"                     "b" #'zenit-big-font-mode
        :desc "Fill Column Indicator"        "c" #'global-display-fill-column-indicator-mode
+       :desc "Diff Highlights (Git Gutter)" "d" #'diff-hl-mode
        :desc "Flymake"                      "f" #'flymake-mode
-       (:when (modulep! :checkers syntax)
+       (:when (modulep! :checkers syntax -flymake)
          :desc "Flycheck"                   "f" #'flycheck-mode)
        :desc "Frame fullscreen"             "F" #'toggle-frame-fullscreen
        :desc "Evil goggles"                 "g" #'evil-goggles-mode
        (:when (modulep! :ui indent-guides)
-         :desc "Indent guides"              "i" #'highlight-indent-guides-mode)
+         :desc "Indent guides"              "i" #'indent-bars-mode)
        :desc "Indent style"                 "I" #'zenit/toggle-indent-style
        :desc "Line numbers"                 "l" #'zenit/toggle-line-numbers
        (:when (modulep! :ui minimap)
@@ -689,9 +702,9 @@
        (:when (modulep! :emacs org +present)
          :desc "org-tree-slide mode"        "p" #'org-tree-slide-mode)
        :desc "Read-only mode"               "r" #'read-only-mode
-       (:when (and (modulep! :checkers spell) (not (modulep! :checkers spell +flyspell)))
-         :desc "Spell checker"              "s" #'spell-fu-mode)
-       (:when (modulep! :checkers spell +flyspell)
+       (:when (and (modulep! :checkers spell) (executable-find "enchant-2"))
+         :desc "Spell checker"              "s" #'jinx-mode)
+       (:when (and (modulep! :checkers spell) (not (executable-find "enchant-2")))
          :desc "Spell checker"              "s" #'flyspell-mode)
        (:when (modulep! :ui ligatures)
          :desc "Code ligatures"             "t" #'+ligatures/toggle)

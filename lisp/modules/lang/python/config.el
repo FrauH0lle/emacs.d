@@ -21,6 +21,9 @@
         python-indent-guess-indent-offset-verbose nil)
 
   (eval-when! (modulep! +lsp)
+    (eval-when! (modulep! :tools lsp +lsp-flymake)
+      (pushnew! +flycheck-disabled-modes 'python-mode 'python-ts-mode))
+
     (add-hook 'python-mode-local-vars-hook #'lsp! 'append)
     ;; Use "mspyls" in eglot if in PATH
     (when (executable-find "Microsoft.Python.LanguageServer")
@@ -28,12 +31,16 @@
 
   (eval-when! (modulep! +tree-sitter)
     (add-hook 'python-mode-local-vars-hook #'tree-sitter! 'append))
+
+  (eval-when! (modulep! :ui indent-guides)
+    (add-hook 'python-mode-local-vars-hook #'+indent-guides-init-maybe-h 'append))
+
   :config
   (set-repl-handler! 'python-mode #'+python/open-repl
     :persist t
     :send-region #'python-shell-send-region
     :send-buffer #'python-shell-send-buffer)
-  ;; (set-docsets! '(python-mode inferior-python-mode) "Python 3" "NumPy" "SciPy" "Pandas")
+  (set-docsets! '(python-mode inferior-python-mode) "Python 3" "NumPy" "SciPy" "Pandas")
 
   (set-ligatures! 'python-mode
     ;; Functional
@@ -53,10 +60,9 @@
     :for "for"
     :return "return" :yield "yield")
 
-  (set-popup-rule! "^\\*Python" :side 'bottom :height 0.33 :width 0.5 :quit nil)
+  (set-popup-rule!
+    "^\\*Python" :side 'bottom :height 0.33 :width 0.5 :quit nil :tabbed t :ttl nil)
 
-  (eval-when! (modulep! :ui indent-guides)
-    (add-hook! 'python-mode-hook (indent-bars-mode +1)))
   ;; Stop the spam!
   (setq python-indent-guess-indent-offset-verbose nil)
 
@@ -268,6 +274,25 @@
 (use-package! conda
   :when (modulep! +conda)
   :after python
+  :preface
+  ;; HACK: `conda-anaconda-home's initialization can throw an error if none of
+  ;;   `conda-home-candidates' exist, so unset it early.
+  (setq conda-anaconda-home (getenv "ANACONDA_HOME")
+        conda-home-candidates
+        (list "~/.anaconda"
+              "~/.anaconda3"
+              "~/.miniconda"
+              "~/.miniconda3"
+              "~/.miniforge3"
+              "~/anaconda3"
+              "~/miniconda3"
+              "~/miniforge3"
+              "~/opt/miniconda3"
+              "/usr/bin/anaconda3"
+              "/usr/local/anaconda3"
+              "/usr/local/miniconda3"
+              "/usr/local/Caskroom/miniconda/base"
+              "~/.conda"))
   :config
   ;; The location of your anaconda home will be guessed from a list of common
   ;; possibilities, starting with `conda-anaconda-home''s default value (which
@@ -276,21 +301,8 @@
   ;; If none of these work for you, `conda-anaconda-home' must be set
   ;; explicitly. Afterwards, run M-x `conda-env-activate' to switch between
   ;; environments
-  (or (cl-loop for dir in (list conda-anaconda-home
-                                "~/.anaconda"
-                                "~/.miniconda"
-                                "~/.miniconda3"
-                                "~/.miniforge3"
-                                "~/anaconda3"
-                                "~/miniconda3"
-                                "~/miniforge3"
-                                "~/opt/miniconda3"
-                                "/usr/bin/anaconda3"
-                                "/usr/local/anaconda3"
-                                "/usr/local/miniconda3"
-                                "/usr/local/Caskroom/miniconda/base"
-                                "~/.conda")
-               if (file-directory-p dir)
+  (or (cl-loop for dir in (cons conda-anaconda-home conda-home-candidates)
+               if (and dir (file-directory-p dir))
                return (setq conda-anaconda-home (expand-file-name dir)
                             conda-env-home-directory (expand-file-name dir)))
       (message "Cannot find Anaconda installation"))
@@ -325,8 +337,7 @@
 
 (use-package! flycheck-cython
   :when (modulep! +cython)
-  :when (and (modulep! :checkers syntax)
-             (not (modulep! :checkers syntax +flymake)))
+  :when (modulep! :checkers syntax -flymake)
   :after cython-mode)
 
 
@@ -354,5 +365,9 @@
 (use-package! lsp-pyright
   :when (modulep! +lsp)
   :when (modulep! +pyright)
-  :when (not (modulep! :tools lsp +eglot))
-  :after lsp-mode)
+  :when (modulep! :tools lsp -eglot)
+  :defer t
+  :init
+  (add-hook! 'python-mode-local-vars-hook
+    (when-let* ((exe (executable-find "basedpyright")))
+      (setq lsp-pyright-langserver-command (file-name-nondirectory exe)))))

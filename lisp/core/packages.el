@@ -1,6 +1,9 @@
 ;; -*- no-byte-compile: t; -*-
 ;; lisp/packages.el
 
+(package! straight :lockfile core)
+(package! async :lockfile core)
+
 ;; zenit-core.el
 (package! auto-minor-mode :lockfile core)
 (package! gcmh :lockfile core)
@@ -17,7 +20,6 @@
 (package! copy-as-format :lockfile core)
 (package! dtrt-indent :lockfile core)
 (package! expand-region :lockfile core)
-(package! helpful :lockfile core)
 (package! smartparens :lockfile core)
 (package! undo-tree :lockfile core)
 (package! ws-butler :lockfile core)
@@ -36,3 +38,6 @@
 
 ;; tests
 (package! buttercup :lockfile core)
+
+(package! benchmark-init :lockfile core)
+(package! esup)

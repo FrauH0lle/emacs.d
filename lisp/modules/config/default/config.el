@@ -32,7 +32,7 @@
    epa-file-encrypt-to
    (or (default-value 'epa-file-encrypt-to)
        (unless (string-empty-p user-full-name)
-         (when-let (context (ignore-errors (epg-make-context)))
+         (when-let* ((context (ignore-errors (epg-make-context))))
            (cl-loop for key in (epg-list-keys context user-full-name 'public)
                     for subkey = (car (epg-key-sub-key-list key))
                     if (not (memq 'disabled (epg-sub-key-capability subkey)))
@@ -52,19 +52,15 @@
   ;; The woman-manpath default value does not necessarily match man. If we have
   ;; man available but aren't using it for performance reasons, we can extract
   ;; it's manpath.
-  (when (executable-find "man")
-    (setq woman-manpath
-          (split-string (cdr (zenit-call-process "man" "--path"))
-                        path-separator t))))
-
-
-(use-package! drag-stuff
-  :defer t
-  :init
-  (map! "<M-up>"    #'drag-stuff-up
-        "<M-down>"  #'drag-stuff-down
-        "<M-left>"  #'drag-stuff-left
-        "<M-right>" #'drag-stuff-right))
+  (when-let*
+      ((path (cond
+              ((executable-find "manpath")
+               (split-string (cdr (zenit-call-process "manpath" "-q"))
+                             path-separator t))
+              ((executable-find "man")
+               (split-string (cdr (zenit-call-process "man" "--path"))
+                             path-separator t)))))
+    (setq woman-manpath path)))
 
 
 ;;;###package tramp
@@ -376,13 +372,70 @@ Continues comments if executed from a commented line. Consults
 
   ;; A convention where C-s on popups and interactive searches will invoke
   ;; ivy/helm/vertico for their superior filtering.
-  (when-let (command (cond ((modulep! :completion vertico)
-                            #'consult-history)))
+  (when-let* ((command (cond ((modulep! :completion vertico)
+                              #'consult-history))))
     (define-key!
       :keymaps (append +default-minibuffer-maps
                        (when (modulep! :editor evil)
                          '(evil-ex-completion-map)))
       "C-s" command))
+
+  (map! :when (modulep! :completion corfu)
+        :after corfu
+        (:map corfu-map
+              [remap corfu-insert-separator] #'+corfu/smart-sep-toggle-escape
+              "C-S-s" #'+corfu/move-to-minibuffer
+              "C-p" #'corfu-previous
+              "C-n" #'corfu-next))
+  (let ((cmds-del
+         `(menu-item "Reset completion" corfu-reset
+           :filter ,(lambda (cmd)
+                      (when (and (>= corfu--index 0)
+                                 (eq corfu-preview-current 'insert))
+                        cmd))))
+        (cmds-ret
+         `(menu-item "Insert completion DWIM" corfu-insert
+           :filter ,(lambda (cmd)
+                      (pcase +corfu-want-ret-to-confirm
+                        ('nil (corfu-quit) nil)
+                        ('t (if (>= corfu--index 0) cmd))
+                        ('both (funcall-interactively cmd) nil)
+                        ('minibuffer
+                         (if (minibufferp nil t)
+                             (ignore (funcall-interactively cmd))  ; 'both' behavior
+                           (if (>= corfu--index 0) cmd)))  ; 't' behavior
+                        (_ cmd)))))
+        (cmds-tab
+         `(menu-item "Select next candidate or navigate org table" corfu-next
+           :filter (lambda (cmd)
+                     (cond
+                      ,@(when (modulep! :emacs org)
+                          '(((and +corfu-want-tab-prefer-navigating-org-tables
+                                  (featurep 'org)
+                                  (org-at-table-p))
+                             #'org-table-next-field)))
+                      (t cmd)))) )
+        (cmds-s-tab
+         `(menu-item "Select previous candidate or navigate org table"
+           corfu-previous
+           :filter (lambda (cmd)
+                     (cond
+                      ,@(when (modulep! :emacs org)
+                          '(((and +corfu-want-tab-prefer-navigating-org-tables
+                                  (featurep 'org)
+                                  (org-at-table-p))
+                             #'org-table-previous-field)))
+                      (t cmd))))))
+    (map! :when (modulep! :completion corfu)
+          :map corfu-map
+          [backspace] cmds-del
+          "DEL" cmds-del
+          :gi [return] cmds-ret
+          :gi "RET" cmds-ret
+          "S-TAB" cmds-s-tab
+          [backtab] cmds-s-tab
+          :gi "TAB" cmds-tab
+          :gi [tab] cmds-tab))
 
   ;; Smarter C-a/C-e for both Emacs and Evil. C-a will jump to indentation.
   ;; Pressing it again will send you to the true bol. Same goes for C-e, except
@@ -418,13 +471,23 @@ Continues comments if executed from a commented line. Consults
           :gn "s-RET"        #'+default/newline-below
           :gn [s-return]     #'+default/newline-below
           :gn "S-s-RET"      #'+default/newline-above
-          :gn [S-s-return]   #'+default/newline-above))
-  ;; )
+          :gn [S-s-return]   #'+default/newline-above)))
+
 
 ;;
 ;;; Bootstrap configs
 
-  (eval-when! (modulep! :editor evil)
-    (compile-along! "+evil")
-    (after! evil
-      (load! "+evil"))))
+(eval-when! (modulep! :editor evil)
+  (defun +default-disable-delete-selection-mode-h ()
+    (delete-selection-mode -1))
+  (add-hook 'evil-insert-state-entry-hook #'delete-selection-mode)
+  (add-hook 'evil-insert-state-exit-hook  #'+default-disable-delete-selection-mode-h)
+
+  ;; Make SPC u SPC u [...] possible (#747)
+  (map! :map universal-argument-map
+        :prefix zenit-leader-key     "u" #'universal-argument-more
+        :prefix zenit-leader-alt-key "u" #'universal-argument-more)
+
+  (eval-when! (modulep! +bindings)
+    (compile-along! "+evil-bindings")
+    (load! "+evil-bindings")))

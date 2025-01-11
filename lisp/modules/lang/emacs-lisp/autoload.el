@@ -85,7 +85,7 @@ long), otherwise to a pop up buffer."
 ;;;###autoload
 (defun +emacs-lisp-lookup-definition (_thing)
   "Lookup definition of THING."
-  (if-let (module (+emacs-lisp--module-at-point))
+  (if-let* ((module (+emacs-lisp--module-at-point)))
       (zenit/help-modules (car module) (cadr module) 'visit-dir)
     (call-interactively #'elisp-def)))
 
@@ -93,7 +93,7 @@ long), otherwise to a pop up buffer."
 (defun +emacs-lisp-lookup-documentation (thing)
   "Lookup THING with `helpful-variable' if it's a variable, `helpful-callable'
 if it's callable, `apropos' otherwise."
-  (cond ((when-let (module (+emacs-lisp--module-at-point))
+  (cond ((when-let* ((module (+emacs-lisp--module-at-point)))
            (zenit/help-modules (car module) (cadr module))
            (when (eq major-mode 'org-mode)
              (with-demoted-errors "%s"
@@ -107,12 +107,17 @@ if it's callable, `apropos' otherwise."
                (when (invisible-p (point))
                  (org-show-hidden-entry))))
            'deferred))
-        (thing (helpful-symbol (intern thing)))
-        ((call-interactively #'helpful-at-point))))
-
-;; DEPRECATED Remove when 28 support is dropped.
-(unless (fboundp 'lisp--local-defform-body-p)
-  (fset 'lisp--local-defform-body-p #'ignore))
+        (thing
+         (let ((thing (intern thing)))
+           (if (and (not (cl-find-class thing))
+                    (fboundp 'helpful-symbol))
+               (helpful-symbol thing)
+             (describe-symbol thing)
+             (pop-to-buffer (help-buffer)))))
+        ((call-interactively
+          (if (fboundp #'helpful-at-point)
+              #'helpful-at-point
+            #'describe-symbol)))))
 
 ;;;###autoload
 (defun +emacs-lisp-indent-function (indent-point state)
@@ -232,8 +237,7 @@ Indents plists more sensibly. Adapted from URL
 (defun +emacs-lisp-extend-imenu-h ()
   "Improve imenu support in `emacs-lisp-mode'."
   (setq imenu-generic-expression
-        `(("Section" "^[ \t]*;;;;*[ \t]+\\([^\n]+\\)" 1)
-          ("Evil commands" "^\\s-*(evil-define-\\(?:command\\|operator\\|motion\\) +\\(\\_<[^ ()\n]+\\_>\\)" 1)
+        `(("Evil commands" "^\\s-*(evil-define-\\(?:command\\|operator\\|motion\\) +\\(\\_<[^ ()\n]+\\_>\\)" 1)
           ("Unit tests" "^\\s-*(\\(?:ert-deftest\\|describe\\) +\"\\([^\")]+\\)\"" 1)
           ("Package" "^\\s-*\\(?:;;;###package\\|(\\(?:package!\\|use-package!?\\|after!\\)\\) +\\(\\_<[^ ()\n]+\\_>\\)" 1)
           ("Major modes" "^\\s-*(define-derived-mode +\\([^ ()\n]+\\)" 1)
@@ -246,7 +250,8 @@ Indents plists more sensibly. Adapted from URL
           ("CLI Command" "^\\s-*(\\(def\\(?:cli\\|alias\\|obsolete\\|autoload\\)! +\\([^\n]+\\)\\)" 1)
           ("Functions" "^\\s-*(\\(?:cl-\\)?def\\(?:un\\|un\\*\\|method\\|generic\\|-memoized!\\) +\\([^ ,)\n]+\\)" 1)
           ("Variables" "^\\s-*(\\(def\\(?:c\\(?:onst\\(?:ant\\)?\\|ustom\\)\\|ine-symbol-macro\\|parameter\\|var\\(?:-local\\)?\\)\\)\\s-+\\(\\(?:\\sw\\|\\s_\\|\\\\.\\)+\\)" 2)
-          ("Types" "^\\s-*(\\(cl-def\\(?:struct\\|type\\)\\|def\\(?:class\\|face\\|group\\|ine-\\(?:condition\\|error\\|widget\\)\\|package\\|struct\\|t\\(?:\\(?:hem\\|yp\\)e\\)\\)\\)\\s-+'?\\(\\(?:\\sw\\|\\s_\\|\\\\.\\)+\\)" 2))))
+          ("Types" "^\\s-*(\\(cl-def\\(?:struct\\|type\\)\\|def\\(?:class\\|face\\|group\\|ine-\\(?:condition\\|error\\|widget\\)\\|package\\|struct\\|t\\(?:\\(?:hem\\|yp\\)e\\)\\)\\)\\s-+'?(?\\(\\(?:\\sw\\|\\s_\\|\\\\.\\)+\\)" 2)
+          ("Section" "^[ \t]*;;;+\\**[ \t]+\\([^\n]+\\)" 1))))
 
 (defun +emacs-lisp--in-package-buffer-p ()
   (let* ((file-path (buffer-file-name (buffer-base-buffer)))
@@ -358,7 +363,9 @@ as `+emacs-lisp-non-package-mode' will enable it and disable the other checkers.
                         (progn
                           (require 'zenit-core)
                           (require 'zenit-cli)
-                          (require 'zenit-start))
+                          (require 'zenit-start)
+                          (require 'zenit-use-package)
+                          (require 'zenit-el-patch))
                       (error
                        (princ
                         (format "%s:%d:%d:Error:Failed to load Emacs config: %s\n"
@@ -368,8 +375,10 @@ as `+emacs-lisp-non-package-mode' will enable it and disable the other checkers.
                                     (car command-line-args-left))
                                 0 0 (error-message-string e)))))
                     ,(read (default-toplevel-value 'flycheck-emacs-lisp-check-form))))
-                flycheck-disabled-checkers (cons 'emacs-lisp-checkdoc
-                                                 flycheck-disabled-checkers))))
+                flycheck-disabled-checkers
+                (cons 'emacs-lisp-checkdoc
+                      (remq 'emacs-lisp-checkdoc
+                            flycheck-disabled-checkers)))))
 
 ;;;###autoload
 (define-minor-mode +emacs-lisp-non-package-mode
@@ -389,10 +398,10 @@ or source \(`zenit-emacs-dir')."
                (derived-mode-p 'emacs-lisp-mode)
                (not (+emacs-lisp--in-package-buffer-p)))
     (setq +emacs-lisp-non-package-mode nil))
-  (when-let ((modesym (cond ((modulep! :checkers syntax +flymake)
-                             #'+emacs-lisp--flymake-non-package-mode)
-                            ((modulep! :checkers syntax)
-                             #'+emacs-lisp--flycheck-non-package-mode))))
+  (when-let* ((modesym (cond ((modulep! :checkers syntax +flymake)
+                              #'+emacs-lisp--flymake-non-package-mode)
+                             ((modulep! :checkers syntax -flymake)
+                              #'+emacs-lisp--flycheck-non-package-mode))))
     (if (not +emacs-lisp-non-package-mode)
         (when (symbol-value modesym)
           (funcall modesym -1))
@@ -518,8 +527,8 @@ Adapted from URL
                        ;; Align keywords in plists if each newline begins with
                        ;; a keyword. This is useful for "unquoted plist
                        ;; function" macros, like `map!' and `defhydra'.
-                       (when-let ((first (elt state 1))
-                                  (char (char-after (1+ first))))
+                       (when-let* ((first (elt state 1))
+                                   (char (char-after (1+ first))))
                          (and (eq char ?:)
                               (ignore-errors
                                 (or (save-excursion
@@ -544,14 +553,14 @@ Adapted from URL
                              (quotep 0))
                          (while positions
                            (let ((point (pop positions)))
-                             (or (when-let (char (char-before point))
+                             (or (when-let* ((char (char-before point)))
                                    (cond
                                     ((eq char ?\())
                                     ((memq char '(?\' ?\`))
                                      (or (save-excursion
                                            (goto-char (1+ point))
                                            (skip-chars-forward "( ")
-                                           (when-let (fn (ignore-errors (read (current-buffer))))
+                                           (when-let* ((fn (ignore-errors (read (current-buffer)))))
                                              (if (and (symbolp fn)
                                                       (fboundp fn)
                                                       ;; Only special forms and
@@ -654,5 +663,4 @@ Adapted from URL
 ;; HACK: Quite a few functions here are called often, and so are especially
 ;;   performance sensitive, so we compile this file on-demand.
 (zenit-compile-functions #'+emacs-lisp-highlight-vars-and-faces
-                         #'+emacs-lisp-truncate-pin
                          #'+emacs-lisp--calculate-lisp-indent-a)

@@ -159,15 +159,6 @@ global, so..."
     :after-until #'evil-global-marker-p
     (and (>= char ?2) (<= char ?9)))
 
-  (defadvice! +evil--fix-helpful-key-in-evil-ex-a (key-sequence)
-    "HACK Invoking helpful from evil-ex throws a \"No recursive
-edit is in progress\" error because, between evil-ex and
-helpful,`abort-recursive-edit' gets called one time too many."
-    :before #'helpful-key
-    (when (evil-ex-p)
-      (run-at-time 0.1 nil #'helpful-key key-sequence)
-      (abort-recursive-edit)))
-
   ;; Make J (evil-join) remove comment delimiters when joining lines.
   (advice-add #'evil-join :around #'+evil-join-a)
 

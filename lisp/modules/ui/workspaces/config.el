@@ -45,14 +45,16 @@ t   Save on Emacs shutdown.")
 ;;
 ;;; Packages
 
-(use-package! bufferlo
-  :unless noninteractive
-  :hook (zenit-init-ui . bufferlo-mode)
-  :init
-  (defvar bufferlo-mode-map (make-sparse-keymap))
-  :config/el-patch
-  ;; PATCH 2024-06-24: Use own functions to determine project root.
-  (defun bufferlo-isolate-project (&optional file-buffers-only)
+;; PATCH 2024-06-24: Use own functions to determine project root.
+(cl-eval-when (compile)
+  (require 'el-patch)
+  (require 'bufferlo))
+
+;; PATCH 2024-08-02: `bufferlo'
+(el-patch-feature bufferlo)
+
+(after! bufferlo
+  (el-patch-defun bufferlo-isolate-project (&optional file-buffers-only)
     "Isolate a project in the frame or tab.
 Remove all buffers that do not belong to the current project from
 the local buffer list.  When FILE-BUFFERS-ONLY is non-nil or the
@@ -70,7 +72,13 @@ Buffers matching `bufferlo-include-buffer-filters' are not removed."
                                    (with-current-buffer buffer (el-patch-swap (project-current) (zenit-project-root)))))
                        (or (not file-buffers-only) (buffer-file-name buffer)))
               (bufferlo-remove buffer)))
-        (message "Current buffer is not part of a project"))))
+        (message "Current buffer is not part of a project")))))
+
+(use-package! bufferlo
+  :unless noninteractive
+  :hook (zenit-init-ui . bufferlo-mode)
+  :init
+  (defvar bufferlo-mode-map (make-sparse-keymap))
   :config
   ;; Buffer to always include
   (setq! bufferlo-include-buffer-filters '("^\\*\\Messages" "^\\*Warnings"))
@@ -85,8 +93,8 @@ settings."
         ;; We include all present buffers in the first workspace
         (let ((bufferlo-exclude-buffer-filters nil)
               (bufferlo-include-buffer-filters '(".*")))
-          (bufferlo--include-exclude-buffers nil)
-          (tab-bar-mode +1))
+          (tab-bar-mode +1)
+          (bufferlo--include-exclude-buffers nil))
         ;; Restrict buffer list to workspace
         (advice-add #'zenit-buffer-list :override #'+workspace-buffer-list))
        (t
@@ -112,27 +120,7 @@ settings."
       (consult-customize
        consult--source-buffer
        :hidden t
-       :default nil)
-
-      ;; Add workspace buffers source
-      (defvar +consult--source-workspace
-        `(:name     "Workspace Buffers"
-          :narrow   ?w
-          :history  buffer-name-history
-          :category buffer
-          :state    ,#'consult--buffer-state
-          :default  t
-          :items
-          ,(lambda () (consult--buffer-query
-                       :predicate (lambda (x)
-                                    (and (bufferlo-local-buffer-p x)
-                                         (if (modulep! :ui popup)
-                                             (not (popper-popup-p x))
-                                           t)))
-                       :sort 'visibility
-                       :as #'buffer-name))))
-
-      (spliceq! consult-buffer-sources '+consult--source-workspace 'consult--source-buffer)))
+       :default nil)))
 
   ;; Filter popups by workspace
   (eval-when! (modulep! :ui popup)
@@ -141,7 +129,7 @@ settings."
         (when (bufferlo-local-buffer-p (current-buffer))
           (alist-get 'name current-tab))))
 
-    (setq popper-group-function #'+popper-group-by-workspace))
+    (setq +popup-group-function #'+popper-group-by-workspace))
 
   ;; Delete the current workspace if closing the last open window
   (define-key! bufferlo-mode-map

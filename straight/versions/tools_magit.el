@@ -1,0 +1,4 @@
+(("compat" . "99d74e635b76c3fa0b8403391e9d2efbd29f9901")
+ ("magit" . "f2a61334430291d2162a68138c95ab310a8557f1")
+ ("magit-todos" . "501c8db90ab59f8b619618b9d10db2a32a113727"))
+:gamma

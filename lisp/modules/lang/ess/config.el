@@ -20,6 +20,11 @@ variable.")
 ;;
 ;;; Packages
 
+
+;; PATCH 2024-08-02: `xterm-color'
+(el-patch-feature xterm-color)
+(compile-along! "patches/xterm-color")
+
 (use-package! xterm-color
   :defer t
   :init
@@ -29,219 +34,8 @@ variable.")
   ;; https://github.com/emacs-ess/ESS/issues/1193
   (add-hook 'inferior-ess-mode-hook
             (lambda () (add-hook 'comint-preoutput-filter-functions #'xterm-color-filter nil t)))
-  :config/el-patch
-  ;; PATCH 2024-07-30: The `inferior-ess-r-mode' can produce unreadable output
-  ;;   for tidyverse commands. See https://github.com/emacs-ess/ESS/issues/1193.
-  ;;   Since Emacs 29+, this seems to be less of an issue, however using
-  ;;   `xterm-color' seems to solve it.
-  ;;
-  ;;  The patches below are taken from:
-  ;;  - https://github.com/lionel-/xterm-color/commit/d63452ea8f16632179bd322c21bd804603fe4286
-  ;;    - Directly from on of the ESS maintainers
-  (defcustom xterm-color-use-bold nil
-    "If non-nil, render bold attribute as bold."
-    :type 'boolean
-    :group 'xterm-color)
-
-  (cl-defmacro xterm-color--with-SGR-constants (&body body)
-    (declare (indent defun))
-    `(cl-symbol-macrolet
-         ((+bright+           1)
-          (+italic+           2)
-          (+underline+        4)
-          (+strike-through+   8)
-          (+negative+        16)
-          (+frame+           32)
-          (+overline+        64)
-          (el-patch-add
-            (+bold+            128)))
-       ,@body))
-
-  (defsubst xterm-color--dispatch-SGR (SGR-list)
-    "Update state machine based on SGR-LIST (list of SGR attributes /integers)."
-    (xterm-color--create-SGR-table (elem SGR-list)
-      (:match (0)  (reset!))                              ; RESET everything
-      (:match ((<= 30 elem 37)) (set-f! (- elem 30)))     ; ANSI FG color
-      (:match ((<= 40 elem 47)) (set-b! (- elem 40)))     ; ANSI BG color
-      (:match (39) (set-f!   nil))                        ; RESET FG color (switch to default)
-      (:match (49) (set-b!   nil))                        ; RESET BG color (switch to default)
-      (:match (1)  (set-a!   (el-patch-swap +bright+ (if xterm-color-use-bold +bold+ +bright+))))
-      (:match (2)  (unset-a! +bright+))
-      (:match (22) (unset-a! (el-patch-swap +bright+ (if xterm-color-use-bold +bold+ +bright+))))
-
-      (:match ((and (eq 38 (cl-first SGR-list))
-                    (eq 2 (cl-second SGR-list)))          ; Truecolor (24-bit) FG color
-               :skip 5)
-              (when xterm-color--support-truecolor
-                (if-let ((r (cl-third SGR-list))
-                         (g (cl-fourth SGR-list))
-                         (b (cl-fifth SGR-list)))
-                    (if (or (> r 255) (> g 255) (> b 255))
-                        (xterm-color--message "SGR 38;2;%s;%s;%s exceeds range"
-                                              r g b)
-                      (set-truecolor! r g b xterm-color--current-fg))
-                  (xterm-color--message "SGR 38;2;%s;%s;%s error, expected 38;2;R;G;B"
-                                        r g b))))
-      (:match ((and (eq 38 (cl-first SGR-list))
-                    (eq 5 (cl-second SGR-list)))
-               :skip 3)                                   ; XTERM 256 FG color
-              (if-let ((color (cl-third SGR-list)))
-                  (if (> color 255)
-                      (xterm-color--message "SGR 38;5;%s exceeds range" color)
-                    (set-f! color))
-                (xterm-color--message "SGR 38;5;%s error, expected 38;5;COLOR"
-                                      color)))
-      (:match ((and (eq 48 (cl-first SGR-list))
-                    (eq 2 (cl-second SGR-list)))          ; Truecolor (24-bit) BG color
-               :skip 5)
-              (when xterm-color--support-truecolor
-                (if-let ((r (cl-third SGR-list))
-                         (g (cl-fourth SGR-list))
-                         (b (cl-fifth SGR-list)))
-                    (if (or (> r 255) (> g 255) (> b 255))
-                        (xterm-color--message "SGR 48;2;%s;%s;%s exceeds range"
-                                              r g b)
-                      (set-truecolor! r g b xterm-color--current-bg))
-                  (xterm-color--message "SGR 48;2;%s;%s;%s error, expected 48;2;R;G;B"
-                                        r g b))))
-      (:match ((and (eq 48 (cl-first SGR-list))
-                    (eq 5 (cl-second SGR-list)))
-               :skip 3)                                   ; XTERM 256 BG color
-              (if-let ((color (cl-third SGR-list)))
-                  (if (> color 255)
-                      (xterm-color--message "SGR 48;5;%s exceeds range" color)
-                    (set-b! color))
-                (xterm-color--message "SGR 48;5;%s error, expected 48;5;COLOR"
-                                      color)))
-      (:match ((<= 90 elem 97))                           ; AIXTERM hi-intensity FG
-              ;; Rather than setting bright, which would be wrong,
-              ;; rescale color to fall within 8-15 so that it gets
-              ;; mapped to xterm-color-names-bright by xterm-color-256
-              (set-f! (- elem 82)))
-      ;; Same for BG, rescale to 8-15
-      (:match ((<= 100 elem 107)) (set-b! (- elem 92)))   ; AIXTERM hi-intensity BG
-      (:match (51) (set-a!   +frame+))
-      (:match (53) (set-a!   +overline+))
-      (:match (54) (unset-a! +frame+))
-      (:match (55) (unset-a! +overline+))
-      (:match (4)  (set-a!   +underline+))
-      (:match (24) (unset-a! +underline+))
-      (:match (3)  (set-a!   +italic+))
-      (:match (23) (unset-a! +italic+))
-      (:match (9)  (set-a!   +strike-through+))
-      (:match (29) (unset-a! +strike-through+))
-      (:match (7)  (set-a!   +negative+))
-      (:match (27) (unset-a! +negative+))))
-
-  (defmacro xterm-color--with-ANSI-macro-helpers (&rest body)
-    (declare (indent defun))
-    `(xterm-color--with-SGR-constants
-       (cl-symbol-macrolet ((fg           xterm-color--current-fg)
-                            (bg           xterm-color--current-bg)
-                            (attrs        xterm-color--attributes)
-                            (el-patch-add (bold         xterm-color-use-bold))
-                            (bold-bright  xterm-color-use-bold-for-bright))
-         (cl-macrolet
-             ((out! (x)            `(push ,x result))
-              (push-char! (c)      `(push ,c xterm-color--char-list))
-              (push-csi! (c)       `(push ,c xterm-color--CSI-list))
-              (state! (s)          `(setq state ,s))
-              (graphics? ()        `(or fg bg (/= attrs 0)))
-              (has? (attr)         `(/= (logand ,attr attrs) 0))
-              (fmt-24bit (color)   `(format "#%06x" ,color))
-              (fmt-256 (color)     `(xterm-color-256 ,color))
-              ;; Unpacks a packed truecolor value (as stored in
-              ;; `xterm-color--current-fg' and `xterm-color--current-fg'.
-              (unpack (color)      `(ash ,color -9))
-              ;; To avoid hash collisions, a different packing scheme is used
-              ;; for hash table keys. It can encode two colors (foreground
-              ;; and background) that can either be truecolor 24bit or XTerm 256
-              ;; color 8bit. XTerm 256 color values subsume ANSI colors, a
-              ;; separate encoding scheme is not needed.
-              ;;
-              ;; The scheme used also accounts for the combination of a truecolor
-              ;; with an XTerm 256 color as part of the same hashed entry. Since
-              ;; two different hash tables are used to work around 32bit Emacs
-              ;; limited integer range, two packing schemes are needed:
-              ;;
-              ;; High<         25 bits       >Low
-              ;; ATTR[7 bits]BG[9 bits]FG[9 bits] where BG and FG are each
-              ;; encoded as the 8bit color value shifted left by 1 and combined
-              ;; with a flag bit which is set when the color is present.
-              ;;
-              ;; High<         59 bits       >Low
-              ;; ATTR[7 bits]BG[26 bits]FG[26 bits] where BG and FG are each
-              ;; encoded as the 24bit (RGB) or 8bit color value shifted left by
-              ;; 2 and combined with 2 flag bits that are set when the value
-              ;; is 24bit (high bit) and when the color is present (low bit).
-              (pack-256 (color)    `(if ,color (logior (ash ,color 1) 1) 0))
-              (pack-24bit (color)  `(if ,color
-                                        (if (> ,color 255)
-                                            (logior (ash (unpack ,color) 2) 3)
-                                          (logior (ash ,color 2) 1))
-                                      0))
-              ;; If at least one of foreground / background color is a 24bit
-              ;; truecolor value: Second packing scheme with
-              ;; `xterm-color--truecolor-face-cache' is used.
-              ;;
-              ;; Every other case, including when no colors are present:
-              ;; First packing scheme with `xterm-color--face-cache' is used.
-              (pack-key-into (k)   `(cond ((or (and fg (> fg 255))
-                                               (and bg (> bg 255)))
-                                           ;; At least one truecolor 24bit value
-                                           (setq ,k (logior (ash attrs 52)
-                                                            (ash (pack-24bit bg) 26)
-                                                            (pack-24bit fg)))
-                                           xterm-color--truecolor-face-cache)
-                                          (t ;; No truecolor 24bit value
-                                           (setq ,k (logior (ash attrs 18)
-                                                            (ash (pack-256 bg) 9)
-                                                            (pack-256 fg)))
-                                           xterm-color--face-cache)))
-              (face! (k v)         `(setq plistf (plist-put plistf ,k ,v)))
-              (make-color-fg ()    `(if (and bold-bright
-                                             (< fg 256)
-                                             (or (has? +bright+) (<= 8 fg 15)))
-                                        (progn (face! :weight 'bold)
-                                               (face! :foreground
-                                                      (fmt-256 (if (<= 8 fg) (- fg 8) fg))))
-                                      (face! :foreground
-                                             (if (> fg 255)
-                                                 (fmt-24bit (unpack fg))
-                                               (fmt-256 (if (and (<= fg 7) (has? +bright+))
-                                                            (+ fg 8)
-                                                          fg))))))
-              (make-color-bg ()    `(face! :background (cond ((> bg 255) (fmt-24bit (unpack bg)))
-                                                             (t (fmt-256 bg)))))
-              (make-face ()        `(let* (k
-                                           (table (pack-key-into k)))
-                                      (or (gethash k table)
-                                          (let (plistf)
-                                            (el-patch-add (when (has? +bold+)           (face! :weight 'bold)))
-                                            (when (has? +italic+)         (face! :slant 'italic))
-                                            (when (has? +underline+)      (face! :underline t))
-                                            (when (has? +strike-through+) (face! :strike-through t))
-                                            (when (has? +negative+)       (face! :inverse-video t))
-                                            (when (has? +overline+)       (face! :overline t))
-                                            (when (has? +frame+)          (face! :box t))
-                                            (cond (fg (make-color-fg))
-                                                  (t (when (and bold-bright (has? +bright+))
-                                                       (face! :weight 'bold))))
-                                            (when bg (make-color-bg))
-                                            (puthash k plistf table)))))
-              (maybe-fontify ()    '(when xterm-color--char-list
-                                      (let ((s (concat (nreverse xterm-color--char-list))))
-                                        (when (and xterm-color-render (graphics?))
-                                          (add-text-properties
-                                           0 (length s)
-                                           (list 'xterm-color t
-                                                 (if font-lock-mode 'font-lock-face 'face)
-                                                 (make-face))
-                                           s))
-                                        (out! s))
-                                      (setq xterm-color--char-list nil))))
-           ,@body))))
   :config
+  (load! "patches/xterm-color")
   (setq! xterm-color-use-bold t))
 
 (use-package! ess
@@ -278,17 +72,24 @@ variable.")
   ;; Support Juila only if no dedicated module is used.
   (eval-unless! (modulep! :lang julia)
     (add-to-list 'auto-mode-alist '("\\.[Jj][Ll]\\'" . ess-julia-mode)))
+  ;; Do not use flycheck when +lsp-flymake is set
+  (eval-when! (modulep! :tools lsp +lsp-flymake)
+    (pushnew! +flycheck-disabled-modes 'ess-r-mode))
+
   ;; Tree-sitter support
   (eval-when! (modulep! +tree-sitter)
     (add-hook 'ess-r-mode-local-vars-hook #'tree-sitter! 'append))
   :config
   (setq ess-offset-continued 'straight
-        ess-use-flymake (not (modulep! :checkers syntax))
+        ess-use-flymake (or (modulep! :tools lsp +lsp-flymake)
+                            (modulep! :checkers syntax +flymake))
         ess-nuke-trailing-whitespace-p t
         ess-style 'DEFAULT
         ess-history-directory (expand-file-name "ess-history/" zenit-cache-dir))
 
-  ;; Set fontification
+  ;;
+  ;;; Set fontification
+
   ;; ESS buffer
   (setq ess-R-font-lock-keywords
         '((ess-R-fl-keyword:keywords   . t)
@@ -321,10 +122,28 @@ variable.")
           (ess-fl-keyword:=             . t)
           (ess-R-fl-keyword:F&T         . t)))
 
+
+  ;; RStudio-style `outline-regexp', e.g. matches # Section ----...
+  (defun +ess-r-mode-outline-level ()
+    "Adapted from `lisp-outline-level'."
+    (let ((len (- (match-end 0) (match-beginning 0))))
+      (cond ((looking-at "[ \t]*\\(#+\\) ")
+             (- (match-end 1) (match-beginning 1)))
+            (t
+             len))))
+
+  (add-hook! 'ess-r-mode-local-vars-hook
+    (progn
+      (if (eq ess-style 'RStudio)
+          (setq-local outline-regexp "[ \t]*#+ [^ \t\n#=-].*[#=-]\\{4,\\}"
+                      outline-level #'+ess-r-mode-outline-level)
+        (setq-local outline-regexp "[ \t]*###+ [^ \t\n]"))
+      (outline-minor-mode +1)))
+
   (eval-when! (modulep! :tools lookup)
     (set-docsets! 'ess-r-mode :docsets "R")
     (set-lookup-handlers! '(ess-r-mode ess-julia-mode)
-                          :documentation #'ess-display-help-on-object))
+      :documentation #'ess-display-help-on-object))
   (eval-when! (modulep! :tools eval)
     (set-repl-handler! 'ess-r-mode #'+ess/open-r-repl)
     (set-repl-handler! 'ess-julia-mode #'+ess/open-julia-repl)
@@ -341,8 +160,7 @@ variable.")
     comment-line-break-function nil)
 
   ;; LSP
-  (eval-when! (and (modulep! :tools lsp)
-                   (modulep! :lang ess +lsp))
+  (eval-when! (modulep! +lsp)
     (add-hook! 'ess-r-mode-local-vars-hook
       (defun +ess-lsp-init-maybe-h ()
         "Use LSP mode if the buffer is not a remote."
@@ -350,14 +168,12 @@ variable.")
           (lsp!)))))
 
   ;; Popup rules
-  (eval-when! (modulep! :ui popup)
-    (after! ess-r-mode
-      (set-popup-rule! "^\\*R" :side 'bottom :height 0.33 :width 0.5 :quit nil)
-      (set-popup-rule! "^\\*R dired*" :side 'right :size 0.25 :height 0.5 :vslot 99 :slot 1
-        :select nil :quit nil))
-    (after! ess-help
-      (set-popup-rule! "^\\*help.R.*" :side 'right :size 0.25 :height 0.5 :vslot 100 :slot 1
-        :select t :quit t :transient t)))
+  (after! ess-r-mode
+    (set-popup-rules!
+      '(("^\\*R" :side bottom :height 0.33 :width 0.5 :quit nil :ttl nil :tabbed t)
+        ("^\\*R dired*" :side right :size 0.25 :height 0.5 :vslot 99 :slot 1 :select nil :quit nil))))
+  (after! ess-help
+    (set-popup-rule! "^\\*help.R.*" :side 'bottom :height 0.33 :width 0.5 :select t :quit 'current :tabbed t))
 
   ;; Workspaces integration
   (eval-when! (modulep! :ui workspaces)
@@ -382,6 +198,7 @@ variable.")
 
       (add-hook! 'inferior-ess-r-mode-hook
         (setq-local bookmark-make-record-function #'+ess-r-bookmark-make-record))))
+
 
   ;; REPL
   ;; Use smartparens in iESS
@@ -430,47 +247,19 @@ See URL `https://github.com/emacs-ess/ESS/issues/300'."
                (+ess-kill-proc-before-buffer-h))))))
 
   (defun +ess-comint-h ()
-    (add-hook 'kill-buffer-hook #'+ess-kill-proc-before-buffer-h nil t)
-    (add-hook 'kill-emacs-hook #'+ess-run-kill-proc-maybe-h nil))
+    (add-hook 'kill-buffer-hook #'+ess-kill-proc-before-buffer-h 'append t)
+    (add-hook 'kill-emacs-hook #'+ess-run-kill-proc-maybe-h 'append))
 
   (add-hook 'comint-mode-hook #'+ess-comint-h)
 
-  (use-package! ess-rdired
-    :defer t
-    :config/el-patch
-    ;; PATCH `ess-rdired'
-    (defun ess-rdired-refresh ()
-      "Refresh the `ess-rdired' buffer."
-      (let* ((buff (get-buffer-create ess-rdired-buffer))
-             (proc-name (buffer-local-value 'ess-local-process-name buff))
-             (proc (get-process proc-name))
-             (out-buff (get-buffer-create " *ess-rdired-output*"))
-             text)
-        (when (and proc-name proc
-                   (not (process-get proc 'busy)))
-          (ess--foreground-command ess-rdired-objects out-buff nil nil nil proc)
-          (with-current-buffer out-buff
-            (goto-char (point-min))
-            ;; Delete two lines. One filled with +'s from R's prompt
-            ;; printing, the other with the header info from the data.frame
-            (el-patch-remove
-              (delete-region (point-min) (1+ (line-end-position 2)))
-              (setq text (split-string (buffer-string) "\n" t "\n"))
-              (erase-buffer))
-            (el-patch-add
-              (when (> (count-lines (point-min) (point-max)) 2)
-                (delete-region (point-min) (1+ (line-end-position 2)))
-                (setq text (split-string (buffer-string) "\n" t "\n"))
-                (erase-buffer))))
-          (with-current-buffer buff
-            (setq tabulated-list-entries
-                  (mapcar #'ess-rdired--tabulated-list-entries text))
-            (let ((entry (tabulated-list-get-id))
-                  (col (current-column)))
-              (tabulated-list-print)
-              (while (not (equal entry (tabulated-list-get-id)))
-                (forward-line))
-              (move-to-column col)))))))
+
+  ;; PATCH 2024-08-02: `ess-rdired'
+  (compile-along! "patches/ess-rdired")
+  (el-patch-feature ess-rdired)
+
+  (after! ess-rdired
+    (load! "patches/ess-rdired"))
+
 
   ;; Keybinds
   (map!
@@ -546,7 +335,7 @@ See URL `https://github.com/emacs-ess/ESS/issues/300'."
 
 
 (use-package! poly-R
-  :mode ("\\.[rR]md$" . poly-markdown+r-mode)
+  :mode ("\\.[rR]md\\'" . poly-markdown+r-mode)
   :config
   (eval-when! (modulep! :editor snippets)
     (set-tempel-minor-mode! 'poly-markdown+r-mode)))

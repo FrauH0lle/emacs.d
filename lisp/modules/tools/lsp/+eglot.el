@@ -11,7 +11,7 @@
         ;; NOTE We disable eglot-auto-display-help-buffer because :select t in
         ;;      its popup rule causes eglot to steal focus too often.
         eglot-auto-display-help-buffer nil)
-  (when (modulep! :checkers syntax)
+  (when (or (modulep! -lsp-flymake) (modulep! :checkers syntax -flymake))
     (setq eglot-stay-out-of '(flymake)))
 
   :config
@@ -27,7 +27,7 @@
 
   (add-to-list 'zenit-debug-variables '(eglot-events-buffer-size . 0))
 
-  (when (modulep! :checkers syntax)
+  (when (modulep! :checkers syntax -flymake)
     (after! flycheck
       (load! "autoload/flycheck-eglot")))
 

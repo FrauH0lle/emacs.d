@@ -6,13 +6,16 @@
 (use-package! ebuild-mode
   :defer t
   :init
+  ;; HACK 2024-08-02: `find-file-hook' fires as soon as we try to open any file
+  ;;   which then causes `ebuild-mode' to load, which in turn pulls in
+  ;;   `sh-script'.
   (remove-hook 'find-file-hook #'ebuild-repo-mode-maybe-enable)
   :config
   (set-electric! 'ebuild-mode :words '("else" "elif" "fi" "done" "then" "do" "esac" ";;"))
-  (set-formatter! 'shfmt '("shfmt" "-ci"
-                           (unless indent-tabs-mode
-                             (list "-i" (number-to-string tab-width))))
-    :modes '(ebuild-mode))
+
+  (after! apheleia
+    (add-to-list 'apheleia-mode-alist '(ebuild-mode . shfmt)))
+
   (map! :map ebuild-mode-map
         :localleader
         :desc "Run ebuild"               "e" #'ebuild-run-command
@@ -26,6 +29,10 @@
         :desc "Unstabilize all keywords" "b" #'ebuild-mode-all-keywords-unstable))
 
 
+;; PATCH 2024-08-02: `company-ebuild'
+(el-patch-feature company-ebuild)
+(compile-along! "patches")
+
 (use-package! company-ebuild
   :when (modulep! :completion corfu)
   :after ebuild-mode
@@ -36,35 +43,9 @@
 point."
     (buffer-substring (point) (save-excursion (skip-syntax-backward "w_")
                                               (point))))
-  :config/el-patch
-  ;; PATCH 2024-07-26: Remove `company' dependency
-  (defun company-ebuild-setup ()
-    "Setup for Company-Ebuild.
-
-To setup the integration correctly, add this function to ‘ebuild-mode-hook’
-in your config:
-\(add-hook 'ebuild-mode-hook 'company-ebuild-setup)
-or `require' Company-Ebuild:
-\(require 'company-ebuild)"
-    ;; Force-enable `company-mode'.
-    (el-patch-remove
-      (when (null company-mode)
-        (company-mode +1)))
-    ;; Regenerate dynamic keywords.
-    (company-ebuild--regenerate-dynamic-keywords)
-    ;; Add the `company-ebuild' backend.
-    (el-patch-remove
-      (setq-local company-backends
-                  `((company-ebuild
-                     company-capf  ; standard fallback
-                     ,@(cond
-                        ((fboundp 'company-yasnippet)  ; YAS for easier setup
-                         '(company-yasnippet))
-                        (t
-                         '())))
-                    ,@company-backends))
-      (setq-local company-require-match nil)))
   :config
+  (load! "patches")
+
   ;; Use Company backend as Capfs.
   (setq-hook! 'ebuild-mode-hook completion-at-point-functions
               (cons (cape-company-to-capf #'company-ebuild)
@@ -72,5 +53,5 @@ or `require' Company-Ebuild:
 
 
 (use-package! flycheck-pkgcheck
-  :when (modulep! :checkers syntax)
+  :when (modulep! :checkers syntax -flymake)
   :hook (ebuild-mode . flycheck-pkgcheck-setup))

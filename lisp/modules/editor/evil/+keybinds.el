@@ -1,5 +1,10 @@
 ;; editor/evil/+keybinds.el -*- lexical-binding: t; -*-
 
+(eval-when-compile
+  (require 'cl-lib))
+
+(cl-eval-when (compile)
+  (require 'evil))
 
 ;; Keybinds that have no Emacs+evil analogues (i.e. don't exist):
 ;;   zu{q,w} - undo last marking
@@ -85,9 +90,6 @@
         :v  "gR"  #'+eval:replace-region
         ;; Restore these keybinds, since the blacklisted/overwritten gr/gR will
         ;; undo them:
-        (:after helpful
-         :map helpful-mode-map
-         :n "gr" #'helpful-update)
         (:after compile
          :map (compilation-mode-map compilation-minor-mode-map)
          :n "gr" #'recompile)
@@ -200,7 +202,7 @@
                  :i "C-f"  #'cape-file
                  :i "C-]"  #'complete-tag
                  :i "s"    #'cape-dict
-                 :i "C-s"  #'yasnippet-capf
+                 :i "C-s"  #'tempel-complete
                  :i "C-o"  #'completion-at-point
                  :i "C-n"  #'cape-dabbrev
                  :i "C-p"  #'+corfu/dabbrev-this-buffer)))

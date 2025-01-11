@@ -5,13 +5,14 @@
 ;; module configuration.
 (defvar evil-collection-key-blacklist)
 
+;; Must be set before evil/evil-collection is loaded
+(defvar evil-want-keybinding nil)
+
 (when (and (not noninteractive)
            (not (zenit-context-p 'reload))
            (not (zenit-context-p 'cli)))
 
-  (setq evil-collection-company-use-tng nil
-        ;; must be set before evil/evil-collection is loaded
-        evil-want-keybinding nil)
+  (setq evil-collection-company-use-tng nil)
 
   (defvar +evil-collection-disabled-list
     '(anaconda-mode
@@ -28,6 +29,7 @@
       help
       image
       indent
+      kmacro
       kotlin-mode
       lispy
       outline
@@ -324,6 +326,9 @@ loaded too early (during startup)."
       (+evil-collection-init 'replace))
     (add-transient-hook! 'indent-rigidly
       (+evil-collection-init '(indent "indent")))
+    (when (>= emacs-major-version 30)
+      (add-transient-hook! 'kmacro-menu-mode
+        (+evil-collection-init 'kmacro)))
     (add-transient-hook! 'minibuffer-setup-hook
       (when evil-collection-setup-minibuffer
         (+evil-collection-init 'minibuffer)

@@ -268,8 +268,7 @@ disabled when that window has been changed or closed."
            #'+popup-set-modeline-on-enable-h
            #'+popup-unset-modeline-on-disable-h)
 
-(compile-along! "autoload/")
-
+(compile-along! "autoload")
 
 ;;
 ;;; Hacks

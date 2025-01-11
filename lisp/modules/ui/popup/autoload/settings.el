@@ -18,8 +18,7 @@ Created by `set-popup-rule!' and `set-popup-rules!'.")
         :quit   t
         :select #'ignore
         :ttl    5)
-  "Default properties for popup rules defined with
-`set-popup-rule!'.")
+  "Default properties for popup rules for `set-popup-rule!'.")
 
 ;;;###autoload
 (defun +popup-make-rule (predicate plist)

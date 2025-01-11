@@ -227,3 +227,113 @@
     (scratch-buffer)
     (sleep-for 1.5)
     (should-not (buffer-live-p a))))
+
+(zenit-deftest +popup-buffer-parameter
+  (:vars
+   ((a (get-buffer-create "a")))
+   :before-each
+   (progn
+     (defvar-local +popup-buffer-status nil)
+     (with-current-buffer a
+       (setq +popup-buffer-status '(:status popup :test-param "value"))))
+   :after-each
+   (progn
+     (kill-buffer a)
+     (makunbound '+popup-buffer-status)))
+  ,test
+  (test)
+  :doc "`+popup-buffer-parameter' retrieves existing parameter"
+  (should (equal "value" (+popup-buffer-parameter 'test-param a)))
+  :doc "`+popup-buffer-parameter' returns nil for non-existent parameter"
+  (should-not (+popup-buffer-parameter 'non-existent a))
+  :doc "`+popup-buffer-parameter' works with current buffer when no buffer specified"
+  (with-current-buffer a
+    (should (equal "value" (+popup-buffer-parameter 'test-param)))))
+
+(zenit-deftest +popup-buffer-set-parameter
+  (:vars
+   ((a (get-buffer-create "a")))
+   :before-each
+   (defvar-local +popup-buffer-status nil)
+   :after-each
+   (progn
+     (kill-buffer a)
+     (makunbound '+popup-buffer-status)))
+  ,test
+  (test)
+  :doc "`+popup-buffer-set-parameter' sets single parameter"
+  (progn
+    (+popup-buffer-set-parameter a :test-param "value")
+    (should (equal "value" (+popup-buffer-parameter 'test-param a))))
+  :doc "`+popup-buffer-set-parameter' sets multiple parameters"
+  (progn
+    (+popup-buffer-set-parameter a :param1 "val1" :param2 "val2")
+    (should (equal "val1" (+popup-buffer-parameter 'param1 a)))
+    (should (equal "val2" (+popup-buffer-parameter 'param2 a))))
+  :doc "`+popup-buffer-set-parameter' overwrites existing parameters"
+  (progn
+    (+popup-buffer-set-parameter a :param "old")
+    (+popup-buffer-set-parameter a :param "new")
+    (should (equal "new" (+popup-buffer-parameter 'param a)))))
+
+(zenit-deftest +popup-buffer-p
+  (:vars
+   ((a (get-buffer-create "a"))
+    (b (get-buffer-create "b"))
+    (c (get-buffer-create "c")))
+   :before-each
+   (progn
+     (push "^a$" +popup--reference-names)
+     (push 'prog-mode +popup--reference-modes)
+     (push (lambda (buf) (equal (buffer-name buf) "c"))
+           +popup--reference-predicates)
+     (defvar-local +popup-buffer-status nil)
+     (with-current-buffer b
+       (prog-mode)))
+   :after-each
+   (progn
+     (setq +popup--reference-names nil)
+     (setq +popup--reference-modes nil)
+     (setq +popup--reference-predicates nil)
+     (mapc #'kill-buffer (list a b c))))
+  ,test
+  (test)
+  :doc "`+popup-buffer-p' returns t for popup buffers by name"
+  (should (+popup-buffer-p a))
+  :doc "`+popup-buffer-p' returns t for popup buffers by mode"
+  (should (+popup-buffer-p b))
+  :doc "`+popup-buffer-p' returns t for popup buffers by predicate"
+  (should (+popup-buffer-p c))
+  :doc "`+popup-buffer-p' returns nil for non-popup buffers"
+  (should-not (+popup-buffer-p (get-buffer "*Messages*"))))
+
+(zenit-deftest +popup-buffer-suppress-p
+  (:vars
+   ((a (get-buffer-create "a"))
+    (b (get-buffer-create "b"))
+    (c (get-buffer-create "c")))
+   :before-each
+   (progn
+     (push "^a$" +popup--suppressed-names)
+     (push 'prog-mode +popup--suppressed-modes)
+     (push (lambda (buf) (equal (buffer-name buf) "c"))
+           +popup--suppressed-predicates)
+     (defvar-local +popup-buffer-status nil)
+     (with-current-buffer b
+       (prog-mode)))
+   :after-each
+   (progn
+     (setq +popup--suppressed-names nil)
+     (setq +popup--suppressed-modes nil)
+     (setq +popup--suppressed-predicates nil)
+     (mapc #'kill-buffer (list a b c))))
+  ,test
+  (test)
+  :doc "`+popup-buffer-suppress-p' returns t for suppressed buffers by name"
+  (should (+popup-buffer-suppress-p a))
+  :doc "`+popup-buffer-suppress-p' returns t for suppressed buffers by mode"
+  (should (+popup-buffer-suppress-p b))
+  :doc "`+popup-buffer-suppress-p' returns t for suppressed buffers by predicate"
+  (should (+popup-buffer-suppress-p c))
+  :doc "`+popup-buffer-suppress-p' returns nil for non-suppressed buffers"
+  (should-not (+popup-buffer-suppress-p (get-buffer "*Messages*"))))

@@ -20,7 +20,7 @@ jobs:
           - 29.3
           - 29.4
     steps:
-      - name: Set up Emacs (release snapshot)
+      - name: Set up Emacs
         uses: purcell/setup-emacs@master
         with:
           version: ${{ matrix.emacs_version }}
@@ -37,7 +37,11 @@ jobs:
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('straight/versions/*') }}
 
       - name: Deploy Emacs configuration
-        run: bin/emacs-config deploy --yes
+        run: |
+          echo "HOME is $HOME"
+          echo "PWD is "
+          pwd
+          bin/emacs-config deploy --yes
 
       - name: Test Emacs configuration
         run: bin/emacs-config test

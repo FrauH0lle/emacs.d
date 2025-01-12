@@ -117,7 +117,8 @@
 ;; The core file sets up everything we need
 (condition-case e
     (let* ((bin-dir (file-name-directory (file-truename load-file-name)))
-           (init-file (expand-file-name "../early-init.el" bin-dir)))
+           (init-file (expand-file-name "../early-init.el" bin-dir))
+           (user-emacs-directory (file-name-directory init-file)))
       (or (and (load init-file nil 'nomessage 'nosuffix)
                (featurep 'zenit-core))
           (user-error "Failed to load Emacs from %s" init-file)))

@@ -120,6 +120,7 @@ display a message."
                                 'native-comp-async-cu-done-functions
                                 source-file)
                                (comp-accept-and-process-async-output process)
+                               (ignore-errors (delete-file temp-file))
                                (let ((eln-file (comp-el-to-eln-filename
                                                 source-file1)))
                                  (when (and load1

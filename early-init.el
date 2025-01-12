@@ -81,15 +81,20 @@ already recorded."
   (let (;; Unset `command-line-args' in noninteractive sessions, to ensure
         ;; upstream switches aren't misinterpreted.
         (command-line-args (unless noninteractive command-line-args)))
-    ;; Avoid using `command-switch-alist' to process --init-directory because it
-    ;; is processed too late to change `user-emacs-directory' in time.
-    (let ((init-dir (or (cadr (member "--init-directory" command-line-args))
-                        (cadr (member "--init-directory" command-line-args-left))
-                        (when-let ((str (cl-find-if (lambda (str)
-                                                      (string-match "\\`--init-directory=" str))
-                                                    command-line-args-left)))
-                          (when (string-match "\\`--init-directory=\\(.*\\)\\'" str)
-                            (match-string 1 str)))
+    ;; Emacs handles --init-directory on its own since version 29. However, if
+    ;; we use bin/emacs-config --init-directory ..., the argument will be found
+    ;; in `command-line-args-left' and we need to handle it on our own.
+    (let ((init-dir (or (when noninteractive
+                          (cadr (member "--init-directory" command-line-args-left)))
+                        ;; Process --init-directory=directory variant
+                        (when noninteractive
+                          (require 'cl-seq)
+                          (when-let ((str (cl-find-if (lambda (str)
+                                                        (string-match "\\`--init-directory=" str))
+                                                      command-line-args-left)))
+                            (when (string-match "\\`--init-directory=\\(.*\\)\\'" str)
+                              (match-string 1 str))))
+                        ;; Check if envar EMACSDIR is set
                         (getenv-internal "EMACSDIR"))))
       (if (null init-dir)
           ;; If we've been loaded directly (via 'emacs -batch -l early-init.el')

@@ -101,7 +101,9 @@
 
 ;; Add handlers
 ;; Switches
-(cl-pushnew '("--force" . (lambda (&rest _) (setenv "FORCE" "1"))) command-switch-alist)
+(cl-pushnew '("--force" . (lambda (&rest _)
+                            (setenv "FORCE" "1")
+                            (setq zenit-auto-discard t))) command-switch-alist)
 (cl-pushnew '("-F" . (lambda (&rest _) (setenv "FORCE" "1"))) command-switch-alist)
 (add-hook 'command-line-functions (lambda ()
                                     (when (string-match "\\`--force=\\(.*\\)\\'" argi)
@@ -115,11 +117,12 @@
                                       (setenv "DEBUG" (match-string 1 argi))
                                       t)))
 
-(cl-pushnew '("--yes" . (lambda (&rest _) (setenv "YES" "1"))) command-switch-alist)
-(cl-pushnew '("-y" . (lambda (&rest _) (setenv "YES" "1"))) command-switch-alist)
+(cl-pushnew '("--yes" . (lambda (&rest _) (setenv "YES" "1") (setq zenit-auto-accept t))) command-switch-alist)
+(cl-pushnew '("-y" . (lambda (&rest _) (setenv "YES" "1") (setq zenit-auto-accept t))) command-switch-alist)
 (add-hook 'command-line-functions (lambda ()
                                     (when (string-match "\\`--yes=\\(.*\\)\\'" argi)
                                       (setenv "YES" (match-string 1 argi))
+                                      (setq zenit-auto-accept t)
                                       t)))
 
 (cl-pushnew '("--file" . (lambda (_) (push (pop argv) zenit-cli--files))) command-switch-alist)

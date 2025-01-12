@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+      - fix_ci
   pull_request:
     branches:
       - master
@@ -13,11 +14,16 @@ jobs:
     env:
       TERM: xterm-256color
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        emacs_version:
+          - 29.3
+          - 29.4
     steps:
       - name: Set up Emacs (release snapshot)
         uses: purcell/setup-emacs@master
         with:
-          version: release-snapshot
+          version: ${{ matrix.emacs_version }}
 
       - name: Check out code
         uses: actions/checkout@v3

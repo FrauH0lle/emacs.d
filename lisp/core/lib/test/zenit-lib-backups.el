@@ -158,9 +158,10 @@
    +backups--file-info-alist)
 
   :doc "Test populating `+backups--assoc-files-alist'"
-  (equal
-   `(,backup-file ,orig-file)
-   +backups--assoc-files-alist)
+  (zenit-test-same-items-p
+   `(,orig-file ,backup-file)
+   +backups--assoc-files-alist
+   :test #'equal)
 
   :doc "Test creating buffer with content"
   (let (orig-entry backup-entry)

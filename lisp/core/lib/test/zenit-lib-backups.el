@@ -159,7 +159,7 @@
 
   :doc "Test populating `+backups--assoc-files-alist'"
   (equal
-   `(,backup-file ,orig-file)
+   `(,orig-file ,backup-file)
    +backups--assoc-files-alist)
 
   :doc "Test creating buffer with content"

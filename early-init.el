@@ -84,6 +84,7 @@ already recorded."
             (zenit-core-file (expand-file-name "lisp/core/zenit-core" user-emacs-directory)))
         (message "user-emacs-directory : %s" (expand-file-name "lisp/core/zenit-core" user-emacs-directory))
         (message "zenit-core-file : %s" zenit-core-file)
+        (message "does the file exist? : %s" (file-exists-p (concat zenit-core-file ".el")))
         ;; The following keeps non-config related errors visible.
         (if (file-exists-p (concat zenit-core-file ".el"))
             ;; Load the core of the configuration.

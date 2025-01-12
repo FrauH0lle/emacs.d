@@ -78,13 +78,37 @@ already recorded."
               (file-name-concat user-emacs-directory "straight" "build" "benchmark-init")))
     (add-hook 'zenit-after-init-hook #'benchmark-init/deactivate 109))
 
+  (let (;; Unset `command-line-args' in noninteractive sessions, to ensure
+        ;; upstream switches aren't misinterpreted.
+        (command-line-args (unless noninteractive command-line-args)))
+    ;; Avoid using `command-switch-alist' to process --init-directory because it
+    ;; is processed too late to change `user-emacs-directory' in time.
+    (let ((init-dir (or (cadr (member "--init-directory" command-line-args))
+                        (cadr (member "--init-directory" command-line-args-left))
+                        (when-let ((str (cl-find-if (lambda (str)
+                                                      (string-match "\\`--init-directory=" str))
+                                                    command-line-args-left)))
+                          (when (string-match "\\`--init-directory=\\(.*\\)\\'" str)
+                            (match-string 1 str)))
+                        (getenv-internal "EMACSDIR"))))
+      (if (null init-dir)
+          ;; If we've been loaded directly (via 'emacs -batch -l early-init.el')
+          ;; or by a script (like bin/emacs-config), then `user-emacs-directory'
+          ;; could be wrong.
+          (when noninteractive
+            (setq user-emacs-directory
+                  (file-name-directory (file-truename load-file-name))))
+        ;; To prevent "invalid option" errors later.
+        (push (cons "--init-directory" (lambda (_) (pop argv))) command-switch-alist)
+        (add-hook 'command-line-functions (lambda ()
+                                            (when (string-match "\\`--init-directory=\\(.*\\)\\'" argi)
+                                              t)))
+        (setq user-emacs-directory (expand-file-name init-dir)))))
+
   ;; `load' and `require' use `load-suffixes' to locate a file. Startup time can
   ;; be reduced by limiting them.
   (if (let ((load-suffixes '(".elc" ".el"))
             (zenit-core-file (expand-file-name "lisp/core/zenit-core" user-emacs-directory)))
-        (message "user-emacs-directory : %s" (expand-file-name "lisp/core/zenit-core" user-emacs-directory))
-        (message "zenit-core-file : %s" zenit-core-file)
-        (message "does the file exist? : %s" (file-exists-p (concat zenit-core-file ".el")))
         ;; The following keeps non-config related errors visible.
         (if (file-exists-p (concat zenit-core-file ".el"))
             ;; Load the core of the configuration.

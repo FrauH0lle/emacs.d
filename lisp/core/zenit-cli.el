@@ -113,6 +113,8 @@ and the log type.")
   `(let* (;; Emit more user-friendly backtraces
           (debugger #'zenit-cli-debugger)
           (debug-on-error t))
+     (when (getenv "DEBUG")
+       (zenit-debug-mode +1))
      (with-output-to! `((>= notice ,(alist-get 'stdout zenit-cli-log-buffers))
                         (t . ,(alist-get 'stderr zenit-cli-log-buffers)))
        ,@body)))

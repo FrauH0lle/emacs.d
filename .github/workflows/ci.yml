@@ -41,6 +41,9 @@ jobs:
           echo "HOME is $HOME"
           echo "PWD is "
           pwd
+          ls -hal
+          ls -hal /home/runner/work/emacs.d/emacs.d/lisp/
+          ls -hal /home/runner/work/emacs.d/emacs.d/lisp/core
           bin/emacs-config deploy --yes
 
       - name: Test Emacs configuration

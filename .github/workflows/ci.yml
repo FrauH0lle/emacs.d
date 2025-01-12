@@ -41,3 +41,10 @@ jobs:
 
       - name: Test Emacs configuration
         run: bin/emacs-config test
+
+      - name: Emacs logs
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: Emacs logs
+          path: .local/etc/logs/

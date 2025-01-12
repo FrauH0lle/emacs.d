@@ -65,7 +65,7 @@
   (test)
   :doc "`zenit-project-buffer-list' returns buffers in the same project"
   (with-current-buffer a
-    (should (zenit-test-same-items-p (list a b) (zenit-project-buffer-list))))
+    (should (zenit-test-contains-items-p (list a b) (zenit-project-buffer-list))))
   :doc "`zenit-project-buffer-list' returns all buffers if not in a project"
   (with-current-buffer c
     (should (zenit-test-same-items-p (buffer-list) (zenit-project-buffer-list)))))

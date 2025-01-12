@@ -35,11 +35,17 @@ autoloads.")
             success)
         (and (pcase-let ((`(,status . ,msg)
                           (async-get
-                           (zenit-async-byte-compile-file
-                            file :req-core t :req-core-libs '(files)
-                            :req-extra '(cl-lib zenit-modules zenit-use-package zenit-el-patch zenit-keybinds)
-                            :modulep t
-                            :warnings byte-compile-warnings))))
+                           (async-get
+                            (zenit-async-byte-compile-file
+                             file
+                             :req-core t
+                             :req-core-libs (when (zenit-module-p :config 'compile)
+                                              '(files))
+                             :req-extra (if (zenit-module-p :config 'compile)
+                                            '(cl-lib zenit-modules zenit-use-package zenit-el-patch zenit-keybinds)
+                                          '(cl-lib))
+                             :modulep (zenit-module-p :config 'compile)
+                             :warnings byte-compile-warnings)))))
                (when msg
                  (with-output-to!
                      `((t . ,(alist-get 'complog zenit-cli-log-buffers)))

@@ -37,8 +37,7 @@ jobs:
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('straight/versions/*') }}
 
       - name: Deploy Emacs configuration
-        run: |
-          bin/emacs-config deploy --yes --init-directory pwd
+        run: bin/emacs-config deploy --yes --init-directory $GITHUB_WORKSPACE
 
       - name: Test Emacs configuration
-        run: bin/emacs-config test
+        run: bin/emacs-config test --init-directory $GITHUB_WORKSPACE

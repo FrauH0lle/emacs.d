@@ -91,7 +91,8 @@ already recorded."
             (load zenit-core-file nil (not init-file-debug) nil 'must-suffix)
           ;; If this fails, something is wrong in the lisp/core directory.
           (signal 'error
-                  (list "Could not find lisp/core/zenit-core"
+                  (list "Could not find"
+                        zenit-core-file
                         "make sure this file exists."))))
       ;; Otherwise, proceed the startup.
       (require (if noninteractive 'zenit-cli 'zenit-start))))

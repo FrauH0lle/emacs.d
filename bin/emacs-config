@@ -79,13 +79,13 @@
       (if (member current option-order)
           (cl-pushnew current options)
         (push current rest))))
-  (setq command-line-args-left
-        (append (nreverse rest)
-                (sort options
+  (setq rest (nreverse rest))
+  (setq options (sort options
                       (lambda (a b)
                         (< (cl-position a option-order :test #'equal)
-                           (cl-position b option-order :test #'equal))))))
-  (setq zenit-cli--cmd-switches (nreverse rest)))
+                           (cl-position b option-order :test #'equal)))))
+  (setq zenit-cli--cmd-switches rest)
+  (setq command-line-args-left (append rest options)))
 
 ;; The core file sets up everything we need
 (condition-case e
@@ -97,111 +97,6 @@
   ;; Prevent ugly backtraces for trivial errors
   (user-error (message "Error: %s" (cadr e))
               (kill-emacs 1)))
-
-(when (getenv-internal "DEBUG")
-  (zenit-debug-mode +1))
-
-;; Add handlers
-;; Switches
-(cl-pushnew '("--force" . (lambda (_) (setenv "FORCE" "1") (setq zenit-auto-discard t)))
-            command-switch-alist)
-(cl-pushnew '("-F" . (lambda (_) (setenv "FORCE" "1") (setq zenit-auto-discard t)))
-            command-switch-alist)
-(add-hook 'command-line-functions (lambda ()
-                                    (when (string-match "\\`--force=\\(.*\\)\\'" argi)
-                                      (setenv "FORCE" (match-string 1 argi))
-                                      (setq zenit-auto-discard argi)
-                                      t)))
-
-(cl-pushnew '("--debug" . (lambda (_) (setenv "DEBUG" "1") (zenit-debug-mode +1)))
-            command-switch-alist)
-(cl-pushnew '("-D" . (lambda (_) (setenv "DEBUG" "1") (zenit-debug-mode +1)))
-            command-switch-alist)
-(add-hook 'command-line-functions (lambda ()
-                                    (when (string-match "\\`--debug=\\(.*\\)\\'" argi)
-                                      (setenv "DEBUG" (match-string 1 argi))
-                                      (zenit-debug-mode +1)
-                                      t)))
-
-(cl-pushnew '("--yes" . (lambda (_) (setenv "YES" "1") (setq zenit-auto-accept t)))
-            command-switch-alist)
-(cl-pushnew '("-y" . (lambda (_) (setenv "YES" "1") (setq zenit-auto-accept t)))
-            command-switch-alist)
-(add-hook 'command-line-functions (lambda ()
-                                    (when (string-match "\\`--yes=\\(.*\\)\\'" argi)
-                                      (setenv "YES" (match-string 1 argi))
-                                      (setq zenit-auto-accept t)
-                                      t)))
-
-(cl-pushnew '("--file" . (lambda (_) (push (pop argv) zenit-cli--files))) command-switch-alist)
-(cl-pushnew '("-f" . (lambda (_) (push (pop argv) zenit-cli--files))) command-switch-alist)
-(add-hook 'command-line-functions (lambda ()
-                                    (when (string-match "\\`--file=\\(.*\\)\\'" argi)
-                                      (push (match-string 1 argi) zenit-cli--files)
-                                      t)))
-
-;; Options
-(cl-pushnew '("help" . (lambda (_)
-                         (zenit-cli-redirect-output
-                          (add-hook 'kill-emacs-hook #'zenit-cli--output-write-logs-h 95)
-                          (zenit-log "run: %s" (combine-and-quote-strings (append zenit-cli--cmd-switches '("help"))))
-                          (zenit-cli-show-help))))
-            command-switch-alist)
-(cl-pushnew '("deploy" . (lambda (_)
-                           (zenit-cli-redirect-output
-                            (add-hook 'kill-emacs-hook #'zenit-cli--output-write-logs-h 95)
-                            (zenit-log "run: %s" (combine-and-quote-strings (append zenit-cli--cmd-switches '("deploy"))))
-                            (zenit-cli-deploy))))
-            command-switch-alist)
-(cl-pushnew '("env" . (lambda (_)
-                        (zenit-cli-redirect-output
-                         (add-hook 'kill-emacs-hook #'zenit-cli--output-write-logs-h 95)
-                         (zenit-log "run: %s" (combine-and-quote-strings (append zenit-cli--cmd-switches '("env"))))
-                         (zenit-cli-reload-env-file t))))
-            command-switch-alist)
-(cl-pushnew '("sync" . (lambda (_)
-                         (zenit-cli-redirect-output
-                          (add-hook 'kill-emacs-hook #'zenit-cli--output-write-logs-h 95)
-                          (zenit-log "run: %s" (combine-and-quote-strings (append zenit-cli--cmd-switches '("sync"))))
-                          (zenit-cli-sync))))
-            command-switch-alist)
-(cl-pushnew '("refresh" . (lambda (_)
-                            (zenit-cli-redirect-output
-                             (add-hook 'kill-emacs-hook #'zenit-cli--output-write-logs-h 95)
-                             (zenit-log "run: %s" (combine-and-quote-strings (append zenit-cli--cmd-switches '("refresh"))))
-                             (zenit-cli-refresh))))
-            command-switch-alist)
-(cl-pushnew '("freeze" . (lambda (_)
-                           (zenit-cli-redirect-output
-                            (add-hook 'kill-emacs-hook #'zenit-cli--output-write-logs-h 95)
-                            (zenit-log "run: %s" (combine-and-quote-strings (append zenit-cli--cmd-switches '("freeze"))))
-                            (zenit-cli-freeze-packages))))
-            command-switch-alist)
-(cl-pushnew '("clean" . (lambda (_)
-                          (zenit-cli-redirect-output
-                           (add-hook 'kill-emacs-hook #'zenit-cli--output-write-logs-h 95)
-                           (zenit-log "run: %s" (combine-and-quote-strings (append zenit-cli--cmd-switches '("clean"))))
-                           (zenit-cli-clean-compiled-files))))
-            command-switch-alist)
-(cl-pushnew '("clean-straight" . (lambda (_)
-                                   (zenit-cli-redirect-output
-                                    (add-hook 'kill-emacs-hook #'zenit-cli--output-write-logs-h 95)
-                                    (zenit-log "run: %s" (combine-and-quote-strings (append zenit-cli--cmd-switches '("clean-straight"))))
-                                    (delete-directory
-                                     (file-truename (expand-file-name (concat zenit-emacs-dir "straight/repos/straight.el"))) t)
-                                    (delete-directory
-                                     (file-truename (expand-file-name (concat zenit-emacs-dir "straight/build/straight"))) t)
-                                    (print! (warn "Now run 'emacs-config refresh' or 'emacs-config sync'")))))
-            command-switch-alist)
-;; FIXME 2023-04-28: This needs some work
-(cl-pushnew '("validate" . (lambda (_) (print! (warn "Validation currently not implemented")))) command-switch-alist)
-(cl-pushnew '("test" . (lambda (_)
-                         (zenit-cli-redirect-output
-                          (add-hook 'kill-emacs-hook #'zenit-cli--output-write-logs-h 95)
-                          (zenit-log "run: %s" (combine-and-quote-strings (append zenit-cli--cmd-switches '("test"))))
-                          (zenit-cli-test zenit-cli--files))))
-            command-switch-alist)
-
 
 ;; Abort if the user is using this script as root, unless ~/.emacs.d is owned by
 ;; root
@@ -215,6 +110,85 @@
       "  chown root:root -R " (abbreviate-file-name zenit-emacs-dir) "\n\n"
       "Aborting..."))
     (kill-emacs 1)))
+
+;; Switch on `zenit-debug-mode' if requested
+(when (or (getenv-internal "DEBUG") init-file-debug)
+  (zenit-debug-mode +1))
+
+;; We need to start logging here, otherwise the messages are never shown.
+(zenit-log "cli: command line arguments: %s" command-line-args-left)
+(zenit-log "cli: zenit-cli--cmd-switches: %s" zenit-cli--cmd-switches)
+
+;; Using `command-switch-alist' and `command-line-functions' turned out to be
+;; much more inflexible, especially because of potentially conflicting arguments
+;; like --file. In this example, Emacs would prioritize the internal --file
+;; command switch which would open the specified file, even if there is another
+;; entry in `command-switch-alist'. Thus, we do it on our own.
+
+;; Process command line args
+(defvar zenit-cli--cmd-options nil)
+(while argv
+  (let ((arg (pop argv)))
+    (cond
+     ;; Switches
+     ((or (string= arg "--force")
+          (string= arg "-F"))
+      (setenv "FORCE" "1") (setq zenit-auto-discard t))
+     ((string-match "\\`--force=\\(.*\\)\\'" arg)
+      (setenv "FORCE" (match-string 1 arg))
+      (setq zenit-auto-discard arg))
+
+     ((or (string= arg "--debug")
+          (string= arg "-D"))
+      (setenv "DEBUG" "1") (zenit-debug-mode +1))
+     ((string-match "\\`--debug=\\(.*\\)\\'" arg)
+      (setenv "DEBUG" (match-string 1 arg))
+      (zenit-debug-mode +1))
+
+     ((or (string= arg "--yes")
+          (string= arg "-y"))
+      (setenv "YES" "1") (setq zenit-auto-accept t))
+     ((string-match "\\`--yes=\\(.*\\)\\'" arg)
+      (setenv "YES" (match-string 1 arg))
+      (setq zenit-auto-accept t))
+
+     ((or (string= arg "--file")
+          (string= arg "-f"))
+      (push (pop argv) zenit-cli--files))
+     ((string-match "\\`--file=\\(.*\\)\\'" arg)
+      (push (match-string 1 arg) zenit-cli--files))
+
+     ;; We handled --init-directory already in early-init.el and can just ignore
+     ;; it here
+     ((string= arg "--init-directory")
+      (pop argv))
+     ((string-match "\\`--init-directory=\\(.*\\)\\'" arg))
+
+     ;; Options
+     ((string= arg "deploy")
+      (push arg zenit-cli--cmd-options))
+     ((string= arg "env")
+      (push arg zenit-cli--cmd-options))
+     ((string= arg "sync")
+      (push arg zenit-cli--cmd-options))
+     ((string= arg "refresh")
+      (push arg zenit-cli--cmd-options))
+     ((string= arg "freeze")
+      (push arg zenit-cli--cmd-options))
+     ((string= arg "clean")
+      (push arg zenit-cli--cmd-options))
+     ((string= arg "clean-straight")
+      (push arg zenit-cli--cmd-options))
+     ((string= arg "validate")
+      (push arg zenit-cli--cmd-options))
+     ((string= arg "test")
+      (push arg zenit-cli--cmd-options))
+     ((string= arg "help")
+      (push arg zenit-cli--cmd-options))
+     ;; Anything else is an error
+     (t (print! "%s %s\n" (error "Unknown argument:") arg)
+        (print! "%s" (bold "Run emacs-config help to show the documentation."))
+        (kill-emacs 1)))))
 
 (defun zenit-cli-show-help ()
   (print-group!
@@ -233,13 +207,48 @@
     (print! "%s\t%s" (bold "validate") "\tValidate el-patches")
     (print! "%s\t%s" (bold "test") (concat "\t\tTest Emacs configuration\n"
                                            "\t\t\tYou can specify the unit test files with --files"))
-    (print! "%s\t%s" (bold "help") "\t\tShow this help message")
+    (print! "%s\t%s" (bold "help") "\t\tShow this help message and quit")
     (print! (bold "\nSWITCHES"))
-    (print! "%s\t%s" (bold "--file/-f") "Use this file. Can be used multiple times.")
+    (print! "%s\t%s" (bold "--file/-f") "Use this file. Can be used multiple times")
     (print! "%s\t%s" (bold "--debug/-D") "Switch on DEBUG mode")
     (print! "%s\t%s" (bold "--force/-F") "Switch on FORCE")
     (print! "%s\t%s" (bold "--yes/-y") "Answer YES to all prompts"))
   (kill-emacs 0))
 
-(when (null argv)
+;; If no command line arguments are found, show help
+(when (null zenit-cli--cmd-options)
   (zenit-cli-show-help))
+
+;; Run commands
+(zenit-cli-redirect-output
+ (add-hook 'kill-emacs-hook #'zenit-cli--output-write-logs-h 95)
+ (zenit-log "run: %s" (combine-and-quote-strings (append zenit-cli--cmd-switches zenit-cli--cmd-options)))
+
+ (while (nreverse zenit-cli--cmd-options)
+   (let ((option (pop zenit-cli--cmd-options)))
+     (cond
+      ((string= option "deploy")
+       (zenit-cli-deploy))
+      ((string= option "env")
+       (zenit-cli-reload-env-file t))
+      ((string= option "sync")
+       (zenit-cli-sync))
+      ((string= option "refresh")
+       (zenit-cli-refresh))
+      ((string= option "freeze")
+       (zenit-cli-freeze-packages))
+      ((string= option "clean")
+       (zenit-cli-clean-compiled-files))
+      ((string= option "clean-straight")
+       (delete-directory (file-truename (expand-file-name (concat zenit-emacs-dir "straight/repos/straight.el"))) t)
+       (delete-directory (file-truename (expand-file-name (concat zenit-emacs-dir "straight/build/straight"))) t)
+       (print! (warn "Now run 'emacs-config refresh' or 'emacs-config sync'")))
+      ((string= option "validate")
+       ;; FIXME 2023-04-28: This needs some work
+       (print! (warn "Validation currently not implemented")))
+      ((string= option "test")
+       (zenit-cli-test zenit-cli--files))
+      ((string= option "help")
+       (zenit-cli-show-help))))))
+
+(kill-emacs 0)

@@ -1,11 +1,10 @@
 ;; lisp/core/zenit-cli.el -*- lexical-binding: t; -*-
 
 
-(defvar zenit-auto-accept (getenv "YES")
-  "If non-nil, Emacs will auto-accept any confirmation prompts
-during batch commands.")
+(defvar zenit-auto-accept (getenv-internal "YES")
+  "If non-nil, auto-accept any confirmation prompts.")
 
-(defvar zenit-auto-discard (getenv "FORCE")
+(defvar zenit-auto-discard (getenv-internal "FORCE")
   "If non-nil, discard all local changes while updating.")
 
 
@@ -169,12 +168,11 @@ See `zenit-cli-log-file-format' for details."
 
   (require 'cl-lib)
 
-  ;; (quiet!
+  (quiet!
    (require 'cl nil t)    ; "Package cl is deprecated"
    (unless site-run-file  ; unset in zenit-core.el
      (when-let* ((site-run-file (get 'site-run-file 'initial-value)))
-       (load site-run-file t inhibit-message)))
-   ;; )
+       (load site-run-file t inhibit-message))))
 
   (setq-default
    ;; Don't generate superfluous files when writing temp buffers.

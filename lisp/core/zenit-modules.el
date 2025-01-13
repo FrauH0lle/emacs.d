@@ -434,13 +434,12 @@ Order defines precedence (from most to least)."
             (list (list 'quote modules))
           modules))
      ;; Add dependencies
-     (print! (start "Resolving module dependencies ..."))
+     (zenit-log "modules: Resolving module dependencies")
      (dolist (module (zenit-module-list))
        (zenit-module-resolve module))
-     (print-group!
-      (dolist (msg zenit--module-dependencies)
-          (print! (item "%s" msg)))
-      (print! (success "Dependencies resolved")))
+     (dolist (msg zenit--module-dependencies)
+       (zenit-log "modules: %s" msg))
+     (zenit-log "modules: Dependencies resolved")
      ;; Check for conflicts
      (dolist (module (zenit-module-list))
        (zenit-module-resolve module 'conflicts))

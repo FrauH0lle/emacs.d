@@ -462,8 +462,49 @@
    :after-each
    (progn
      (makunbound '+popup-mode)
-       (setq foo '((a . 1) (b . 2)))
-       (setf (alist-get 'test-param window-persistent-parameters nil 'remove) nil)
+     (setq foo '((a . 1) (b . 2)))
+     (setf (alist-get 'test-param window-persistent-parameters nil 'remove) nil)
      (delete-other-windows)))
   (let ((params (+popup-alist-from-window-state (window-state-get win2))))
     (should (alist-get 'test-param (alist-get 'window-parameters params)))))
+
+(zenit-deftest +popup-tab--close-tab-current-window
+  (:doc "`+popup-tab--close-tab-current-window' is defined")
+  (should (fboundp '+popup-tab--close-tab-current-window)))
+
+(zenit-deftest +popup-tab--close-tabs-current-window
+  (:doc "`+popup-tab--close-tabs-current-window' is defined")
+  (should (fboundp '+popup-tab--close-tabs-current-window)))
+
+(zenit-deftest +popup-tab-get-tabs-fn
+  (:doc "`+popup-tab-get-tabs-fn' returns buffers of the same window side and popup group"
+   :vars
+   ((a (get-buffer-create "a"))
+    (b (get-buffer-create "b"))
+    (c (get-buffer-create "c"))
+    (d (get-buffer-create "d")))
+   :before-each
+   (progn
+     (defvar +popup-buried-buffers-alist
+       `(("test-group" (nil . ,c))
+         (nil (nil . ,a) (nil . ,b) (nil . ,d))))
+     (defvar +popup-group-function
+       (lambda ()
+         (when (equal (buffer-name (current-buffer)) "c")
+           "test-group")))
+     (+popup-buffer-set-parameter a :tabbed 'right)
+     (+popup-buffer-set-parameter b :tabbed 'bottom)
+     (+popup-buffer-set-parameter c :tabbed 'right)
+     (+popup-buffer-set-parameter d :tabbed 'right))
+   :after-each
+   (progn
+     (makunbound '+popup-buried-buffers-alist)
+     (makunbound '+popup-group-function)
+     (mapc #'kill-buffer (list a b c d))))
+  (with-current-buffer ,cur-buf
+    (should (zenit-test-same-items-p ,expected (+popup-tab-get-tabs-fn) :test #'equal)))
+  (cur-buf expected)
+  a (list a d)
+  b (list b)
+  c (list c)
+  d (list d a))

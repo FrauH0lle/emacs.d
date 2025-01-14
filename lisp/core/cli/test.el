@@ -63,11 +63,11 @@ fail."
                                         collect (cons (cons :core nil) file))
                                (cl-loop for (cat . mod) in (zenit-module-list 'all)
                                         if (zenit-module-expand-path cat mod)
-                                        append (cl-loop for file in (zenit-glob (zenit-module-expand-path cat mod) "test" "*.el")
+                                        append (cl-loop for file in (zenit-glob it "test" "*.el")
                                                         collect (cons (cons cat mod) file))))))
             read-files)
         ;; Run each test file in a clean Emacs process
-        (cl-loop for ((cat . mod) . file) in files
+        (cl-loop for ((_cat . _mod) . file) in files
                  do
                  (cl-destructuring-bind (_status . output)
                      (apply #'zenit-exec-process

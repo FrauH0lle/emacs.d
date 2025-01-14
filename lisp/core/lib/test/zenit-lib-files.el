@@ -44,3 +44,42 @@
   (in out)
   ("*") (directory-files default-directory nil directory-files-no-dot-files-regexp)
   (default-directory "*") (directory-files default-directory t directory-files-no-dot-files-regexp))
+
+(zenit-deftest zenit-files-in
+  (:doc "`zenit-files-in' returns files/dirs matching criteria"
+   :vars ((test-dir (zenit-test-make-temp-file t)))
+   :before-each
+   (progn
+     (make-directory (expand-file-name "subdir" test-dir) t)
+     (make-directory (expand-file-name "subdir/.hidden" test-dir) t)
+     (write-region "" nil (expand-file-name "file1.txt" test-dir))
+     (write-region "" nil (expand-file-name "file2.txt" test-dir))
+     (write-region "" nil (expand-file-name ".hidden.txt" test-dir))
+     (write-region "" nil (expand-file-name "subdir/file3.txt" test-dir)))
+   :after-each
+   (delete-directory test-dir t))
+  (should (zenit-test-same-items-p ,out ,in :test #'equal))
+  (out in)
+  (list (expand-file-name "file1.txt" test-dir)
+        (expand-file-name "file2.txt" test-dir)
+        (expand-file-name ".hidden.txt" test-dir)
+        (expand-file-name "subdir/file3.txt" test-dir))
+  (zenit-files-in test-dir :type 'files)
+
+  (list (expand-file-name "subdir" test-dir)
+        (expand-file-name "subdir/.hidden" test-dir))
+  (zenit-files-in test-dir :type 'dirs)
+
+  (list (expand-file-name "file1.txt" test-dir)
+        (expand-file-name "file2.txt" test-dir)
+        (expand-file-name ".hidden.txt" test-dir)
+        (expand-file-name "subdir" test-dir))
+  (zenit-files-in test-dir :type t :depth 0)
+
+  (list (expand-file-name "file1.txt" test-dir))
+  (zenit-files-in test-dir :type 'files :match "file1")
+
+  (list (expand-file-name "file1.txt" test-dir)
+        (expand-file-name "file2.txt" test-dir)
+        (expand-file-name ".hidden.txt" test-dir))
+  (zenit-files-in test-dir :filter (lambda (f) (string-match-p "subdir" f))))

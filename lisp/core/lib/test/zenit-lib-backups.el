@@ -42,7 +42,7 @@
 
 (zenit-deftest +backups--get-last-modified
   (:doc "Test last modified date retrieval in the format \"%Y-%m-%d %T\"")
-  (let ((test-file (zenit-test--make-temp-file)))
+  (let ((test-file (zenit-test-make-temp-file)))
     (should (string-match-p
              (rx (repeat 4 digit) "-" (repeat 2 digit) "-" (repeat 2 digit)
                  space
@@ -55,7 +55,7 @@
 
 (zenit-deftest +backups--make-file
   (:doc "Test file info structure creation")
-  (let* ((test-file (zenit-test--make-temp-file nil "~123~"))
+  (let* ((test-file (zenit-test-make-temp-file nil "~123~"))
          (result (+backups--make-file test-file)))
     (should (equal 3 (length result)))
     (should (numberp (nth 0 result)))
@@ -66,7 +66,7 @@
 (zenit-deftest +backups--backup-files
   (:doc "Test backup file listing")
   (let* ((backup-directory-alist `(("." . ,temporary-file-directory)))
-         (test-file (zenit-test--make-temp-file))
+         (test-file (zenit-test-make-temp-file))
          (backup-file (make-backup-file-name test-file)))
     (with-temp-file backup-file
       (insert "Hello World!"))
@@ -79,7 +79,7 @@
 (zenit-deftest +backups--get-sorted-backups
   (:doc "Test sorted backup retrieval")
   (let* ((backup-directory-alist `(("." . ,temporary-file-directory)))
-         (test-file (zenit-test--make-temp-file))
+         (test-file (zenit-test-make-temp-file))
          (backup-file (make-backup-file-name test-file))
          (backup1 (concat backup-file "1~"))
          (backup2 (concat backup-file "5~")))
@@ -136,7 +136,7 @@
   (:doc "Test backup listing functionality"
    :vars (orig-file backup-file +backups--file-info-alist)
    :before-each (progn
-                  (setq orig-file (zenit-test--make-temp-file)
+                  (setq orig-file (zenit-test-make-temp-file)
                         backup-file (concat (make-backup-file-name orig-file) "1~")
                         +backups--file-info-alist nil)
                   (with-temp-file backup-file
@@ -182,10 +182,10 @@
   (:vars
    (orig-file file1 file2 file3 a b c d +backups--assoc-files-alist +backups--saved-wconf)
    :before-each
-   (setq orig-file (zenit-test--make-temp-file)
-         file1 (zenit-test--make-temp-file)
-         file2 (zenit-test--make-temp-file)
-         file3 (zenit-test--make-temp-file)
+   (setq orig-file (zenit-test-make-temp-file)
+         file1 (zenit-test-make-temp-file)
+         file2 (zenit-test-make-temp-file)
+         file3 (zenit-test-make-temp-file)
          a (find-file-noselect orig-file)
          b (find-file-noselect file1)
          c (find-file-noselect file2)
@@ -253,8 +253,8 @@
 
 (zenit-deftest +backups--revert-backup-from-file
   (:doc "Test that it reverts the original file to the backup file")
-  (let ((orig-file (zenit-test--make-temp-file nil nil "foo"))
-        (backup-file (zenit-test--make-temp-file nil nil "bar")))
+  (let ((orig-file (zenit-test-make-temp-file nil nil "foo"))
+        (backup-file (zenit-test-make-temp-file nil nil "bar")))
     (should (equal "foo" (with-temp-buffer
                            (insert-file-contents orig-file)
                            (buffer-string))))

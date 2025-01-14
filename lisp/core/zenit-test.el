@@ -238,7 +238,7 @@ Examples:
 
 ;;; Utilities
 
-(defun zenit-test--make-temp-file (&optional dir-flag suffix text)
+(defun zenit-test-make-temp-file (&optional dir-flag suffix text)
   "Create a temporary file.
 
 Passes DIR-FLAG, SUFFIX and TEXT on to `make-temp-file', which

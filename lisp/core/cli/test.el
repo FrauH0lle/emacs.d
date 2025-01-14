@@ -62,8 +62,7 @@ fail."
                        (append (cl-loop for file in (zenit-glob zenit-core-dir "lib/test/*.el")
                                         collect (cons (cons :core nil) file))
                                (cl-loop for (cat . mod) in (zenit-module-list 'all)
-                                        if (zenit-module-expand-path cat mod)
-                                        append (cl-loop for file in (zenit-glob it "test" "*.el")
+                                        append (cl-loop for file in (zenit-glob (zenit-module-locate-path cat mod) "test" "*.el")
                                                         collect (cons (cons cat mod) file))))))
             read-files)
         ;; Run each test file in a clean Emacs process
@@ -87,6 +86,7 @@ fail."
                             ;; Load `zenit-cache-generators'
                             "-l" (file-name-concat zenit-local-dir (car (mapcar #'car zenit-cache-generators)))
                             ;; Set test context
+                            "--eval" (prin1-to-string '(zenit-context-pop 'init))
                             "--eval" (prin1-to-string '(zenit-context-push 'tests))
                             ;; Load test framework
                             "-l" (concat zenit-core-dir "zenit-test.el")

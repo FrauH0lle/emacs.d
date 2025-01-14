@@ -1,15 +1,5 @@
 ;; tools/llm/config.el -*- lexical-binding: t; -*-
 
-(defvar +llm-aider-arg-list
-  '(("DeepSeek" :args ("--deepseek") :host "api.deepseek.com" :user "apikey"
-     :env "DEEPSEEK_API_KEY")
-    ("Claude Sonnet" :args ("--sonnet" "--cache-prompts" "--cache-keepalive-pings 6")
-     :host "api.anthropic.com" :user "apikey" :env "ANTHROPIC_API_KEY"))
-  "List of arguments for different LLM configurations.")
-
-(use-package! aider
-  :defer t)
-
 (use-package! gptel
   :defer t
   :config

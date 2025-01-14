@@ -224,7 +224,7 @@
  (add-hook 'kill-emacs-hook #'zenit-cli--output-write-logs-h 95)
  (zenit-log "run: %s" (combine-and-quote-strings (append zenit-cli--cmd-switches zenit-cli--cmd-options)))
 
- (while (nreverse zenit-cli--cmd-options)
+ (while zenit-cli--cmd-options
    (let ((option (pop zenit-cli--cmd-options)))
      (cond
       ((string= option "deploy")

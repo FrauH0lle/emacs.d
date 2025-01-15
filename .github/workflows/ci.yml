@@ -28,12 +28,12 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Cache packages
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         env:
           cache-name: cache-emacs-packages
         with:
           path: straight
-          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ hashFiles('straight/versions/*') }}
+          key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ matrix.emacs_version }}-${{ hashFiles('straight/versions/*') }}
 
       - name: Deploy Emacs configuration
         run: bin/emacs-config deploy --yes

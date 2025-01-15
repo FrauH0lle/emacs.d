@@ -77,13 +77,14 @@
   (while argv
     (let ((current (pop argv)))
       (if (member current option-order)
-          (cl-pushnew current options)
+          (cl-pushnew current options :test #'equal)
         (push current rest))))
   (setq rest (nreverse rest))
-  (setq options (sort options
-                      (lambda (a b)
-                        (< (cl-position a option-order :test #'equal)
-                           (cl-position b option-order :test #'equal)))))
+  (setq options
+        (sort options
+              (lambda (a b)
+                (< (cl-position a option-order :test #'equal)
+                   (cl-position b option-order :test #'equal)))))
   (setq zenit-cli--cmd-switches rest)
   (setq command-line-args-left (append rest options)))
 
@@ -224,6 +225,7 @@
  (add-hook 'kill-emacs-hook #'zenit-cli--output-write-logs-h 95)
  (zenit-log "run: %s" (combine-and-quote-strings (append zenit-cli--cmd-switches zenit-cli--cmd-options)))
 
+ (setq zenit-cli--cmd-options (nreverse zenit-cli--cmd-options))
  (while zenit-cli--cmd-options
    (let ((option (pop zenit-cli--cmd-options)))
      (cond

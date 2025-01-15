@@ -214,12 +214,9 @@ that the narrowing doesn't affect other windows displaying the
 same buffer. Call `zenit/widen-indirectly-narrowed-buffer' to undo
 it (incrementally). Inspired from
 http://demonastery.org/2013/04/emacs-evil-narrow-region/"
-  (interactive
-   (list (or (bound-and-true-p evil-visual-beginning) (region-beginning))
-         (or (bound-and-true-p evil-visual-end)       (region-end))))
-  (unless (region-active-p)
-    (setq beg (line-beginning-position)
-          end (line-end-position)))
+  (interactive (if (region-active-p)
+                   (list (zenit-region-beginning) (zenit-region-end))
+                 (list (pos-bol) (pos-eol))))
   (deactivate-mark)
   (let ((orig-buffer (current-buffer)))
     (with-current-buffer (switch-to-buffer (clone-indirect-buffer nil nil))
@@ -255,15 +252,11 @@ buffer, it is `widen'ed."
 ;;;###autoload
 (defun zenit/toggle-narrow-buffer (beg end)
   "Narrow the buffer to BEG END. If narrowed, widen it."
-  (interactive
-   (list (or (bound-and-true-p evil-visual-beginning) (region-beginning))
-         (or (bound-and-true-p evil-visual-end)       (region-end))
-         current-prefix-arg))
+  (interactive (if (region-active-p)
+                   (list (zenit-region-beginning) (zenit-region-end))
+                 (list (pos-bol) (pos-eol))))
   (if (buffer-narrowed-p)
       (widen)
-    (unless (region-active-p)
-      (setq beg (line-beginning-position)
-            end (line-end-position)))
     (narrow-to-region beg end)))
 
 (provide 'zenit-lib '(ui))

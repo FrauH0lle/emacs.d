@@ -60,7 +60,7 @@ long), otherwise to a pop up buffer."
                           (re-search-backward
                            "\\_<:\\(?:\\sw\\|\\s_\\)+\\_>" ;; Find a keyword.
                            zenit-start 'noerror))
-                (unless (looking-back "(")
+                (unless (looking-back "(" (pos-bol))
                   (let ((kw-syntax (syntax-ppss)))
                     (when (and (= (ppss-depth kw-syntax) zenit-depth)
                                (not (ppss-string-terminator kw-syntax))

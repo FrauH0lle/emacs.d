@@ -462,15 +462,16 @@ one exists."
 ;;;; API
 
 ;;;###autoload
-(defun +popup-tab-get-tabs-fn ()
+(defun +popup-tab-get-tabs-fn (&optional buffer)
   "Get a list of tabs to display in the tab line.
 Intended to be used in `tab-line-tabs-function'."
-  (let ((grp (when +popup-group-function
-               (funcall +popup-group-function)))
-        (side (+popup-buffer-parameter 'tabbed)))
+  (let* ((buffer (or buffer (current-buffer)))
+         (grp (when +popup-group-function
+                (funcall +popup-group-function)))
+         (side (+popup-buffer-parameter 'tabbed buffer)))
     (when side
       (cl-sort
-       (cons (current-buffer)
+       (cons buffer
              (delete-dups
               (cl-delete-if-not
                (lambda (b)
@@ -479,9 +480,10 @@ Intended to be used in `tab-line-tabs-function'."
                (mapcar #'cdr (alist-get grp +popup-buried-buffers-alist nil nil #'equal)))))
        #'string< :key #'buffer-name))))
 
-(defun +popup-tab-single-tab-p ()
-  "Return non-nil if current is the only one in window."
-  (length= (+popup-tab-get-tabs-fn) 1))
+(defun +popup-tab-single-tab-p (&optional buffer)
+  "Return non-nil if current tab is the only one in window."
+  (let ((buffer (or buffer (current-buffer))))
+    (length= (+popup-tab-get-tabs-fn buffer) 1)))
 
 ;;
 ;;; Internal functions

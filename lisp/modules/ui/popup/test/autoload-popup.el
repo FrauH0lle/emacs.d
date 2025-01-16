@@ -508,3 +508,19 @@
   b (list b)
   c (list c)
   d (list d a))
+
+(zenit-deftest +popup-tab-single-tab-p
+  (:doc "`+popup-tab-single-tab-p' returns non-nil if buffer is the only tab candidate"
+   :vars
+   ((a (get-buffer-create "a")))
+   :before-each
+   (progn
+     (defvar +popup-buried-buffers-alist nil)
+     (defvar +popup-group-function nil)
+     (+popup-buffer-set-parameter a :tabbed 'right))
+   :after-each
+   (progn
+     (makunbound '+popup-buried-buffers-alist)
+     (makunbound '+popup-group-function)
+     (mapc #'kill-buffer (list a))))
+  (should (+popup-tab-single-tab-p a)))

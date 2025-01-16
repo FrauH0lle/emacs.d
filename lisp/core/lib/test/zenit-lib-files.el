@@ -3,6 +3,7 @@
 
 (require 'zenit-test)
 (zenit-require 'zenit-lib 'files)
+(require 'zenit-modules)
 
 (zenit-deftest zenit--resolve-path-forms
   (:doc "`zenit--resolve-path-forms' resolves nested forms")
@@ -83,3 +84,33 @@
         (expand-file-name "file2.txt" test-dir)
         (expand-file-name ".hidden.txt" test-dir))
   (zenit-files-in test-dir :filter (lambda (f) (string-match-p "subdir" f))))
+
+(zenit-deftest zenit-file-cookie-p
+  (:doc "`zenit-file-cookie-p' returns the evaluated result a ;;;###COOKIE FORM of a file.")
+  (let ((test-file (zenit-test-make-temp-file nil ".el" ,fcookie)))
+    (,assert (zenit-file-cookie-p test-file ,tcookie ,null-value))
+    (delete-file test-file))
+  (assert fcookie tcookie null-value)
+  should ";;;###if (equal \"test\" \"test\")" "if" nil
+  should ";;;###foo-test (equal \"test\" \"test\")" "foo-test" nil
+  should ";;;###foo-test (equal \"test\" \"test\")" "if" t
+  should-not ";;;###foo-test (equal \"test\" \"test\")" "if" nil)
+
+(zenit-deftest file-exists-p!
+  (:doc "`file-exists-p!' tests if one or more files exist.")
+  ,test
+  (test)
+  (should (file-exists-p! (file!)))
+  (let ((test-file (zenit-test-make-temp-file)))
+    (should (equal (expand-file-name test-file) (file-exists-p! test-file))))
+  (let ((test-file (zenit-test-make-temp-file)))
+    (should (file-exists-p! (and (file!) test-file)))))
+
+(zenit-deftest zenit-file-size
+  (:doc "`zenit-file-size' is defined"
+   :vars ((test-file (zenit-test-make-temp-file nil nil "Hello World"))))
+  (should (numberp (zenit-file-size test-file))))
+
+(zenit-deftest zenit-emacs-directory-size
+  (:doc "`zenit-emacs-directory-size' is defined")
+  (should (fboundp 'zenit-emacs-directory-size)))

@@ -12,6 +12,10 @@
 ;; `zenit-lib-buffers'
 (declare-function zenit-real-buffer-list "zenit-lib-buffers" (&optional buffer-list))
 
+;; `zenit-lib-text.el'
+(declare-function zenit-region-beginning "zenit-lib-text")
+(declare-function zenit-region-end "zenit-lib-text")
+
 ;; `ui/workspaces'
 (declare-function +popup-window-p "../../modules/ui/popup/autoload/popup.el" (&optional window))
 

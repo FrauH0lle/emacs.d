@@ -265,7 +265,7 @@ See URL `https://github.com/emacs-ess/ESS/issues/300'."
   (map!
    ;; REPL
    (:map inferior-ess-mode-map
-    :i "C->" (cmd! (insert " %>% "))
+    :i "C->" (cmd! (delete-horizontal-space) (insert " |> "))
     :i "M--" #'ess-cycle-assign
     (:when (modulep! :completion vertico)
       :i "C-r" #'consult-history)
@@ -273,7 +273,7 @@ See URL `https://github.com/emacs-ess/ESS/issues/300'."
    (:map ess-mode-map
     :n [C-return] #'ess-eval-line-and-step
     :i "M--" #'ess-cycle-assign
-    :i "C->" (cmd! (insert " %>% ")))
+    :i "C->" (cmd! (delete-horizontal-space) (insert " |> ")))
    (:after ess-help
            (:map ess-help-mode-map
             :n "q"  #'kill-current-buffer

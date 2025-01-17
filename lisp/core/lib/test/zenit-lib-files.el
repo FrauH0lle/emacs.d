@@ -102,15 +102,94 @@
   (test)
   (should (file-exists-p! (file!)))
   (let ((test-file (zenit-test-make-temp-file)))
-    (should (equal (expand-file-name test-file) (file-exists-p! test-file))))
+    (should (equal (expand-file-name test-file) (file-exists-p! test-file)))
+    (delete-file test-file))
   (let ((test-file (zenit-test-make-temp-file)))
-    (should (file-exists-p! (and (file!) test-file)))))
+    (should (file-exists-p! (and (file!) test-file)))
+    (delete-file test-file)))
 
 (zenit-deftest zenit-file-size
   (:doc "`zenit-file-size' is defined"
-   :vars ((test-file (zenit-test-make-temp-file nil nil "Hello World"))))
+   :vars ((test-file (zenit-test-make-temp-file nil nil "Hello World")))
+   :after-each (delete-file test-file))
   (should (numberp (zenit-file-size test-file))))
 
 (zenit-deftest zenit-emacs-directory-size
   (:doc "`zenit-emacs-directory-size' is defined")
   (should (fboundp 'zenit-emacs-directory-size)))
+
+(zenit-deftest zenit--with-prepared-file-buffer
+  (:doc "`zenit--with-prepared-file-buffer' is defined")
+  (should (fboundp 'zenit--with-prepared-file-buffer)))
+
+(zenit-deftest zenit-file-read
+  (:doc "`zenit-file-read' Reads a file and return its contents"
+   :vars ((test-file (zenit-test-make-temp-file nil ".el" "\"Hello World\"\n(progn (message \"Test\"))\n(message \"Done\")")))
+   :after-each (delete-file test-file))
+  ,test
+  (test)
+  (should (equal "\"Hello World\"\n(progn (message \"Test\"))\n(message \"Done\")"
+                 (zenit-file-read test-file)))
+  (should (equal "\"Hello World\"\n(progn (message \"Test\"))\n(message \"Done\")"
+                 (with-temp-buffer
+                   (zenit-file-read test-file :by 'insert)
+                   (buffer-string))))
+  (should (equal "Hello World"
+                 (zenit-file-read test-file :by 'read)))
+  (should (equal '("Hello World" (progn (message "Test")) (message "Done"))
+                 (zenit-file-read test-file :by 'read*)))
+  (should (equal '("Hello World" (progn (message "Test")))
+                 (zenit-file-read test-file :by '(read . 2)))))
+
+(zenit-deftest zenit-file-write
+  (:doc "`zenit-file-write' writes contents into a file")
+  (let ((test-file (expand-file-name "test-file.el" temporary-file-directory)))
+    (zenit-file-write test-file '("Hello World" (progn (message "Test")) (message "Done")))
+    (should (file-exists-p test-file))
+    (should (equal '(Hello World (progn (message "Test")) (message "Done"))
+                   (zenit-file-read test-file :by 'read*)))
+    (delete-file test-file)))
+
+(zenit-deftest with-file-contents!
+  (:doc "`with-file-contents!' is defined")
+  (should (fboundp 'with-file-contents!)))
+
+(zenit-deftest with-file!
+  (:doc "`with-file!' is defined")
+  (should (fboundp 'with-file!)))
+
+(zenit-deftest zenit--update-files
+  (:doc "`zenit--update-files' is defined")
+  (should (fboundp 'zenit--update-files)))
+
+(zenit-deftest zenit/delete-this-file
+  (:doc "`zenit/delete-this-file' is defined")
+  (should (fboundp 'zenit/delete-this-file)))
+
+(zenit-deftest zenit/copy-this-file
+  (:doc "`zenit/copy-this-file' is defined")
+  (should (fboundp 'zenit/copy-this-file)))
+
+(zenit-deftest zenit/move-this-file
+  (:doc "`zenit/move-this-file' is defined")
+  (should (fboundp 'zenit/move-this-file)))
+
+(zenit-deftest zenit--sudo-file-path
+  (:doc "`zenit--sudo-file-path' is defined")
+  (should (fboundp 'zenit--sudo-file-path)))
+
+(zenit-deftest zenit/sudo-find-file
+  (:doc "`zenit/sudo-find-file' is defined")
+  (should (fboundp 'zenit/sudo-find-file)))
+
+(zenit-deftest zenit/sudo-this-file
+  (:doc "`zenit/sudo-this-file' is defined")
+  (should (fboundp 'zenit/sudo-this-file)))
+
+(zenit-deftest zenit/sudo-save-buffer
+  (:doc "`zenit/sudo-save-buffer' is defined")
+  (should (fboundp 'zenit/sudo-save-buffer)))
+
+(zenit-deftest zenit/toggle-symlink
+  (:doc "`zenit/toggle-symlink' is defined")
+  (should (fboundp 'zenit/toggle-symlink)))

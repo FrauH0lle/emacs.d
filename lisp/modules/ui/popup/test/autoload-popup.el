@@ -524,3 +524,181 @@
      (makunbound '+popup-group-function)
      (mapc #'kill-buffer (list a))))
   (should (+popup-tab-single-tab-p a)))
+
+(zenit-deftest +popup--remember
+  (:doc "`+popup--remember' stores buffers in `+popup--last'"
+   :vars
+   ((a (get-buffer-create "a"))
+    (b (get-buffer-create "b"))
+    (c (get-buffer-create "c"))
+    (d (get-buffer-create "d")))
+   :before-each
+   (defvar +popup--last nil)
+   :after-each
+   (progn
+     (makunbound '+popup--last)
+     (mapc #'kill-buffer (list a b c d))))
+  (progn
+    (+popup--remember (list a b c d))
+    (should (zenit-test-same-items-p (list a b c d) +popup--last))))
+
+(zenit-deftest +popup--normalize-alist
+  (:doc "`+popup--normalize-alist' merges `+popup-default-alist' and `+popup-default-parameters' into alist"
+        :before-each
+   (progn
+     (defvar +popup-default-alist '((window-height . 0.16)
+                                    (reusable-frames . visible)))
+     (defvar +popup-default-parameters '((transient . t)
+                                         (quit . t)
+                                         (select . ignore)
+                                         (no-other-window . t))))
+   :after-each
+   (progn
+     (makunbound '+popup-default-alist)
+     (makunbound '+popup-default-parameters)))
+  (should (equal '((+popup-buffer) (actions) (side . bottom) (window-width . 40)
+                   (window-height . +popup-shrink-to-fit) (slot) (vslot)
+                   (window-parameters (ttl . 5) (quit . t) (select) (modeline)
+                                      (autosave) (tabbed) (transient . t)
+                                      (no-other-window . t))
+                   (reusable-frames . visible))
+                 (+popup--normalize-alist
+                  '((+popup-buffer) (actions) (side . bottom)
+                    (size . +popup-shrink-to-fit) (window-width . 40)
+                    (window-height . 0.16) (slot) (vslot)
+                    (window-parameters (ttl . 5) (quit . t) (select) (modeline)
+                                       (autosave) (tabbed)))))))
+
+(zenit-deftest +popup--init
+  (:doc "`+popup--init' is defined")
+  (should (fboundp '+popup--init)))
+
+(zenit-deftest +popup-update-reference-vars
+  (:doc "`+popup-update-reference-vars' updates internal reference lists from `+popup-reference-buffers'"
+   :before-each
+   (progn
+     (defvar +popup-reference-buffers nil)
+     (defvar +popup--reference-modes nil)
+     (defvar +popup--reference-names nil)
+     (defvar +popup--reference-predicates nil)
+     (defvar +popup--suppressed-names nil)
+     (defvar +popup--suppressed-modes nil)
+     (defvar +popup--suppressed-predicates nil)
+     (push (cons "^[d]$" 'hide) +popup-reference-buffers)
+     (push "^[abc]$" +popup-reference-buffers)
+     (push 'prog-mode +popup-reference-buffers)
+     (push (lambda (buf) (equal (buffer-name buf) "c"))
+           +popup-reference-buffers))
+   :after-each
+   (progn
+     (makunbound '+popup-reference-buffers)
+     (makunbound '+popup--reference-modes)
+     (makunbound '+popup--reference-names)
+     (makunbound '+popup--reference-predicates)
+     (makunbound '+popup--suppressed-names)
+     (makunbound '+popup--suppressed-modes)
+     (makunbound '+popup--suppressed-predicates)))
+  (progn
+    (+popup-update-reference-vars)
+    (should (zenit-test-same-items-p '("^[d]$") +popup--suppressed-names :test #'equal))
+    (should (zenit-test-same-items-p '("^[abc]$") +popup--reference-names :test #'equal))
+    (should (zenit-test-same-items-p '(prog-mode) +popup--reference-modes :test #'equal))
+    (should (zenit-test-same-items-p
+             `(,(lambda (buf) (equal (buffer-name buf) "c")))
+             +popup--reference-predicates :test #'equal))))
+
+(zenit-deftest +popup-buffer
+  (:doc "`+popup-buffer' is defined")
+  (should (fboundp '+popup-buffer)))
+
+(zenit-deftest with-popup-rules!
+  (:doc "`with-popup-rules!' is defined")
+  (should (fboundp 'with-popup-rules!)))
+
+(zenit-deftest save-popups!
+  (:doc "`save-popups!' is defined")
+  (should (fboundp 'save-popups!)))
+
+(zenit-deftest +popup-update-popup-alists-h
+  (:doc "`+popup-update-popup-alists-h' is defined")
+  (should (fboundp '+popup-update-popup-alists-h)))
+
+(zenit-deftest +popup-suppress-popups-h
+  (:doc "`+popup-suppress-popups-h' is defined")
+  (should (fboundp '+popup-suppress-popups-h)))
+
+(zenit-deftest +popup-adjust-fringes-h
+  (:doc "`+popup-adjust-fringes-h' is defined")
+  (should (fboundp '+popup-adjust-fringes-h)))
+
+(zenit-deftest +popup-adjust-margins-h
+  (:doc "`+popup-adjust-margins-h' is defined")
+  (should (fboundp '+popup-adjust-margins-h)))
+
+(zenit-deftest +popup-set-modeline-on-enable-h
+  (:doc "`+popup-set-modeline-on-enable-h' is defined")
+  (should (fboundp '+popup-set-modeline-on-enable-h)))
+
+(zenit-deftest +popup-unset-modeline-on-disable-h
+  (:doc "`+popup-unset-modeline-on-disable-h' is defined")
+  (should (fboundp '+popup-unset-modeline-on-disable-h)))
+
+(zenit-deftest +popup-close-on-escape-h
+  (:doc "`+popup-close-on-escape-h' is defined")
+  (should (fboundp '+popup-close-on-escape-h)))
+
+(zenit-deftest +popup-cleanup-rules-h
+  (:doc "`+popup-cleanup-rules-h' is defined")
+  (should (fboundp '+popup-cleanup-rules-h)))
+
+(zenit-deftest +popup-kill-buffer-hook-h
+  (:doc "`+popup-kill-buffer-hook-h' is defined")
+  (should (fboundp '+popup-kill-buffer-hook-h)))
+
+(zenit-deftest +popup/buffer
+  (:doc "`+popup/buffer' is defined")
+  (should (fboundp '+popup/buffer)))
+
+(zenit-deftest +popup/other
+  (:doc "`+popup/other' is defined")
+  (should (fboundp '+popup/other)))
+
+(zenit-deftest +popup--reap-parents
+  (:doc "`+popup--reap-parents' is defined")
+  (should (fboundp '+popup--reap-parents)))
+
+(zenit-deftest +popup/close
+  (:doc "`+popup/close' is defined")
+  (should (fboundp '+popup/close)))
+
+(zenit-deftest +popup/close-all
+  (:doc "`+popup/close-all' is defined")
+  (should (fboundp '+popup/close-all)))
+
+(zenit-deftest +popup/toggle
+  (:doc "`+popup/toggle' is defined")
+  (should (fboundp '+popup/toggle)))
+
+(zenit-deftest +popup/restore
+  (:doc "`+popup/restore' is defined")
+  (should (fboundp '+popup/restore)))
+
+(zenit-deftest +popup/raise
+  (:doc "`+popup/raise' is defined")
+  (should (fboundp '+popup/raise)))
+
+(zenit-deftest +popup/toggle-type
+  (:doc "`+popup/toggle-type' is defined")
+  (should (fboundp '+popup/toggle-type)))
+
+(zenit-deftest +popup/diagnose
+  (:doc "`+popup/diagnose' is defined")
+  (should (fboundp '+popup/diagnose)))
+
+(zenit-deftest +popup-close-a
+  (:doc "`+popup-close-a' is defined")
+  (should (fboundp '+popup-close-a)))
+
+(zenit-deftest +popup-save-a
+  (:doc "`+popup-save-a' is defined")
+  (should (fboundp '+popup-save-a)))

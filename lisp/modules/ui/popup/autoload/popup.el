@@ -560,7 +560,7 @@ and enables `+popup-buffer-mode'."
 
 ;;;###autoload
 (defun +popup-update-reference-vars ()
-  "Update internal reference lists from `+popup-reference-buffers'."
+  "Updates internal reference lists from `+popup-reference-buffers'."
   ;; Reset all variables
   (setq +popup--reference-modes nil
         +popup--reference-names nil
@@ -828,7 +828,7 @@ The last modification is kept."
 
 ;;;###autoload
 (defun +popup-kill-buffer-hook-h ()
-  "TODO"
+  "Kill buffer and popup window."
   (when-let* ((window (get-buffer-window)))
     (when (+popup-window-p window)
       (let ((+popup--inhibit-transient t))

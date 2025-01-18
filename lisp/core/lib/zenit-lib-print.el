@@ -251,6 +251,17 @@ example:
 ;;; Helpers
 
 (defun zenit-print--redirect-streams (streamspec level)
+  "Convert STREAMSPEC into a list of (PREDICATE . STREAM) pairs.
+
+STREAMSPEC can be:
+- A buffer, function or marker (treated as a catch-all stream)
+- A list of (PRED . STREAM) pairs where:
+  - PRED is a comparison operator like '>= or '=
+  - STREAM is a buffer, function or marker
+
+LEVEL is the print level to compare against in PREDICATEs.
+
+Returns a list of (PREDICATE . STREAM) pairs ready for filtering."
   (if (or (eq streamspec t)
           (bufferp streamspec)
           (functionp streamspec)
@@ -268,6 +279,17 @@ example:
                            (cadr spec)))))
 
 (defun zenit-print--redirect-standard-output (streamspec level)
+  "Create a function to redirect standard-output based on STREAMSPEC.
+
+STREAMSPEC is processed by `zenit-print--redirect-streams' to get
+a list of (PREDICATE . STREAM) pairs.
+
+LEVEL is the print level to compare against in PREDICATEs.
+
+Returns a lambda function that:
+1. Converts characters to strings
+2. Writes to each matching stream in STREAMSPEC
+3. Also writes to standard output if LEVEL matches"
   (let ((streams (zenit-print--redirect-streams streamspec level)))
     (lambda (ch)
       (let ((str (char-to-string ch)))
@@ -278,6 +300,18 @@ example:
         (zenit-print str :newline nil :stream t :level level)))))
 
 (defun zenit-print--redirect-message (streamspec level)
+  "Create a function to redirect `message' output based on STREAMSPEC.
+
+STREAMSPEC is processed by `zenit-print--redirect-streams' to get
+a list of (PREDICATE . STREAM) pairs.
+
+LEVEL is the print level to compare against in PREDICATEs.
+
+Returns a lambda function that:
+1. Formats the message with args
+2. Writes to each matching stream in STREAMSPEC
+3. Also writes to standard output if LEVEL matches
+4. Preserves the original `message' function for nested calls"
   (let ((old (symbol-function #'message))
         (streams (zenit-print--redirect-streams streamspec level))
         (zenit-print--output-depth (1+ zenit-print--output-depth)))
@@ -296,6 +330,16 @@ example:
 
 ;;;###autoload
 (defun zenit-print--format (message &rest args)
+  "Format MESSAGE with ARGS, applying Zenit's print indentation.
+
+If MESSAGE is nil or blank, returns an empty string.
+
+Otherwise:
+1. Applies ARGS to MESSAGE using `format'
+2. Indents each line by `zenit-print-indent' spaces
+3. Preserves existing indentation within the message
+
+Returns the formatted and indented string."
   (if (or (null message) (string-blank-p message))
       ""
     (concat (make-string zenit-print-indent 32)
@@ -360,7 +404,16 @@ example:
 
 ;;;###autoload
 (defun zenit-print--paragraph (&rest lines)
-  "TODO"
+  "Format LINES into a properly filled paragraph.
+Returns a formatted string suitable for printing or display.
+
+LINES can be:
+- A list of strings to join
+- Multiple string arguments
+- A single multi-line string
+
+The resulting paragraph will be wrapped to fit within
+`fill-column' while maintaining proper spacing and formatting."
   (zenit-print--fill (apply #'concat lines)))
 
 ;;;###autoload

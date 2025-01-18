@@ -41,6 +41,27 @@ followed by one or more values)."
     (nreverse results)))
 
 ;;;###autoload
+(defun zenit-plist-get* (vplist prop)
+  "Get the values associated to PROP in VPLIST.
+
+VPLIST is a variadic-property list, where keys are keywords and
+values are all non-keywords elements that follow it.
+
+If there are multiple properties with the same keyword, only the
+first property and its values is returned.
+
+Loops infinitely when the list is circular."
+  (let ((plist vplist)
+        result)
+    (while (and (consp plist) (not (eq prop (car plist))))
+      (pop plist))
+    ;; Pop the found keyword
+    (pop plist)
+    (while (and (consp plist) (not (keywordp (car plist))))
+      (push (pop plist) result))
+    (nreverse result)))
+
+;;;###autoload
 (defun zenit-plist-merge (from-plist to-plist)
   "Non-destructively merge FROM-PLIST onto TO-PLIST"
   (let ((from-plist (copy-sequence from-plist))
@@ -76,30 +97,5 @@ followed by one or more values)."
       (push (cadr plist) keys)
       (setq plist (cddr plist)))
     keys))
-
-
-;;
-;;; Modified plist
-
-;;;###autoload
-(defun zenit-mplist-get-values (mplist prop)
-  "Get the values associated to PROP in MPLIST, a modified plist.
-
-A modified plist is one where keys are keywords and values are
-all non-keywords elements that follow it.
-
-If there are multiple properties with the same keyword, only the
-first property and its values is returned.
-
-Loops infinitely when the list is circular."
-  (let ((plist mplist)
-        result)
-    (while (and (consp plist) (not (eq prop (car plist))))
-      (pop plist))
-    ;; Pop the found keyword
-    (pop plist)
-    (while (and (consp plist) (not (keywordp (car plist))))
-      (push (pop plist) result))
-    (nreverse result)))
 
 (provide 'zenit-lib '(plist))

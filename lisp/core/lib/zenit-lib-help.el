@@ -89,7 +89,8 @@
 
 ;;;###autoload
 (defvar zenit-docs-dir (file-name-concat zenit-emacs-dir "docs/")
-  "Where Doom's documentation files are stored. Must end with a slash.")
+  "Where the documentation files are stored.
+Must end with a slash.")
 
 (defvar zenit--help-major-mode-module-alist
   '((dockerfile-mode :tools docker)
@@ -448,6 +449,18 @@ available."
       (describe-function fn))))
 
 (defun zenit--help-modules-list ()
+  "Return a list of all Zenit modules with their documentation paths.
+
+This function generates a list of all available Zenit modules,
+both enabled and disabled. For each module, it attempts to locate
+its README.org file or module directory.
+
+Returns a list of lists where each sublist contains:
+1. A formatted string of the module name (\"CATEGORY MODULE\")
+2. The path to the module's README.org or directory
+
+Enabled modules are returned with normal formatting, while
+disabled modules are formatted with a comment face."
   (cl-loop for (cat . mod) in (zenit-module-list 'all)
            for readme-path = (or (zenit-module-locate-path cat mod "README.org")
                                  (zenit-module-locate-path cat mod))
@@ -459,6 +472,18 @@ available."
                          readme-path)))
 
 (defun zenit--help-current-module-str ()
+  "Determine the current module string based on context.
+
+This function attempts to detect the current module in several
+ways:
+
+1. From a `modulep!' form at point
+2. From the current buffer's file path
+3. From the current major mode using
+   `zenit--help-major-mode-module-alist'
+
+Returns a string in the format \"CATEGORY MODULE\" if successful,
+or nil if no module could be determined."
   (cond ((save-excursion
            (ignore-errors
              (thing-at-point--beginning-of-sexp)
@@ -524,7 +549,14 @@ with the current major mode (see
           ((user-error "Aborted module lookup")))))
 
 (defun zenit--help-variable-p (sym)
-  "TODO"
+  "Check if SYM is a valid variable that can be documented.
+
+Returns non-nil if SYM is:
+- A documented variable (has \\='variable-documentation property)
+- A bound variable that isn't a keyword or special value (t/nil)
+
+This is used to filter out internal variables and special values
+when displaying documentation options to users."
   (or (get sym 'variable-documentation)
       (and (boundp sym)
            (not (keywordp sym))
@@ -594,6 +626,19 @@ with point on that line."
            (recenter)))))))
 
 (defun zenit--help-package-configs (package)
+  "Find all configuration locations for PACKAGE in Emacs.
+
+Searches through Zenit Emacs's codebase using ripgrep to find:
+- use-package! declarations
+- after! blocks
+- ;;;###package comments
+
+Returns a list of strings in the format \"file:line:match\"
+showing where PACKAGE is configured. Each string can be parsed to
+locate the exact configuration point.
+
+This helps users find where specific packages are configured
+within Zenit Emacs's codebase."
   (let ((default-directory zenit-emacs-dir))
     (split-string
      (cdr (zenit-call-process
@@ -604,7 +649,17 @@ with point on that line."
                    package)))
      "\n" t)))
 
-(defvar zenit--help-packages-list nil)
+(defvar zenit--help-packages-list nil
+  "A cached list of all packages known.
+
+This list includes:
+- Packages installed via package.el (from MELPA etc)
+- Built-in Emacs packages
+- Packages installed via straight.el
+- Packages declared in Zenit modules
+
+The list is generated on first use and cached for performance.
+Use `zenit/help-packages' with a prefix arg to refresh the cache.")
 ;;;###autoload
 (defun zenit/help-packages (package)
   "Like `describe-package', but for packages installed by modules.
@@ -772,8 +827,33 @@ If prefix arg is present, refresh the cache."
           (insert "This package is not configured anywhere"))
         (goto-char (point-min))))))
 
-(defvar zenit--package-cache nil)
+(defvar zenit--package-cache nil
+  "A cached list of all known Emacs packages.
+
+This includes:
+- Packages installed via package.el (from MELPA etc)
+- Built-in Emacs packages
+- Packages installed via straight.el
+- Packages declared in Zenit modules
+
+The cache is populated on first use and persists for the Emacs
+session. Use `zenit--package-list' with a prefix arg to refresh
+the cache.")
+
 (defun zenit--package-list (&optional prompt)
+  "Return a package symbol selected via completion.
+
+This function:
+1. Gathers all known packages from various sources
+2. Uses completion to let the user select one
+3. Returns the selected package symbol
+
+If PROMPT is provided, it will be used as the completion prompt.
+Otherwise a default prompt is used.
+
+The package list is cached in `zenit--package-cache' for
+performance. The cache is populated on first use and persists for
+the Emacs session."
   (let* ((guess (or (function-called-at-point)
                     (symbol-at-point))))
     (require 'finder-inf nil t)
@@ -829,12 +909,37 @@ config blocks in your private config."
 (defalias 'zenit/help-package-homepage #'straight-visit-package-website)
 
 (defun zenit--help-search-prompt (prompt)
+  "Generate a search query from user input or text at point.
+
+This function:
+1. Gets text from point or region using
+   `zenit-thing-at-point-or-region'
+2. If counsel is available, returns it directly as the query
+3. Otherwise prompts the user with PROMPT, using the text as
+   default
+
+Returns a string to be used as the search query."
   (let ((query (zenit-thing-at-point-or-region)))
     (if (featurep 'counsel)
         query
       (read-string prompt query 'git-grep query))))
 
 (defun zenit--help-search (dirs query prompt)
+  "Perform a text search using ripgrep.
+
+This function:
+1. Verifies ripgrep is installed
+2. Searches DIRS (list of directories) for QUERY
+3. Uses PROMPT as the user interface prompt
+
+If counsel is available, uses consult--grep for a better UI.
+Otherwise falls back to grep-find.
+
+DIRS: List of directories to search
+QUERY: Search string to look for
+PROMPT: String to display when prompting user
+
+Returns results from ripgrep search."
   (unless zenit-ripgrep-executable
     (user-error "Can't find ripgrep on your system"))
   (cond ((fboundp 'consult--grep)

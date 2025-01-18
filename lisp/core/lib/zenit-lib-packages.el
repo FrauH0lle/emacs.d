@@ -41,6 +41,7 @@
 
 ;;;###autoload
 (defun zenit/search-versions ()
+  "Search through package versions in straight's versions directory."
   (interactive)
   (let ((default-directory (concat zenit-emacs-dir "straight/versions")))
     (funcall-interactively #'+default/search-cwd)))

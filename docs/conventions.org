@@ -2,11 +2,11 @@
 
 * Code documentation and style
 - Everything should have docstring
-- The first line should not be wider than 67 characters
-- For a function, the first line should briefly answer the question, “What does
-  this function do?”
-- For a variable, the first line should briefly answer the question, “What does
-  this value mean?”
+  - The first line should not be wider than 67 characters
+  - For a function, the first line should briefly answer the question, “What
+    does this function do?”
+  - For a variable, the first line should briefly answer the question, “What
+    does this value mean?”
 - Follow the Emacs Lisp coding conventions
   - See also [[https://github.com/bbatsov/emacs-lisp-style-guide][The Emacs Lisp Style Guide]]
 - Macros should declare the debug-specification. If all arguments are evaluated,
@@ -29,7 +29,7 @@
   - docs: Documentation only changes.
   - feat: A new feature.
   - fix: A bug fix.
-  - pkg: Addition of package or version change.
+  - pkgs: Addition of package or version change.
   - perf: A code change that improves performance.
   - refactor: A code change that neither fixes a bug nor adds a feature.
   - revert: Undoes a previous change. Must be followed by the full subject of
@@ -53,12 +53,18 @@
 - The async process is non-interactive
 * Compile-time evaluation
 - Remember: ~eval-when-compile~ evaluates its body at compile time AND at load
-  time, like progn
+  time, like ~progn~
+  - This means that:
+    - when you load the ~.el~ file, the body will be evaluated
+    - when you compile the ~.el~ file, the body will be evaluated
+    - when you load the ~.elc~ file, the body will NOT be evaluated (because it is
+      not part of the file)
   - Same as ~(cl-eval-when (compile load) ...)~
 - ~(cl-eval-when (compile) ...)~ evaluates its body ONLY at compile time
   - And needs ~cl-lib~ or ~cl-macs~ at compile time :)
   - Thus, you need ~(eval-when-compile (require 'cl-lib))~ followed by
     ~(cl-eval-when (compile) ...)~
+- Thus ~(cl-eval-when (compile) ...)~ is stricter than ~(eval-when-compile (require 'cl-lib))~
 * modulep!
 - Use ~zenit-module-p~ instead for everything which is compiled BEFORE init.el
   is processed. ~modulep!~ uses its own API to determine if modules are

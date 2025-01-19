@@ -8,11 +8,8 @@ on:
     branches:
       - master
 
-inputs:
-  emacsdir:
-    description: "Emacs config base directory"
-    type: string
-    default: ".emacs.d"
+env:
+  emacsdir: ".emacs.d"
 
 jobs:
   setup-emacs:
@@ -33,25 +30,25 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v3
         with:
-           path: ${{ inputs.emacsdir }}
+           path: ${{ env.emacsdir }}
 
       - name: Cache packages
         uses: actions/cache@v4
         env:
           cache-name: cache-emacs-packages
         with:
-          path: ${{ inputs.emacsdir }}/straight
+          path: ${{ env.emacsdir }}/straight
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ matrix.emacs_version }}-${{ hashFiles('straight/versions/*') }}
 
       - name: Deploy Emacs configuration
-        run: ${{ inputs.emacsdir }}/bin/emacs-config deploy --yes
+        run: ${{ env.emacsdir }}/bin/emacs-config deploy --yes
 
       - name: Test Emacs configuration
-        run: ${{ inputs.emacsdir }}/bin/emacs-config test
+        run: ${{ env.emacsdir }}/bin/emacs-config test
 
       - name: Emacs logs
         uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: emacs-logs
-          path: ${{ inputs.emacsdir }}/.local/etc/logs/
+          path: ${{ env.emacsdir }}/.local/etc/logs/

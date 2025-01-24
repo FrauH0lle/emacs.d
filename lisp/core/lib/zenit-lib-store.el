@@ -56,7 +56,7 @@ multiple cache entries.")
 
 ;;;###autoload
 (defun zenit-store-persist (location variables)
-  "Persist VARIABLES (list of symbols) in LOCATION (symbol).
+  "Persist VARIABLES (list of symbols) in LOCATION (string).
 This populates these variables with cached values, if one exists,
 and saves them to file when Emacs quits. This cannot persist
 buffer-local variables."
@@ -69,10 +69,9 @@ buffer-local variables."
 
 ;;;###autoload
 (defun zenit-store-desist (location &optional variables)
-  "Unregisters VARIABLES (list of symbols) in LOCATION (symbol).
-Variables to persist are recorded in
-`zenit-store-persist-alist'. Does not affect the actual
-variables themselves or their values."
+  "Unregisters VARIABLES (list of symbols) in LOCATION (string).
+Variables to persist are recorded in `zenit-store-persist-alist'.
+Does not affect the actual variables themselves or their values."
   (cl-check-type location string)
   (if variables
       (setf (alist-get location zenit-store-persist-alist nil nil #'equal)
@@ -81,8 +80,9 @@ variables themselves or their values."
     (delq! location zenit-store-persist-alist 'assoc)))
 
 (defun zenit--store-init (&optional location)
-  "Initialize a store at LOCATION (defaults to
- `zenit-store-location').
+  "Initialize a store at LOCATION.
+
+Defaults to `zenit-store-location'.
 
 This function retrieves the store data from file if it exists,
 otherwise it creates a new hash table and inserts it into

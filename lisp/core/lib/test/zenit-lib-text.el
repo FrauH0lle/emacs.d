@@ -26,7 +26,7 @@
            zenit--sppss-memo-last-result nil))
    :after-each
    (kill-buffer test-buffer)
-   :doc "Test syntax parsing and state caching")
+   :doc "`zenit-syntax-ppss' parses syntax and caches state")
   ,test
   (test)
   (with-current-buffer test-buffer
@@ -57,37 +57,37 @@
    (kill-buffer test-buffer))
   ,test
   (test)
-  :doc "Returns t when point is surrounded by braces"
+  :doc "`zenit-surrounded-p' returns t when point is surrounded by braces"
   (with-current-buffer test-buffer
     (insert "foo {bar} baz")
     (goto-char 7)
     (should (zenit-surrounded-p '(:beg 5 :end 8 :op "{" :cl "}"))))
   
-  :doc "Returns nil when point is not surrounded by braces"
+  :doc "`zenit-surrounded-p' returns nil when point is not surrounded by braces"
   (with-current-buffer test-buffer
     (insert "foo {bar} baz")
     (goto-char 4)
     (should-not (zenit-surrounded-p '(:beg 5 :end 8 :op "{" :cl "}"))))
   
-  :doc "Returns t when point is surrounded by braces on the same line and whitespace is balanced"
+  :doc "`zenit-surrounded-p' returns t when point is surrounded by braces on the same line and whitespace is balanced"
   (with-current-buffer test-buffer
     (insert "foo { bar } baz")
     (goto-char 8)
     (should (zenit-surrounded-p '(:beg 5 :end 11 :op "{" :cl "}") t t)))
   
-  :doc "Returns nil when point is surrounded by braces but whitespace is not balanced"
+  :doc "`zenit-surrounded-p' returns nil when point is surrounded by braces but whitespace is not balanced"
   (with-current-buffer test-buffer
     (insert "foo {  bar } baz")
     (goto-char 9)
     (should-not (zenit-surrounded-p '(:beg 5 :end 12 :op "{" :cl "}") t t)))
   
-  :doc "Returns t when point is surrounded by braces on adjacent lines"
+  :doc "`zenit-surrounded-p' returns t when point is surrounded by braces on adjacent lines"
   (with-current-buffer test-buffer
     (insert "foo {\n bar\n} baz")
     (goto-char 8)
     (should (zenit-surrounded-p '(:beg 5 :end 12 :op "{" :cl "}"))))
   
-  :doc "Returns t when point is surrounded by parentheses"
+  :doc "`zenit-surrounded-p' returns t when point is surrounded by parentheses"
   (with-current-buffer test-buffer
     (insert "foo (bar) baz")
     (goto-char 7)
@@ -102,28 +102,28 @@
    (kill-buffer test-buffer))
   ,test
   (test)
-  :doc "Returns t when point is within a single-line comment"
+  :doc "`zenit-point-in-comment-p' returns t when point is within a single-line comment"
   (with-current-buffer test-buffer
     (emacs-lisp-mode)
     (insert "foo ;; this is a comment\nbar")
     (goto-char 10)
     (should (zenit-point-in-comment-p)))
 
-  :doc "Returns nil when point is not within a single-line comment"
+  :doc "`zenit-point-in-comment-p' returns nil when point is not within a single-line comment"
   (with-current-buffer test-buffer
     (emacs-lisp-mode)
     (insert "foo ;; this is a comment\nbar")
     (goto-char 4)
     (should-not (zenit-point-in-comment-p)))
 
-  :doc "Returns t when point is within a multi-line comment"
+  :doc "`zenit-point-in-comment-p' returns t when point is within a multi-line comment"
   (with-current-buffer test-buffer
     (c-mode)
     (insert "foo\n/* this is a\n multi-line comment */\nbar")
     (goto-char 15)
     (should (zenit-point-in-comment-p)))
 
-  :doc "Returns nil when point is not within a multi-line comment"
+  :doc "`zenit-point-in-comment-p' returns nil when point is not within a multi-line comment"
   (with-current-buffer test-buffer
     (c-mode)
     (insert "foo\n/* this is a\n multi-line comment */\nbar")
@@ -141,25 +141,25 @@
    (kill-buffer test-buffer))
   ,test
   (test)
-  :doc "Returns t when point is within a double-quoted string"
+  :doc "`zenit-point-in-string-p' returns t when point is within a double-quoted string"
   (with-current-buffer test-buffer
     (insert "foo \"this is a string\" bar")
     (goto-char 10)
     (should (zenit-point-in-string-p)))
 
-  :doc "Returns nil when point is not within a double-quoted string"
+  :doc "`zenit-point-in-string-p' returns nil when point is not within a double-quoted string"
   (with-current-buffer test-buffer
     (insert "foo \"this is a string\" bar")
     (goto-char 5)
     (should-not (zenit-point-in-string-p)))
 
-  :doc "Returns t when point is within a single-quoted string"
+  :doc "`zenit-point-in-string-p' returns t when point is within a single-quoted string"
   (with-current-buffer test-buffer
     (insert "foo 'this is a string' bar")
     (goto-char 10)
     (should (zenit-point-in-string-p)))
 
-  :doc "Returns nil when point is not within a single-quoted string"
+  :doc "`zenit-point-in-string-p' returns nil when point is not within a single-quoted string"
   (with-current-buffer test-buffer
     (insert "foo 'this is a string' bar")
     (goto-char 5)
@@ -174,28 +174,28 @@
    (kill-buffer test-buffer))
   ,test
   (test)
-  :doc "Returns t when point is within a double-quoted string"
+  :doc "`zenit-point-in-string-or-comment-p' returns t when point is within a double-quoted string"
   (with-current-buffer test-buffer
     (conf-mode)
     (insert "foo \"this is a string\" bar")
     (goto-char 10)
     (should (zenit-point-in-string-or-comment-p)))
 
-  :doc "Returns t when point is within a single-quoted string"
+  :doc "`zenit-point-in-string-or-comment-p' returns t when point is within a single-quoted string"
   (with-current-buffer test-buffer
     (conf-mode)
     (insert "foo 'this is a string' bar")
     (goto-char 10)
     (should (zenit-point-in-string-or-comment-p)))
 
-  :doc "Returns t when point is within a comment"
+  :doc "`zenit-point-in-string-or-comment-p' returns t when point is within a comment"
   (with-current-buffer test-buffer
     (emacs-lisp-mode)
     (insert "foo ; this is a comment\nbar")
     (goto-char 10)
     (should (zenit-point-in-string-or-comment-p)))
 
-  :doc "Returns nil when point is not within a string or comment"
+  :doc "`zenit-point-in-string-or-comment-p' returns nil when point is not within a string or comment"
   (with-current-buffer test-buffer
     (emacs-lisp-mode)
     (insert "foo \"this is a string\" bar")
@@ -211,7 +211,7 @@
    (kill-buffer test-buffer))
   ,test
   (test)
-  :doc "Returns t when the region is active"
+  :doc "`zenit-region-active-p' returns t when the region is active"
   (with-current-buffer test-buffer
     (insert "This is a test")
     (goto-char 1)
@@ -219,7 +219,7 @@
     (activate-mark)
     (should (zenit-region-active-p)))
 
-  :doc "Returns nil when the region is inactive"
+  :doc "`zenit-region-active-p' returns nil when the region is inactive"
   (with-current-buffer test-buffer
     (insert "This is a test")
     (goto-char 1)
@@ -236,7 +236,7 @@
    (kill-buffer test-buffer))
   ,test
   (test)
-  :doc "Returns the beginning of the active region"
+  :doc "`zenit-region-beginning' returns the beginning of the active region"
   (with-current-buffer test-buffer
     (insert "This is a test")
     (goto-char 1)
@@ -254,7 +254,7 @@
    (kill-buffer test-buffer))
   ,test
   (test)
-  :doc "Returns the end of the active region"
+  :doc "`zenit-region-end' returns the end of the active region"
   (with-current-buffer test-buffer
     (insert "This is a test")
     (goto-char 1)
@@ -272,7 +272,7 @@
    (kill-buffer test-buffer))
   ,test
   (test)
-  :doc "Returns the text in the active region"
+  :doc "`zenit-thing-at-point-or-region' returns the text in the active region"
   (with-current-buffer test-buffer
     (insert "This is a test")
     (goto-char 1)
@@ -280,7 +280,7 @@
     (activate-mark)
     (goto-char 9)
     (should (equal "is " (zenit-thing-at-point-or-region 'symbol))))
-  :doc "Returns the thing at point when the region is inactive"
+  :doc "`zenit-thing-at-point-or-region' returns the thing at point when the region is inactive"
   (with-current-buffer test-buffer
     (insert "This is a test")
     (goto-char 6)
@@ -296,7 +296,7 @@
    (kill-buffer test-buffer))
   ,test
   (test)
-  :doc "Returns beginning of line, beginning of top line, end of top line, and end of line correctly"
+  :doc "`zenit--bol-bot-eot-eol' returns beginning of line, beginning of top line, end of top line, and end of line correctly"
   (with-current-buffer test-buffer
     (insert "Line 1\nLine 2\nLine 3")
     (goto-char 10)
@@ -309,23 +309,30 @@
       (should (equal 14 (nth 2 result)))
       ;; end of line
       (should (equal 14 (nth 3 result))))))
-;; (describe "zenit/backward-to-bol-or-indent"
-;;   (it "moves point to the first non-whitespace character on the line"
-;;     (with-temp-buffer
-;;       (insert "  Line 1\n  Line 2\n  Line 3")
-;;       (goto-char 12)
-;;       (zenit/backward-to-bol-or-indent)
-;;       (expect (point) :to-equal 10)))
 
-;;   (it "moves point to the beginning of the line if it's already at the first non-whitespace character"
-;;     (with-temp-buffer
-;;       (insert "  Line 1\n  Line 2\n  Line 3")
-;;       (goto-char 12)
-;;       (zenit/backward-to-bol-or-indent)
-;;       (expect (point) :to-equal 10)
-;;       (zenit/backward-to-bol-or-indent)
-;;       (expect (point) :to-equal 12))))
-
+(zenit-deftest zenit/backward-to-bol-or-indent
+  (:vars ((test-buffer (get-buffer-create "test-buffer")))
+   :before-each
+   (with-current-buffer test-buffer
+     (erase-buffer))
+   :after-each
+   (kill-buffer test-buffer))
+  ,test
+  (test)
+  :doc "`zenit/backward-to-bol-or-indent' moves point to the first non-whitespace character on the line"
+  (with-current-buffer test-buffer
+    (insert "  Line 1\n  Line 2\n  Line 3")
+    (goto-char 12)
+    (zenit/backward-to-bol-or-indent)
+    (should (equal 10 (point))))
+  :doc "`zenit/backward-to-bol-or-indent' moves point to the beginning of the line if it's already at the first non-whitespace character"
+  (with-current-buffer test-buffer
+    (insert "  Line 1\n  Line 2\n  Line 3")
+    (goto-char 12)
+    (zenit/backward-to-bol-or-indent)
+    (should (equal 10 (point)))
+    (zenit/backward-to-bol-or-indent)
+    (should (equal 12 (point)))))
 
 ;; (describe "zenit/forward-to-last-non-comment-or-eol"
 ;;   (it "moves point to the last non-comment character on the line"

@@ -202,81 +202,113 @@
     (goto-char 5)
     (should-not (zenit-point-in-string-or-comment-p))))
 
+(zenit-deftest zenit-region-active-p
+  (:vars ((test-buffer (get-buffer-create "test-buffer")))
+   :before-each
+   (with-current-buffer test-buffer
+     (erase-buffer))
+   :after-each
+   (kill-buffer test-buffer))
+  ,test
+  (test)
+  :doc "Returns t when the region is active"
+  (with-current-buffer test-buffer
+    (insert "This is a test")
+    (goto-char 1)
+    (set-mark 5)
+    (activate-mark)
+    (should (zenit-region-active-p)))
 
-;; (describe "zenit-region-active-p"
-;;   (it "returns t when the region is active"
-;;     (with-temp-buffer
-;;       (insert "This is a test")
-;;       (goto-char 1)
-;;       (set-mark 5)
-;;       (activate-mark)
-;;       (expect (zenit-region-active-p) :to-be t)))
+  :doc "Returns nil when the region is inactive"
+  (with-current-buffer test-buffer
+    (insert "This is a test")
+    (goto-char 1)
+    (set-mark 5)
+    (deactivate-mark)
+    (should-not (zenit-region-active-p))))
 
-;;   (it "returns nil when the region is inactive"
-;;     (with-temp-buffer
-;;       (insert "This is a test")
-;;       (goto-char 1)
-;;       (set-mark 5)
-;;       (deactivate-mark)
-;;       (expect (zenit-region-active-p) :to-be nil))))
+(zenit-deftest zenit-region-beginning
+  (:vars ((test-buffer (get-buffer-create "test-buffer")))
+   :before-each
+   (with-current-buffer test-buffer
+     (erase-buffer))
+   :after-each
+   (kill-buffer test-buffer))
+  ,test
+  (test)
+  :doc "Returns the beginning of the active region"
+  (with-current-buffer test-buffer
+    (insert "This is a test")
+    (goto-char 1)
+    (set-mark 5)
+    (activate-mark)
+    (goto-char 9)
+    (should (equal 5 (zenit-region-beginning)))))
 
+(zenit-deftest zenit-region-end
+  (:vars ((test-buffer (get-buffer-create "test-buffer")))
+   :before-each
+   (with-current-buffer test-buffer
+     (erase-buffer))
+   :after-each
+   (kill-buffer test-buffer))
+  ,test
+  (test)
+  :doc "Returns the end of the active region"
+  (with-current-buffer test-buffer
+    (insert "This is a test")
+    (goto-char 1)
+    (set-mark 5)
+    (activate-mark)
+    (goto-char 9)
+    (should (equal 9 (zenit-region-end)))))
 
-;; (describe "zenit-region-beginning"
-;;   (it "returns the beginning of the active region"
-;;     (with-temp-buffer
-;;       (insert "This is a test")
-;;       (goto-char 1)
-;;       (set-mark 5)
-;;       (activate-mark)
-;;       (goto-char 9)
-;;       (expect (zenit-region-beginning) :to-equal 5))))
+(zenit-deftest zenit-thing-at-point-or-region
+  (:vars ((test-buffer (get-buffer-create "test-buffer")))
+   :before-each
+   (with-current-buffer test-buffer
+     (erase-buffer))
+   :after-each
+   (kill-buffer test-buffer))
+  ,test
+  (test)
+  :doc "Returns the text in the active region"
+  (with-current-buffer test-buffer
+    (insert "This is a test")
+    (goto-char 1)
+    (set-mark 6)
+    (activate-mark)
+    (goto-char 9)
+    (should (equal "is " (zenit-thing-at-point-or-region 'symbol))))
+  :doc "Returns the thing at point when the region is inactive"
+  (with-current-buffer test-buffer
+    (insert "This is a test")
+    (goto-char 6)
+    (deactivate-mark)
+    (should (equal "is" (zenit-thing-at-point-or-region 'symbol)))))
 
-
-;; (describe "zenit-region-end"
-;;   (it "returns the end of the active region"
-;;     (with-temp-buffer
-;;       (insert "This is a test")
-;;       (goto-char 1)
-;;       (set-mark 5)
-;;       (activate-mark)
-;;       (goto-char 9)
-;;       (expect (zenit-region-end) :to-equal 9))))
-
-
-;; (describe "zenit-thing-at-point-or-region"
-;;   (it "returns the text in the active region"
-;;     (with-temp-buffer
-;;       (insert "This is a test")
-;;       (goto-char 1)
-;;       (set-mark 6)
-;;       (activate-mark)
-;;       (goto-char 9)
-;;       (expect (zenit-thing-at-point-or-region 'symbol) :to-equal "is ")))
-
-;;   (it "returns the thing at point when the region is inactive"
-;;     (with-temp-buffer
-;;       (insert "This is a test")
-;;       (goto-char 6)
-;;       (deactivate-mark)
-;;       (expect (zenit-thing-at-point-or-region 'symbol) :to-equal "is"))))
-
-
-;; (describe "zenit--bol-bot-eot-eol"
-;;   (it "returns beginning of line, beginning of top line, end of top line, and end of line correctly"
-;;     (with-temp-buffer
-;;       (insert "Line 1\nLine 2\nLine 3")
-;;       (goto-char 10)
-;;       (let ((result (zenit--bol-bot-eot-eol)))
-;;         ;; beginning of line
-;;         (expect (nth 0 result) :to-equal 8)
-;;            ;; beginning of top line
-;;         (expect (nth 1 result) :to-equal 8)
-;;            ;; end of top line
-;;         (expect (nth 2 result) :to-equal 14)
-;;          ;; end of line
-;;         (expect (nth 3 result) :to-equal 14)))))
-
-
+(zenit-deftest zenit--bol-bot-eot-eol
+  (:vars ((test-buffer (get-buffer-create "test-buffer")))
+   :before-each
+   (with-current-buffer test-buffer
+     (erase-buffer))
+   :after-each
+   (kill-buffer test-buffer))
+  ,test
+  (test)
+  :doc "Returns beginning of line, beginning of top line, end of top line, and end of line correctly"
+  (with-current-buffer test-buffer
+    (insert "Line 1\nLine 2\nLine 3")
+    (goto-char 10)
+    (let ((result (zenit--bol-bot-eot-eol)))
+      ;; beginning of line
+      (should (equal 8 (nth 0 result)))
+      ;; beginning of top line
+      (should (equal 8 (nth 1 result)))
+      ;; end of top line
+      (should (equal 14 (nth 2 result)))
+      ;; end of line
+      (should (equal 14 (nth 3 result))))))
 ;; (describe "zenit/backward-to-bol-or-indent"
 ;;   (it "moves point to the first non-whitespace character on the line"
 ;;     (with-temp-buffer

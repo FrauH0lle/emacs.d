@@ -1,0 +1,20 @@
+# type: feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert|pkg|tweak
+# component: affected package/scope
+# Add ! before : for breaking changes
+# First line: max 50 chars
+type(component): brief description
+# |<----  Using a Maximum Of 50 Characters  ---->|
+
+# Each file change starts with *
+# List affected items in ()
+* file.ext (item1, item2): change description
+  rationale or additional context
+  limitations or future implications
+
+# For multiple similar changes use Ditto
+* another-file.ext (items): Ditto
+
+# Optional footer after blank line
+# Format: token: value
+BREAKING CHANGE: description
+Refs: #123

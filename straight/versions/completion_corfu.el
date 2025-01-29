@@ -1,4 +1,4 @@
-(("cape" . "9110956a5155d5e3c460160fa1b4dac59322c229")
- ("corfu" . "bc989504a5660429dce9949799aafd9c313d752c")
- ("nerd-icons-corfu" . "7077bb76fefc15aed967476406a19dc5c2500b3c"))
+(("cape" . "118db73710466ab03708e7511f4bff7827057000")
+ ("corfu" . "2c476b442ccfda9935e472b26d9cd60d45726560")
+ ("nerd-icons-corfu" . "41110180ceab9d0edaa856d19633b2b3fdf82e75"))
 :gamma

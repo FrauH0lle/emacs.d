@@ -1,3 +1,3 @@
-(("lsp-mode" . "620bbd7163fa9d9281cd315ffa3ee29d83be8686")
- ("lsp-ui" . "072bb29152038518c2478813b82c8d04d07df84c"))
+(("lsp-mode" . "137cdd1339515b44316c665b65ef032eb7a7691b")
+ ("lsp-ui" . "1eae284ab0ae70fba4a2ee1e3f76d7013521c49c"))
 :gamma

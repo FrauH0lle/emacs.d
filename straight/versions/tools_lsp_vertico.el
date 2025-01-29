@@ -1,2 +1,2 @@
-(("consult-lsp" . "68583913168bf66fd4d542b2517a2dcab19c447c"))
+(("consult-lsp" . "aef321d03907ca6926b0cf20ca85f672c4744000"))
 :gamma

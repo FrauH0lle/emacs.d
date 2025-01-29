@@ -500,8 +500,14 @@ The list has the form (ORGIN-FNAME . HASHED-FNAME)."
         (user-error "No backup cache found")
       (let (orphans)
         (dolist (k (hash-table-keys cache) orphans)
-          (unless (file-exists-p (gethash k cache))
-            (push `(,(gethash k cache) . ,k) orphans)))
+          (let ((file (gethash k cache)))
+            (unless (if (file-remote-p file)
+                        (ignore-errors
+                          ;; Check if remote file is accessible
+                          (file-readable-p file))
+                      ;; Check local file existence
+                      (file-exists-p file))
+              (push `(,file . ,k) orphans))))
         orphans))))
 
 ;;;###autoload

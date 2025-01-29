@@ -85,7 +85,7 @@ PT defaults to the current position."
         (unless (nth 3 (zenit-syntax-ppss pt))
           (or (nth 4 (zenit-syntax-ppss pt))
               ;; this also test opening and closing comment delimiters... we
-              ;; need to chack that it is not newline, which is in "comment
+              ;; need to check that it is not newline, which is in "comment
               ;; ender" class in elisp-mode, but we just want it to be treated
               ;; as whitespace
               (and (< pt (point-max))
@@ -169,15 +169,16 @@ cons cell (BEG . END)."
 
 ;;;###autoload
 (defun zenit-thing-at-point-or-region (&optional thing prompt)
-  "Grab the current selection, THING at point, or xref identifier at point.
+  "Grab the current selection, THING at point, or xref identifier at
+point.
 
 Returns THING if it is a string. Otherwise, if nothing is found
 at point and PROMPT is non-nil, prompt for a string (if PROMPT is
 a string it'll be used as the prompting string). Returns nil if
 all else fails.
 
-NOTE: Don't use THING for grabbing symbol-at-point. The xref fallback is smarter
-in some cases."
+NOTE: Don't use THING for grabbing symbol-at-point. The xref
+fallback is smarter in some cases."
   (declare (side-effect-free t))
   (cond ((stringp thing)
          thing)

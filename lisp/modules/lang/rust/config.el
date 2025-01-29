@@ -75,7 +75,7 @@
         ;; for a full list
         (setq! lsp-rust-analyzer-display-lifetime-elision-hints-enable "skip_trivial"
                lsp-rust-analyzer-display-chaining-hints t
-               lsp-rust-analyzer-display-lifetime-elision-hints-use-parameter-names nil
+               lsp-rust-analyzer-display-lifetime-elision-hints-use-parameter-names t
                lsp-rust-analyzer-display-closure-return-type-hints t
                lsp-rust-analyzer-display-parameter-hints t
                lsp-rust-analyzer-display-reborrow-hints nil)

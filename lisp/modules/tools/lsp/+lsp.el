@@ -25,6 +25,8 @@
   (setq lsp-enable-on-type-formatting nil)
   ;; Make breadcrumbs opt-in; they're redundant with the modeline and imenu
   (setq lsp-headerline-breadcrumb-enable nil)
+  ;; Enable inlay hints
+  (setq lsp-inlay-hint-enable t)
 
   ;; Explicitly tell lsp to use flymake; Lsp will default to flycheck if found
   ;; even if its a dependency

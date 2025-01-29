@@ -37,9 +37,18 @@
   ;; Rust uses a line width of 100
   (setq-hook! 'rustic-mode-hook fill-column 100)
 
-  ;; (set-docsets! 'rustic-mode "Rust")
+  (set-docsets! 'rustic-mode "Rust")
   (set-popup-rule! "^\\*rustic-compilation" :vslot -1)
   (set-popup-rule! "^\\*cargo-run" :vslot -1)
+
+  ;; Code sections, matches
+  ;; // ------------...
+  ;; // Section     ...
+  ;; // ------------...
+  (add-hook! 'rustic-mode-hook
+    (defun +rust-extend-imenu-h ()
+      (add-to-list 'imenu-generic-expression
+                   '("Section" "^[ \t]*// -\\{2,\\}\n[ \t]*// \\([^\n]+\\)\n[ \t]*// -\\{2,\\}\n" 1))))
 
   (setq rustic-indent-method-chain t)
 
@@ -47,7 +56,7 @@
   (setq rustic-babel-format-src-block nil
         rustic-format-trigger nil)
 
-  (if (modulep! -lsp)
+  (eval-if! (modulep! -lsp)
       (after! rustic-flycheck
         (add-to-list 'flycheck-checkers 'rustic-clippy))
     (setq rustic-lsp-client
@@ -59,36 +68,47 @@
     (eval-when! (modulep! :tools lsp +lsp-flymake)
       (pushnew! +flycheck-disabled-modes 'rustic-mode))
 
-    ;; HACK: Add @scturtle fix for signatures on hover on LSP mode. This code
-    ;;   has not been upstreamed because it depends on the exact format of the
-    ;;   response of Rust Analyzer, which is not stable enough for `lsp-mode'
-    ;;   maintainers (see emacs-lsp/lsp-mode#1740).
-    (unless (modulep! :tools lsp +eglot)
-      (defadvice! +rust--dont-cache-results-from-ra-a (fn &rest args)
-        :after #'lsp-eldoc-function
-        (when (derived-mode-p 'rust-mode 'rust-ts-mode)
-          (setq lsp--hover-saved-bounds nil)))
+    (eval-unless! (modulep! :tools lsp +eglot)
+      (after! lsp-rust
+        ;; These are optional configurations. See
+        ;; https://emacs-lsp.github.io/lsp-mode/page/lsp-rust-analyzer/#lsp-rust-analyzer-display-chaining-hints
+        ;; for a full list
+        (setq! lsp-rust-analyzer-display-lifetime-elision-hints-enable "skip_trivial"
+               lsp-rust-analyzer-display-chaining-hints t
+               lsp-rust-analyzer-display-lifetime-elision-hints-use-parameter-names nil
+               lsp-rust-analyzer-display-closure-return-type-hints t
+               lsp-rust-analyzer-display-parameter-hints t
+               lsp-rust-analyzer-display-reborrow-hints nil)
 
-      ;; extract and show short signature for rust-analyzer
-      (cl-defmethod lsp-clients-extract-signature-on-hover (contents (_server-id (eql rust-analyzer)))
-        (let* ((value (if lsp-use-plists (plist-get contents :value) (gethash "value" contents)))
-               (groups (--partition-by (s-blank? it) (s-lines (s-trim value))))
-               (mod-group (cond ((s-equals? "```rust" (car (-fifth-item groups))) (-third-item groups))
-                                ((s-equals? "```rust" (car (-third-item groups))) (-first-item groups))
-                                (t nil)))
-               (cmt (if (null mod-group) "" (concat " // " (cadr mod-group))))
-               (sig-group (cond ((s-equals? "```rust" (car (-fifth-item groups))) (-fifth-item groups))
-                                ((s-equals? "```rust" (car (-third-item groups))) (-third-item groups))
-                                (t (-first-item groups))))
-               (sig (->> sig-group
-                         (--drop-while (s-equals? "```rust" it))
-                         (--take-while (not (s-equals? "```" it)))
-                         (--map (s-replace-regexp "//.*" "" it))
-                         (--map (s-trim it))
-                         (s-join " "))))
-          (lsp--render-element (concat "```rust\n" sig cmt "\n```"))))))
+        ;; HACK: Add @scturtle fix for signatures on hover on LSP mode. This code
+        ;;   has not been upstreamed because it depends on the exact format of the
+        ;;   response of Rust Analyzer, which is not stable enough for `lsp-mode'
+        ;;   maintainers (see emacs-lsp/lsp-mode#1740).
+        (defadvice! +rust--dont-cache-results-from-ra-a (fn &rest args)
+          :after #'lsp-eldoc-function
+          (when (derived-mode-p 'rust-mode 'rust-ts-mode)
+            (setq lsp--hover-saved-bounds nil)))
 
-  (when (modulep! +tree-sitter)
+        ;; extract and show short signature for rust-analyzer
+        (cl-defmethod lsp-clients-extract-signature-on-hover (contents (_server-id (eql rust-analyzer)))
+          (let* ((value (if lsp-use-plists (plist-get contents :value) (gethash "value" contents)))
+                 (groups (--partition-by (s-blank? it) (s-lines (s-trim value))))
+                 (mod-group (cond ((s-equals? "```rust" (car (-fifth-item groups))) (-third-item groups))
+                                  ((s-equals? "```rust" (car (-third-item groups))) (-first-item groups))
+                                  (t nil)))
+                 (cmt (if (null mod-group) "" (concat " // " (cadr mod-group))))
+                 (sig-group (cond ((s-equals? "```rust" (car (-fifth-item groups))) (-fifth-item groups))
+                                  ((s-equals? "```rust" (car (-third-item groups))) (-third-item groups))
+                                  (t (-first-item groups))))
+                 (sig (->> sig-group
+                           (--drop-while (s-equals? "```rust" it))
+                           (--take-while (not (s-equals? "```" it)))
+                           (--map (s-replace-regexp "//.*" "" it))
+                           (--map (s-trim it))
+                           (s-join " "))))
+            (lsp--render-element (concat "```rust\n" sig cmt "\n```")))))))
+
+  (eval-when! (modulep! +tree-sitter)
     (add-hook 'rustic-mode-local-vars-hook #'tree-sitter! 'append))
 
   ;; HACK If lsp/eglot isn't available, it attempts to install lsp-mode via

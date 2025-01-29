@@ -2,6 +2,9 @@
 
 (use-package! gptel
   :defer t
+  :init
+  ;; REVIEW 2025-01-29: See https://github.com/karthink/gptel/issues/583
+  (setq transient-show-during-minibuffer-read t)
   :config
   ;; CLaude Sonnet
   (gptel-make-anthropic "Claude Sonnet"

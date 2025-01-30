@@ -3,7 +3,7 @@
 # Add ! before : for breaking changes
 # First line: max 50 chars
 type(component): brief description
-# |<----  Using a Maximum Of 50 Characters  ---->|
+# |<----     Using 50                       ---->| to 72 Characters -->|
 
 # Each file change starts with *
 # List affected items in ()

@@ -4,7 +4,7 @@ The guidelines are an adaptation from [Conventional Commits](https://www.convent
 
 ## Basic format:
 ```
-type(component): brief description (Max 50 char)
+type(component): brief description (50-72 chars)
 
 * [filename].[ext] ([affected-items]): [Description of changes]
   [Additional context and rationale]
@@ -15,8 +15,8 @@ type(component): brief description (Max 50 char)
 
 ## Guidelines
 
-1. Start with the type, the package/component/scope name within parenthesis
-   followed by a colon and a brief title
+1. Start with the type, the optional package/component/scope name within
+   parenthesis followed by a colon and a brief title
    - Example: `feat(parser): Add finite state machine`
    - Example: `fix(api): prevent racing of requests`
    

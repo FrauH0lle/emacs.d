@@ -310,6 +310,10 @@
       ;; end of line
       (should (equal 14 (nth 3 result))))))
 
+(zenit-deftest zenit--last-backward-pt
+  (:doc "`zenit--last-backward-pt' is defined")
+  (should (boundp 'zenit--last-backward-pt)))
+
 (zenit-deftest zenit/backward-to-bol-or-indent
   (:vars ((test-buffer (get-buffer-create "test-buffer")))
    :before-each
@@ -334,150 +338,208 @@
     (zenit/backward-to-bol-or-indent)
     (should (equal 12 (point)))))
 
-;; (describe "zenit/forward-to-last-non-comment-or-eol"
-;;   (it "moves point to the last non-comment character on the line"
-;;     (with-temp-buffer
-;;       (emacs-lisp-mode)
-;;       (insert "Line 1 ;; Comment\nLine 2 ;; Comment\nLine 3 ;; Comment")
-;;       (goto-char 1)
-;;       (zenit/forward-to-last-non-comment-or-eol)
-;;       (expect (point) :to-equal 7)))
+(zenit-deftest zenit--last-forward-pt
+  (:doc "`zenit--last-forward-pt' is defined")
+  (should (boundp 'zenit--last-forward-pt)))
 
-;;   (it "moves point to the end of the line if it's already at the last non-comment character"
-;;     (with-temp-buffer
-;;       (emacs-lisp-mode)
-;;       (insert "Line 1 ;; Comment\nLine 2 ;; Comment\nLine 3 ;; Comment")
-;;       (goto-char 7)
-;;       (zenit/forward-to-last-non-comment-or-eol)
-;;       (expect (point) :to-equal 18))))
+(zenit-deftest zenit/forward-to-last-non-comment-or-eol
+  (:vars ((test-buffer (get-buffer-create "test-buffer")))
+   :before-each
+   (with-current-buffer test-buffer
+     (erase-buffer))
+   :after-each
+   (kill-buffer test-buffer))
+  ,test
+  (test)
+  :doc "`zenit/forward-to-last-non-comment-or-eol' moves point to the last non-comment character on the line"
+  (with-current-buffer test-buffer
+    (emacs-lisp-mode)
+    (insert "Line 1 ;; Comment\nLine 2 ;; Comment\nLine 3 ;; Comment")
+    (goto-char 1)
+    (zenit/forward-to-last-non-comment-or-eol)
+    (should (equal 7 (point))))
+  :doc "`zenit/forward-to-last-non-comment-or-eol' moves point to the end of the line if it's already at the last non-comment character"
+  (with-current-buffer test-buffer
+    (emacs-lisp-mode)
+    (insert "Line 1 ;; Comment\nLine 2 ;; Comment\nLine 3 ;; Comment")
+    (goto-char 7)
+    (zenit/forward-to-last-non-comment-or-eol)
+    (should (equal 18 (point)))))
 
+(zenit-deftest zenit/delete-backward-word
+  (:vars ((test-buffer (get-buffer-create "test-buffer")))
+   :before-each
+   (with-current-buffer test-buffer
+     (erase-buffer))
+   :after-each
+   (kill-buffer test-buffer))
+  ,test
+  (test)
+  :doc "`zenit/delete-backward-word' deletes the previous word"
+  (with-current-buffer test-buffer
+    (insert "One two three")
+    (goto-char (point-max))
+    (zenit/delete-backward-word 1)
+    (should (equal "One two " (buffer-string))))
+  :doc "`zenit/delete-backward-word' deletes the word but keeps whitespace before the cursor"
+  (with-current-buffer test-buffer
+    (insert "One two  three")
+    (goto-char (point-max))
+    (zenit/delete-backward-word 1)
+    (should (equal "One two  " (buffer-string)))))
 
-;; (describe "zenit/delete-backward-word"
-;;   (it "deletes the previous word"
-;;     (with-temp-buffer
-;;       (insert "One two three")
-;;       (goto-char (point-max))
-;;       (zenit/delete-backward-word 1)
-;;       (expect (buffer-string) :to-equal "One two ")))
+(zenit-deftest zenit/dumb-indent
+  (:vars ((test-buffer (get-buffer-create "test-buffer")))
+   :before-each
+   (with-current-buffer test-buffer
+     (erase-buffer))
+   :after-each
+   (kill-buffer test-buffer))
+  ,test
+  (test)
+  :doc "`zenit/dumb-indent' indents the current line correctly"
+  (with-current-buffer test-buffer
+    (insert "First line\nSecond line")
+    (goto-char (point-max))
+    (beginning-of-line)
+    (zenit/dumb-indent)
+    (should (equal "First line\n\tSecond line" (buffer-string)))))
 
-;;   (it "deletes the word but keeps whitespace before the cursor"
-;;     (with-temp-buffer
-;;       (insert "One two  three")
-;;       (goto-char (point-max))
-;;       (zenit/delete-backward-word 1)
-;;       (expect (buffer-string) :to-equal "One two  "))))
+(zenit-deftest zenit/dumb-dedent
+  (:vars ((test-buffer (get-buffer-create "test-buffer")))
+   :before-each
+   (with-current-buffer test-buffer
+     (erase-buffer))
+   :after-each
+   (kill-buffer test-buffer))
+  ,test
+  (test)
+  :doc "`zenit/dumb-dedent' dedents the current line correctly"
+  (with-current-buffer test-buffer
+    (insert "First line\n\tSecond line")
+    (goto-char (point-max))
+    (zenit/backward-to-bol-or-indent)
+    (zenit/dumb-dedent)
+    (should (equal "First line\nSecond line" (buffer-string)))))
 
+(zenit-deftest zenit/retab
+  (:vars ((test-buffer (get-buffer-create "test-buffer")))
+   :before-each
+   (with-current-buffer test-buffer
+     (erase-buffer))
+   :after-each
+   (kill-buffer test-buffer))
+  ,test
+  (test)
+  :doc "`zenit/retab' replaces tabs with spaces correctly"
+  (with-current-buffer test-buffer
+    (insert "First line\n\tSecond line")
+    (goto-char (point-min))
+    (setq tab-width 4)
+    (zenit/retab t)
+    (should (equal "First line\n    Second line" (buffer-string)))))
 
-;; (describe "zenit/dumb-indent"
-;;   (it "indents the current line correctly"
-;;     (with-temp-buffer
-;;       (insert "First line\nSecond line")
-;;       (goto-char (point-max))
-;;       (beginning-of-line)
-;;       (zenit/dumb-indent)
-;;       (expect (buffer-string) :to-equal "First line\n\tSecond line"))))
+(zenit-deftest zenit/delete-trailing-newlines
+  (:vars ((test-buffer (get-buffer-create "test-buffer")))
+   :before-each
+   (with-current-buffer test-buffer
+     (erase-buffer))
+   :after-each
+   (kill-buffer test-buffer))
+  ,test
+  (test)
+  :doc "`zenit/delete-trailing-newlines' removes trailing newlines but keeps one"
+  (with-current-buffer test-buffer
+    (insert "First line\nSecond line\n\n\n")
+    (zenit/delete-trailing-newlines)
+    (should (equal "First line\nSecond line\n" (buffer-string))))
+  :doc "`zenit/delete-trailing-newlines' does not remove inner newlines"
+  (with-current-buffer test-buffer
+    (insert "First line\n\nSecond line\n\nThird line\n\n")
+    (zenit/delete-trailing-newlines)
+    (should (equal "First line\n\nSecond line\n\nThird line\n" (buffer-string)))))
 
+(zenit-deftest zenit/dos2unix
+  (:vars ((test-buffer (get-buffer-create "test-buffer")))
+   :before-each
+   (with-current-buffer test-buffer
+     (erase-buffer))
+   :after-each
+   (kill-buffer test-buffer))
+  ,test
+  (test)
+  :doc "`zenit/dos2unix' changes buffer-file-coding-system to unix format"
+  (with-current-buffer test-buffer
+    (insert "First line\nSecond line\nThird line\n")
+    (zenit/dos2unix)
+    (should (eq buffer-file-coding-system 'utf-8-unix))))
 
-;; (describe "zenit/dumb-dedent"
-;;   (it "dedents the current line correctly"
-;;     (with-temp-buffer
-;;       (insert "First line\n\tSecond line")
-;;       (goto-char (point-max))
-;;       (zenit/backward-to-bol-or-indent)
-;;       (zenit/dumb-dedent)
-;;       (expect (buffer-string) :to-equal "First line\nSecond line"))))
+(zenit-deftest zenit/unix2dos
+  (:vars ((test-buffer (get-buffer-create "test-buffer")))
+   :before-each
+   (with-current-buffer test-buffer
+     (erase-buffer))
+   :after-each
+   (kill-buffer test-buffer))
+  ,test
+  (test)
+  :doc "`zenit/unix2dos' changes buffer-file-coding-system to dos format"
+  (with-current-buffer test-buffer
+    (insert "First line\nSecond line\nThird line\n")
+    (zenit/unix2dos)
+    (should (eq buffer-file-coding-system 'utf-8-dos))))
 
+(zenit-deftest zenit/toggle-indent-style
+  (:vars ((test-buffer (get-buffer-create "test-buffer")))
+   :before-each
+   (with-current-buffer test-buffer
+     (erase-buffer))
+   :after-each
+   (kill-buffer test-buffer))
+  ,test
+  (test)
+  :doc "`zenit/toggle-indent-style' toggles indent style between spaces and tabs"
+  (with-current-buffer test-buffer
+    (let ((current-val indent-tabs-mode))
+      (insert "First line\nSecond line\nThird line\n")
+      (quiet!!
+        (zenit/toggle-indent-style))
+      (should-not (equal current-val indent-tabs-mode))
+      (quiet!!
+        (zenit/toggle-indent-style))
+      (should (equal current-val indent-tabs-mode)))))
 
-;; (describe "zenit/retab"
-;;   (it "replaces tabs with spaces correctly"
-;;     (with-temp-buffer
-;;       (insert "First line\n\tSecond line")
-;;       (goto-char (point-min))
-;;       (setq tab-width 4)
-;;       (zenit/retab t)
-;;       (expect (buffer-string) :to-equal "First line\n    Second line"))))
+(zenit-deftest zenit/set-indent-width
+  (:vars ((test-buffer (get-buffer-create "test-buffer")))
+   :before-each
+   (with-current-buffer test-buffer
+     (erase-buffer))
+   :after-each
+   (kill-buffer test-buffer))
+  ,test
+  (test)
+  :doc "`zenit/set-indent-width' sets the indent width correctly"
+  (with-current-buffer test-buffer
+    (setq-default indent-tabs-mode nil)
+    (quiet!!
+      (zenit/set-indent-width 2))
+    (should (equal 2 tab-width))
+    (quiet!!
+      (zenit/set-indent-width 4))
+    (should (equal 4 tab-width))))
 
+(zenit-deftest zenit-enable-delete-trailing-whitespace-h
+  (:doc "`zenit-enable-delete-trailing-whitespace-h' is defined")
+  (should (fboundp 'zenit-enable-delete-trailing-whitespace-h)))
 
-;; (describe "zenit/delete-trailing-newlines"
-;;   (it "removes trailing newlines"
-;;     (with-temp-buffer
-;;       (insert "First line\nSecond line\n\n\n")
-;;       (zenit/delete-trailing-newlines)
-;;       (expect (buffer-string) :to-equal "First line\nSecond line\n")))
+(zenit-deftest zenit-disable-delete-trailing-whitespace-h
+  (:doc "`zenit-disable-delete-trailing-whitespace-h' is defined")
+  (should (fboundp 'zenit-disable-delete-trailing-whitespace-h)))
 
-;;   (it "does not remove inner newlines"
-;;     (with-temp-buffer
-;;       (insert "First line\n\nSecond line\n\nThird line\n\n")
-;;       (zenit/delete-trailing-newlines)
-;;       (expect (buffer-string) :to-equal "First line\n\nSecond line\n\nThird line\n"))))
+(zenit-deftest zenit-enable-show-trailing-whitespace-h
+  (:doc "`zenit-enable-show-trailing-whitespace-h' is defined")
+  (should (fboundp 'zenit-enable-show-trailing-whitespace-h)))
 
-
-;; (describe "zenit/dos2unix"
-;;   (it "changes buffer-file-coding-system correctly"
-;;     (with-temp-buffer
-;;       (insert "First line\nSecond line\nThird line\n")
-;;       (zenit/dos2unix)
-;;       (expect buffer-file-coding-system :to-be 'utf-8-unix))))
-
-
-;; (describe "zenit/unix2dos"
-;;   (it "changes buffer-file-coding-system correctly"
-;;     (with-temp-buffer
-;;       (insert "First line\nSecond line\nThird line\n")
-;;       (zenit/unix2dos)
-;;       (expect buffer-file-coding-system :to-be 'utf-8-dos))))
-
-
-;; (describe "zenit/toggle-indent-style"
-;;   (it "toggles indent style between spaces and tabs"
-;;     (spy-on 'message)
-;;     (with-temp-buffer
-;;       (zenit/toggle-indent-style)
-;;       (expect indent-tabs-mode :to-be nil)
-;;       (expect 'message :to-have-been-called-with "Indent style changed to %s" (if indent-tabs-mode "tabs" "spaces"))
-;;       (zenit/toggle-indent-style)
-;;       (expect indent-tabs-mode :to-be t)
-;;       (expect 'message :to-have-been-called-with "Indent style changed to %s" (if indent-tabs-mode "tabs" "spaces")))))
-
-
-;; (describe "zenit/set-indent-width"
-;;   (it "sets the indent width correctly"
-;;     (spy-on 'message)
-;;     (with-temp-buffer
-;;       (setq-default indent-tabs-mode nil)
-;;       (zenit/set-indent-width 2)
-;;       (expect tab-width :to-equal 2)
-;;       (expect 'message :to-have-been-called-with "Changed indentation to %d" 2)
-;;       (zenit/set-indent-width 4)
-;;       (expect tab-width :to-equal 4)
-;;       (expect 'message :to-have-been-called-with "Changed indentation to %d" 4))))
-
-
-;; (describe "zenit-enable-delete-trailing-whitespace-h"
-;;   (it "enables ws-butler-mode"
-;;     (spy-on 'ws-butler-mode)
-;;     (with-temp-buffer
-;;       (zenit-enable-delete-trailing-whitespace-h)
-;;       (expect 'ws-butler-mode :to-have-been-called-with +1))))
-
-
-;; (describe "zenit-disable-delete-trailing-whitespace-h"
-;;   (it "disables ws-butler-mode"
-;;     (spy-on 'ws-butler-mode)
-;;     (with-temp-buffer
-;;       (zenit-enable-delete-trailing-whitespace-h)
-;;       (expect 'ws-butler-mode :to-have-been-called-with +1))))
-
-
-;; (describe "zenit-enable-show-trailing-whitespace-h"
-;;   (it "disables show-trailing-whitespace"
-;;     (with-temp-buffer
-;;       (zenit-enable-show-trailing-whitespace-h)
-;;       (expect show-trailing-whitespace :to-be t))))
-
-
-;; (describe "zenit-disable-show-trailing-whitespace-h"
-;;   (it "disables show-trailing-whitespace"
-;;     (with-temp-buffer
-;;       (zenit-disable-show-trailing-whitespace-h)
-;;       (expect show-trailing-whitespace :to-be nil))))
+(zenit-deftest zenit-disable-show-trailing-whitespace-h
+  (:doc "`zenit-disable-show-trailing-whitespace-h' is defined")
+  (should (fboundp 'zenit-disable-show-trailing-whitespace-h)))

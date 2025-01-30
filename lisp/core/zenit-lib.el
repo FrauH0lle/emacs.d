@@ -556,6 +556,24 @@ The def* forms accepted are:
                  (setq type (list 'symbol-function type)))
                (list 'cl-letf (list (cons type rest)) body)))))))
 
+(defmacro quiet!! (&rest forms)
+  "Run FORMS without generating any output (for real).
+
+Unlike `quiet!', which will only suppress output in the echo area
+in interactive sessions, this truly suppress all output from
+FORMS."
+  (declare (indent 0) (debug t))
+  `(if init-file-debug
+       (progn ,@forms)
+     (letf! ((standard-output (lambda (&rest _)))
+             (defun message (&rest _))
+             (defun load (file &optional noerror nomessage nosuffix must-suffix)
+               (funcall load file noerror t nosuffix must-suffix))
+             (defun write-region (start end filename &optional append visit lockname mustbenew)
+               (unless visit (setq visit 'no-message))
+               (funcall write-region start end filename append visit lockname mustbenew)))
+       ,@forms)))
+
 (defmacro quiet! (&rest forms)
   "Run FORMS without generating any output.
 
@@ -563,18 +581,11 @@ This silences calls to `message', `load', `write-region' and
 anything that writes to `standard-output'. In interactive
 sessions this inhibits output to the echo-area, but not to
 *Messages*."
-  (declare (debug t))
+  (declare (indent 0) (debug t))
   `(if init-file-debug
        (progn ,@forms)
      ,(if noninteractive
-          `(letf! ((standard-output (lambda (&rest _)))
-                   (defun message (&rest _))
-                   (defun load (file &optional noerror _nomessage nosuffix must-suffix)
-                     (funcall load file noerror t nosuffix must-suffix))
-                   (defun write-region (start end filename &optional append visit lockname mustbenew)
-                     (unless visit (setq visit 'no-message))
-                     (funcall write-region start end filename append visit lockname mustbenew)))
-             ,@forms)
+          `(quiet!! ,@forms)
         `(let ((inhibit-message t)
                (save-silently t))
            (prog1 ,@forms (message ""))))))

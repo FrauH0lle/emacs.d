@@ -45,6 +45,14 @@ emacs-lisp-mode
  "(should (fboundp '" (s advice) "))" n>
  "(should (advice-member-p '" (s advice) " #'" (s fn)"))))" n>
  q)
+;; Simple HOOK with DEFUN test
+(test-defhook
+ "(zenit-deftest " (r "FUN" fn) n>
+ "(:doc \"`" (s fn) "' is a member of `" (p "HOOK" hook) "'\")" n>
+ "(progn" n>
+ "(should (fboundp '" (s fn) "))" n>
+ "(should (member #'" (s fn) " " (s hook) "))))" n>
+ q)
 ;; Simple MINOR MODE test
 (test-minor-mode
  "(zenit-deftest " (r "MINOR-MODE" minor-mode) n>

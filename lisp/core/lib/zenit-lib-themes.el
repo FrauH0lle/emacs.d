@@ -8,7 +8,8 @@
 
 
 ;;;###autoload
-(defconst zenit-customize-theme-hook nil)
+(defconst zenit-customize-theme-hook nil
+  "Hook run after a theme or face has been enabled or customized.")
 
 ;;;###autoload
 (defun zenit--run-customize-theme-hook (fn)
@@ -25,6 +26,11 @@
     (run-hook-wrapped 'zenit-customize-theme-hook #'zenit--run-customize-theme-hook)))
 
 (defun zenit--normalize-face-spec (spec)
+  "Normalize face SPEC into a suitable format.
+Converts shorthand face specifications into the standard format
+expected by `custom-theme-set-faces'. Handles both single faces
+and lists of faces, converting property lists into proper face
+attribute specifications."
   (cond ((listp (car spec))
          (cl-loop for face in (car spec)
                   collect

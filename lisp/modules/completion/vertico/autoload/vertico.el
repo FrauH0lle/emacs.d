@@ -42,7 +42,8 @@
     ;; Change the split style if the initial query contains the separator.
     (when query
       (cl-destructuring-bind (&key type separator initial _function)
-          (consult--async-split-style)
+          (or (alist-get consult-async-split-style consult-async-split-styles-alist)
+              (user-error "Splitting style `%s' not found" consult-async-split-style))
         (pcase type
           (`separator
            (replace-regexp-in-string (regexp-quote (char-to-string separator))

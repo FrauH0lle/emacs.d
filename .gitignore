@@ -18,7 +18,6 @@
 *.lib
 *.fas
 *.dat
-*.eld
 *.rel
 *_archive
 *_flymake.*

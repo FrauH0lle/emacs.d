@@ -17,9 +17,9 @@ type(component): brief description (50-72 chars)
 
 1. Start with the type, the optional package/component/scope name within
    parenthesis followed by a colon and a brief title. The first word of the
-   title should not be capitalized.
-   - Example: `feat(parser): add finite state machine`
-   - Example: `fix(api): prevent racing of requests`
+   title should be capitalized.
+   - Example: `feat(parser): Add finite state machine`
+   - Example: `fix(api): Prevent racing of requests`
    
    1. Append a `!` after the type/scope if the commit introduces a breaking
       change
@@ -70,9 +70,9 @@ type(component): brief description (50-72 chars)
    exception is made for `BREAKING CHANGE`, which may also be used as a token.
    
    ```
-   chore!: drop support for Node 6
+   chore!: Drop support for Node 6
 
-   BREAKING CHANGE: use JavaScript features not available in Node 6.
+   BREAKING CHANGE: Use JavaScript features not available in Node 6.
    Reviewed-by: Z
    Refs: #123
    ```
@@ -112,7 +112,7 @@ type(component): brief description (50-72 chars)
 ### Feature addition example
 
 ```
-feat(gptel): add finite state machine
+feat(gptel): Add finite state machine
 
 * gptel.el (gptel-fsm, gptel--fsm-transition, gptel--fsm-next): 
   Add a state machine and transition system to handle dynamic control flows.
@@ -127,7 +127,7 @@ BREAKING CHANGE: FSM implementation changes request handling flow
 ### Bug fix example
 
 ```
-fix(gptel-rewrite): ensure point remains in rewrite region
+fix(gptel-rewrite): Ensure point remains in rewrite region
 
 * gptel-rewrite.el (gptel--suffix-rewrite): Ensure cursor stays
   in rewrite region after sending request.
@@ -137,7 +137,7 @@ fix(gptel-rewrite): ensure point remains in rewrite region
 ### Multiple file changes example
 
 ```
-feat(gptel): implement tool use support
+feat(gptel): Implement tool use support
 
 * gptel.el (gptel-request, gptel-use-tools, gptel-tools): Add user
   options for tool management and toggle functionality.

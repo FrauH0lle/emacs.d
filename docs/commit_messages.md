@@ -16,8 +16,9 @@ type(component): brief description (50-72 chars)
 ## Guidelines
 
 1. Start with the type, the optional package/component/scope name within
-   parenthesis followed by a colon and a brief title
-   - Example: `feat(parser): Add finite state machine`
+   parenthesis followed by a colon and a brief title. The first word of the
+   title should not be capitalized.
+   - Example: `feat(parser): add finite state machine`
    - Example: `fix(api): prevent racing of requests`
    
    1. Append a `!` after the type/scope if the commit introduces a breaking

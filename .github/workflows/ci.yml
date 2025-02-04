@@ -50,5 +50,5 @@ jobs:
         uses: actions/upload-artifact@v4
         if: failure()
         with:
-          name: emacs-logs
+          name: emacs-${{ matrix.emacs_version }}-logs
           path: ${{ env.emacsdir }}/.local/etc/logs/

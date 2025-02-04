@@ -139,6 +139,7 @@
 (zenit-deftest comp-effective-async-max-jobs@set-default-cpus
   (:doc "`comp-effective-async-max-jobs@set-default-cpus' advises `comp-effective-async-max-jobs'")
   (progn
+    (skip-unless (boundp 'native-comp-eln-load-path))
     (should (fboundp 'comp-effective-async-max-jobs@set-default-cpus))
     (should (advice-member-p 'comp-effective-async-max-jobs@set-default-cpus #'comp-effective-async-max-jobs))))
 

@@ -408,7 +408,7 @@ error if CONTEXT wasn't active when this was called."
     (setq zenit-context (delq context zenit-context))))
 
 (defmacro zenit-context-with (contexts &rest body)
-  "Evaluate BODY with CONTEXT added to `zenit-context'."
+  "Evaluate BODY with CONTEXTS added to `zenit-context'."
   (declare (indent 1))
   `(let ((zenit-context zenit-context))
      (dolist (context (ensure-list ,contexts))

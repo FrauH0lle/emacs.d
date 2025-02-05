@@ -112,42 +112,51 @@ type(component): brief description (50-72 chars)
 ### Feature addition example
 
 ```
-feat(gptel): Add finite state machine
+feat!(parser): Add async event handler system
 
-* gptel.el (gptel-fsm, gptel--fsm-transition, gptel--fsm-next): 
-  Add a state machine and transition system to handle dynamic control flows.
-  This allows for more complex interactions like multi-turn requests
-  with tool-use support.
+* event_handler.py (AsyncEventManager, EventDispatcher, EventQueue): 
+  Implement asynchronous event handling system using asyncio.
+  This provides a more scalable approach to handling multiple
+  concurrent events with support for priorities and custom callbacks.
   
-  Implementation is generic and experimental - API may change in future.
+  Currently experimental - API may evolve based on performance metrics.
+  Known limitation: Does not support nested event triggering yet.
 
-BREAKING CHANGE: FSM implementation changes request handling flow
+BREAKING CHANGE: Changes event dispatch flow, existing handlers need updates
 ```
 
 ### Bug fix example
 
 ```
-fix(gptel-rewrite): Ensure point remains in rewrite region
+fix(storage): Resolve race condition in concurrent writes
 
-* gptel-rewrite.el (gptel--suffix-rewrite): Ensure cursor stays
-  in rewrite region after sending request.
-  Optimizes UX for rewrite dispatch menu activation.
+* src/storage/manager.rs (StorageManager::write_batch, acquire_lock): 
+  Fix race condition when multiple threads attempt concurrent writes
+  to the same storage partition. Implements proper mutex locking
+  with deadlock prevention.
+  
+  Performance impact is minimal (<1ms per write operation).
 ```
 
 ### Multiple file changes example
 
 ```
-feat(gptel): Implement tool use support
+feat!(auth): Implement OAuth2 provider integration
 
-* gptel.el (gptel-request, gptel-use-tools, gptel-tools): Add user
-  options for tool management and toggle functionality.
-  Currently an all-or-nothing setting for testing purposes.
+* auth/provider.js (createOAuthClient, validateToken): Add OAuth2
+  client implementation with support for multiple providers.
+  Includes automatic token refresh and session management.
 
-* gptel-openai.el (gptel--request-data): Add tool payload support
-  when enabled.
+* auth/middleware.js (authGuard, refreshMiddleware): Add Express
+  middleware for protecting routes and handling token refresh.
+  
+* auth/storage.js (TokenStorage): Add secure token storage with
+  encryption and automatic cleanup of expired tokens.
+  Currently only supports in-memory storage, Redis support planned.
 
-* gptel-ollama.el (gptel--request-data): Ditto. Disable streaming
-  for tool-use compatibility.
+BREAKING CHANGE: Authentication flow now requires OAuth2 configuration
+Refs: #234
+Reviewed-by: @security-team
 ```
 
 

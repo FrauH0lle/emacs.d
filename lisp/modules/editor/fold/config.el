@@ -118,8 +118,13 @@ later."
   (global-ts-fold-mode +1))
 
 
+;; PATCH 2025-02-10: `outline-minor-faces'
+(el-patch-feature outline-minor-faces)
+(compile-along! "patches")
 (use-package! outline-minor-faces
-  :hook (outline-minor-mode . outline-minor-faces-mode))
+  :hook (outline-minor-mode . outline-minor-faces-mode)
+  :config
+  (load! "patches"))
 
 (use-package! backline
   :after outline

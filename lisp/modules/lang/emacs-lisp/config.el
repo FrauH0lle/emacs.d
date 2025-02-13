@@ -84,8 +84,10 @@ looking up a C function.")
              #'rainbow-delimiters-mode
              ;; Make quoted symbols easier to distinguish from free variables
              #'highlight-quoted-mode
-             ;; Extend imenu support to Doom constructs
+             ;; Extend imenu support to custom constructs
              #'+emacs-lisp-extend-imenu-h
+             (+imenu-add-items
+              '((+imenu-create-nested-index "^[ \t]*\\(?1:;;;+\\)\\**[ \t]+\\(?2:[^\n]+\\)" "Section")))
              ;; Ensure straight sees modifications to installed packages
              #'+emacs-lisp-init-straight-maybe-h)
 

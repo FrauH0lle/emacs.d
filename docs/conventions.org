@@ -7,8 +7,9 @@
     does this function do?”
   - For a variable, the first line should briefly answer the question, “What
     does this value mean?”
-- Follow the Emacs Lisp coding conventions
-  - See also [[https://github.com/bbatsov/emacs-lisp-style-guide][The Emacs Lisp Style Guide]]
+- Follow the Emacs Lisp coding conventions. See also:
+  - [[https://github.com/bbatsov/emacs-lisp-style-guide][The Emacs Lisp Style Guide]]
+  - [[https://nullprogram.com/blog/2017/01/30/][How to Write Fast(er) Emacs Lisp]]
 - Macros should declare the debug-specification. If all arguments are evaluated,
   a simple ~(declare (debug t))~ is enough.
 * Unit tests

@@ -103,25 +103,28 @@ fail."
                    ;; Track which files we've processed
                    (push file read-files)))
 
+        (setq read-files (nreverse read-files))
         ;; Initialize counters for test results
         (let ((total 0)
               (total-success 0)
               (total-failed 0)
+              (total-skipped 0)
               (i 0)
-              ;; last-start tracks the position in the buffer where we last
-              ;; processed test results. This helps avoid reprocessing the same
-              ;; sections when searching for failed test conditions.
-              last-start)
+              ;; last-fail tracks the position in the buffer where we last
+              ;; processed failed test results. This helps avoid reprocessing
+              ;; the same sections when searching for failed test conditions.
+              last-fail)
           (print! "----------------------------------------\nTests finished")
           (print-group!
             (goto-char (point-min))
             ;; Regex to match test summary lines:
             ;; "^Ran \\([0-9]+\\) tests, \\([0-9]+\\) results as expected, \\([0-9]+\\) unexpected"
             ;; - Captures total tests run, successful tests, and failed tests
-            (while (re-search-forward "^Ran \\([0-9]+\\) tests, \\([0-9]+\\) results as expected, \\([0-9]+\\) unexpected" nil t)
+            (while (re-search-forward "^[[:space:]]*Ran \\(?1:[0-9]+\\) tests, \\(?2:[0-9]+\\) results as expected, \\(?3:[0-9]+\\) unexpected\\(?:, \\(?4:[0-9]+\\) skipped\\)?" nil t)
               (let ((ran (string-to-number (match-string 1)))
                     (success (string-to-number (match-string 2)))
-                    (failed (string-to-number (match-string 3))))
+                    (failed (string-to-number (match-string 3)))
+                    (skipped (if (match-string 4) (string-to-number (match-string 4)) 0)))
                 (when (> failed 0)
                   (terpri)
                   (print! (warn "(%s) Failed %d/%d tests")
@@ -147,7 +150,7 @@ fail."
                       (print-group!
                         (dolist (test (nreverse failed-tests))
                           (save-excursion
-                            (goto-char (or last-start (point-min)))
+                            (goto-char (or last-fail (point-min)))
                             ;; Search for test condition using regex:
                             ;; "Test " + quoted test name + " condition:"
                             (when (re-search-forward (concat "Test " (regexp-quote test) " condition:") bound t)
@@ -161,17 +164,38 @@ fail."
                                                (point-max)))))
                                 (print! "\n%s" (string-trim
                                                 (buffer-substring start end))))))))))
-                  (setq last-start (point)))
+                  (setq last-fail (point)))
+                (when (> skipped 0)
+                  (terpri)
+                  (print! (item "(%s) Skipped %d/%d tests")
+                          (path (nth i read-files))
+                          skipped ran)
+                  ;; Find all skipped test names
+                  (save-excursion
+                    (let (skipped-tests)
+                      ;; Collect all skipped test names using regex:
+                      ;; "^[[:space:]]*SKIPPED[[:space:]]+\\(.*?\\)\\(?:[[:space:]]\\|Running\\|$\\)"
+                      ;; - Matches SKIPPED followed by test name until space, "Running" or end of line
+                      (dotimes (_ failed)
+                        (re-search-forward
+                         "^[[:space:]]*SKIPPED[[:space:]]+\\(.*?\\)\\(?:[[:space:]]\\|Running\\|$\\)"
+                         nil t)
+                        (push (match-string 1) skipped-tests))
+                      ;; For each failed test, find and print its condition
+                      (print-group!
+                        (dolist (test (nreverse skipped-tests))
+                          (print! "\n%s" (string-trim test)))))))
                 ;; Update totals
                 (cl-incf total ran)
                 (cl-incf total-success success)
                 (cl-incf total-failed failed)
+                (cl-incf total-skipped skipped)
                 (cl-incf i))))
           (terpri)
           ;; Clean up test artifacts
           (zenit-cli--tests-cleanup)
           ;; Print final results
           (if (= total-failed 0)
-              (print! (success "Ran %d/%d tests successfully." total-success total))
-            (print! (error "Ran %d tests, %d failed") total total-failed)
+              (print! (success "Ran %d/%d tests successfully. %d tests skipped." total-success total total-skipped))
+            (print! (error "Ran %d tests, %d tests skipped, %d failed.") total total-skipped total-failed)
             (kill-emacs 1)))))))

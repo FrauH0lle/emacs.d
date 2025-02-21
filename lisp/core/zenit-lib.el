@@ -385,8 +385,9 @@ Meant to be used with `run-hook-wrapped'."
   nil)
 
 (defun zenit-run-hooks (&rest hooks)
-  "Run HOOKS (a list of hook variable symbols) with better error
-handling. Is used as advice to replace `run-hooks'."
+  "Run HOOKS with better error handling.
+HOOKS is a list of hook variable symbols. It Is used as advice to
+replace `run-hooks'."
   (dolist (hook hooks)
     (condition-case-unless-debug e
         (let ((zenit--hook hook))
@@ -401,10 +402,11 @@ handling. Is used as advice to replace `run-hooks'."
        (signal 'zenit-hook-error (cons hook (cdr e)))))))
 
 (defun zenit-run-hook-on (hook-var trigger-hooks)
-  "Configure HOOK-VAR to be invoked exactly once when any of the
-TRIGGER-HOOKS are invoked *after* Emacs has initialized (to
-reduce false positives). Once HOOK-VAR is triggered, it is reset
-to nil.
+  "Configure HOOK-VAR to be invoked exactly once by TRIGGER-HOOKS.
+
+HOOK-VAR is invoked exactly once when any of the TRIGGER-HOOKS
+are invoked *after* Emacs has initialized (to reduce false
+positives). Once HOOK-VAR is triggered, it is reset to nil.
 
 HOOK-VAR is a quoted hook.
 
@@ -535,7 +537,10 @@ The def* forms accepted are:
                               (list (nth 0 argspec)
                                     (nth 1 argspec)
                                     (or (nth 2 argspec) (gensym (format "%s-a" (symbol-name fn)))))))
-                      (let ((name (nth 2 argspec)))
+                      ;; `define-advice' generates an advice function name of
+                      ;; the form SYMBOL@NAME which we need to use in the
+                      ;; following.
+                      (let ((name (intern (format "%s@%s" (symbol-name fn) (symbol-name (nth 2 argspec))))))
                         `(progn
                            (define-advice ,fn ,argspec ,@rest)
                            (unwind-protect ,body
@@ -543,6 +548,7 @@ The def* forms accepted are:
                              ,(if name `(fmakunbound ',name))))))))
               (`defun
                   `(cl-letf ((,(car rest) (symbol-function #',(car rest))))
+                     ;; Make the byte-compiler happy
                      (eval-when-compile
                        (declare-function ,(car rest) nil))
                      (ignore ,(car rest))
@@ -605,23 +611,24 @@ accept anything `cl-defun' will. Implicitly adds
   `(cl-function
     (lambda
       ,(letf! (defun* allow-other-keys (args)
-                      (mapcar
-                       (lambda (arg)
-                         (cond ((nlistp (cdr-safe arg)) arg)
-                               ((listp arg) (allow-other-keys arg))
-                               (arg)))
-                       (if (and (memq '&key args)
-                                (not (memq '&allow-other-keys args)))
-                           (if (memq '&aux args)
-                               (let (newargs arg)
-                                 (while args
-                                   (setq arg (pop args))
-                                   (when (eq arg '&aux)
-                                     (push '&allow-other-keys newargs))
-                                   (push arg newargs))
-                                 (nreverse newargs))
-                             (append args (list '&allow-other-keys)))
-                         args)))
+                (mapcar
+                 (lambda (arg)
+                   (cond ((nlistp (cdr-safe arg)) arg)
+                         ((listp arg) (allow-other-keys arg))
+                         (arg)))
+                 (if (and (memq '&key args)
+                          (not (memq '&allow-other-keys args)))
+                     (if (memq '&aux args)
+                         (let (newargs arg)
+                           (while args
+                             (setq arg (pop args))
+                             (when (eq arg '&aux)
+                               (push '&allow-other-keys newargs))
+                             (push arg newargs))
+                           (nreverse newargs))
+                       (append args (list '&allow-other-keys)))
+                   args)))
+         ;; Make the byte-compiler happy
          (eval-when-compile
            (declare-function allow-other-keys nil))
          (allow-other-keys arglist))
@@ -717,11 +724,11 @@ particularly for keybinds or aliases."
   `(lambda (&rest _) (interactive) ,@body))
 
 (defmacro cmd!! (command &optional new-prefix-arg &rest args)
-  "Return a closure that interactively calls COMMAND with ARGS and
-NEW-PREFIX-ARG. Like `cmd!', but allows you to change
-`current-prefix-arg' or pass arguments to COMMAND. This macro is
-meant to be used as a target for keybinds (e.g. with `define-key'
-or `map!')."
+  "Return a closure that interactively calls COMMAND with ARGS and NEW-PREFIX-ARG.
+
+Like `cmd!', but allows you to change `current-prefix-arg' or
+pass arguments to COMMAND. This macro is meant to be used as a
+target for keybinds (e.g. with `define-key' or `map!')."
   (declare (doc-string 1) (debug t))
   `(lambda (arg &rest _) (interactive "P")
      (let ((current-prefix-arg (or ,new-prefix-arg arg)))
@@ -735,8 +742,9 @@ or `map!')."
 ;;; Mutation
 
 (defun zenit-splice-into (seq element after &optional before)
-  "Insert ELEMENT (a symbol, string or list) into the list SEQ,
-between elements BEFORE and AFTER.
+  "Insert ELEMENT (a symbol, string or list) into the list SEQ.
+
+Insertion is done between the elements BEFORE and AFTER.
 
 Comparison is done via `equal'. Returns the modified list.
 
@@ -778,10 +786,11 @@ See `zenit-splice-into' for details."
 (defmacro setq! (&rest settings)
   "A more sensible `setopt' for setting customizable variables.
 
-This can be used as a drop-in replacement for `setq' and *should*
-be used instead of `setopt'. Unlike `setq', this triggers custom
-setters on variables. Unlike `setopt', this won't needlessly pull
-in dependencies."
+SETTINGS are symbol value pairs as in `setq'. This can be used as
+a drop-in replacement for `setq' and *should* be used instead of
+`setopt'. Unlike `setq', this triggers custom setters on
+variables. Unlike `setopt', this won't needlessly pull in
+dependencies."
   (declare (debug t))
   (macroexp-progn
    (cl-loop for (var val) on settings by 'cddr
@@ -789,10 +798,10 @@ in dependencies."
                       ',var ,val))))
 
 (defmacro setq-local! (&rest settings)
-  "A more sensible `setopt' for setting the local value of
-acustomizable variables.
+  "Like `setq!' but for local customizable variables.
 
-This behaves the same way as `setq!' but uses `set' instead of
+SETTINGS are symbol value pairs as in `setq'. This behaves the
+same way as `setq!' but uses `set' instead of
 `set-default-toplevel-value' and will change the local value of a
 buffer-local variable"
   (declare (debug t))
@@ -837,7 +846,7 @@ used."
   `(let ((default-directory ,(protect-macros! (dir!)))
          file-name-handler-alist)
      (dolist (dir (list ,@dirs))
-       (cl-pushnew (expand-file-name dir) load-path))))
+       (cl-pushnew (expand-file-name dir) load-path :test #'equal))))
 
 (defmacro after! (package &rest body)
   "Evaluate BODY after PACKAGE have loaded.
@@ -971,7 +980,7 @@ PATH is where to look for FILENAME (a string representing a
 directory path).
 
 This macro will not do anything if the file it is used in is not
-getting compiled."
+being compiled."
   (declare (indent defun) (debug t))
   (when (macroexp-compiling-p)
     (let* ((filename (expand-file-name filename (or path (protect-macros! (dir!)))))
@@ -1039,8 +1048,9 @@ alternative to `after!'."
            (add-hook 'after-load-functions #',fn)))))
 
 (defmacro after-call! (feature &rest hooks-or-functions)
-  "Load FEATURE (e.g. a package) after any of the hooks or functions
-in HOOKS-OR-FUNCTIONS are executed.
+  "Load FEATURE after HOOKS-OR-FUNCTIONS are executed.
+
+FEATURE is supposed to be a package.
 
 See also `use-package!'."
   (declare (debug t))
@@ -1064,6 +1074,7 @@ See also `use-package!'."
                (remove-hook hook #',fn))
              (delq! deferral-list zenit--deferred-packages-alist)
              (unintern ',fn nil))))
+        ;; Make the byte-compiler happy
         (eval-when-compile (declare-function ,fn nil)))
       (let (forms)
         (dolist (hook hooks-or-functions forms)
@@ -1077,8 +1088,7 @@ See also `use-package!'."
                '(,@hooks-or-functions)))))))
 
 (defmacro defer-feature! (feature &rest fns)
-  "Pretend FEATURE hasn't been loaded yet, until FEATURE-hook or FN
-runs.
+  "Pretend FEATURE hasn't been loaded until FEATURE-hook or FNS run.
 
 Some packages (like `elisp-mode' and `lisp-mode') are loaded
 immediately at startup, which will prematurely trigger
@@ -1132,7 +1142,9 @@ time."
   "Attaches a self-removing function to HOOK-OR-FUNCTION.
 
 FORMS are evaluated once, when that function/hook is first
-invoked, then never again.
+invoked, then never again. The first element can be the optional
+keyword `:after', in which case the self-removing function will
+be appended.
 
 HOOK-OR-FUNCTION can be a quoted hook or a sharp-quoted
 function (which will be advised)."
@@ -1147,6 +1159,7 @@ function (which will be advised)."
            (cond ((functionp sym) (advice-remove sym #',fn))
                  ((symbolp sym)   (remove-hook sym #',fn))))
          (unintern ',fn nil))
+       ;; Make the byte-compiler happy
        (eval-when-compile (declare-function ,fn nil))
        (cond ((functionp sym)
               (advice-add ,hook-or-function ,(if append? :after :before) #',fn))
@@ -1162,9 +1175,9 @@ This macro accepts, in order:
   1. The mode(s) or hook(s) to add to. This is either an unquoted
      mode, an unquoted list of modes, a quoted hook variable or a
      quoted list of hook variables.
-  2. Optional properties :local, :append, and/or :depth [N],
-     which will make the hook buffer-local or append to the list
-     of hooks (respectively),
+  2. Optional properties :local, :append, and/or :depth [N] (in
+     REST), which will make the hook buffer-local or append to
+     the list of hooks (respectively),
   3. The function(s) to be added: this can be a quoted function,
      a quoted list thereof, a list of `defun' or `cl-defun'
      forms, or arbitrary forms (will implicitly be wrapped in a
@@ -1199,6 +1212,7 @@ This macro accepts, in order:
                            (setq rest (cons (list first (cdr quoted)) rest)))
                          (list first (car quoted)))))
                     ((memq first '(defun cl-defun))
+                     ;; Make the byte-compiler happy
                      (push `(eval-when-compile (declare-function ,(nth 1 next) nil)) defn-forms)
                      (push next defn-forms)
                      (list 'function (cadr next)))
@@ -1235,6 +1249,7 @@ If N and M = 1, there's no benefit to using this macro over
             collect `(defun ,fn (&rest _)
                        ,(format "%s = %s" var (pp-to-string val))
                        (setq-local ,var ,val))
+            ;; Make the byte-compiler happy
             collect `(eval-when-compile (declare-function ,fn nil))
             collect `(add-hook ',hook #',fn -90))))
 
@@ -1274,6 +1289,7 @@ BODY\)"
             where-alist))
     `(progn
        (defun ,symbol ,arglist ,docstring ,@body)
+       ;; Make the byte-compiler happy
        (eval-when-compile
          (declare-function ,symbol nil))
        (dolist (targets (list ,@(nreverse where-alist)))
@@ -1300,11 +1316,5 @@ BODY\)"
     `(dolist (targets (list ,@(nreverse where-alist)))
        (dolist (target (cdr targets))
          (advice-remove target #',symbol)))))
-
-
-;;
-;;; Backports
-
-;; NOTE 2024-05-11: Currently no backports
 
 (provide 'zenit-lib)

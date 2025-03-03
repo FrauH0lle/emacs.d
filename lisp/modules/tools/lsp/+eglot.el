@@ -5,11 +5,9 @@
   :hook (eglot-managed-mode . +lsp-optimization-mode)
   :init
   (setq eglot-sync-connect 1
-        eglot-connect-timeout 10
         eglot-autoshutdown t
-        eglot-send-changes-idle-time 0.5
         ;; NOTE We disable eglot-auto-display-help-buffer because :select t in
-        ;;      its popup rule causes eglot to steal focus too often.
+        ;;   its popup rule causes eglot to steal focus too often.
         eglot-auto-display-help-buffer nil)
   (when (or (modulep! -lsp-flymake) (modulep! :checkers syntax -flymake))
     (setq eglot-stay-out-of '(flymake)))
@@ -25,11 +23,14 @@
     :type-definition #'eglot-find-typeDefinition
     :documentation   #'+eglot-lookup-documentation))
 
-  (add-to-list 'zenit-debug-variables '(eglot-events-buffer-size . 0))
+  ;; NOTE: This setting disable the eglot-events-buffer enabling more consistent
+  ;;   performance on long running emacs instance. Default is 2000000 lines.
+  ;;   After each new event the whole buffer is pretty printed which causes
+  ;;   steady performance decrease over time. CPU is spent on pretty priting and
+  ;;   Emacs GC is put under high pressure.
+  (cl-callf plist-put eglot-events-buffer-config :size 0)
 
-  (when (modulep! :checkers syntax -flymake)
-    (after! flycheck
-      (load! "autoload/flycheck-eglot")))
+  (add-to-list 'zenit-debug-variables '(eglot-events-buffer-config :size 2000000 :format full))
 
   (defadvice! +lsp--defer-server-shutdown-a (fn &optional server)
     "Defer server shutdown for a few seconds.
@@ -53,7 +54,14 @@ server getting expensively restarted when reverting buffers."
 
 
 (use-package! consult-eglot
-  :defer t
   :when (modulep! :completion vertico)
+  :defer t
   :init
-  (map! :map eglot-mode-map [remap xref-find-apropos] #'consult-eglot-symbols))
+  (map! :after eglot
+        :map eglot-mode-map
+        [remap xref-find-apropos] #'consult-eglot-symbols))
+
+
+(use-package! flycheck-eglot
+  :when (or (modulep! -lsp-flymake) (modulep! :checkers syntax -flymake))
+  :hook (eglot-managed-mode . flycheck-eglot-mode))

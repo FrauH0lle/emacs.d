@@ -176,7 +176,7 @@ fail."
                       ;; Collect all skipped test names using regex:
                       ;; "^[[:space:]]*SKIPPED[[:space:]]+\\(.*?\\)\\(?:[[:space:]]\\|Running\\|$\\)"
                       ;; - Matches SKIPPED followed by test name until space, "Running" or end of line
-                      (dotimes (_ failed)
+                      (dotimes (_ skipped)
                         (re-search-forward
                          "^[[:space:]]*SKIPPED[[:space:]]+\\(.*?\\)\\(?:[[:space:]]\\|Running\\|$\\)"
                          nil t)

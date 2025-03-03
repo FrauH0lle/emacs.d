@@ -2,7 +2,7 @@
 ;; lisp/core/test/zenit-core.el
 
 (require 'zenit-test)
-(zenit-require 'zenit-core)
+(require 'zenit-core)
 
 (zenit-deftest zenit-os-type
   (:doc "`zenit-os-type' is defined")

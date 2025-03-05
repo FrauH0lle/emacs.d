@@ -1252,7 +1252,10 @@ VAR-VALS are SYM VAL pairs as in `setq-local'.
   (macroexp-progn
    (cl-loop for (var val hook fn) in (zenit--setq-hook-fns hooks var-vals)
             collect `(defun ,fn (&rest _)
-                       ,(format "%s = %s" var (pp-to-string val))
+                       ,(format "%s = %s" var
+                                (let ((print-level nil)
+                                      (print-length nil))
+                                  (prin1-to-string val)))
                        (setq-local ,var ,val))
             ;; Make the byte-compiler happy
             collect `(eval-when-compile (declare-function ,fn nil))

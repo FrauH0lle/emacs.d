@@ -724,7 +724,9 @@ particularly for keybinds or aliases."
   `(lambda (&rest _) (interactive) ,@body))
 
 (defmacro cmd!! (command &optional new-prefix-arg &rest args)
-  "Return a closure that interactively calls COMMAND with ARGS and NEW-PREFIX-ARG.
+  "Return an interactive closure.
+
+The closure calls COMMAND with ARGS and NEW-PREFIX-ARG.
 
 Like `cmd!', but allows you to change `current-prefix-arg' or
 pass arguments to COMMAND. This macro is meant to be used as a
@@ -1030,9 +1032,10 @@ can profit from compilation.
        ,@autoloads)))
 
 (defmacro defer-until! (condition &rest body)
-  "Run BODY when CONDITION is true (checks on
-`after-load-functions'). Meant to serve as a predicated
-alternative to `after!'."
+  "Run BODY when CONDITION is true.
+
+The function checks on `after-load-functions'. Meant to serve as
+a predicated alternative to `after!'."
   (declare (indent defun) (debug t))
   `(if ,condition
        (progn ,@body)
@@ -1232,15 +1235,17 @@ This macro accepts, in order:
 
 Takes the same arguments as `add-hook!'.
 
-If N and M = 1, there's no benefit to using this macro over
-`remove-hook'.
+If N (REST) and M (HOOKS) = 1, there's no benefit to using this
+macro over `remove-hook'.
 
 \(fn HOOKS [:append :local] FUNCTIONS)"
   (declare (indent defun) (debug t))
   `(add-hook! ,hooks :remove ,@rest))
 
 (defmacro setq-hook! (hooks &rest var-vals)
-  "Sets buffer-local variables on HOOKS.
+  "Set buffer-local variables on HOOKS.
+
+VAR-VALS are SYM VAL pairs as in `setq-local'.
 
 \(fn HOOKS &rest [SYM VAL]...)"
   (declare (indent 1) (debug t))

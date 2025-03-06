@@ -91,6 +91,8 @@ fail."
                             ;; Load test framework
                             "-l" (concat zenit-core-dir "zenit-test.el")
                             ;; Always load non-compiled files
+                            "--eval" (prin1-to-string '(message "%s" load-suffixes))
+                            "--eval" (prin1-to-string '(message "%s" file-name-handler-alist))
                             "--eval" (prin1-to-string '(setq load-suffixes '(".el")))
                             "--eval" (prin1-to-string
                                       '(setq file-name-handler-alist

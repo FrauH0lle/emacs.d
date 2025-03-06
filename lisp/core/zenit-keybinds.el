@@ -33,8 +33,8 @@
   "The leader prefix key for Evil users.")
 
 (defvar zenit-leader-alt-key "M-m"
-  "An alternative leader prefix key, used for Insert and Emacs
-states, and for non-evil users.")
+  "An alternative leader prefix key.
+Used for Insert and Emacs states, and for non-evil users.")
 
 (defvar zenit-localleader-key "SPC m"
   "The localleader prefix key, for major-mode specific commands.")
@@ -94,14 +94,23 @@ Used for Insert and Emacs states, and for non-evil users.")
 ;;; Universal, non-nuclear escape
 
 (defvar zenit-escape-hook nil
-  "A hook run when C-g is pressed (or ESC in normal mode, for evil
-users).
+  "A hook run when C-g (or ESC in normal mode) is pressed.
 
 More specifically, when `zenit/escape' is pressed. If any hook
 returns non-nil, all hooks after it are ignored.")
 
 (defun zenit/escape (&optional interactive)
-  "Run `zenit-escape-hook'."
+  "Run `zenit-escape-hook' and handle escape/quit functionality.
+
+This function serves as a universal escape mechanism that:
+1. Quits the minibuffer if active
+2. Runs `zenit-escape-hook' until a hook returns non-nil
+3. Preserves keyboard macros
+4. Falls back to `keyboard-quit'
+
+When called interactively (INTERACTIVE is non-nil), sets
+`this-command' appropriately for minibuffer quitting and keyboard
+quitting."
   (interactive (list 'interactive))
   (cond ((minibuffer-window-active-p (minibuffer-window))
          ;; quit the minibuffer if open.
@@ -178,13 +187,25 @@ can be specified as a description for the menu item.")
 (defmacro zenit--define-leader-key (&rest keys)
   "Macro to define keybindings under the leader key.
 
-KEYS is a list of key-description-command triples. A keyword
-argument :prefix can be used to specify a prefix key sequence for
-a group of commands. :infix works like :prefix but doesn't
-consume the following argument.
+The macro processes KEY-DEF pairs in KEYS, where each pair consists of:
+- A key sequence (string or vector)
+- A definition (command or `general'\\='s extended definition syntax)
 
-:which-key can be used to provide a description for the
-`which-key' package."
+Special keyword arguments:
+:prefix/:infix  - Set a prefix key for subsequent bindings
+:which-key      - Add descriptions for which-key (through
+                  extended def syntax)
+:ignore         - Ingore this keybinding
+
+Examples:
+  (zenit--define-leader-key
+   :prefix \"SPC\"
+   \"a\" #\\='test-command-1)
+
+  (zenit--define-leader-key
+   \"a\" #\\='test-command-1
+   \"b\" \\='(:def #\\='test-command-2 :which-key \"Test command 2\")
+   \"c\" \\='(:def :ignore :which-key \"Test command 3\"))"
   (let (prefix forms wkforms)
     (while keys
       (let ((key (pop keys))
@@ -217,9 +238,9 @@ consume the following argument.
 (defmacro define-leader-key! (&rest args)
   "Define <leader> keys.
 
-Uses `general-define-key' under the hood, but does not support
-:states, :wk-full-keys or :keymaps. Use `map!' for a more
-convenient interface.
+ARGS as in `general-define-key', but does not support :states,
+:wk-full-keys or :keymaps. Use `map!' for a more convenient
+interface.
 
 See `zenit-leader-key' and `zenit-leader-alt-key' to change the
 leader prefix."
@@ -232,7 +253,7 @@ leader prefix."
 (defmacro define-localleader-key! (&rest args)
   "Define <localleader> key.
 
-Uses `general-define-key' under the hood, but does not support
+ARGS as in `general-define-key', but does not support
 :major-modes, :states, :prefix or :non-normal-prefix. Use `map!'
 for a more convenient interface.
 
@@ -327,26 +348,24 @@ For example, :nvi will map to (list \\='normal \\='visual \\='insert). See
 
 ;; specials
 (defvar zenit--map-forms nil
-  "List of forms generated during the processing of a
-`map!'block.")
+  "List of forms generated during processing of a `map!' block.")
 (defvar zenit--map-fn nil
-  "Function used to define keys within a `map!' block. Set by
-:leader, :localleader, etc.")
+  "Function used to define keys within a `map!' block.
+Set by :leader, :localleader, etc.")
 (defvar zenit--map-batch-forms nil
-  "Batch of key-definition forms grouped by state. Used in
-`zenit--map-commit'.")
+  "Batch of key-definition forms grouped by state.
+Used in `zenit--map-commit'.")
 (defvar zenit--map-state '(:dummy t)
   "Current state of the keymap being defined by `map!'.")
 (defvar zenit--map-parent-state nil
-  "Parent state inherited by nested `:prefix' blocks within a
-`map!' block.")
+  "Parent state inherited by nested `:prefix' blocks.")
 (defvar zenit--map-evil-p nil
   "Non-nil if the :editor evil module is active.")
 (when (zenit-module-p :editor 'evil) (setq zenit--map-evil-p t))
 
 (defun zenit--map-process (rest)
-  "Process the rest of a `map!' block. REST is the forms to be
-processed."
+  "Process the REST of a `map!' block.
+REST is the forms to be processed."
   (let ((zenit--map-fn zenit--map-fn)
         zenit--map-state
         zenit--map-forms
@@ -422,8 +441,7 @@ processed."
     (macroexp-progn (nreverse (delq nil zenit--map-forms)))))
 
 (defun zenit--map-append-keys (prop)
-  "Append the value of PROP from parent and current state, if they
-both exist."
+  "Append the value of PROP from parent and current state, if they both exist."
   (let ((a (plist-get zenit--map-parent-state prop))
         (b (plist-get zenit--map-state prop)))
     (if (and a b)
@@ -431,9 +449,9 @@ both exist."
       (or a b))))
 
 (defun zenit--map-nested (wrapper rest)
-  "Process a nested `map!' block. WRAPPER is the forms to wrap
-around the block and REST are the forms to be processed within
-the block."
+  "Process a nested `map!' block.
+WRAPPER is the forms to wrap around the block and REST are the
+forms to be processed within the block."
   (zenit--map-commit)
   (let ((zenit--map-parent-state (zenit--map-state)))
     (push (if wrapper
@@ -442,8 +460,9 @@ the block."
           zenit--map-forms)))
 
 (defun zenit--map-set (prop &optional value)
-  "Update PROP in `zenit--map-state' to VALUE, and commit any
-pending definitions in `zenit--map-batch-forms'."
+  "Update PROP in `zenit--map-state' to VALUE.
+Any pending definitions in `zenit--map-batch-forms' are
+committed."
   (unless (equal (plist-get zenit--map-state prop) value)
     (zenit--map-commit))
   (setq zenit--map-state (plist-put zenit--map-state prop value)))
@@ -474,8 +493,8 @@ description for which-key."
   t)
 
 (defun zenit--map-commit ()
-  "Commit the batch of key-defs in `zenit--map-batch-forms' to
-`zenit--map-forms'."
+  "Commit the batch of key-defs in `zenit--map-batch-forms'.
+The key-defs will be comitted to `zenit--map-forms'."
   (when zenit--map-batch-forms
     (cl-loop with attrs = (zenit--map-state)
              for (state . defs) in zenit--map-batch-forms
@@ -488,9 +507,9 @@ description for which-key."
     (setq zenit--map-batch-forms nil)))
 
 (defun zenit--map-state ()
-  "Merge `zenit--map-parent-state' with `zenit--map-state',giving
-priority to the latter. Does not modify either; the merged result
-is a new plist."
+  "Merge `zenit--map-parent-state' with `zenit--map-state'.
+The latter has priority. Does not modify either; the merged
+result is a new plist."
   (let ((plist
          (append (list :prefix (zenit--map-append-keys :prefix)
                        :infix  (zenit--map-append-keys :infix)
@@ -512,9 +531,8 @@ is a new plist."
 (defmacro map! (&rest rest)
   "A convenience macro for defining keybinds, powered by `general'.
 
-If evil isn't loaded, evil-specific bindings are ignored.
+The keybinds in REST can have the following properties:
 
-Properties
   :leader [...]                   an alias for (:prefix zenit-leader-key ...)
   :localleader [...]              bind to localleader; requires a keymap
   :mode [MODE(s)] [...]           inner keybinds are applied to major MODE(s)
@@ -532,6 +550,8 @@ Properties
   Any of the above properties may be nested, so that they only apply to a
   certain group of keybinds.
 
+If evil isn't loaded, evil-specific bindings are ignored.
+
 States
   :n  normal
   :v  visual
@@ -544,7 +564,7 @@ States
 
   These can be combined in any order, e.g. :nvi will apply to normal, visual and
   insert mode. The state resets after the following key=>def pair. If states are
-  omitted the keybind will be global (no emacs state; this is different from
+  omitted the keybind will be global (no Emacs state; this is different from
   evil's Emacs state and will work in the absence of `evil-mode').
 
   These must be placed right before the key string.

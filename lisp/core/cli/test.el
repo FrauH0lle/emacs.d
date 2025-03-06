@@ -90,6 +90,8 @@ fail."
                             "--eval" (prin1-to-string '(zenit-context-push 'tests))
                             ;; Load test framework
                             "-l" (concat zenit-core-dir "zenit-test.el")
+                            ;; Always load non-compiled files
+                            "--eval" (prin1-to-string '(setq load-suffixes '(".el")))
 
                             ;; Load test file
                             `(;; ,@(when (not (eq cat :core))

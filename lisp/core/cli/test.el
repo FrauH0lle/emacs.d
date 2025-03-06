@@ -92,7 +92,11 @@ fail."
                             "-l" (concat zenit-core-dir "zenit-test.el")
                             ;; Always load non-compiled files
                             "--eval" (prin1-to-string '(setq load-suffixes '(".el")))
-
+                            "--eval" (prin1-to-string
+                                      '(setq file-name-handler-alist
+                                             (get 'file-name-handler-alist 'initial-value)))
+;; (list (rassq 'jka-compr-handler file-name-handler-alist))
+                            "--eval" (prin1-to-string '(message "%s" file-name-handler-alist))
                             ;; Load test file
                             `(;; ,@(when (not (eq cat :core))
                               ;;     (list "-l" (concat zenit-core-dir "zenit-start.el")

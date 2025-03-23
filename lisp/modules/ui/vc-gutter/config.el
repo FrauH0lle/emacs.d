@@ -96,7 +96,7 @@ Respects `diff-hl-disable-on-remote'."
                 (diff-hl-margin-mode (if graphic? -1 +1))
                 (put 'diff-hl-mode 'last graphic?))))))))
   :config
-  (set-popup-rule! "^\\*diff-hl" :select nil :size '+popup-shrink-to-fit)
+  (set-popup-rule! "^\\*diff-hl" :select nil)
 
   (setq diff-hl-global-modes '(not image-mode pdf-view-mode))
   ;; A slightly faster algorithm for diffing.

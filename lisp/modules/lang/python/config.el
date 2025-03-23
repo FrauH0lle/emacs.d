@@ -126,11 +126,19 @@
                   (bound-and-true-p lsp--buffer-deferred)
                   (not (executable-find python-shell-interpreter t)))
         (anaconda-mode +1))))
+
+  (add-hook! 'eglot-server-initialized-hook
+    (defun +python-disable-anaconda-mode-h (&rest _)
+      "When `eglot' started, disable `anaconda-mode' so they don't interfere."
+      (when (bound-and-true-p anaconda-mode)
+        (anaconda-eldoc-mode -1)
+        (anaconda-mode -1))))
+
   :config
-  ;; (set-lookup-handlers! 'anaconda-mode
-  ;;   :definition #'anaconda-mode-find-definitions
-  ;;   :references #'anaconda-mode-find-references
-  ;;   :documentation #'anaconda-mode-show-doc)
+  (set-lookup-handlers! 'anaconda-mode
+    :definition #'anaconda-mode-find-definitions
+    :references #'anaconda-mode-find-references
+    :documentation #'anaconda-mode-show-doc)
   (set-popup-rule! "^\\*anaconda-mode" :select nil)
 
   (add-hook 'anaconda-mode-hook #'anaconda-eldoc-mode)

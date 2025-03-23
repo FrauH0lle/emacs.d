@@ -1,10 +1,21 @@
 ;; tools/llm/config.el -*- lexical-binding: t; -*-
 
+(defvar +llm-aider-arg-list
+  '(("DeepSeek" :args ("--deepseek") :host "api.deepseek.com" :user "apikey"
+     :env "DEEPSEEK_API_KEY")
+    ("Claude Sonnet" :args ("--sonnet" "--cache-prompts" "--cache-keepalive-pings" "6")
+     :host "api.anthropic.com" :user "apikey" :env "ANTHROPIC_API_KEY"))
+  "List of arguments for different LLM configurations.")
+
 (use-package! gptel
   :defer t
   :init
   ;; REVIEW 2025-01-29: See https://github.com/karthink/gptel/issues/583
-  (setq transient-show-during-minibuffer-read t)
+  (setq transient-show-during-minibuffer-read nil)
+  (setq transient-display-buffer-action
+        '(display-buffer-below-selected
+          (dedicated . t)
+          (inhibit-same-window . t)))
   :config
   ;; CLaude Sonnet
   (gptel-make-anthropic "Claude Sonnet"
@@ -17,3 +28,19 @@
     :stream t
     :key (gptel-api-key-from-auth-source "api.deepseek.com" "apikey")
     :models '(deepseek-chat deepseek-coder)))
+
+
+(use-package! aidermacs
+  :config
+  ;; Enable minor mode for prompt files
+  (aidermacs-setup-minor-mode)
+  ;; Setup API keys
+  (if-let* ((key (+llm-api-key-from-auth-source "api.anthropic.com" "apikey")))
+      (setenv "ANTHROPIC_API_KEY" key))
+  (if-let* ((key (+llm-api-key-from-auth-source "api.deepseek.com" "apikey")))
+      (setenv "DEEPSEEK_API_KEY" key))
+
+  (setq! aidermacs-use-architect-mode t
+         aidermacs-default-model "sonnet"
+         aidermacs-architect-model "r1")
+  (setq aidermacs-extra-args '("--cache-prompts" "--cache-keepalive-pings" "6")))

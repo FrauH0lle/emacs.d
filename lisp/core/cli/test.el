@@ -90,20 +90,8 @@ fail."
                             "--eval" (prin1-to-string '(zenit-context-push 'tests))
                             ;; Load test framework
                             "-l" (concat zenit-core-dir "zenit-test.el")
-                            ;; Always load non-compiled files
-                            "--eval" (prin1-to-string '(message "%s" load-suffixes))
-                            "--eval" (prin1-to-string '(message "%s" file-name-handler-alist))
-                            "--eval" (prin1-to-string '(setq load-suffixes '(".el")))
-                            "--eval" (prin1-to-string
-                                      '(setq file-name-handler-alist
-                                             (get 'file-name-handler-alist 'initial-value)))
-;; (list (rassq 'jka-compr-handler file-name-handler-alist))
-                            "--eval" (prin1-to-string '(message "%s" file-name-handler-alist))
                             ;; Load test file
-                            `(;; ,@(when (not (eq cat :core))
-                              ;;     (list "-l" (concat zenit-core-dir "zenit-start.el")
-                              ;;           "-l" (concat zenit-core-dir "init.el")))
-                              "-l" ,file
+                            `("-l" ,file
                               ;; Run tests and exit
                               "-f" "ert-run-tests-batch-and-exit"))
                    ;; Remove ANSI color codes from output and insert into buffer

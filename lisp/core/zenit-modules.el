@@ -12,6 +12,7 @@
 
 ;; `subr-x'
 (declare-function hash-table-keys "subr-x" (hash-table))
+;; (autoload #'hash-table-keys "subr-x")
 
 ;; `zenit-lib-files'
 (declare-function zenit-files-in "zenit-lib-files" (paths &rest rest))
@@ -21,8 +22,8 @@
 ;;; Variables
 
 (defvar zenit-modules (make-hash-table :test #'equal)
-  "A hash table of enabled modules. Set by
-`zenit-initialize-modules'.")
+  "A hash table of enabled modules.
+Set by `zenit-initialize-modules'.")
 
 (defvar zenit-modules-dirs
   (list (expand-file-name "modules/" zenit-local-conf-dir)
@@ -58,8 +59,8 @@ Control files define dependencies and conflicts, along other
 metadata. They are rarely read in interactive sessions.")
 
 (defvar zenit-inhibit-module-warnings (not noninteractive)
-  "If non-nil, don't emit deprecated or missing module warnings at
-startup.")
+  "If non-nil, don't emit deprecated or missing module warnings.
+Warnings are emitted at startup.")
 
 ;; Custom hooks
 (defcustom zenit-before-modules-init-hook nil
@@ -78,8 +79,8 @@ startup.")
   :type 'hook)
 
 (defcustom zenit-after-modules-config-hook nil
-  "Hooks run after module config.el files are loaded (but before
-the local one)."
+  "Hooks run after module config.el files are loaded.
+But before the local one."
   :group 'zenit
   :type 'hook)
 
@@ -88,8 +89,8 @@ the local one)."
 ;;; Module API
 
 (defun zenit-module-p (category module &optional flag)
-  "Return t if CATEGORY MODULE is enabled (ie. present in
-`zenit-modules')."
+  "Return t if CATEGORY MODULE and optionally FLAG is enabled.
+A module is enabled if it is present in `zenit-modules'."
   (declare (pure t) (side-effect-free t))
   (when-let* ((plist (gethash (cons category module) zenit-modules)))
     (or (null flag)
@@ -122,8 +123,8 @@ If INITDEPTH? is non-nil, use the CAR if a module was given two depths (see
            finally return t))
 
 (defun zenit-module-get (category module &optional property)
-  "Returns the plist for CATEGORY MODULE. Gets PROPERTY,
-specifically, if set."
+  "Return the plist for CATEGORY MODULE.
+Gets PROPERTY,specifically, if set."
   (declare (pure t) (side-effect-free t))
   (when-let* ((plist (gethash (cons category module) zenit-modules)))
     (if property
@@ -131,8 +132,8 @@ specifically, if set."
       plist)))
 
 (defun zenit-module-put (category module &rest plist)
-  "Set a PROPERTY for CATEGORY MODULE to VALUE. PLIST should be
-additional pairs of PROPERTY and VALUEs.
+  "Set a PROPERTY for CATEGORY MODULE to VALUE.
+PLIST should be additional pairs of PROPERTY and VALUEs.
 
 \(fn CATEGORY MODULE PROPERTY VALUE &rest [PROPERTY VALUE [...]])"
   (puthash (cons category module)
@@ -192,10 +193,10 @@ memory instead."
 PATHS-OR-ALL can either be a non-nil value or a list of
 directories. If given a list of directories, return a list of
 module keys for all modules present underneath it. If non-nil,
-return the same, but search `zenit-modules-dirs'
-(includes :core and :local-conf). Modules that are enabled are
-sorted first by their :depth, followed by disabled modules in
-lexicographical order.
+return the same, but search `zenit-modules-dirs' (includes :core
+and :local-conf). Modules that are enabled are sorted first by
+their :depth, followed by disabled modules in lexicographical
+order.
 
 If INITORDER? is non-nil, sort modules by their initdepth, rather
 than their configdepth. See `zenit-module-set' for details."
@@ -234,7 +235,7 @@ finding disabled modules use `zenit-module-locate-path'."
       path)))
 
 (defun zenit-module-locate-path (category &optional module file)
-  "Searches `zenit-modules-dirs' to find the path to a module.
+  "Search `zenit-modules-dirs' to find the path to a module.
 
 CATEGORY is a keyword (e.g. :lang) and MODULE is a symbol (e.g.
 \\='python). FILE is a string that will be appended to the
@@ -328,12 +329,12 @@ disabled ones) available in those directories."
     (nreverse results)))
 
 (defvar zenit--module-dependencies nil
-  "Stores module dependency messages")
+  "Stores module dependency messages.")
 (defvar zenit--module-conflicts nil
-  "Stores module conflict messages")
+  "Stores module conflict messages.")
 
 (defun zenit-module-resolve (module &optional conflicts)
-  "Processes a module's `zenit-module-control-file'.
+  "Processes a MODULE's `zenit-module-control-file'.
 
 If CONFLICTS is nil, the function will resolve dependencies and
 add them to `zenit-modules' if not already set. Otherwise it look
@@ -446,8 +447,8 @@ Order defines precedence (from most to least)."
      (when zenit--module-conflicts
        (print! (error "Module conflicts detected"))
        (print-group!
-        (dolist (msg zenit--module-conflicts)
-          (print! (item "%s" msg))))
+         (dolist (msg zenit--module-conflicts)
+           (print! (item "%s" msg))))
        (signal 'zenit-module-error (list "Module conflicts detected")))
      zenit-modules))
 
@@ -512,11 +513,11 @@ module key."
   `(let ((zenit-module-context
           (let ((module-key ,module-key))
             (zenit-module-context module-key))))
-         (zenit-log ":context:module: =%s" zenit-module-context)
-         ,@body))
+     (zenit-log ":context:module: =%s" zenit-module-context)
+     ,@body))
 
 (defmacro modulep! (category &optional module &rest flags)
-    "Return t if :CATEGORY MODULE (and +FLAGS) are enabled.
+  "Return t if :CATEGORY MODULE (and +FLAGS) are enabled.
 
 If FLAGS is provided, returns t if CATEGORY MODULE has all of
 FLAGS enabled.
@@ -541,30 +542,32 @@ To interpolate dynamic values, use comma:
     (modulep! :tools lsp ,flag))
 
 For more about modules and flags, see `modules!'."
-    ;; This macro bypasses the module API to spare startup their runtime cost, as
-    ;; `modulep!' gets called *a lot* during startup.
-    (if (keywordp category)
+  ;; This macro bypasses the module API to spare startup their runtime cost, as
+  ;; `modulep!' gets called *a lot* during startup.
+  (if (keywordp category)
+      (let ((ctxtform `(get (backquote ,category) (backquote ,module))))
         (if flags
-            `(zenit-module--has-flag-p
-              (aref (or (get (backquote ,category) (backquote ,module)) zenit--empty-module-context)
-                    (zenit-module--context-field :flags))
-              (backquote ,flags))
-          `(and (get (backquote ,category) (backquote ,module)) t))
-      (let ((flags (delq nil (cons category (cons module flags)))))
-        (if (aref zenit-module-context 0)
-            `(zenit-module--has-flag-p
-              ',(aref zenit-module-context
+            `(when-let* ((ctxt ,ctxtform))
+               (zenit-module--has-flag-p
+                (aref (or ctxt zenit--empty-module-context)
                       (zenit-module--context-field :flags))
-              (backquote ,flags))
-          `(let ((file (file!)))
-             (if-let* ((module (zenit-module-from-path file)))
-                 (zenit-module--has-flag-p
-                  (aref (or (get (car module) (cdr module))
-                            zenit--empty-module-context)
-                        (zenit-module--context-field :flags))
-                  (backquote ,flags))
-               (error "(modulep! %s) couldn't resolve current module from %s"
-                      (backquote ,flags) (abbreviate-file-name file))))))))
+                (backquote ,flags)))
+          `(and ,ctxtform t)))
+    (let ((flags (delq nil (cons category (cons module flags)))))
+      (if (aref zenit-module-context 0)
+          `(zenit-module--has-flag-p
+            ',(aref zenit-module-context
+                    (zenit-module--context-field :flags))
+            (backquote ,flags))
+        `(let ((file (file!)))
+           (if-let* ((module (zenit-module-from-path file)))
+               (zenit-module--has-flag-p
+                (aref (or (get (car module) (cdr module))
+                          zenit--empty-module-context)
+                      (zenit-module--context-field :flags))
+                (backquote ,flags))
+             (error "(modulep! %s) couldn't resolve current module from %s"
+                    (backquote ,flags) (abbreviate-file-name file))))))))
 
 
 ;;

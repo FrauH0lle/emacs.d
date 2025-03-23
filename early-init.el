@@ -19,9 +19,12 @@
   (setq load-prefer-newer noninteractive)
 
   ;; DEBUG envvar as an alternative to --debug-init.
-  (when (getenv-internal "DEBUG")
-    (setq init-file-debug t
-          debug-on-error t))
+  (let ((debug (getenv-internal "DEBUG")))
+    (when (stringp debug)
+      (if (string-empty-p debug)
+          (setenv "DEBUG" nil)
+        (setq init-file-debug t
+              debug-on-error t))))
 
   ;; Native compilation support
   (when (featurep 'native-compile)

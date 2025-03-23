@@ -132,7 +132,7 @@ BODY is only compiled if COND evaluates to non-nil. See
 (defvar zenit-log-level
   (if init-file-debug
       (if-let* ((level (getenv-internal "DEBUG"))
-                (level (string-to-number level))
+                (level (if (string-empty-p level) 1 (string-to-number level)))
                 ((not (zerop level))))
           level
         2)

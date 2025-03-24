@@ -2,6 +2,7 @@
 ;; lisp/core/test/zenit-editor.el
 
 (require 'zenit-test)
+(require 'zenit-use-package)
 (require 'zenit-editor)
 
 (zenit-deftest zenit-detect-indentation-excluded-modes

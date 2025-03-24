@@ -1,2 +1,2 @@
-(("rustic" . "c1893528ad6b8e8ca795b547f326ec52dacf8728"))
+(("rustic" . "22a5ef8bfd5a34ced945c2722938eb29632371d4"))
 :gamma

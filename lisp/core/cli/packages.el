@@ -147,7 +147,7 @@ If ALL is non-nil, simply remove all files in the eln cache."
   (if all
       (let ((dir (file-name-concat zenit-cache-dir "eln" comp-native-version-dir)))
         (cl-loop for file in (zenit-files-in dir :match "\\.eln$" :full t)
-                 do (delete-file file)))
+                 do (when (file-exists-p file) (delete-file file))))
     (cl-loop for file in (zenit-files-in dir :match "\\.el$" :full t)
              do (when (file-exists-p (byte-compile-dest-file file))
                   (when-let* ((eln-name (zenit--eln-file-name file))

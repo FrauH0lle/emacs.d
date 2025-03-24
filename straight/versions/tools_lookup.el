@@ -1,3 +1,3 @@
-(("dumb-jump" . "cd65a743370ac7b1a12e9ef0a7371b285a2597fb")
- ("emacs-request" . "01e338c335c07e4407239619e57361944a82cb8a"))
+(("dumb-jump" . "737267a6139a988369cb95ecd365b2db95e05db0")
+ ("emacs-request" . "c22e3c23a6dd90f64be536e176ea0ed6113a5ba6"))
 :gamma

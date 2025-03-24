@@ -1,3 +1,3 @@
-(("anzu" . "26fb50b429ee968eb944b0615dd0aed1dd66172c")
- ("doom-modeline" . "65d0bd83eb7c393092e032c24b882f3ba19b4899"))
+(("anzu" . "21cb5ab2295614372cb9f1a21429381e49a6255f")
+ ("doom-modeline" . "ec27cdb3cf1fec1db63c752b3654c9de28e22089"))
 :gamma

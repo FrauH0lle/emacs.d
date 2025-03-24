@@ -26,6 +26,7 @@
 .emacs.desktop.lock
 .org-id-locations
 .projectile
+.projectile-cache.eld
 .tern-port
 .yas-compiled-snippets.el
 flycheck_*.el

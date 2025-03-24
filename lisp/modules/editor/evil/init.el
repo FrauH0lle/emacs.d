@@ -92,6 +92,7 @@ list of available options.")
       calc
       calendar
       cider
+      citre
       cmake-mode
       color-rg
       comint
@@ -100,8 +101,10 @@ list of available options.")
       consult
       corfu
       crdt
+      (csv "csv-mode")
       (custom cus-edit)
       cus-theme
+      dape
       dashboard
       daemons
       deadgrep
@@ -117,6 +120,7 @@ list of available options.")
       distel
       doc-view
       docker
+      eat
       ebib
       ebuku
       edbi
@@ -152,6 +156,7 @@ list of available options.")
       gited
       gnus
       go-mode
+      gptel
       grep
       guix
       hackernews
@@ -160,6 +165,7 @@ list of available options.")
       helpful
       hg-histedit
       hungry-delete
+      hyrolo
       ibuffer
       (image image-mode)
       image-dired
@@ -171,6 +177,7 @@ list of available options.")
       info
       ivy
       js2-mode
+      ,@(if (>= emacs-major-version 30) '(kmacro))
       leetcode
       lispy
       lms
@@ -181,13 +188,16 @@ list of available options.")
       kotlin-mode
       macrostep
       man
-      (magit magit-repos magit-submodule)
+      (magit magit-submodule)
+      magit-repos
       magit-section
       magit-todos
       markdown-mode
+      minesweeper
       monky
       mpc
       mpdel
+      mpdired
       mu4e
       mu4e-conversation
       neotree
@@ -206,8 +216,10 @@ list of available options.")
       (pdf pdf-tools)
       popup
       proced
+      (process-menu simple)
       prodigy
       profiler
+      p-search
       python
       quickrun
       racer
@@ -231,11 +243,13 @@ list of available options.")
       simple-mpc
       slime
       sly
+      smerge-mode
       snake
       so-long
       speedbar
       tab-bar
       tablist
+      tabulated-list
       tar-mode
       telega
       (term term ansi-term multi-term)
@@ -247,6 +261,7 @@ list of available options.")
       trashed
       tuareg
       typescript-mode
+      ultra-scroll
       vc-annotate
       vc-dir
       vc-git
@@ -260,6 +275,7 @@ list of available options.")
       wdired
       wgrep
       which-key
+      with-editor
       woman
       xref
       xwidget

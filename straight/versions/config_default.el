@@ -1,3 +1,3 @@
-(("avy" . "be612110cb116a38b8603df367942e2bb3d9bdbe")
- ("link-hint.el" . "9ead085e9e6798ec4ea4791d9906d6655ea2b402"))
+(("avy" . "933d1f36cca0f71e4acb5fac707e9ae26c536264")
+ ("link-hint.el" . "826993a0ab736ab09f53a0623fb44edf2182b07c"))
 :gamma

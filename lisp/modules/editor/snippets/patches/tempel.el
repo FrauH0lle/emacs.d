@@ -19,9 +19,11 @@
           (and (bound-and-true-p +snippets--extra-modes)
                (memq m +snippets--extra-modes)))
         (derived-mode-p m)
-        (when-let ((remap (alist-get m (bound-and-true-p major-mode-remap-alist))))
+        (when-let (((eval-when-compile (> emacs-major-version 28)))
+                   (remap (alist-get m (bound-and-true-p major-mode-remap-alist))))
           (derived-mode-p remap))))
-   (or (not (plist-member plist :when))
+   (or tempel--ignore-condition
+       (not (plist-member plist :when))
        (save-excursion
          (save-restriction
            (save-match-data
@@ -112,22 +114,28 @@
                     (lambda (&rest _)
                       (let* ((ov (tempel--field-at-point))
                              (content (buffer-substring-no-properties
-                                      (overlay-start ov) (overlay-end ov)))
+                                       (overlay-start ov) (overlay-end ov)))
                              (res (letf! ((#'lsp-completion--annotate #'ignore))
                                     (completing-read "Choose: "
-                                                   choices
-                                                   nil t
-                                                   (when (member content choices)
-                                                     content)))))
+                                                     choices
+                                                     nil t
+                                                     (when (member content choices)
+                                                       content)))))
                         ;; Replace content if different choice selected
                         (unless (equal res content)
                           (tempel-kill)
                           (insert res))
                         ;; Navigate based on last motion direction
-                        (+tempel--navigate-after-choice 
+                        (+tempel--navigate-after-choice
                          ov
                          (or +tempel--last-motion 'forward)))))))
-    (_ (if-let ((ret (run-hook-with-args-until-success 'tempel-user-elements elt)))
+    (_ (if-let ((ret (run-hook-wrapped 'tempel-user-elements
+                                       (lambda (hook elt fields)
+                                         (condition-case nil
+                                             (funcall hook elt)
+                                           (wrong-number-of-arguments
+                                            (funcall hook elt fields))))
+                                       elt (cdr st))))
            (tempel--element st region ret)
          ;; TEMPEL EXTENSION: Evaluate forms
          (tempel--form st elt)))))

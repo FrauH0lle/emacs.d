@@ -18,7 +18,7 @@
 
     "ALIST is an association list of action symbols and values.  See
 Info node `(elisp) Buffer Display Action Alists' for details of
-such alists.  The following two symbols, when used in ALIST, have
+such alists.  The following " (el-patch-swap "two" "three") " symbols, when used in ALIST, have
 a special meaning:
 
  `side' denotes the side of the frame where the new window shall

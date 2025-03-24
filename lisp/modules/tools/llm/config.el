@@ -31,6 +31,7 @@
 
 
 (use-package! aidermacs
+  :defer t
   :config
   ;; Enable minor mode for prompt files
   (aidermacs-setup-minor-mode)

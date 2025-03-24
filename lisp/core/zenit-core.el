@@ -446,7 +446,7 @@ user's custom.el instead."
         (user-init-file custom-file))
     (apply orig-fn args)))
 
-;; By default, Emacs stores `authinfo' in $HOME and in plain-text.This file
+;; By default, Emacs stores `authinfo' in $HOME and in plain-text. This file
 ;; stores usernames, passwords, and other treasures for the aspiring malicious
 ;; third party.
 (setq auth-sources (list (file-name-concat zenit-data-dir "authinfo.gpg")

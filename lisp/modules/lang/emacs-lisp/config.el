@@ -35,7 +35,6 @@ looking up a C function.")
 (defer-feature! elisp-mode emacs-lisp-mode)
 
 (use-package! elisp-mode
-  :mode ("\\.Cask\\'" . emacs-lisp-mode)
   :config
   (let ((modes '(emacs-lisp-mode lisp-interaction-mode lisp-data-mode)))
     (set-repl-handler! modes #'+emacs-lisp/open-repl)

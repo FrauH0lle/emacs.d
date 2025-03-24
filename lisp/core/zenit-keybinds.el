@@ -72,22 +72,37 @@ Used for Insert and Emacs states, and for non-evil users.")
 ;;   "<tab>" and "<return>"), which are only triggered in GUI frames, so here, I
 ;;   create one for C-i. Won't work in TTY frames, though. The :os tty module
 ;;   has a workaround for that though.
-(pcase-dolist (`(,key ,fallback . ,events)
-               '(([C-i] [?\C-i] tab kp-tab)
-                 ([C-m] [?\C-m] return kp-return)))
-  (define-key
-   input-decode-map fallback
-   (cmd! (if (when-let* ((keys (this-single-command-raw-keys)))
-               (and (display-graphic-p)
-                    (not (cl-loop for event in events
-                                  if (cl-position event keys)
-                                  return t))
-                    ;; Use FALLBACK if nothing is bound to KEY, otherwise we've
-                    ;; broken all pre-existing FALLBACK keybinds.
-                    (key-binding
-                     (vconcat (if (= 0 (length keys)) [] (cl-subseq keys 0 -1))
-                              key) nil t)))
-             key fallback))))
+(defun zenit-init-input-decode-map-h ()
+  "Initialize `input-decode-map'.
+
+This workaround is necessary to distinguish between C-i and TAB,
+and C-m and RET because Emacs cannot distinguish these keys in
+TTY frames, and this function only works in GUI frames.
+
+The function is automatically called on frame creation in daemon
+mode, or immediately in non-daemon mode."
+  (pcase-dolist (`(,key ,fallback . ,events)
+                 '(([C-i] [?\C-i] tab kp-tab)
+                   ([C-m] [?\C-m] return kp-return)))
+    (define-key
+     input-decode-map fallback
+     (cmd! (if (when-let ((keys (this-single-command-raw-keys)))
+                 (and (display-graphic-p)
+                      (not (cl-loop for event in events
+                                    if (cl-position event keys)
+                                    return t))
+                      ;; Use FALLBACK if nothing is bound to KEY, otherwise
+                      ;; we've broken all pre-existing FALLBACK keybinds.
+                      (key-binding
+                       (vconcat (if (= 0 (length keys)) [] (cl-subseq keys 0 -1))
+                                key) nil t)))
+               key fallback)))))
+
+;; `input-decode-map' bindings are resolved on first invokation, and are
+;; frame-local, so they must be rebound on every new frame.
+(if (daemonp)
+    (add-hook 'server-after-make-frame-hook #'zenit-init-input-decode-map-h)
+  (zenit-init-input-decode-map-h))
 
 
 ;;

@@ -394,6 +394,13 @@ other windows. Ugh, such an ugly hack."
               (which-key--show-buffer-side-window act-popup-dim))))))
 
 
+(after! transient
+  (setq transient-display-buffer-action
+        '(+popup-display-buffer-stacked-side-window-fn
+          (vslot . -9999)
+          (select . t))))
+
+
 ;;;###package windmove
 ;; Users should be able to hop into popups easily, but Elisp shouldn't.
 (defadvice! +popup--ignore-window-parameters-a (fn &rest args)

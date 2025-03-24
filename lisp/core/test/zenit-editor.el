@@ -3,6 +3,7 @@
 
 (require 'zenit-test)
 (require 'zenit-use-package)
+(zenit-require 'zenit-lib 'ui)
 (require 'zenit-editor)
 
 (zenit-deftest zenit-detect-indentation-excluded-modes

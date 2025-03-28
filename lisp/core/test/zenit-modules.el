@@ -175,7 +175,7 @@
   :doc "`zenit-module-expand-path' returns base path without file"
   (should (equal "/test/path"
                  (zenit-module-expand-path :test 'mod)))
-                
+  
   :doc "`zenit-module-expand-path' returns nil for disabled modules"
   (should-not (zenit-module-expand-path :disabled 'mod "file.el")))
 
@@ -293,6 +293,102 @@
                      (:cat1 mod2 nil)
                      (:cat2 mod3 (+flag3)))
                    (reverse test-results)))))
+
+(zenit-deftest zenit--module-dependencies
+  (:doc "`zenit--module-dependencies' is defined")
+  (should (boundp 'zenit--module-dependencies)))
+
+(zenit-deftest zenit--module-conflicts
+  (:doc "`zenit--module-conflicts' is defined")
+  (should (boundp 'zenit--module-conflicts)))
+
+(zenit-deftest zenit-module-resolve
+  (:vars* ((zenit--module-dependencies nil)
+           (zenit--module-conflicts nil)
+           (tmp-dir (zenit-test-make-temp-file t))
+           (zenit-modules-dirs (list tmp-dir))
+           (zenit-modules (make-hash-table :test #'equal)))
+   :before-each
+   (progn
+     (make-directory (file-name-concat tmp-dir "test" "mod") t)
+     (zenit-module-set :test 'mod :path (file-name-concat tmp-dir "test" "mod") :flags '(+flag)))
+   :after-each
+   (progn
+     (delete-directory tmp-dir t)))
+  ,test
+  (test)
+  :doc "`zenit-module-resolve' adds dependencies"
+  (progn
+    (with-temp-file (file-name-concat tmp-dir "test" "mod" zenit-module-control-file)
+      (insert "(:depends ((t :depcat1 depmod1 +flag) (+flag :depcat2 depmod2 +flag)))"))
+    (make-directory (file-name-concat tmp-dir "depcat1" "depmod1") t)
+    (make-directory (file-name-concat tmp-dir "depcat2" "depmod2") t)
+
+    (zenit-module-resolve '(:test . mod))
+    (should (string-match-p "Adding :depcat2 depmod2 (\\+flag) as dependency" 
+                            (car zenit--module-dependencies)))
+    (should (length= zenit--module-dependencies 2))
+    (should (zenit-module-p :depcat1 'depmod1 '+flag))
+    (should (zenit-module-p :depcat2 'depmod2 '+flag)))
+
+  :doc "`zenit-module-resolve' handles existing dependencies"
+  (progn
+    (zenit-module-set :depcat 'depmod :path (file-name-concat tmp-dir "test" "mod") :flags '(+oldflag))
+    (with-temp-file (file-name-concat tmp-dir "test" "mod" zenit-module-control-file)
+      (insert "(:depends ((t :depcat depmod +newflag)))"))
+
+    (zenit-module-resolve '(:test . mod))
+    (should (equal '(+oldflag +newflag) 
+                   (zenit-module-get :depcat 'depmod :flags))))
+
+  :doc "`zenit-module-resolve' detects conflicts"
+  (progn
+    (zenit-module-set :conflict 'mod :path (file-name-concat tmp-dir "test" "mod") :flags '(+flag))
+    (with-temp-file (file-name-concat tmp-dir "test" "mod" zenit-module-control-file)
+      (insert "(:conflicts ((t :conflict mod) (+flag :conflict mod)))"))
+    
+    (zenit-module-resolve '(:test . mod) 'conflicts)
+    (should (string-match-p "conflicts with :conflict mod" 
+                            (car zenit--module-conflicts)))
+    (should (length= zenit--module-conflicts 2))))
+
+(zenit-deftest modules!
+  (:vars ((zenit-modules (make-hash-table :test #'equal))))
+  ,test
+  (test)
+  :doc "`modules!' creates modules and sets path for each one"
+  (letf! ((#'print! #'ignore)
+          (defun zenit-module-locate-path (category &optional module file)
+            "/test/path"))
+    (modules! :test mod1 mod2 mod3)
+    (dolist (key (hash-table-keys zenit-modules))
+      (should (equal '(:path "/test/path" :flags nil) (gethash key zenit-modules)))))
+
+  :doc "`modules!' creates modules and sets path for each one"
+  (letf! ((#'print! #'ignore)
+          (defun zenit-module-locate-path (category &optional module file)
+            t))
+    (should-error (modules! :test mod1 mod2 mod3))))
+
+(zenit-deftest zenit--empty-module-context
+  (:doc "`zenit--empty-module-context' is defined")
+  (should (boundp 'zenit--empty-module-context)))
+
+(zenit-deftest zenit-module-context
+  (:doc "`zenit-module-context' is defined")
+  (should (boundp 'zenit-module-context)))
+
+(zenit-deftest zenit-module--context-field
+  (:doc "`zenit-module--context-field' retrieves the value of the given field")
+  (progn
+    (should (= 0 (zenit-module--context-field :index)))
+    (should (= 1 (zenit-module--context-field :initdepth)))
+    (should (= 2 (zenit-module--context-field :configdepth)))
+    (should (= 3 (zenit-module--context-field :group)))
+    (should (= 4 (zenit-module--context-field :name)))
+    (should (= 5 (zenit-module--context-field :flags)))
+    (should (= 6 (zenit-module--context-field :features)))))
+
 
 ;; (modulep! :lang nosuchlanguage -nosuchflag)
 ;; (modulep! :lang nosuchlanguage -nosuchflag)

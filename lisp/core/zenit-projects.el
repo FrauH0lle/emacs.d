@@ -17,8 +17,10 @@
 (declare-function zenit-call-process "zenit-lib-process" (command &rest args))
 
 ;; `zenit-lib-projects'
+(declare-function zenit-project-name "zenit-lib-projects" (&optional dir))
 (declare-function zenit-project-p "zenit-lib-projects" (&optional dir))
 (declare-function zenit-project-ignored-p "zenit-lib-projects" (project-root))
+(declare-function zenit-project-root "zenit-lib-projects" (&optional dir))
 
 
 (defvar zenit-fd-executable (cl-find-if #'executable-find (list "fdfind" "fd"))

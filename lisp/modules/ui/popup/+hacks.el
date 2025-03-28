@@ -394,7 +394,7 @@ other windows. Ugh, such an ugly hack."
               (which-key--show-buffer-side-window act-popup-dim))))))
 
 
-(after! transient
+(with-eval-after-load (eval-if! (modulep! :tools magit) 'magit 'transient)
   (setq transient-display-buffer-action
         '(+popup-display-buffer-stacked-side-window-fn
           (vslot . -9999)

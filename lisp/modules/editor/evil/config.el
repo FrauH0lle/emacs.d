@@ -146,13 +146,6 @@ The package should be loaded as early as possible."
                  (buffer-size)))))
 
 
-  ;; HACK '=' moves the cursor to the beginning of selection. Disable this,
-  ;;   since it's more disruptive than helpful.
-  (defadvice! +evil--dont-move-cursor-a (orig-fn &rest args)
-    "Don't move cursor on indent."
-    :around #'evil-indent
-    (save-excursion (apply orig-fn args)))
-
   (defadvice! +evil--make-numbered-markers-global-a (char)
     "In evil, registers 2-9 are buffer-local. In vim, they're
 global, so..."

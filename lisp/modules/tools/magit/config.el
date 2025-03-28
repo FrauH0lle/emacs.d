@@ -1,5 +1,10 @@
 ;; tools/magit/config.el -*- lexical-binding: t; -*-
 
+(defvar +magit-open-windows-in-direction 'right
+  "What direction to open new windows from the status buffer.
+For example, diffs and log buffers. Accepts `left', `right',
+`up', and `down'.")
+
 (defvar +magit-fringe-size '(13 . 1)
   "Size of the fringe in magit-mode buffers.
 
@@ -73,12 +78,21 @@ Only has an effect in GUI Emacs.")
         (set-window-start nil (caddr +magit--pos) t)
         (kill-local-variable '+magit--pos))))
 
-  (setq transient-display-buffer-action '(display-buffer-below-selected)
-        magit-display-buffer-function #'+magit-display-buffer
+  (setq magit-display-buffer-function #'+magit-display-buffer-fn
         magit-bury-buffer-function #'magit-mode-quit-window)
 
-  (eval-when! (modulep! :ui popup)
-    (set-popup-rule! "^\\(?:\\*magit\\|magit:\\| \\*transient\\*\\)" :ignore t))
+  ;; Pop up transient windows at the bottom of the window where it was invoked.
+  ;; This is more ergonomic for users with large displays or many splits.
+  (setq transient-display-buffer-action
+        '(display-buffer-below-selected
+          (dedicated . t)
+          (inhibit-same-window . t))
+        transient-show-during-minibuffer-read t)
+
+  (set-popup-rule! "^\\(?:\\*magit\\|magit:\\| \\*transient\\*\\)" :ignore t)
+
+  ;; The mode-line isn't useful in these popups and take up valuable screen
+  ;; estate, so free it up.
   (add-hook 'magit-popup-mode-hook #'hide-mode-line-mode)
 
   ;; Add additional switches that seem common enough
@@ -235,7 +249,9 @@ Only has an effect in GUI Emacs.")
   :defer t
   :init
   (defvar evil-collection-magit-section-use-z-for-folds evil-collection-magit-use-z-for-folds)
-  (after! magit-section
+  :config
+  (defadvice! +magit--override-evil-collection-defaults-a (&rest _)
+    :after #'evil-collection-magit-section-setup
     ;; These numbered keys mask the numerical prefix keys. Since they've already
     ;; been replaced with z1, z2, z3, etc (and 0 with g=), there's no need to
     ;; keep them around:

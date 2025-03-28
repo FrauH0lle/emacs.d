@@ -83,10 +83,6 @@
     ('android                          '(android)))
   "A list of symbols denoting the current operating system.")
 
-;; Make the operating system available to `featurep'
-(push :system features)
-(put :system 'subfeatures zenit-os-type)
-
 ;; Convenience aliases for internal use
 (defconst zenit-system            (car zenit-os-type))
 (defconst zenit--system-windows-p (featurep :system 'windows))
@@ -94,6 +90,14 @@
 (defconst zenit--system-linux-p   (featurep :system 'linux))
 (defconst zenit--system-unix-p    (featurep :system 'unix))
 (defconst zenit--system-bsd-p     (featurep :system 'bsd))
+
+;; Announce WSL if it is detected.
+(when (and zenit--system-linux-p (getenv-internal "WSLENV"))
+  (add-to-list 'zenit-os-type 'wsl 'append))
+
+;; Make the operating system available to `featurep'
+(push :system features)
+(put :system 'subfeatures zenit-os-type)
 
 ;; Add build features to `features' so they can be checked via `featurep'
 (if (bound-and-true-p module-file-suffix)

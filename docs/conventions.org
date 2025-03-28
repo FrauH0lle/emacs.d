@@ -7,6 +7,8 @@
     does this function do?”
   - For a variable, the first line should briefly answer the question, “What
     does this value mean?”
+- Explanatory code comments should be plentiful (every line). The comments
+  should explain what is happening and why.
 - Follow the Emacs Lisp coding conventions. See also:
   - [[https://github.com/bbatsov/emacs-lisp-style-guide][The Emacs Lisp Style Guide]]
   - [[https://nullprogram.com/blog/2017/01/30/][How to Write Fast(er) Emacs Lisp]]

@@ -32,6 +32,12 @@ derivatives). On most it's \\='fd\\='.")
 
 Is nil if no executable is found in your PATH during startup.")
 
+
+(defvar zenit-projectile-cache-dir (file-name-concat zenit-cache-dir "projectile/")
+  "Directory with per-project projectile file index caches.
+Must end with a slash.")
+
+
 ;;
 ;;; Packages
 
@@ -50,15 +56,12 @@ Is nil if no executable is found in your PATH during startup.")
              projectile-locate-dominating-file
              projectile-relevant-known-projects)
   :init
-  (setq ;; Auto-discovery is slow to do by default. Better to update the list
-        ;; when you need to (`projectile-discover-projects-in-search-path').
-        projectile-auto-discover nil
-        projectile-enable-caching (if noninteractive t 'persistent)
+  (setq projectile-enable-caching (if noninteractive t 'persistent)
         projectile-globally-ignored-files '(".DS_Store" "TAGS")
         projectile-globally-ignored-file-suffixes '(".elc" ".pyc" ".o")
         projectile-kill-buffers-filter 'kill-only-files
         projectile-ignored-projects '("~/")
-        projectile-known-projects-file (concat zenit-cache-dir "projectile-projects.eld")
+        projectile-known-projects-file (concat zenit-projectile-cache-dir "projects.eld")
         projectile-ignored-project-function #'zenit-project-ignored-p
         projectile-fd-executable zenit-fd-executable)
 
@@ -66,12 +69,7 @@ Is nil if no executable is found in your PATH during startup.")
   (global-set-key [remap find-tag]         #'projectile-find-tag)
 
   :config
-  ;; HACK: Auto-discovery and cleanup on `projectile-mode' is slow and
-  ;;   premature. Let's try to defer it until it's needed.
-  (add-transient-hook! 'projectile-relevant-known-projects
-    (projectile--cleanup-known-projects)
-    (when projectile-auto-discover
-      (projectile-discover-projects-in-search-path)))
+  (make-directory zenit-projectile-cache-dir t)
 
   ;; Projectile runs four functions to determine the root (in this order):
   ;;
@@ -102,6 +100,17 @@ Is nil if no executable is found in your PATH during startup.")
   ;; Per-project compilation buffers
   (setq compilation-buffer-name-function #'projectile-compilation-buffer-name
         compilation-save-buffers-predicate #'projectile-current-project-buffer-p)
+
+  ;; Centralize Projectile's per-project cache files, so they don't litter
+  ;; projects with dotfiles.
+  (defadvice! zenit--projectile-centralized-cache-files-a (fn &optional proot)
+    :around #'projectile-project-cache-file
+    (let* ((proot (abbreviate-file-name (or proot (zenit-project-root))))
+           (projectile-cache-file
+            (expand-file-name
+             (format "%s-%s" (zenit-project-name proot) (sha1 proot))
+             zenit-projectile-cache-dir)))
+      (funcall fn proot)))
 
   ;; Support the more generic .project files as an alternative to .projectile
   (defadvice! zenit--projectile-dirconfig-file-a ()
@@ -199,20 +208,7 @@ prompt you for the command instead."
     :around #'projectile-default-generic-command
     (ignore-errors (apply fn args)))
 
-  ;; HACK: Projectile cleans up the known projects list at startup. If this list
-  ;;   contains tramp paths, the `file-remote-p' calls will pull in tramp via
-  ;;   its `file-name-handler-alist' entry, which is expensive. Since we already
-  ;;   clean up the project list on kill-emacs-hook, it's simplest to inhibit
-  ;;   this cleanup process at startup (see bbatsov/projectile#1649).
-  (letf! ((#'projectile--cleanup-known-projects #'ignore))
-    (projectile-mode +1)
-    ;; HACK: See bbatsov/projectile@3c92d28c056c
-    (remove-hook 'buffer-list-update-hook #'projectile-track-known-projects-find-file-hook)
-    (add-hook 'zenit-switch-buffer-hook #'projectile-track-known-projects-find-file-hook t)
-    (add-hook! 'dired-after-readin-hook
-      (defun zenit-project-track-known-project-h ()
-        (when projectile-mode
-          (projectile-track-known-projects-find-file-hook))))))
+  (projectile-mode +1))
 
 
 ;;

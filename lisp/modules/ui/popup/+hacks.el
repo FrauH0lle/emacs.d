@@ -393,12 +393,20 @@ other windows. Ugh, such an ugly hack."
               (setcar act-popup-dim (1+ (car act-popup-dim)))
               (which-key--show-buffer-side-window act-popup-dim))))))
 
-
+;;;###package transient
+;; Use the popup system also for transient, however make an exception for magit
+;; popups
 (with-eval-after-load (eval-if! (modulep! :tools magit) 'magit 'transient)
   (setq transient-display-buffer-action
         '(+popup-display-buffer-stacked-side-window-fn
           (vslot . -9999)
-          (select . t))))
+          (select . t)))
+  (eval-when! (modulep! :tools magit)
+    (setq-hook! 'magit-mode-hook
+      transient-display-buffer-action
+      '(display-buffer-below-selected
+        (dedicated . t)
+        (inhibit-same-window . t)))))
 
 
 ;;;###package windmove

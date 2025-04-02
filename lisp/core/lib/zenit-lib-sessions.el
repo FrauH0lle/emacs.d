@@ -3,6 +3,9 @@
 (eval-when-compile
   (require 'cl-lib))
 
+;; `bookmark'
+(defvar bookmark-alist)
+
 ;; `bufferlo'
 (declare-function bufferlo-bookmark-frame-load "ext:bufferlo" (name))
 (declare-function bufferlo-mode "ext:bufferlo" (&optional dirname))
@@ -124,7 +127,7 @@ signals an error."
   (cond ((and (zenit-module-p :ui 'workspaces)
               (require 'bufferlo nil t))
          (unless bufferlo-mode (bufferlo-mode +1))
-         (let ((bookmark-alist nil))
+         (let ((old-bookmark-alist bookmark-alist))
            (bookmark-load file t)
            (setq +workspaces-bookmark-alist bookmark-alist)
            (if (length= bookmark-alist 0)
@@ -138,7 +141,8 @@ signals an error."
                  (bufferlo-bookmark-frame-load frame)
                  (cl-loop for name in (+workspace-list-names)
                           unless (member name allowed)
-                          do (+workspace-kill name)))))))
+                          do (+workspace-kill name)))))
+           (setq bookmark-alist old-bookmark-alist)))
         ((and (require 'frameset nil t)
               (require 'restart-emacs nil t))
          (restart-emacs--restore-frames-using-desktop file))

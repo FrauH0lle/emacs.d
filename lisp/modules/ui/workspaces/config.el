@@ -137,7 +137,14 @@ settings."
     [remap evil-window-delete] #'+workspace/close-window-or-workspace)
 
   ;; Projectile
-  (setq projectile-switch-project-action (lambda () (+workspaces-set-project-action-fn) (+workspaces-switch-to-project-h)))
-
+  (setq projectile-switch-project-action #'+workspaces-switch-to-project-h)
+  ;; Bookmark the workspace project root
+  (defadvice! +workspaces--record-workspace-a (fn &rest args)
+    "Record the project root of the workspace."
+    :around #'bufferlo--bookmark-tab-get
+    (append
+     (funcall fn args)
+     `((+workspace-project . ,(alist-get '+workspace-project (cdr (bufferlo--current-tab)))))))
+  
   ;; Autosave
   (add-hook 'kill-emacs-hook #'+workspaces-kill-emacs-h))

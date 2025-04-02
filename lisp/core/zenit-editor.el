@@ -319,15 +319,8 @@ system."
   :hook (after-save . zenit-auto-revert-buffers-h)
   :hook (zenit-switch-buffer . zenit-auto-revert-buffer-h)
   :hook (zenit-switch-window . zenit-auto-revert-buffer-h)
+  :hook (zenit-switch-frame . zenit-auto-revert-buffers-h)
   :commands zenit-auto-revert-buffers-h
-  :init
-  (with-no-warnings
-    (when (boundp 'after-focus-change-function)
-      (add-function
-       :after after-focus-change-function
-       (lambda ()
-         (when (frame-focus-state)
-           (zenit-auto-revert-buffers-h))))))
   :config
   (setq auto-revert-verbose t ; let us know when it happens
         auto-revert-use-notify nil

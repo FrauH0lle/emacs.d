@@ -35,6 +35,9 @@
 ;; `zenit-core'
 (declare-function zenit--reset-inhibited-vars-h "zenit-core" ())
 
+;; `zenit-ui'
+(declare-function zenit-run-switch-frame-hooks-fn "zenit-ui" ())
+
 ;; `zenit-lib-buffers'
 (declare-function zenit-fallback-buffer "zenit-lib-buffers" ())
 (declare-function zenit-visible-buffers "zenit-lib-buffers" (&optional buffer-list all-frames))
@@ -158,12 +161,18 @@ with `zenit/reload-theme'."
   :type 'hook)
 
 (defcustom zenit-switch-frame-hook nil
-  "A list of hooks run after changing the focused frame."
+  "A list of hooks run after changing the focused frame.
+
+This also serves as an analog for `after-focus-change-function',
+but also preforms debouncing (see
+`zenit-switch-frame-hook-debounce-delay'). It's possible for this
+hook to be triggered multiple times (because there are edge cases
+where Emacs can have multiple frames focused at once)."
   :group 'zenit
   :type 'hook)
 
 (defun zenit-run-switch-buffer-hooks-h (&optional _)
-  "Runs hooks associated with buffer switching.
+  "Run hooks associated with buffer switching.
 
 This function runs all hooks registered with
 `zenit-switch-buffer-hook'.
@@ -171,35 +180,59 @@ This function runs all hooks registered with
 The function takes an optional argument, which is ignored. This
 allows it to be used in contexts where a function with one
 argument is expected, such as in `add-hook'."
-  (let ((gc-cons-threshold most-positive-fixnum)
-        (inhibit-redisplay t))
+  (let ((gc-cons-threshold most-positive-fixnum))
     (run-hooks 'zenit-switch-buffer-hook)))
 
-(defun zenit-run-switch-window-or-frame-hooks-h (&optional _)
-  "Runs hooks associated with window or frame switching.
+(defun zenit-run-switch-window-hooks-h (&optional _)
+  "Run hooks associated with window switching.
 
-This function runs all hooks registered with
-`zenit-switch-window-hook' and `zenit-switch-frame-hook'.
-
-The function takes an optional argument, which is ignored. This
-allows it to be used in contexts where a function with one
-argument is expected, such as in `add-hook'."
-  (let ((gc-cons-threshold most-positive-fixnum)
-        (inhibit-redisplay t))
-    (unless (equal (old-selected-frame) (selected-frame))
-      (run-hooks 'zenit-switch-frame-hook))
-    (unless (or (minibufferp)
-                ;; REVIEW 2024-06-09 This is mainly added because otherwise the
-                ;;   `corfu' completion popup would trigger
-                ;;   `zenit-switch-window-hook' which in turn can trigger
-                ;;   `pulsar'
-                (equal (old-selected-window) (selected-window))
-                (equal (old-selected-window) (minibuffer-window)))
+Trigger `zenit-switch-window-hook' when selecting a window in the
+same frame."
+  (unless (or (minibufferp)
+              (not (equal (old-selected-frame) (selected-frame)))
+              (equal (old-selected-window) (selected-window))
+              (equal (old-selected-window) (minibuffer-window)))
+    (let ((gc-cons-threshold most-positive-fixnum))
       (run-hooks 'zenit-switch-window-hook))))
 
+(defvar zenit-switch-frame-hook-debounce-delay 2.0
+  "The delay for which `zenit-switch-frame-hook' won't trigger again.
+
+This exists to prevent switch-frame hooks getting triggered too aggressively due
+to misbehaving desktop environments, packages incorrectly frame switching in
+non-interactive code, or the user accidentally (and rapidly) un-and-refocusing
+the frame through some other means.")
+
+(defun zenit--run-switch-frame-hooks-fn (_)
+  "Run `zenit-switch-frame-hook'."
+  (remove-hook 'pre-redisplay-functions #'zenit--run-switch-frame-hooks-fn)
+  (let ((gc-cons-threshold most-positive-fixnum))
+    (dolist (fr (visible-frame-list))
+      (let ((state (frame-focus-state fr)))
+        (when (and state (not (eq state 'unknown)))
+          (let ((last-update (frame-parameter fr '+last-focus)))
+            (when (or (null last-update)
+                      (> (float-time (time-subtract (current-time) last-update))
+                         zenit-switch-frame-hook-debounce-delay))
+              (with-selected-frame fr
+                (unwind-protect
+                    (run-hooks 'zenit-switch-frame-hook)
+                  (set-frame-parameter fr '+last-focus (current-time)))))))))))
+
+(let (last-focus-state)
+  (defun zenit-run-switch-frame-hooks-fn ()
+    "Trigger `zenit-switch-frame-hook' once per frame focus change."
+    (let ((inhibit-redisplay t))
+      (or (equal last-focus-state
+                 (setq last-focus-state
+                       (mapcar #'frame-focus-state (frame-list))))
+          ;; Defer until next redisplay
+          (add-hook 'pre-redisplay-functions #'zenit--run-switch-frame-hooks-fn)))))
+
 (defun zenit-protect-fallback-buffer-h ()
-  "Don't kill the scratch buffer. Meant for
-`kill-buffer-query-functions'."
+  "Don't kill the scratch buffer.
+
+Meant for `kill-buffer-query-functions'."
   (not (eq (current-buffer) (zenit-fallback-buffer))))
 
 (defun zenit-highlight-non-default-indentation-h ()
@@ -755,11 +788,11 @@ for `zenit--theme-is-colorscheme-p'."
 ;;; Bootstrap
 
 (defun zenit-init-ui-h (&optional _)
-  "Initialize Emacs' user interface by applying all its advice
-and hooks.
+  "Initialize Emacs' user interface.
 
-These should be done as late as possible, as to avoid/minimize
-prematurely triggering hooks during startup."
+Apply all its advices and hooks. These should be done as late as
+possible, as to avoid/minimize prematurely triggering hooks
+during startup."
   (zenit-run-hooks 'zenit-init-ui-hook)
 
   (add-hook 'kill-buffer-query-functions #'zenit-protect-fallback-buffer-h)
@@ -769,7 +802,8 @@ prematurely triggering hooks during startup."
   (push '(buffer-predicate . zenit-buffer-frame-predicate) default-frame-alist)
 
   ;; Initialize `zenit-switch-window-hook' and `zenit-switch-frame-hook'
-  (add-hook 'window-selection-change-functions #'zenit-run-switch-window-or-frame-hooks-h)
+  (add-function :after after-focus-change-function #'zenit-run-switch-frame-hooks-fn)
+  (add-hook 'window-selection-change-functions #'zenit-run-switch-window-hooks-h)
   ;; Initialize `zenit-switch-buffer-hook'
   (add-hook 'window-buffer-change-functions #'zenit-run-switch-buffer-hooks-h)
   ;; `window-buffer-change-functions' doesn't trigger for files visited via the

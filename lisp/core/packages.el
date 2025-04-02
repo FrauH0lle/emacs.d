@@ -22,7 +22,12 @@
 (package! expand-region :lockfile core)
 (package! smartparens :lockfile core)
 (package! undo-tree :lockfile core)
-(package! ws-butler :lockfile core)
+(package! ws-butler :lockfile core
+  :recipe
+  (:host github
+   :repo "emacsmirror/nongnu_elpa"
+   :branch "elpa/ws-butler"
+   :local-repo "ws-butler"))
 
 ;; core-modules.el
 (package! el-patch :lockfile core)

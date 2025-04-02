@@ -14,9 +14,6 @@
     (when (modulep! +pyright)
       (package! lsp-pyright :lockfile lang_python))))
 
-;; Programming environment
-(package! anaconda-mode)
-
 ;; Environment management
 (package! pipenv :lockfile lang_python)
 (package! pyvenv :lockfile lang_python)

@@ -111,60 +111,6 @@
     :n "RET" #'+python/goto-end-of-prompt)))
 
 
-(use-package! anaconda-mode
-  :defer t
-  :init
-  (setq anaconda-mode-installation-directory (concat zenit-data-dir "anaconda/")
-        anaconda-mode-eldoc-as-single-line t)
-
-  (add-hook! '(python-mode-local-vars-hook inferior-python-mode-hook) :append
-    (defun +python-init-anaconda-mode-maybe-h ()
-      "Enable `anaconda-mode' if `lsp-mode' is absent and
-`python-shell-interpreter' is present."
-      (unless (or (bound-and-true-p lsp-mode)
-                  (bound-and-true-p eglot--managed-mode)
-                  (bound-and-true-p lsp--buffer-deferred)
-                  (not (executable-find python-shell-interpreter t)))
-        (anaconda-mode +1))))
-
-  (add-hook! 'eglot-server-initialized-hook
-    (defun +python-disable-anaconda-mode-h (&rest _)
-      "When `eglot' started, disable `anaconda-mode' so they don't interfere."
-      (when (bound-and-true-p anaconda-mode)
-        (anaconda-eldoc-mode -1)
-        (anaconda-mode -1))))
-
-  :config
-  (set-lookup-handlers! 'anaconda-mode
-    :definition #'anaconda-mode-find-definitions
-    :references #'anaconda-mode-find-references
-    :documentation #'anaconda-mode-show-doc)
-  (set-popup-rule! "^\\*anaconda-mode" :select nil)
-
-  (add-hook 'anaconda-mode-hook #'anaconda-eldoc-mode)
-
-  (defun +python-auto-kill-anaconda-processes-h ()
-    "Kill anaconda processes if this buffer is the last python buffer."
-    (when (and (eq major-mode 'python-mode)
-               (not (delq (current-buffer)
-                          (zenit-buffers-in-mode 'python-mode (buffer-list)))))
-      (anaconda-mode-stop)))
-  (add-hook! 'python-mode-hook
-    (add-hook 'kill-buffer-hook #'+python-auto-kill-anaconda-processes-h
-              nil 'local))
-
-  (when (featurep 'evil)
-    (add-hook 'anaconda-mode-hook #'evil-normalize-keymaps))
-  (map! :localleader
-        :map anaconda-mode-map
-        :prefix ("g" . "goto")
-        "d" #'anaconda-mode-find-definitions
-        "h" #'anaconda-mode-show-doc
-        "a" #'anaconda-mode-find-assignments
-        "f" #'anaconda-mode-find-file
-        "u" #'anaconda-mode-find-references))
-
-
 (use-package! pyimport
   :defer t
   :init

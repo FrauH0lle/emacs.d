@@ -103,16 +103,28 @@ Must end with a slash.")
   (setq compilation-buffer-name-function #'projectile-compilation-buffer-name
         compilation-save-buffers-predicate #'projectile-current-project-buffer-p)
 
-  ;; Centralize Projectile's per-project cache files, so they don't litter
-  ;; projects with dotfiles.
+  ;; HACK 2025-04-02: Centralize Projectile's per-project cache files, so they
+  ;;   don't litter projects with dotfiles.
   (defadvice! zenit--projectile-centralized-cache-files-a (fn &optional proot)
     :around #'projectile-project-cache-file
-    (let* ((proot (abbreviate-file-name (or proot (zenit-project-root))))
+    (let* ((proot (or proot (zenit-project-root) default-directory))
            (projectile-cache-file
             (expand-file-name
              (format "%s-%s" (zenit-project-name proot) (sha1 proot))
              zenit-projectile-cache-dir)))
       (funcall fn proot)))
+
+  ;; HACK 2025-04-02: `projectile-ensure-project' operates on the current value
+  ;;   of `projectile-known-projects' when prompting the using for a project,
+  ;;   which may not have been initialized yet, so do so the first time it is
+  ;;   called.
+  (defadvice! zenit--projectile-update-known-projects-a (dir)
+    :before #'projectile-ensure-project
+    (unless dir
+      (when (and (eq projectile-require-project-root 'prompt)
+                 (not projectile-known-projects))
+        (projectile-known-projects))
+      (advice-remove 'projectile-ensure-project #'zenit--projectile-update-known-projects-a)))
 
   ;; Support the more generic .project files as an alternative to .projectile
   (defadvice! zenit--projectile-dirconfig-file-a ()

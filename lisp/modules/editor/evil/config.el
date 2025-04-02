@@ -110,8 +110,12 @@ The package should be loaded as early as possible."
     (evil-set-cursor-color (get 'cursor 'evil-emacs-color)))
 
   ;; Ensure `evil-shift-width' always matches `tab-width'; evil does not police
-  ;; this itself, so we must.
-  (setq-hook! 'after-change-major-mode-hook evil-shift-width tab-width)
+  ;; this itself, so we must. Except in org-mode, where `tab-width' *must*
+  ;; default to 8, which isn't a sensible default for `evil-shift-width'.
+  (add-hook! 'after-change-major-mode-hook
+    (defun +evil-adjust-shift-width-h ()
+      (unless (derived-mode-p 'org-mode)
+        (setq-local evil-shift-width tab-width))))
 
   (after! wgrep
     ;; A wrapper that invokes `wgrep-mark-deletion' across lines you use
@@ -145,6 +149,12 @@ The package should be loaded as early as possible."
                  (count-lines (point-min) (point-max))
                  (buffer-size)))))
 
+
+  (defadvice! +evil--dont-move-cursor-a (fn &rest args)
+    "HACK 2025-04-02: '=' moves the cursor to the beginning of
+selection. Disable this, since it's more disruptive than helpful." 
+    :around #'evil-indent
+    (save-excursion (apply fn args)))
 
   (defadvice! +evil--make-numbered-markers-global-a (char)
     "In evil, registers 2-9 are buffer-local. In vim, they're
@@ -310,7 +320,7 @@ global, so..."
   :init
   (setq evil-escape-excluded-states '(normal visual multiedit emacs motion)
         evil-escape-excluded-major-modes '(neotree-mode treemacs-mode vterm-mode)
-        evil-escape-key-sequence "jk"
+        evil-escape-key-sequence nil
         evil-escape-delay 0.15)
   (after! evil
     (evil-define-key* '(insert replace visual operator) 'global "\C-g" #'evil-escape))

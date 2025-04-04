@@ -10,21 +10,18 @@
 Used to restore them when the mode is disabled.")
 
 (defun perspective-tabs-function (&optional _frame)
-  "Return a list of perspective tabs in FRAME.
-FRAME defaults to the current frame."
+  "Return a list of perspective tabs in FRAME."
   (let ((perspectives *persp-hash*)
         (persp-current-name (+workspace-current-name))
-        (persp-names (if-let* ((assoc-ws (frame-parameter nil 'workspace)))
-                         (ensure-list assoc-ws)
-                      (cl-remove-if
-                       (lambda (x)
-                         (member x (mapcar #'car +workspaces-frames-alist)))
-                       (+workspace-list-names)))))
+        (persp-names (frame-parameter nil 'workspaces)))
     (mapcar (lambda (persp-name)
-              (list
-               (if (string= persp-name persp-current-name) 'current-tab 'tab)
-               (cons 'name persp-name)
-               (cons 'perspective (gethash persp-name perspectives))))
+              (let ((persp (gethash persp-name perspectives)))
+                (list
+                 (if (string= persp-name persp-current-name) 'current-tab 'tab)
+                 (cons 'name persp-name)
+                 (cons 'time (or (persp-parameter 'last-accessed-time persp)
+                                (float-time)))
+                 (cons 'perspective persp))))
             persp-names)))
 
 (defun perspective-tabs-select-tab (&optional arg)
@@ -44,7 +41,10 @@ ARG is the position of the perspective in the tab bar."
       (let* ((_from-tab (tab-bar--tab))
              (to-tab (nth to-index tabs))
              (perspective (alist-get 'perspective to-tab)))
+        (setf (alist-get 'time to-tab) (float-time))  ; Update in tab list
         (persp-activate perspective)
+        ;; Also store timestamp in perspective parameters for persistence
+        (set-persp-parameter 'last-accessed-time (float-time) perspective)
         (force-mode-line-update 'all)))))
 
 (defun perspective-tabs-close-tab (&optional arg)

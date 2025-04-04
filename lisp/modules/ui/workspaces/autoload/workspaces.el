@@ -1,24 +1,24 @@
 ;; ui/workspaces/autoload/workspaces.el -*- lexical-binding: t; -*-
 
 (defvar +workspace--last nil)
+(defvar +workspace--index 0)
 
 ;;;###autoload
 (defface +workspace-tab-selected-face '((t (:inherit highlight)))
   "The face for selected tabs displayed by `+workspace/display'"
-  :group 'tab-bar-mode)
+  :group 'persp-mode)
 
 ;;;###autoload
 (defface +workspace-tab-face '((t (:inherit default)))
   "The face for selected tabs displayed by `+workspace/display'"
-  :group 'tab-bar-mode)
+  :group 'persp-mode)
 
 
 ;;
 ;;; Library
 
-;; NOTE 2024-06-14: In principle, this is unnecessary.
 (defun +workspace--protected-p (name)
-  (equal name "none"))
+  (equal name persp-nil-name))
 
 (defun +workspace--generate-id ()
   (or (cl-loop for name in (+workspace-list-names)
@@ -27,18 +27,13 @@
                finally return (if max (1+ max)))
       1))
 
-(defun +workspaces--get-tabnum (name)
-  "Get index of tab NAME."
-  (let ((tabnum (cl-position-if
-                 (lambda (x) (equal (alist-get 'name x) name))
-                 (funcall tab-bar-tabs-function))))
-    (unless tabnum
-      (user-error "No workspace named '%s' exists" name))
-    tabnum))
-
 
 ;;
 ;;; Predicates
+
+;;;###autoload
+(defalias #'+workspace-p #'perspective-p
+  "Return t if OBJ is a perspective hash table.")
 
 ;;;###autoload
 (defun +workspace-exists-p (name)
@@ -46,206 +41,218 @@
   (member name (+workspace-list-names)))
 
 ;;;###autoload
-(cl-defun +workspace-contains-buffer-p
-    (&optional (buff-or-name (current-buffer)) (workspace (+workspace-current-name)))
-  "Return non-nil if BUFF-OR-NAME is in WORKSPACE.
- Defaults to current workspace."
-  (bufferlo-local-buffer-p (get-buffer buff-or-name) nil (+workspaces--get-tabnum workspace)))
+(defalias #'+workspace-contains-buffer-p #'persp-contain-buffer-p
+  "Return non-nil if BUFFER is in WORKSPACE (defaults to current workspace).")
 
 
 ;;
 ;;; Getters
 
 ;;;###autoload
+(defalias #'+workspace-current #'get-current-persp
+  "Return the currently active workspace.")
+
+;;;###autoload
 (defun +workspace-get (name &optional noerror)
-  "Return a workspace named NAME. Unless NOERROR is non-nil, this
-throws an error if NAME doesn't exist."
+  "Return a workspace named NAME. Unless NOERROR is non-nil, this throws an
+error if NAME doesn't exist."
   (cl-check-type name string)
-  (if-let* ((ws (car-safe (+workspace-exists-p name))))
-      ws
-    (cond ((not noerror)
+  (when-let (persp (persp-get-by-name name))
+    (cond ((+workspace-p persp) persp)
+          ((not noerror)
            (error "No workspace called '%s' was found" name)))))
 
 ;;;###autoload
 (defun +workspace-current-name ()
   "Get the name of the current workspace."
-  (let ((current-tab (alist-get 'current-tab (funcall tab-bar-tabs-function))))
-    (alist-get 'name current-tab)))
+  (safe-persp-name (+workspace-current)))
 
 ;;;###autoload
 (defun +workspace-list-names ()
   "Return the list of names of open workspaces."
-  (cl-loop for tab in (funcall tab-bar-tabs-function)
-           if (alist-get 'name tab)
+  (cl-remove persp-nil-name persp-names-cache :count 1))
+
+;;;###autoload
+(defun +workspace-list ()
+  "Return a list of workspace structs (satisifes `+workspace-p')."
+  ;; We don't use `hash-table-values' because it doesn't ensure order in older
+  ;; versions of Emacs
+  (cl-loop for name in (+workspace-list-names)
+           if (gethash name *persp-hash*)
            collect it))
 
 ;;;###autoload
-(defun +workspace-buffer-list (&optional tab)
-  "Return a list of buffers in TAB.
+(defun +workspace-buffer-list (&optional persp)
+  "Return a list of buffers in PERSP.
 
-TAB is a string (name of a workspace). If nil or omitted, it
-defaults to the current workspace."
-  (let* ((tab (or tab (+workspace-current-name)))
-         (tabnum (+workspaces--get-tabnum tab)))
-    (unless tabnum
-      (user-error "Not in a valid workspace (%s)" tab))
-    (bufferlo--get-buffers nil tabnum)))
+PERSP can be a string (name of a workspace) or a workspace (satisfies
+`+workspace-p'). If nil or omitted, it defaults to the current workspace."
+  (let ((persp (or persp (+workspace-current))))
+    (unless (+workspace-p persp)
+      (user-error "Not in a valid workspace (%s)" persp))
+    (persp-buffers persp)))
 
 ;;;###autoload
 (defun +workspace-orphaned-buffer-list ()
-  "Return a list of buffers that aren't associated with any
-workspace."
-  (bufferlo--get-orphan-buffers))
+  "Return a list of buffers that aren't associated with any perspective."
+  (cl-remove-if #'persp--buffer-in-persps (buffer-list)))
+
 
 ;;
 ;;; Actions
 
 ;;;###autoload
 (defun +workspace-load (name)
-  "Loads a single workspace (named NAME) into the current session.
-Can only retrieve perspectives that were explicitly saved with
-`+workspace-save'.
+  "Loads a single workspace (named NAME) into the current session. Can only
+retrieve perspectives that were explicitly saved with `+workspace-save'.
 
 Returns t if successful, nil otherwise."
   (when (+workspace-exists-p name)
     (user-error "A workspace named '%s' already exists." name))
-  (let ((bookmark-alist +workspaces-bookmark-alist)
-        (bookmark-default-file (expand-file-name +workspaces-data-file +workspaces-save-directory)))
-    (unless bookmark-alist
-      (bookmark-load (expand-file-name +workspaces-data-file +workspaces-save-directory) t))
-    (+workspace-switch name t)
-    (bufferlo-bookmark-tab-load name)
-    (setq +workspaces-bookmark-alist bookmark-alist))
+  (persp-load-from-file-by-names
+   (expand-file-name +workspaces-data-file persp-save-dir)
+   *persp-hash* (list name))
   (+workspace-exists-p name))
 
 ;;;###autoload
 (defun +workspace-save (name)
-  "Saves a single workspace (NAME) from the current session. Can be
-loaded again with `+workspace-load'. NAME can be the string name
-of a workspace or its perspective hash table.
+  "Saves a single workspace (NAME) from the current session. Can be loaded again
+with `+workspace-load'. NAME can be the string name of a workspace or its
+perspective hash table.
 
 Returns t on success, nil otherwise."
   (unless (+workspace-exists-p name)
     (error "'%s' is an invalid workspace" name))
-  (let ((bookmark-alist +workspaces-bookmark-alist)
-        (bookmark-default-file (expand-file-name +workspaces-data-file +workspaces-save-directory)))
-    (letf! ((#'bookmark-maybe-load-default-file #'ignore))
-      (bufferlo-bookmark-tab-save name))
-    (bookmark-write-file (expand-file-name +workspaces-data-file +workspaces-save-directory))
-    (setq +workspaces-bookmark-alist bookmark-alist))
-  t)
+  (let ((fname (expand-file-name +workspaces-data-file persp-save-dir)))
+    (persp-save-to-file-by-names fname *persp-hash* (list name) t)
+    (and (member name (persp-list-persp-names-in-file fname))
+         t)))
 
 ;;;###autoload
-(defun +workspace-save-session (file)
-  "Saves all workspaces from the current session to FILE.
+(defun +workspace-delete (workspace)
+  "Delete WORKSPACE from the saved workspaces in `persp-save-dir'.
 
-Returns t on success, nil otherwise."
-  (let ((bookmark-alist nil)
-        (bookmark-default-file file)
-        (current-ws (+workspace-current-name))
-        (frames (visible-frame-list))
-        (i 1))
-    (dolist (f frames)
-      (letf! ((#'bookmark-maybe-load-default-file #'ignore))
-        (with-selected-frame f
-          (bufferlo-bookmark-frame-save (format "frame-%s" i)))
-        (cl-incf i)))
-    (bookmark-write-file file)
-    (setq +workspaces-bookmark-alist bookmark-alist))
-  t)
-
-;;;###autoload
-(defun +workspaces-rotate-autosaves (fname)
-  "Rotate file FNAME. The number of backups is controlled by
-`+workspaces-autosave-num-of-backups'."
-  (when (> +workspaces-autosave-num-of-backups 0)
-    (cl-do ((cur +workspaces-autosave-num-of-backups (1- cur))
-            (prev (1- +workspaces-autosave-num-of-backups) (1- prev)))
-        ((> 1 cur) nil)
-      (let ((cf (concat fname (number-to-string cur)))
-            (pf (concat fname (if (> prev 0)
-                                  (number-to-string prev)
-                                ""))))
-        (when (file-exists-p pf)
-          (when (file-exists-p cf)
-            (delete-file cf))
-          (rename-file pf cf t))))
-    (when (file-exists-p fname)
-      (rename-file fname (concat fname (number-to-string 1)) t)))
-  t)
+Return t if WORKSPACE was successfully deleted. Throws error if WORKSPACE is not
+found or wasn't saved with `+workspace-save'."
+  (let* ((fname (expand-file-name +workspaces-data-file persp-save-dir))
+         (workspace-name (if (stringp workspace) workspace (persp-name workspace)))
+         (workspace-names (persp-list-persp-names-in-file fname))
+         (workspace-idx (cl-position workspace-name workspace-names :test #'equal)))
+    (unless workspace-idx
+      (error "Couldn't find saved workspace '%s'" workspace-name))
+    (zenit-file-write
+     fname (list (cl-remove-if (lambda (ws) (equal workspace-name (nth 1 ws)))
+                               (zenit-file-read fname :by 'read)
+                               :count 1)))
+    (not (member name (persp-list-persp-names-in-file fname)))))
 
 ;;;###autoload
-(defun +workspaces-rename-tab (name &optional tab-number)
-  (let ((new-name (truncate-string-to-width name tab-bar-tab-name-truncated-max nil nil "...")))
-    (tab-bar-rename-tab new-name tab-number)))
-
-;;;###autoload
-(defun +workspace-new (name &optional clone-p)
-  "Create a new workspace named NAME. If one already exists, return
-nil.
+(defun +workspace-new (name)
+  "Create a new workspace named NAME. If one already exists, return nil.
 Otherwise return t on success, nil otherwise."
   (when (+workspace--protected-p name)
     (error "Can't create a new '%s' workspace" name))
   (when (+workspace-exists-p name)
     (error "A workspace named '%s' already exists" name))
-  (let ((+popup--inhibit-transient t))
-    (if clone-p
-        (let ((tab-bar-new-tab-choice 'clone))
-          (tab-bar-new-tab (1+ (length (funcall tab-bar-tabs-function)))
-                           (1+ (+workspaces--get-tabnum (+workspace-current-name)))))
-      (tab-bar-new-tab (1+ (length (funcall tab-bar-tabs-function))))
-      (tab-bar-rename-tab name)
+  (when (memq (selected-frame)
+              (cl-loop for (_ . f) in +workspaces-frames-alist
+                       collect f))
+    (error "New workspaces are not allowed in this frame"))
+  (let ((persp (persp-add-new name))
+        (+popup--inhibit-transient t))
+    (save-window-excursion
+      (let ((ignore-window-parameters t)
+            (+popup--inhibit-transient t))
+        (persp-delete-other-windows))
       (switch-to-buffer (zenit-fallback-buffer))
-      (bufferlo-clear))
-    t))
+      (setf (persp-window-conf persp)
+            (funcall persp-window-state-get-function (selected-frame))))
+    (+workspaces--add-ws-to-frame name)
+    persp))
 
 ;;;###autoload
 (defun +workspace-rename (name new-name)
-  "Rename the current workspace named NAME to NEW-NAME. Returns old
-name on success, nil otherwise."
+  "Rename the current workspace named NAME to NEW-NAME.
+Returns old name on success, nil otherwise."
   (when (+workspace--protected-p name)
     (error "Can't rename '%s' workspace" name))
-  (tab-bar-rename-tab new-name (1+ (+workspaces--get-tabnum name)))
-  (when (+workspaces--get-tabnum new-name)
-    name))
+  ;; Update frame parameter
+  (+workspaces--remove-ws-from-frame name)
+  (+workspaces--add-ws-to-frame new-name)
+  (persp-rename new-name (+workspace-get name)))
 
 ;;;###autoload
 (defun +workspace-kill (workspace &optional inhibit-kill-p)
-  "Kill the workspace denoted by WORKSPACE, which is the name
- of a tab. If INHIBIT-KILL-P is non-nil, don't kill this
-workspace's buffers."
+  "Kill the workspace denoted by WORKSPACE.
+WORKSPACE can be the name of a perspective or its hash table.
+
+If INHIBIT-KILL-P is non-nil, don't kill this workspace's
+buffers."
+  (unless (stringp workspace)
+    (setq workspace (persp-name workspace)))
   (when (+workspace--protected-p workspace)
     (error "Can't delete '%s' workspace" workspace))
-  ;; Error checking
-  (+workspace-get workspace)
-  (delete-other-windows)
-  (unless inhibit-kill-p
-    (bufferlo-kill-buffers nil nil (+workspaces--get-tabnum workspace)))
-  (tab-bar-close-tab (1+ (+workspaces--get-tabnum workspace)))
-  ;; A little workaround if we only have one workspace left. Then we should
-  ;; simply return t.
-  (if (and (length= (+workspace-list-names) 1)
-           (string= (car (+workspace-list-names)) +workspaces-main))
-      t
-    (not (+workspace-exists-p workspace))))
+  (+workspace-get workspace) ; error checking
+  (persp-kill workspace inhibit-kill-p)
+  (+workspaces--remove-ws-from-frame workspace)
+  (not (+workspace-exists-p workspace)))
 
 ;;;###autoload
 (defun +workspace-switch (name &optional auto-create-p)
   "Switch to another workspace named NAME (a string).
 
-If AUTO-CREATE-P is non-nil, create the workspace if it doesn't exist, otherwise
-throws an error."
+If AUTO-CREATE-P is non-nil, create the workspace if it doesn't
+exist, otherwise throws an error."
   (unless (+workspace-exists-p name)
     (if auto-create-p
         (+workspace-new name)
       (error "%s is not an available workspace" name)))
-  (let ((old-name (+workspace-current-name)))
-    (unless (equal old-name name)
+  (let* ((from-name (+workspace-current-name))
+         (to-frame (car (cl-rassoc-if (lambda (ws) (member name ws)) +workspaces-frames-alist))))
+    (unless (equal from-name name)
       (setq +workspace--last
-            (or old-name
+            (or (and (not (+workspace--protected-p from-name))
+                     from-name)
                 +workspaces-main))
-      (tab-bar-switch-to-tab name))
+
+      ;; Switch workspace
+      (persp-frame-switch name to-frame)
+      (select-frame-set-input-focus to-frame)
+      (+workspaces--update-tab-bar))
     (equal (+workspace-current-name) name)))
+
+;;;###autoload
+(defun +workspace-move (workspace &optional frame)
+  "Move WORKSPACE to another FRAME.
+If FRAME is not specified, prompt to select from existing frames
+or create new."
+  (when (+workspace--protected-p workspace)
+    (error "Cannot move protected workspace"))
+
+  (when-let* ((frame (if (framep frame)
+                         frame
+                       (make-frame `((width . ,(frame-parameter (selected-frame) 'width))
+                                     (height . ,(frame-parameter (selected-frame) 'height))))))
+              (old-frame (selected-frame)))
+
+    ;; Remove from old frame
+    (+workspaces--remove-ws-from-frame workspace old-frame)
+    (let ((frame-workspaces (frame-parameter nil 'workspaces)))
+      (when (length= frame-workspaces 0)
+        (delete-frame)))
+
+    ;; Add to new frame
+    (+workspaces--add-ws-to-frame workspace frame)
+    (with-selected-frame frame
+      (persp-activate (+workspace-get workspace) frame)
+      (select-frame-set-input-focus frame))
+
+    ;; Switch to last recent tab in old frame
+    (when (frame-live-p old-frame)
+      (with-selected-frame old-frame
+        (tab-bar-switch-to-recent-tab)))
+
+    (+workspaces--update-tab-bar)))
 
 
 ;;
@@ -256,19 +263,16 @@ throws an error."
 
 ;;;###autoload
 (defun +workspace/load (name)
-  "Load a workspace and switch to it. If called with C-u, try to
-reload the current workspace (by name) from session files."
+  "Load a workspace and switch to it. If called with C-u, try to reload the
+current workspace (by name) from session files."
   (interactive
    (list
     (if current-prefix-arg
         (+workspace-current-name)
-      (let ((bookmark-alist +workspaces-bookmark-alist)
-            (bookmark-default-file (expand-file-name +workspaces-data-file +workspaces-save-directory)))
-        (unless bookmark-alist
-          (bookmark-load (expand-file-name +workspaces-data-file +workspaces-save-directory) t))
-        (completing-read
-         "Workspace to load: "
-         (bufferlo--bookmark-get-names #'bufferlo--bookmark-tab-handler))))))
+      (completing-read
+       "Workspace to load: "
+       (persp-list-persp-names-in-file
+        (expand-file-name +workspaces-data-file persp-save-dir))))))
   (if (not (+workspace-load name))
       (+workspace-error (format "Couldn't load workspace %s" name))
     (+workspace/switch-to name)
@@ -301,8 +305,8 @@ workspace."
 
 ;;;###autoload
 (defun +workspace/kill (name)
-  "Kill this workspace. If called with C-u, prompts you for the
-name of the workspace to delete."
+  "Delete this workspace. If called with C-u, prompts you for the name of the
+workspace to delete."
   (interactive
    (let ((current-name (+workspace-current-name)))
      (list
@@ -315,7 +319,9 @@ name of the workspace to delete."
       (let ((workspaces (+workspace-list-names)))
         (if (not (member name workspaces))
             (+workspace-message (format "'%s' workspace doesn't exist" name) 'warn)
-          (cond ((not (equal (+workspace-current-name) name))
+          (cond ((delq (selected-frame) (persp-frames-with-persp (get-frame-persp)))
+                 (user-error "Can't close workspace, it's visible in another frame"))
+                ((not (equal (+workspace-current-name) name))
                  (+workspace-kill name))
                 ((cdr workspaces)
                  (+workspace-kill name)
@@ -326,36 +332,53 @@ name of the workspace to delete."
                  (unless (zenit-buffer-frame-predicate (window-buffer))
                    (switch-to-buffer (zenit-fallback-buffer))))
                 (t
-                 (+workspace-kill name)))
+                 (+workspace-switch +workspaces-main t)
+                 (unless (string= (car workspaces) +workspaces-main)
+                   (+workspace-kill name))
+                 (zenit/kill-all-buffers (zenit-buffer-list))))
           (+workspace-message (format "Deleted '%s' workspace" name) 'success)))
     ('error (+workspace-error ex t))))
+
+;;;###autoload
+(defun +workspace/delete (name)
+  "Delete a saved workspace in `persp-save-dir'.
+
+Can only selete workspaces saved with `+workspace/save' or
+`+workspace-save'."
+  (interactive
+   (list
+    (completing-read "Delete saved workspace: "
+                     (cl-loop with wsfile = (zenit-path persp-save-dir +workspaces-data-file)
+                              for p in (persp-list-persp-names-in-file wsfile)
+                              collect p))))
+  (and (condition-case-unless-debug ex
+           (or (+workspace-delete name)
+               (+workspace-error (format "Couldn't delete '%s' workspace" name)))
+         ('error (+workspace-error ex t)))
+       (+workspace-message (format "Deleted '%s' workspace" name) 'success)))
 
 ;;;###autoload
 (defun +workspace/kill-session (&optional interactive)
   "Delete the current session, all workspaces, windows and their buffers."
   (interactive (list t))
-  (let ((frames (visible-frame-list))
-        (num-frames (length (visible-frame-list)))
-        (num-windows 0)
-        (num-workspaces 0)
-        (num-buffers 0))
-    (dolist (f frames)
-      (with-selected-frame f
-        (setq num-windows (+ num-windows (length (window-list)))
-              num-workspaces (+ num-workspaces (length (+workspace-list-names))))
-        (unless (cl-every (zenit-rpartial #'+workspace-kill t) (+workspace-list-names))
-          (+workspace-error "Could not clear session"))))
+  (let ((windows (length (window-list)))
+        (persps (length (+workspace-list-names)))
+        (buffers 0))
+    (let ((persp-autokill-buffer-on-remove t))
+      (unless (cl-every #'+workspace-kill (+workspace-list-names))
+        (+workspace-error "Could not clear session")))
     (+workspace-switch +workspaces-main t)
-    (setq num-buffers (zenit/kill-all-buffers (buffer-list)))
+    (setq buffers (zenit/kill-all-buffers (buffer-list)))
     (when interactive
-      (message "Killed %d workspace(s), %d window(s) & %d buffer(s) in %d frame(s)"
-               num-workspaces num-windows num-buffers num-frames))))
+      (message "Killed %d workspace(s), %d window(s) & %d buffer(s)"
+               persps windows buffers))))
 
 ;;;###autoload
 (defun +workspace/kill-session-and-quit ()
   "Kill emacs without saving anything."
   (interactive)
-  (kill-emacs))
+  (let ((persp-auto-save-opt 0))
+    (kill-emacs)))
 
 ;;;###autoload
 (defun +workspace/new (&optional name clone-p)
@@ -368,7 +391,8 @@ new workspace is blank."
   (condition-case e
       (cond ((+workspace-exists-p name)
              (error "%s already exists" name))
-            (clone-p (+workspace-new name t))
+            (clone-p
+             (persp-copy name t))
             (t
              (+workspace-switch name t)
              (+workspace/display)))
@@ -431,17 +455,19 @@ A negative number will start from the end of the workspace list."
   "Cycle n workspaces to the right (default) or left."
   (interactive (list 1))
   (let ((current-name (+workspace-current-name)))
-    (condition-case-unless-debug ex
-        (let* ((persps (+workspace-list-names))
-               (perspc (length persps))
-               (index (cl-position current-name persps)))
-          (when (= perspc 1)
-            (user-error "No other workspaces"))
-          (+workspace/switch-to (% (+ index n perspc) perspc))
-          (unless (called-interactively-p 'interactive)
-            (+workspace/display)))
-      ('user-error (+workspace-error (cadr ex) t))
-      ('error (+workspace-error ex t)))))
+    (if (+workspace--protected-p current-name)
+        (+workspace-switch +workspaces-main t)
+      (condition-case-unless-debug ex
+          (let* ((persps (+workspace-list-names))
+                 (perspc (length persps))
+                 (index (cl-position current-name persps)))
+            (when (= perspc 1)
+              (user-error "No other workspaces"))
+            (+workspace/switch-to (% (+ index n perspc) perspc))
+            (unless (called-interactively-p 'interactive)
+              (+workspace/display)))
+        ('user-error (+workspace-error (cadr ex) t))
+        ('error (+workspace-error ex t))))))
 
 ;;;###autoload
 (defun +workspace/switch-left (&optional n)  (interactive "p") (+workspace/cycle (- n)))
@@ -451,41 +477,100 @@ A negative number will start from the end of the workspace list."
 
 ;;;###autoload
 (defun +workspace/close-window-or-workspace ()
-  "Close the selected window. If it's the last window in the
-workspace, either close the workspace (as well as its associated
-frame, if one exists) and move to the next."
+  "Close the selected window.
+If it's the last window in the workspace, either close the
+workspace (as well as its associated frame, if one exists) and
+move to the next."
   (interactive)
   (let ((delete-window-fn (if (featurep 'evil) #'evil-window-delete #'delete-window)))
     (if (window-dedicated-p)
         (funcall delete-window-fn)
-      (let ((current-workspace-name (+workspace-current-name)))
-        (cond ((or (+workspace--protected-p current-workspace-name)
+      (let ((current-persp-name (+workspace-current-name)))
+        (cond ((or (+workspace--protected-p current-persp-name)
                    (cdr (zenit-visible-windows)))
                (funcall delete-window-fn))
 
               ((cdr (+workspace-list-names))
-               (let ((frame-persp (frame-parameter nil 'workspace)))
-                 (if (string= frame-persp (+workspace-current-name))
+               (let ((frame-workspaces (frame-parameter nil 'workspaces)))
+                 (if (length= frame-workspaces 1)
                      (delete-frame)
-                   (+workspace/kill current-workspace-name))))
+                   (+workspace/kill current-persp-name))))
 
               ((+workspace-error "Can't delete last workspace" t)))))))
 
 ;;;###autoload
-(defun +workspace/move-left (&optional count)
-  "Move the current workspace to the left by n COUNTs."
-  (interactive "p")
-  (let* ((current-pos (cl-position (+workspace-current-name) (+workspace-list-names)))
-         (new-pos (- current-pos (min count (1- (length (+workspace-list-names)))))))
-    (tab-bar-move-tab-to (1+ new-pos) (1+ current-pos))))
+(defun +workspace/move (workspace &optional frame)
+  "Move WORKSPACE to another FRAME.
+
+If FRAME is not specified, prompt to select from existing frames
+or create new."
+  (interactive
+   (list (+workspace-current-name)
+         (let ((frames-alist (+workspaces--unique-frames-alist (mapcar #'car +workspaces-frames-alist))))
+           (alist-get (completing-read
+                         "Move workspace to frame: "
+                         (append '("New frame")
+                                 frames-alist)
+                         nil t)
+                        frames-alist nil nil #'string=))))
+  (+workspaces-move workspace frame))
+
+(defun +workspaces--unique-frames-alist (frames)
+  (let (;; Remove frames which contain already the current workspace
+        (frames (cl-remove-if
+                 (lambda (f)
+                   (member (+workspace-current-name) (frame-parameter f 'workspaces)))
+                 frames))
+        frame-names-alist uniques)
+    ;; Build frame name - frame assoc list and uniquify the frame names
+    (dolist (f frames)
+      (let* ((name (frame-parameter f 'name))
+             (name (if-let* ((entry (alist-get name uniques nil nil #'string=)))
+                       (let ((new-name (format "%s - %d" name entry)))
+                         (setf (alist-get name uniques nil nil #'string=)
+                               (1+ entry))
+                         new-name)
+                     (setf (alist-get name uniques nil nil #'string=) 1)
+                     name)))
+        (setf (alist-get name frame-names-alist nil nil #'string=) f)))
+    frame-names-alist))
 
 ;;;###autoload
-(defun +workspace/move-right (&optional count)
-  "Move the current workspace to the right by n COUNTs."
+(defun +workspace/swap-left (&optional count)
+  "Swap the current workspace with the COUNTth workspace on its left."
   (interactive "p")
-  (let* ((current-pos (cl-position (+workspace-current-name) (+workspace-list-names)))
-         (new-pos (+ current-pos (min count (1- (length (+workspace-list-names)))))))
-    (tab-bar-move-tab-to (1+ new-pos) (1+ current-pos))))
+  (let* ((current-name (+workspace-current-name))
+         (count (or count 1))
+         (persps (+workspace-list-names))
+         (frame-ws (frame-parameter (selected-frame) 'workspaces))
+         (persp-index (- (cl-position current-name persps :test #'equal)
+                         count))
+         (persp-names (remove current-name persps))
+         (frame-ws-index (- (cl-position current-name frame-ws :test #'equal)
+                            count))
+         (frame-ws-names (remove current-name frame-ws)))
+    (unless persp-names
+      (user-error "Only one workspace"))
+    (let ((persp-index (min (max 0 persp-index) (length persp-names)))
+          (frame-ws-index (min (max 0 frame-ws-index) (length frame-ws-names))))
+      (setq persp-names-cache
+            (append (cl-subseq persp-names 0 persp-index)
+                    (list current-name)
+                    (cl-subseq persp-names persp-index)))
+      (let ((frame-ws-new
+             (append (cl-subseq frame-ws-names 0 frame-ws-index)
+                     (list current-name)
+                     (cl-subseq frame-ws-names frame-ws-index))))
+        (set-frame-parameter (selected-frame) 'workspaces frame-ws-new)
+        (setf (alist-get (selected-frame) +workspaces-frames-alist) frame-ws-new)))
+    (when (called-interactively-p 'any)
+      (+workspace/display))))
+
+;;;###autoload
+(defun +workspace/swap-right (&optional count)
+  "Swap the current workspace with the COUNTth workspace on its right."
+  (interactive "p")
+  (funcall-interactively #'+workspace/swap-left (- count)))
 
 
 ;;
@@ -517,14 +602,12 @@ frame, if one exists) and move to the next."
 
 ;;;###autoload
 (defun +workspace-message (message &optional type)
-  "Show an \\='elegant' message in the echo area next to a listing
- of workspaces."
+  "Show an \\='elegant' message in the echo area next to a listing of workspaces."
   (message "%s" (+workspace--message-body message type)))
 
 ;;;###autoload
 (defun +workspace-error (message &optional noerror)
-  "Show an \\='elegant' error in the echo area next to a listing of
-workspaces."
+  "Show an \\='elegant' error in the echo area next to a listing of workspaces."
   (funcall (if noerror #'message #'error)
            "%s" (+workspace--message-body message 'error)))
 
@@ -537,34 +620,125 @@ workspaces."
 
 
 ;;
+;;; Frames
+
+(defvar +workspaces-frames-alist nil
+  "Alist mapping frames to their associated workspace names.
+Format: ((frame . workspace-name) ...)")
+
+(defun +workspaces--add-ws-to-frame (name &optional frame)
+  (let* ((frame (or frame (selected-frame)))
+         (workspaces (nreverse (frame-parameter frame 'workspaces))))
+    (cl-pushnew name workspaces :test #'string=)
+    (let ((workspaces (nreverse workspaces)))
+      (setf (alist-get frame +workspaces-frames-alist) workspaces)
+      (set-frame-parameter frame 'workspaces workspaces))))
+
+(defun +workspaces--remove-ws-from-frame (name &optional frame)
+  (let* ((frame (or frame (selected-frame)))
+         (workspaces (frame-parameter frame 'workspaces))
+         (workspaces (cl-remove name workspaces :test #'string=)))
+    (setf (alist-get frame +workspaces-frames-alist) workspaces)
+    (set-frame-parameter frame 'workspaces workspaces)))
+
+(defun +workspaces--update-tab-bar ()
+  (dolist (f (frame-list))
+    (with-selected-frame f
+      ;; (tab-bar--update-tab-bar-lines t)
+      (force-mode-line-update 'all))))
+
+(add-hook! '(zenit-switch-frame-hook after-make-frame-functions after-delete-frame-functions)
+  (defun +workspaces--update-assoc-frames-h (&rest _)
+    (cl-loop for (frame . ws) in +workspaces-frames-alist
+             if (not (frame-live-p frame))
+             do (setf (alist-get frame +workspaces-frames-alist nil 'remove) nil))))
+
+
+;;
 ;;; Hooks
 
 ;;;###autoload
-(defun +workspaces-switch-to-project-h (&optional dir)
-  "Creates a workspace dedicated to a new project. If one already exists, switch
-to it. If in the main workspace and it's empty, recycle that workspace, without
-renaming it.
+(defun +workspaces-delete-associated-workspace-h (&optional frame)
+  "Delete workspace associated with current frame.
+A workspace gets associated with a frame when a new frame is
+interactively created."
+  (when (and persp-mode (not (bound-and-true-p with-editor-mode)))
+    (unless frame
+      (setq frame (selected-frame)))
+    (let ((ws-to-kill (cl-loop for workspace in (frame-parameter frame 'workspaces)
+                               for workspace-frames = nil
+                               do (cl-loop for (frame . ws) in +workspaces-frames-alist
+                                           when (member workspace ws)
+                                           do (push frame workspace-frames))
+                               if (length= workspace-frames 1)
+                               collect workspace into to-kill
+                               finally return to-kill)))
+      (dolist (ws ws-to-kill)
+        (+workspace/kill ws)))
+    (+workspaces--update-tab-bar)))
 
-Afterwords, runs `+workspaces-switch-project-function'. By default, this prompts
-the user to open a file in the new project.
+(defun +workspaces--associate-frame (frame &optional workspace)
+  (let ((workspace (or workspace (+workspace-current-name))))
+    (+workspaces--add-ws-to-frame workspace frame)
+    ;; Ensure every buffer has a buffer-predicate
+    (persp-set-frame-buffer-predicate frame)))
+
+;;;###autoload
+(defun +workspaces-make-frame-fn (frame &optional _new-frame-p)
+  "Create a new FRAME.
+The frame is associated with the same workspace it was spawned
+from and displays the last selected buffer."
+  (when persp-mode
+    (with-selected-frame frame
+      ;; Dp not restore the last window configuration
+      (let ((persp-init-frame-behaviour nil))
+        (persp-activate (frame-parameter (previous-frame) 'persp) frame))
+      (+workspaces--associate-frame frame)
+      (+workspaces--update-tab-bar))))
+
+;;;###autoload
+(defun +workspaces-associate-frame-fn (frame &optional _new-frame-p)
+  "Create a blank, new perspective and associate it with FRAME."
+  (when persp-mode
+    (if (not (persp-frame-list-without-daemon))
+        (+workspace-switch +workspaces-main t)
+      (with-selected-frame frame
+        (+workspace-switch (format "workspace-%s" (+workspace--generate-id)) t)
+        (unless (zenit-real-buffer-p (current-buffer))
+          (switch-to-buffer (zenit-fallback-buffer)))
+        (+workspaces--associate-frame frame))
+      (run-at-time 0.1 nil #'+workspace/display))))
+
+;;;###autoload
+(defun +workspaces-switch-to-project-h (&optional dir)
+  "Creates a workspace dedicated to a new project.
+
+If one already exists, switch to it. If in the main workspace and
+it's empty, recycle that workspace, without renaming it.
+
+Afterwords, runs `+workspaces-switch-project-function'. By
+default, this prompts the user to open a file in the new project.
 
 This be hooked to `projectile-after-switch-project-hook'."
   (let* ((default-directory (or dir default-directory))
          (pname (zenit-project-name))
          (proot (file-truename default-directory))
-         ;; HACK: Clear projectile-project-root or cached roots could interfere
-         ;;   with project switching.
+         ;; HACK 2025-04-03: Clear projectile-project-root or cached roots could
+         ;;   interfere with project switching.
          projectile-project-root)
-    (when bufferlo-mode
+    (when persp-mode
       (if (and (not (null +workspaces-on-switch-project-behavior))
                (or (eq +workspaces-on-switch-project-behavior t)
-                   (+workspace--protected-p (+workspace-current-name))
+                   (+workspace--protected-p (safe-persp-name (get-current-persp)))
+                   ;; NOTE 2025-04-03: Because we associate immediately buffers
+                   ;;   to the first workspace, we need to filter here for real
+                   ;;   buffers. Otherwise, the condition is never nil.
                    (zenit-real-buffer-list (+workspace-buffer-list))))
           (let* ((ws-param '+workspace-project)
                  (ws (+workspace-get pname t))
                  (ws (if (and ws
                               (ignore-errors
-                                (file-equal-p (alist-get ws-param (cdr (bufferlo--current-tab)))
+                                (file-equal-p (persp-parameter ws-param ws)
                                               proot)))
                          ws
                        ;; Uniquify the project's name, so we don't clobber a
@@ -575,13 +749,13 @@ This be hooked to `projectile-after-switch-project-hook'."
                          (while (and pre
                                      (setq ws (+workspace-get (setq pname (string-join post "/")) t))
                                      (not (ignore-errors
-                                            (file-equal-p (alist-get ws-param (cdr (bufferlo--current-tab)))
+                                            (file-equal-p (persp-parameter ws-param ws)
                                                           proot))))
                            (push (pop pre) post))
                          (unless pre ws))))
-                 (ws (or ws (and (+workspace-new pname) pname))))
-            (+workspace-switch ws)
-            (setf (alist-get ws-param (cdr (bufferlo--current-tab))) proot)
+                 (ws (or ws (+workspace-new pname))))
+            (set-persp-parameter ws-param proot ws)
+            (+workspace-switch pname)
             (with-current-buffer (zenit-fallback-buffer)
               (setq-local default-directory proot)
               (hack-dir-local-variables-non-file-buffer))
@@ -599,6 +773,37 @@ This be hooked to `projectile-after-switch-project-hook'."
         (unless current-prefix-arg
           (funcall +workspaces-switch-project-function proot))))))
 
+;;;###autoload
+(defun +workspaces-save-tab-bar-data-h (_)
+  "Save the current workspace's tab bar data."
+  (when (get-current-persp)
+    (set-persp-parameter
+     'tab-bar-tabs (tab-bar-tabs))
+    (set-persp-parameter 'tab-bar-closed-tabs tab-bar-closed-tabs)))
+
+;;;###autoload
+(defun +workspaces-save-tab-bar-data-to-file-h (&rest _)
+  "Save the current workspace's tab bar data to file."
+  (when (get-current-persp)
+    ;; HACK 2025-04-03: Remove fields (for window-configuration) that cannot be
+    ;;   serialized.
+    (set-persp-parameter 'tab-bar-tabs
+                         (frameset-filter-tabs (tab-bar-tabs) nil nil t))))
+
+;;;###autoload
+(defun +workspaces-load-tab-bar-data-h (_)
+  "Restores the tab bar data of the workspace we have just switched to."
+  (tab-bar-tabs-set (persp-parameter 'tab-bar-tabs))
+  (setq tab-bar-closed-tabs (persp-parameter 'tab-bar-closed-tabs))
+  (tab-bar--update-tab-bar-lines t))
+
+;;;###autoload
+(defun +workspaces-load-tab-bar-data-from-file-h (&rest _)
+  "Restores the tab bar data from file."
+  (when-let ((persp-tab-data (persp-parameter 'tab-bar-tabs)))
+    (tab-bar-tabs-set persp-tab-data)
+    (tab-bar--update-tab-bar-lines t)))
+
 
 ;;
 ;;; Advice
@@ -609,14 +814,3 @@ This be hooked to `projectile-after-switch-project-hook'."
   (when (zenit-real-buffer-list)
     (apply fn args))
   t)
-
-;;
-;;; Hooks
-
-;;;###autoload
-(defun +workspaces-kill-emacs-h ()
-  "Autosave workspace session."
-  (when +workspaces-autosave
-    (let ((file (zenit-session-file)))
-      (+workspaces-rotate-autosaves file)
-      (+workspace-save-session file))))

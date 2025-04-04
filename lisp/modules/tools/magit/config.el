@@ -66,19 +66,18 @@ Only has an effect in GUI Emacs.")
   ;; Prevent sudden window position resets when staging/unstaging/discarding/etc
   ;; hunks in `magit-status-mode' buffers. It's disorienting, especially on
   ;; larger projects.
-  (defvar +magit--pos nil)
+  (defvar +magit--refreshed-buffer nil)
   (add-hook! 'magit-pre-refresh-hook
     (defun +magit--set-window-state-h ()
-      "Prevent scrolling when manipulating magit-status hunks."
-      (setq-local +magit--pos (list (current-buffer) (point) (window-start)))))
-
+      (setq-local +magit--refreshed-buffer
+                  (list (current-buffer) (point) (window-start)))))
   (add-hook! 'magit-post-refresh-hook
     (defun +magit--restore-window-state-h ()
-      "Prevent scrolling when manipulating magit-status hunks."
-      (when (and +magit--pos (eq (current-buffer) (car +magit--pos)))
-        (goto-char (cadr +magit--pos))
-        (set-window-start nil (caddr +magit--pos) t)
-        (kill-local-variable '+magit--pos))))
+      (cl-destructuring-bind (&optional buf pt beg) +magit--refreshed-buffer
+        (when (and buf (eq (current-buffer) buf))
+          (goto-char pt)
+          (set-window-start nil beg t)
+          (kill-local-variable '+magit--refreshed-buffer)))))
 
   (setq magit-display-buffer-function #'+magit-display-buffer-fn
         magit-bury-buffer-function #'magit-mode-quit-window)
@@ -184,7 +183,7 @@ Only has an effect in GUI Emacs.")
         code-review-log-file (file-name-concat zenit-data-dir "code-review/code-review-error.log")
         code-review-download-dir (file-name-concat zenit-data-dir "code-review/"))
   :config
-  (transient-append-suffix 'magit-merge "i"
+  (transient-append-suffix 'magit-merge "d"
     '("y" "Review pull request" +magit/start-code-review))
   (after! forge
     (transient-append-suffix 'forge-dispatch "c u"

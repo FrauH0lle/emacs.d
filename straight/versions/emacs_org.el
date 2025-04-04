@@ -5,6 +5,7 @@
  ("org-cliplink" . "13e0940b65d22bec34e2de4bc8cba1412a7abfbc")
  ("org-contrib" . "8d14a600a2069ffc494edfc9a12b8e5fc8840bf1")
  ("orgit" . "6ad0dc35c8df54fae4ef27e5145760e22fbbf890")
+ ("orgit-forge" . "2718a6aaf0f64cb52c64c419053fbc80eb358c8d")
  ("ox-clip" . "a549cc8e1747beb6b7e567ffac27e31ba45cb8e8")
  ("toc-org" . "6d3ae0fc47ce79b1ea06cabe21a3c596395409cd"))
 :gamma

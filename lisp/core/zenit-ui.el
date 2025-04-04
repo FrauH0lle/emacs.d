@@ -222,12 +222,11 @@ the frame through some other means.")
 (let (last-focus-state)
   (defun zenit-run-switch-frame-hooks-fn ()
     "Trigger `zenit-switch-frame-hook' once per frame focus change."
-    (let ((inhibit-redisplay t))
-      (or (equal last-focus-state
-                 (setq last-focus-state
-                       (mapcar #'frame-focus-state (frame-list))))
-          ;; Defer until next redisplay
-          (add-hook 'pre-redisplay-functions #'zenit--run-switch-frame-hooks-fn)))))
+    (or (equal last-focus-state
+               (setq last-focus-state
+                     (mapcar #'frame-focus-state (frame-list))))
+        ;; Defer until next redisplay
+        (add-hook 'pre-redisplay-functions #'zenit--run-switch-frame-hooks-fn))))
 
 (defun zenit-protect-fallback-buffer-h ()
   "Don't kill the scratch buffer.

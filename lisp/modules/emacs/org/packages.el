@@ -46,8 +46,7 @@
 
 (when (modulep! +pretty)
   (package! org-appear :lockfile emacs_org_pretty)
-  (package! org-superstar :lockfile emacs_org_pretty)
-  (package! org-fancy-priorities :lockfile emacs_org_pretty))
+  (package! org-modern :lockfile emacs_org_pretty))
 
 (when (modulep! +present)
   (package! centered-window

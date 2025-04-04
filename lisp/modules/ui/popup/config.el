@@ -135,7 +135,7 @@ See `+popup-mode'.")
          (add-hook 'window-configuration-change-hook #'+popup-suppress-popups-h)
          (add-hook 'window-configuration-change-hook #'+popup-update-popup-alists-h)
          (add-hook 'zenit-switch-buffer-hook #'+popup-update-popup-alists-h)
-         (add-hook 'select-frame-hook #'+popup-update-popup-alists-h)
+         (add-hook 'zenit-switch-frame-hook #'+popup-update-popup-alists-h)
 
          (add-hook 'zenit-escape-hook #'+popup-close-on-escape-h 'append)
          (setq +popup--old-display-buffer-alist display-buffer-alist
@@ -150,7 +150,7 @@ See `+popup-mode'.")
          (remove-hook 'zenit-switch-buffer-hook #'+popup-update-popup-alists-h)
          (remove-hook 'window-configuration-change-hook #'+popup-update-popup-alists-h)
          (remove-hook 'window-configuration-change-hook #'+popup-suppress-popups-h)
-         (remove-hook 'select-frame-hook #'+popup-update-popup-alists-h)
+         (remove-hook 'zenit-switch-frame-hook #'+popup-update-popup-alists-h)
 
          (remove-hook 'zenit-escape-hook #'+popup-close-on-escape-h)
          (setq display-buffer-alist +popup--old-display-buffer-alist

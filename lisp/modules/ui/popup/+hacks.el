@@ -108,7 +108,7 @@ time they were followed."
                                            :predicate (lambda (x)
                                                         (and (+popup-buffer-p x)
                                                              (if (modulep! :ui workspaces)
-                                                                 (bufferlo-local-buffer-p x)
+                                                                 (+workspace-contains-buffer-p x)
                                                                t)))
                                            :as #'buffer-name)))
       "Popup buffer candidate source for `consult-buffer'.")
@@ -325,11 +325,10 @@ other windows. Ugh, such an ugly hack."
     (apply fn args)))
 
 
-;;;###package bufferlo
-(defadvice! +popup--bufferlo-mode-restore-popups-a (&rest _)
+;;;###package persp-mode
+(defadvice! +popup--persp-mode-restore-popups-a (&rest _)
   "Restore popup windows when loading a perspective from file."
-  :after #'bufferlo-bookmark-tab-load
-  :after #'bufferlo-bookmark-frame-load
+  :after #'persp-load-state-from-file
   (dolist (window (window-list))
     (when (+popup-window-parameter 'popup window)
       (+popup--init window nil))))

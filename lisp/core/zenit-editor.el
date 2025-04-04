@@ -368,26 +368,10 @@ system."
   (setq recentf-auto-cleanup nil     ; Don't. We'll auto-cleanup on shutdown
         recentf-max-saved-items 200) ; default is 20
 
-  (defun zenit--recentf-file-truename-fn (file)
-    "Return the true name of FILE if it is a local or sudo remote
- file; otherwise, return FILE as it is. For the true name,
- abbreviations for the home directory are used."
-    (if (or (not (file-remote-p file))
-            (equal "sudo" (file-remote-p file 'method)))
-        (abbreviate-file-name (file-truename (tramp-file-name-localname file)))
-      file))
-  (eval-when-compile
-    (declare-function zenit--recentf-file-truename-fn nil))
-
   ;; Anything in runtime folders
   (add-to-list 'recentf-exclude
                (concat "^" (regexp-quote (or (getenv "XDG_RUNTIME_DIR")
                                              "/run"))))
-
-  ;; Resolve symlinks, strip out the /sudo:X@ prefix in local tramp paths, and
-  ;; abbreviate $HOME -> ~ in filepaths (more portable, more readable, & saves
-  ;; space)
-  (add-to-list 'recentf-filename-handlers #'zenit--recentf-file-truename-fn)
 
   ;; Text properties inflate the size of recentf's files, and there is no
   ;; purpose in persisting them (Must be first in the list!)

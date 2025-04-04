@@ -602,10 +602,12 @@ mutating hooks on exported output, like formatters."
       "Don't associate temporary agenda buffers with current
  workspace."
       (when (and org-agenda-new-buffers
-                 (bound-and-true-p bufferlo-mode)
+                 (bound-and-true-p persp-mode)
                  (not org-agenda-sticky))
-        (dolist (buf org-agenda-new-buffers)
-          (bufferlo-remove buf))))
+        (let (persp-autokill-buffer-on-remove)
+          (persp-remove-buffer org-agenda-new-buffers
+                               (get-current-persp)
+                               nil))))
 
     (defadvice! +org--restart-mode-before-indirect-buffer-a (&optional buffer _)
       "Restart `org-mode' in buffers in which the mode has been

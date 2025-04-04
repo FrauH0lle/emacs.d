@@ -175,30 +175,6 @@ variable.")
   (after! ess-help
     (set-popup-rule! "^\\*help.R.*" :side 'bottom :height 0.33 :width 0.5 :select t :quit 'current :tabbed t))
 
-  ;; Workspaces integration
-  (eval-when! (modulep! :ui workspaces)
-    (after! ess-r-mode
-      (defun +ess-r-bookmark-make-record ()
-        "Create a bookmark for the current iESS buffer."
-        `(,(format "ess-r-%s"
-                   (file-name-nondirectory
-                    (directory-file-name
-                     (file-name-directory default-directory))))
-          (location . ,default-directory)
-          (ess-r-wd . ,(ess-get-working-directory t))
-          (handler . +ess-r-bookmark-jump)))
-
-      (defun +ess-r-bookmark-jump (bookmark)
-        "Default bookmark handler for iESS buffers."
-        (let ((ess-ask-for-ess-directory nil)
-              (default-directory (bookmark-prop-get bookmark 'location))
-              (wd (bookmark-prop-get bookmark 'ess-r-wd)))
-          (R)
-          (ess-set-working-directory wd t)))
-
-      (add-hook! 'inferior-ess-r-mode-hook
-        (setq-local bookmark-make-record-function #'+ess-r-bookmark-make-record))))
-
 
   ;; REPL
   ;; Use smartparens in iESS

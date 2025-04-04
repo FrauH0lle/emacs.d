@@ -1,2 +1,2 @@
-(("bufferlo" . "7d23f2185e48ec1922a2fa1e11cdca3555584e95"))
+(("persp-mode.el" . "40e9993a9711cba5fb56dfec81a507fabeba9668"))
 :gamma

@@ -33,7 +33,7 @@
                            (switch-to-buffer cand 'norecord))
                           ((buffer-live-p orig-buf)
                            (switch-to-buffer orig-buf 'norecord)
-                           (mapc #'bufferlo-remove cleanup-buffers)))))))))
+                           (mapc #'persp-remove-buffer cleanup-buffers)))))))))
            #'ignore)))
     (lambda (action cand)
       (funcall preview action cand))))

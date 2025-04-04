@@ -3,14 +3,6 @@
 (eval-when-compile
   (require 'cl-lib))
 
-;; `bookmark'
-(defvar bookmark-alist)
-
-;; `bufferlo'
-(declare-function bufferlo-bookmark-frame-load "ext:bufferlo" (name))
-(declare-function bufferlo-mode "ext:bufferlo" (&optional dirname))
-(defvar bufferlo-mode)
-
 ;; `desktop'
 (declare-function desktop-full-file-name "desktop" (&optional dirname))
 (defvar desktop-base-file-name)
@@ -18,14 +10,20 @@
 (defvar desktop-file-modtime)
 (defvar desktop-restore-eager)
 
+;; `persp-mode'
+(defvar *persp-hash*)
+(defvar persp-auto-save-fname)
+(defvar persp-auto-save-opt)
+(defvar persp-mode)
+(defvar persp-save-dir)
+(declare-function persp-load-state-from-file "ext:persp-mode")
+(declare-function persp-kill "ext:persp-mode")
+(declare-function persp-list-persp-names-in-file "ext:persp-mode")
+(declare-function persp-save-state-to-file "ext:persp-mode")
+(declare-function persp-mode "ext:persp-mode")
+
 ;; `restart-emacs'
 (declare-function restart-emacs--restore-frames-using-desktop "ext:restart-emacs" (file))
-
-;; `ui/workspaces'
-(defvar +workspaces-autosave)
-(defvar +workspaces-autosave-file)
-(defvar +workspaces-bookmark-alist)
-(defvar +workspaces-save-directory)
 
 ;; `zenit-modules'
 (declare-function zenit-module-p "zenit-modules" (category module &optional flag))
@@ -43,23 +41,20 @@
 (defun zenit-session-file (&optional name)
   "Return the session file path for the current session backend.
 
-The function supports `bufferlo-mode' and `desktop' as session
+The function supports `persp-mode' and `desktop' as session
 backends. If NAME is provided, it is used as the filename for the
 session file. Otherwise, the default file names for the
 respective backends are used.
 
-When `bufferlo-mode' is available, the file path is constructed
-using `zenit-data-dir'. When `desktop' is available, the file
+When `persp-mode' is available, the file path is constructed
+using `persp-save-dir'. When `desktop' is available, the file
 path is constructed using `desktop-full-file-name' and optionally
 NAME.
 
-If neither `bufferlo-mode' nor `desktop' is available, the
+If neither `persp-mode' nor `desktop' is available, the
 function signals an error."
-  (cond ((and (zenit-module-p :ui 'workspaces)
-              (require 'bufferlo nil t))
-         (if name
-             (expand-file-name name +workspaces-save-directory)
-           (expand-file-name +workspaces-autosave-file +workspaces-save-directory)))
+  (cond ((require 'persp-mode nil t)
+         (expand-file-name (or name persp-auto-save-fname) persp-save-dir))
         ((require 'desktop nil t)
          (if name
              (expand-file-name name (file-name-directory (desktop-full-file-name)))
@@ -71,25 +66,22 @@ function signals an error."
   "Save the current session state to a file using the available
 session backend.
 
-The function supports `bufferlo-mode' and `desktop' as session
+The function supports `persp-mode' and `desktop' as session
 backends. If FILE is provided, it is used as the target file for
 saving the session state. Otherwise, the default file names for
 the respective backends are used.
 
-When `bufferlo-mode' is available, the session state is saved
-using `bufferlo-bookmark-tab-save' with the specified FILE. When
-`desktop' is available, the session state is saved using
+When `desktop' is available, the session state is saved using
 `desktop-save' with the specified FILE, and the `frameset' and
 `restart-emacs' packages are used to enhance the session state.
 
-If neither `bufferlo-mode' nor `desktop' is available, the
+If neither `persp-mode' nor `desktop' is available, the
 function signals an error."
   (setq file (expand-file-name (or file (zenit-session-file))))
-  (cond ((and (zenit-module-p :ui 'workspaces)
-              (require 'bufferlo nil t))
-         (unless bufferlo-mode (bufferlo-mode +1))
-         (setq +workspaces-autosave nil)
-         (+workspace-save-session file))
+  (cond ((require 'persp-mode nil t)
+         (unless persp-mode (persp-mode +1))
+         (setq persp-auto-save-opt 0)
+         (persp-save-state-to-file file))
         ((and (require 'frameset nil t)
               (require 'restart-emacs nil t))
          (let ((frameset-filter-alist (append '((client . restart-emacs--record-tty-file))
@@ -109,40 +101,29 @@ function signals an error."
   "Load a session state from a file using the available session
 backend.
 
-The function supports `bufferlo-mode' and `desktop' as session
+The function supports `persp-mode' and `desktop' as session
 backends. If FILE is provided, it is used as the source file for
 loading the session state. Otherwise, the default file names for
 the respective backends are used.
 
-When `bufferlo-mode' is available, the session state is loaded
-using `bufferlo-bookmark-tab-load' with the specified FILE. When
-`desktop' is available, the session state is loaded using
+When `desktop' is available, the session state is loaded using
 `restart-emacs--restore-frames-using-desktop' with the specified
 FILE.
 
-If neither `bufferlo-mode' nor `desktop' is available, the function
+If neither `persp-mode' nor `desktop' is available, the function
 signals an error."
   (setq file (expand-file-name (or file (zenit-session-file))))
   (message "Attempting to load %s" file)
-  (cond ((and (zenit-module-p :ui 'workspaces)
-              (require 'bufferlo nil t))
-         (unless bufferlo-mode (bufferlo-mode +1))
-         (let ((old-bookmark-alist bookmark-alist))
-           (bookmark-load file t)
-           (setq +workspaces-bookmark-alist bookmark-alist)
-           (if (length= bookmark-alist 0)
-               (user-error "No session found to restore")
-             (dolist (frame (nreverse (mapcar 'car bookmark-alist)))
-               (let* ((bm-alist (alist-get frame +workspaces-bookmark-alist nil nil #'equal))
-                      (allowed (delete "" (mapcar (lambda (tab) (alist-get 'tab-name tab))
-                                                  (alist-get 'tabs bm-alist)))))
-                 (unless (string= frame "frame-1")
-                   (select-frame (make-frame)))
-                 (bufferlo-bookmark-frame-load frame)
-                 (cl-loop for name in (+workspace-list-names)
-                          unless (member name allowed)
-                          do (+workspace-kill name)))))
-           (setq bookmark-alist old-bookmark-alist)))
+  (cond ((not (file-readable-p file))
+         (message "No session file at %S to read from" file))
+        ((require 'persp-mode nil t)
+         (unless persp-mode
+           (persp-mode +1))
+         (let ((allowed (persp-list-persp-names-in-file file)))
+           (cl-loop for name being the hash-keys of *persp-hash*
+                    unless (member name allowed)
+                    do (persp-kill name))
+           (persp-load-state-from-file file)))
         ((and (require 'frameset nil t)
               (require 'restart-emacs nil t))
          (restart-emacs--restore-frames-using-desktop file))
@@ -246,11 +227,9 @@ the --debug switch."
     ;;   arguments at all. Should be fixed upstream, but restart-emacs seems to
     ;;   be unmaintained.
     (with-temp-file tmpfile
-      (print `(progn (add-hook 'window-setup-hook #'zenit-load-session 100)
-                     ;; (add-transient-hook! 'zenit-after-init-hook (dolist (buf (buffer-list))
-                     ;;                                               (with-current-buffer buf
-                     ;;                                                 (set-auto-mode t))))
-                     (delete-file ,tmpfile))
+      (print `(progn
+                (add-hook 'window-setup-hook #'zenit-load-session 100)
+                (delete-file ,tmpfile))
              (current-buffer)))
     (restart-emacs
      (append (if debug (list "--debug-init"))

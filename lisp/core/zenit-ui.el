@@ -430,7 +430,8 @@ buffers are visible in other windows, switch to
 
 ;; Expand the minibuffer to fit multi-line text displayed in the echo-area. This
 ;; doesn't look too great with direnv, however...
-(setq resize-mini-windows 'grow-only)
+(setq resize-mini-windows 'grow-only
+      tooltip-resize-echo-area t)
 
 ;; Typing yes/no is obnoxious when y/n will do
 (if (boundp 'use-short-answers)

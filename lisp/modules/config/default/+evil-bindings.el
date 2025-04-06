@@ -273,6 +273,7 @@
          :desc "Display tab bar"           "TAB" #'+workspace/display
          :desc "Switch workspace"          "."   #'+workspace/switch-to
          :desc "Switch to last workspace"  "`"   #'+workspace/other
+         :desc "Move workspace"            "m"   #'+workspace/move
          :desc "New workspace"             "n"   #'+workspace/new
          :desc "New named workspace"       "N"   #'+workspace/new-named
          :desc "Load workspace from file"  "l"   #'+workspace/load
@@ -299,6 +300,7 @@
        :desc "Toggle narrowing"            "-"   #'zenit/toggle-narrow-buffer
        :desc "Previous buffer"             "["   #'previous-buffer
        :desc "Next buffer"                 "]"   #'next-buffer
+       ;; REVIEW 2025-04-06: Check these commands
        ;; (:when (modulep! :ui workspaces)
        ;;   :desc "Switch workspace buffer" "b" #'persp-switch-to-buffer
        ;;   :desc "Switch buffer"           "B" #'switch-to-buffer

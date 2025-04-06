@@ -47,7 +47,7 @@
         org-priority-faces
         '((?A . error)
           (?B . warning)
-          (?C . success))
+          (?C . shadow))
         org-startup-indented t
         org-tags-column 0
         org-use-sub-superscripts '{}

@@ -14,4 +14,30 @@
   :hook (org-agenda-finalize . org-modern-mode)
   :hook (org-modern-mode . +org-pretty-mode)
   :config
-  (setq org-modern-star 'replace))
+  ;; Use button-stlye star replacements, instead of triangular fold indicators
+  (setq org-modern-star 'replace)
+  ;; HACK 2025-04-05: If `org-indent-mode' is active, org-modern's default of
+  ;;   hiding leading stars makes sub-headings look too sunken into the left
+  ;;   margin. Those stars are already "hidden" by `org-hide-leading-stars'
+  ;;   anyway, so rely on just that.
+  (add-hook! 'org-modern-mode-hook
+    (defun +org-modern-show-hidden-stars-in-indent-mode-h ()
+      (when org-indent-mode
+        (setq-local org-modern-hide-stars nil))))
+  ;; Carry over the default values of `org-todo-keyword-faces', `org-tag-faces',
+  ;; and `org-priority-faces' as reasonably as possible, but only if the user
+  ;; hasn't already modified them.
+  (letf! (defun new-spec (spec)
+           (if (or (facep (cdr spec))
+                   (not (keyword (car-safe (cdr spec)))))
+               `(:inherit ,(cdr spec))
+             (cdr spec)))
+    (unless org-modern-tag-faces
+      (dolist (spec org-tag-faces)
+        (add-to-list 'org-modern-tag-faces `(,(car spec) :inverse-video t ,@(new-spec spec)))))
+    (unless org-modern-todo-faces
+      (dolist (spec org-todo-keyword-faces)
+        (add-to-list 'org-modern-todo-faces `(,(car spec) :inverse-video t ,@(new-spec spec)))))
+    (unless org-modern-priority-faces
+      (dolist (spec org-priority-faces)
+        (add-to-list 'org-modern-priority-faces `(,(car spec) :inverse-video t ,@(new-spec spec)))))))

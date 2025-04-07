@@ -11,8 +11,11 @@
 
 (use-package! org-modern
   :hook (org-mode . org-modern-mode)
-  :hook (org-agenda-finalize . org-modern-mode)
-  :hook (org-modern-mode . +org-pretty-mode)
+  :hook (org-agenda-finalize . org-modern-agenda)
+  :init
+  (after! org
+    (setq org-hide-emphasis-markers t
+          org-pretty-entities t))
   :config
   ;; Use button-stlye star replacements, instead of triangular fold indicators
   (setq org-modern-star 'replace)
@@ -22,7 +25,7 @@
   ;;   anyway, so rely on just that.
   (add-hook! 'org-modern-mode-hook
     (defun +org-modern-show-hidden-stars-in-indent-mode-h ()
-      (when org-indent-mode
+      (when (bound-and-true-p org-indent-mode)
         (setq-local org-modern-hide-stars nil))))
   ;; Carry over the default values of `org-todo-keyword-faces', `org-tag-faces',
   ;; and `org-priority-faces' as reasonably as possible, but only if the user

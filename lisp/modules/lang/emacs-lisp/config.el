@@ -39,11 +39,10 @@ looking up a C function.")
   (let ((modes '(emacs-lisp-mode lisp-interaction-mode lisp-data-mode)))
     (set-repl-handler! modes #'+emacs-lisp/open-repl)
     (set-eval-handler! modes #'+emacs-lisp-eval)
-    (eval-when! (modulep! :tools lookup)
-      (set-lookup-handlers! `(,@modes helpful-mode)
-                            :definition    #'+emacs-lisp-lookup-definition
-                            :documentation #'+emacs-lisp-lookup-documentation)
-      (set-docsets! modes "Emacs Lisp"))
+    (set-lookup-handlers! `(,@modes helpful-mode)
+      :definition    #'+emacs-lisp-lookup-definition
+      :documentation #'+emacs-lisp-lookup-documentation)
+    (set-docsets! modes "Emacs Lisp")
 
     (set-formatter! 'lisp-indent #'apheleia-indent-lisp-buffer :modes modes)
     (set-ligatures! modes :lambda "lambda")
@@ -67,7 +66,8 @@ looking up a C function.")
     tab-width 8
     ;; Don't treat autoloads or sexp openers as outline headers, we have
     ;; hideshow for that.
-    outline-regexp +emacs-lisp-outline-regexp)
+    outline-regexp +emacs-lisp-outline-regexp
+    outline-level #'+emacs-lisp-outline-level)
 
   ;; Fixed indenter that intends plists sensibly.
   (advice-add #'calculate-lisp-indent :override #'+emacs-lisp--calculate-lisp-indent-a)
@@ -154,10 +154,9 @@ looking up a C function.")
 (use-package! ielm
   :defer t
   :config
-  (eval-when! (modulep! :tools lookup)
-    (set-lookup-handlers! 'inferior-emacs-lisp-mode
-                          :definition    #'+emacs-lisp-lookup-definition
-                          :documentation #'+emacs-lisp-lookup-documentation))
+  (set-lookup-handlers! 'inferior-emacs-lisp-mode
+    :definition    #'+emacs-lisp-lookup-definition
+    :documentation #'+emacs-lisp-lookup-documentation)
 
   ;; Adapted from http://www.modernemacs.com/post/comint-highlighting/ to add
   ;; syntax highlighting to ielm REPLs.

@@ -28,6 +28,20 @@ long), otherwise to a pop up buffer."
         (kill-buffer buffer))))
    (current-buffer)))
 
+;;;###autoload
+(defun +emacs-lisp-outline-level ()
+  "Return outline level for comment at point.
+Based on and intended to replace `lisp-outline-level'."
+  (let ((len (- (match-end 0) (match-beginning 0))))
+    (cond ((or (looking-at-p "(")
+               (looking-at-p lisp-mode-autoload-regexp))
+           1000)
+          ((looking-at "[ \t]*;;\\(;+\\) ")
+           (- (match-end 1) (match-beginning 1)))
+          ;; Above should match everything but just in case.
+          (t
+           len))))
+
 
 ;;
 ;;; Handlers

@@ -92,9 +92,9 @@ already recorded."
                         ;; Process --init-directory=directory variant
                         (when noninteractive
                           (require 'cl-seq)
-                          (when-let ((str (cl-find-if (lambda (str)
-                                                        (string-match "\\`--init-directory=" str))
-                                                      command-line-args-left)))
+                          (when-let* ((str (cl-find-if (lambda (str)
+                                                         (string-match "\\`--init-directory=" str))
+                                                       command-line-args-left)))
                             (when (string-match "\\`--init-directory=\\(.*\\)\\'" str)
                               (match-string 1 str))))
                         ;; Check if envar EMACSDIR is set

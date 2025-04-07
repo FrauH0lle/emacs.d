@@ -38,7 +38,7 @@
   (goto-char (if (eq direction 'forward)
                  (overlay-end ov)
                (overlay-start ov)))
-  (when-let ((found (tempel--find (if (eq direction 'forward) 1 -1))))
+  (when-let* ((found (tempel--find (if (eq direction 'forward) 1 -1))))
     (funcall (if (eq direction 'forward)
                  #'tempel-next
                #'tempel-previous)

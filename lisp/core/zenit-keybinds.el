@@ -86,7 +86,7 @@ mode, or immediately in non-daemon mode."
                    ([C-m] [?\C-m] return kp-return)))
     (define-key
      input-decode-map fallback
-     (cmd! (if (when-let ((keys (this-single-command-raw-keys)))
+     (cmd! (if (when-let* ((keys (this-single-command-raw-keys)))
                  (and (display-graphic-p)
                       (not (cl-loop for event in events
                                     if (cl-position event keys)

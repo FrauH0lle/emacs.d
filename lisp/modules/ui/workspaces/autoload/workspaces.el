@@ -57,7 +57,7 @@
   "Return a workspace named NAME. Unless NOERROR is non-nil, this throws an
 error if NAME doesn't exist."
   (cl-check-type name string)
-  (when-let (persp (persp-get-by-name name))
+  (when-let* ((persp (persp-get-by-name name)))
     (cond ((+workspace-p persp) persp)
           ((not noerror)
            (error "No workspace called '%s' was found" name)))))
@@ -154,9 +154,7 @@ Otherwise return t on success, nil otherwise."
     (error "Can't create a new '%s' workspace" name))
   (when (+workspace-exists-p name)
     (error "A workspace named '%s' already exists" name))
-  (when (memq (selected-frame)
-              (cl-loop for (_ . f) in +workspaces-frames-alist
-                       collect f))
+  (when (frame-parameter (selected-frame) 'workspace-exclusive)
     (error "New workspaces are not allowed in this frame"))
   (let ((persp (persp-add-new name))
         (+popup--inhibit-transient t))
@@ -208,7 +206,8 @@ exist, otherwise throws an error."
         (+workspace-new name)
       (error "%s is not an available workspace" name)))
   (let* ((from-name (+workspace-current-name))
-         (to-frame (car (cl-rassoc-if (lambda (ws) (member name ws)) +workspaces-frames-alist))))
+         (to-frame (or (car (cl-rassoc-if (lambda (ws) (member name ws)) +workspaces-frames-alist))
+                       (selected-frame))))
     (unless (equal from-name name)
       (setq +workspace--last
             (or (and (not (+workspace--protected-p from-name))
@@ -508,12 +507,12 @@ or create new."
    (list (+workspace-current-name)
          (let ((frames-alist (+workspaces--unique-frames-alist (mapcar #'car +workspaces-frames-alist))))
            (alist-get (completing-read
-                         "Move workspace to frame: "
-                         (append '("New frame")
-                                 frames-alist)
-                         nil t)
-                        frames-alist nil nil #'string=))))
-  (+workspaces-move workspace frame))
+                       "Move workspace to frame: "
+                       (append '("New frame")
+                               frames-alist)
+                       nil t)
+                      frames-alist nil nil #'string=))))
+  (+workspace-move workspace frame))
 
 (defun +workspaces--unique-frames-alist (frames)
   (let (;; Remove frames which contain already the current workspace
@@ -644,14 +643,85 @@ Format: ((frame . workspace-name) ...)")
 (defun +workspaces--update-tab-bar ()
   (dolist (f (frame-list))
     (with-selected-frame f
-      ;; (tab-bar--update-tab-bar-lines t)
-      (force-mode-line-update 'all))))
+      ;; REVIEW 2025-04-06: This is kinda slow, maybe there is an alternative.
+      (tab-bar--update-tab-bar-lines t))))
 
-(add-hook! '(zenit-switch-frame-hook after-make-frame-functions after-delete-frame-functions)
-  (defun +workspaces--update-assoc-frames-h (&rest _)
-    (cl-loop for (frame . ws) in +workspaces-frames-alist
-             if (not (frame-live-p frame))
-             do (setf (alist-get frame +workspaces-frames-alist nil 'remove) nil))))
+;;;###autoload
+(defun +workspaces-restore-frame-associations-h (&rest _)
+  "Restore frame-workspace associations after loading perspectives."
+  (let ((frame-map (make-hash-table :test 'equal))
+        frames)
+    ;; Collect and create all required frames
+    (dolist (persp (+workspace-list))
+      (dolist (fdata (persp-parameter 'workspace-frames persp))
+        (let ((fid (car fdata)))
+          (cl-pushnew (cons fid fdata) frames :test #'equal))))
+    ;; Restore the associations to the current frame
+    (with-selected-frame (selected-frame)
+          ;; Associate all loaded workspaces with current frame
+      (+workspaces--add-ws-to-frame +workspaces-main)
+          (dolist (ws (cons +workspaces-main (+workspace-list-names)))
+            (+workspaces--add-ws-to-frame ws)))
+
+    ;; If we need than one frame, we create new frames and move the workspaces
+    ;; accordingly
+    (when (length> frames 1)
+      (cl-loop for (fid . fdata) in (cdr (nreverse frames))
+               do (unless (gethash fid frame-map)
+                    (puthash fid
+                             (make-frame (plist-get (cdr fdata) :geometry))
+                             frame-map)))
+
+      ;; Associate workspaces with frames
+      (dolist (persp (+workspace-list))
+        (let ((name (persp-name persp)))
+          (dolist (fdata (persp-parameter 'workspace-frames persp))
+            (let* ((fid (car fdata))
+                   (frame (gethash fid frame-map))
+                   (excl (plist-get (cdr fdata) :exclusive)))
+              (persp-activate persp)
+              (when frame
+                (if excl
+                    (with-selected-frame frame
+                      (let ((persp-init-frame-behaviour nil))
+                        (persp-activate persp frame))
+                      (+workspaces--associate-frame frame)
+                      (set-frame-parameter frame 'workspace-exclusive t))
+                  (+workspace-move name frame))))))))
+
+    ;; Remove `+workspaces-main' if it was not part of the restored workspaces
+    (when (eq (persp-get-by-name +workspaces-main) :nil)
+      (dolist (frame (persp-frame-list-without-daemon))
+        (+workspaces--remove-ws-from-frame +workspaces-main frame)))
+
+    ;; Finally update UI
+    (+workspace-switch (car (+workspace-list-names)))
+    (+workspaces--update-tab-bar)))
+
+
+;; REVIEW 2025-04-07: Maybe move to a better place
+(add-hook! '(zenit-switch-frame-hook after-delete-frame-functions)
+  (defun +workspaces--cleanup-frame-associations-h (&rest _)
+    "Remove dead frames from workspace associations."
+    (setq +workspaces-frames-alist
+          (cl-loop for (frame . ws) in +workspaces-frames-alist
+                   if (frame-live-p frame)
+                   collect (cons frame ws)))))
+
+(defun +workspaces--find-workspace-frames (workspace)
+  "Return list of frames containing WORKSPACE.
+
+Each element is a cons cell (FRAME . EXCLUSIVE-P) where:
+- FRAME is the frame object
+- EXCLUSIVE-P is non-nil if WORKSPACE is exclusive to FRAME
+
+Skips daemon frames and frames without valid window
+configurations."
+  (let (frames)
+    (dolist (frame (persp-frame-list-without-daemon) frames)
+      (when (and (member workspace (frame-parameter frame 'workspaces)))
+        (cl-pushnew `(,frame . ,(frame-parameter frame 'workspace-exclusive)) frames)))
+    frames))
 
 
 ;;
@@ -678,6 +748,11 @@ interactively created."
     (+workspaces--update-tab-bar)))
 
 (defun +workspaces--associate-frame (frame &optional workspace)
+  "Associate FRAME with WORKSPACE.
+
+If WORKSPACE is omitted, uses the current workspace. Sets up the
+frame's workspace list and buffer predicate to filter buffers by
+workspace, as well as updates `+workspaces-frames-alist'."
   (let ((workspace (or workspace (+workspace-current-name))))
     (+workspaces--add-ws-to-frame workspace frame)
     ;; Ensure every buffer has a buffer-predicate
@@ -694,6 +769,7 @@ from and displays the last selected buffer."
       (let ((persp-init-frame-behaviour nil))
         (persp-activate (frame-parameter (previous-frame) 'persp) frame))
       (+workspaces--associate-frame frame)
+      (set-frame-parameter frame 'workspace-exclusive t)
       (+workspaces--update-tab-bar))))
 
 ;;;###autoload
@@ -800,7 +876,7 @@ This be hooked to `projectile-after-switch-project-hook'."
 ;;;###autoload
 (defun +workspaces-load-tab-bar-data-from-file-h (&rest _)
   "Restores the tab bar data from file."
-  (when-let ((persp-tab-data (persp-parameter 'tab-bar-tabs)))
+  (when-let* ((persp-tab-data (persp-parameter 'tab-bar-tabs)))
     (tab-bar-tabs-set persp-tab-data)
     (tab-bar--update-tab-bar-lines t)))
 

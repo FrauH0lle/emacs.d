@@ -73,9 +73,9 @@ Will be stored in `persp-save-dir'.")
           ;; Associate workspace with frame
           (+workspaces--add-ws-to-frame +workspaces-main)
 
-          ;; HACK Fix #319: the warnings buffer gets swallowed when creating
-          ;;      `+workspaces-main', so display it ourselves, if it exists.
-          (when-let (warnings (get-buffer "*Warnings*"))
+          ;; HACK 2025-04-07: The warnings buffer gets swallowed when creating
+          ;;   `+workspaces-main', so display it ourselves, if it exists.
+          (when-let* ((warnings (get-buffer "*Warnings*")))
             (unless (get-buffer-window warnings)
               (save-excursion
                 (display-buffer-in-side-window
@@ -130,6 +130,17 @@ Will be stored in `persp-save-dir'.")
                 winner-pending-undo-ring pending-undo-ring)))))
 
   ;;;; Registering buffers to perspectives
+
+  (add-hook! 'persp-activated-functions
+    (defun +workspaces-add-default-buffers (_)
+      "Add default buffers to perspective."
+      (let ((persp (get-current-persp)))
+        (when persp
+          (dolist (regexp '("^\\*\\Messages" "^\\*Warnings"))
+            (persp-do-buffer-list-by-regexp
+             :regexp regexp :func 'persp-add-buffer :rest-args (list persp nil)
+             :blist (persp-buffer-list-restricted (selected-frame) 1) :noask t))))))
+
   (add-hook! 'zenit-switch-buffer-hook
     (defun +workspaces-add-current-buffer-h ()
       "Add current buffer to focused perspective."
@@ -140,8 +151,10 @@ Will be stored in `persp-save-dir'.")
            persp-add-buffer-on-after-change-major-mode-filter-functions)
           (persp-add-buffer (current-buffer) (get-current-persp) nil nil))))
 
-  (add-hook 'persp-add-buffer-on-after-change-major-mode-filter-functions
-            #'zenit-unreal-buffer-p)
+  ;; REVIEW 2025-04-07: We might revert that
+  ;; (add-hook 'persp-add-buffer-on-after-change-major-mode-filter-functions
+  ;;           #'zenit-unreal-buffer-p)
+  (setq persp-add-buffer-on-after-change-major-mode t)
 
   (defadvice! +workspaces--evil-alternate-buffer-a (&optional window)
     "Make `evil-alternate-buffer' ignore buffers outside the current workspace."
@@ -169,17 +182,7 @@ Will be stored in `persp-save-dir'.")
   ;; `tab-bar' integration
   (after! tab-bar
     (setq! tab-bar-close-button-show nil
-           tab-bar-new-button-show nil
-           ;; Delete frame or fall back to `+workspaces-main'
-           ;; tab-bar-close-last-tab-choice (lambda (tab)
-           ;;                                 (let ((old-frame (selected-frame)))
-           ;;                                   (ignore-errors (delete-frame))
-           ;;                                   (when (eq (selected-frame) old-frame)
-           ;;                                     (tab-bar-rename-tab +workspaces-main))))
-           )
-    ;; Give the first tab the name specified in `+workspaces-main'
-    ;; (tab-bar-rename-tab +workspaces-main)
-    )
+           tab-bar-new-button-show nil))
 
   ;; `consult' integration
   (eval-when! (modulep! :completion vertico)
@@ -241,23 +244,31 @@ Will be stored in `persp-save-dir'.")
   ;; excluded from the buffer list.
   (add-hook 'bookmark-after-jump-hook #'+workspaces-add-current-buffer-h)
 
-  ;;; eshell
+
+  ;;;; eshell
+
   (persp-def-buffer-save/load
    :mode 'eshell-mode :tag-symbol 'def-eshell-buffer
    :save-vars '(major-mode default-directory))
-  ;; compile
+
+  ;;;; compile
+
   (persp-def-buffer-save/load
    :mode 'compilation-mode :tag-symbol 'def-compilation-buffer
    :save-vars '(major-mode default-directory compilation-directory
                 compilation-environment compilation-arguments))
-  ;; magit
+
+  ;;;; magit
+
   (persp-def-buffer-save/load
    :mode 'magit-status-mode :tag-symbol 'def-magit-status-buffer
    :save-vars '(default-directory)
    :load-function (lambda (savelist &rest _)
                     (cl-destructuring-bind (buffer-name vars &rest _rest) (cdr savelist)
                       (magit-status (alist-get 'default-directory vars)))))
-  ;; Restore indirect buffers
+
+  ;;;; Restore indirect buffers
+
   (defvar +workspaces--indirect-buffers-to-restore nil)
   (persp-def-buffer-save/load
    :tag-symbol 'def-indirect-buffer
@@ -282,7 +293,8 @@ Will be stored in `persp-save-dir'.")
               (make-indirect-buffer base-buffer buffer-name t)))))
       (setq +workspaces--indirect-buffers-to-restore nil)))
 
-;;; tab-bar
+  ;;;; tab-bar
+
   (add-hook! 'tab-bar-mode-hook
     (defun +workspaces-set-up-tab-bar-integration-h ()
       (add-hook 'persp-before-deactivate-functions #'+workspaces-save-tab-bar-data-h)
@@ -290,4 +302,30 @@ Will be stored in `persp-save-dir'.")
       ;; Load and save configurations for tab-bar.
       (add-hook 'persp-before-save-state-to-file-functions #'+workspaces-save-tab-bar-data-to-file-h)
       (+workspaces-load-tab-bar-data-from-file-h)))
-  (add-hook 'persp-mode-hook #'perspective-tabs-mode))
+  (add-hook 'persp-mode-hook #'perspective-tabs-mode)
+
+  ;;;; Restore frames
+
+  (add-hook 'persp-after-load-state-functions #'+workspaces-restore-frame-associations-h)
+
+  ;; Frame data collection
+  (add-hook! '(persp-before-save-state-to-file-functions)
+    (defun +workspaces-save-frame-data-h (_fname phash _respect-persp-file-parameter)
+      "Collect frame metadata for workspace associations."
+      (let ((frame-alist (cl-loop with i = 0
+                                  for frame in (frame-list)
+                                  collect (cons frame (format "frame-%d" (cl-incf i))))))
+        (dolist (pname (hash-table-keys phash))
+          (when pname
+            (let ((persp (gethash pname phash)))
+              (let ((ws-frames
+                     (cl-loop for (frame . excl) in (+workspaces--find-workspace-frames pname)
+                              collect `(,(alist-get frame frame-alist)
+                                        . ,(list :exclusive excl
+                                                 :geometry (let* ((params (frame-parameters frame))
+                                                                  (height (alist-get 'height params))
+                                                                  (width (alist-get 'width params)))
+                                                             `((height . ,height)
+                                                               (width . ,width))))))))
+                (set-persp-parameter 'workspace-frames ws-frames persp))
+              (puthash pname persp phash))))))))

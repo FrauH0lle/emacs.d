@@ -374,12 +374,12 @@
   (:doc "`zenit--empty-module-context' is defined")
   (should (boundp 'zenit--empty-module-context)))
 
-(zenit-deftest zenit-module-context
+(zenit-deftest zenit-module-context-var
   (:doc "`zenit-module-context' is defined")
   (should (boundp 'zenit-module-context)))
 
 (zenit-deftest zenit-module--context-field
-  (:doc "`zenit-module--context-field' retrieves the value of the given field")
+  (:doc "`zenit-module--context-field' retrieves the index of the given field")
   (progn
     (should (= 0 (zenit-module--context-field :index)))
     (should (= 1 (zenit-module--context-field :initdepth)))
@@ -389,6 +389,48 @@
     (should (= 5 (zenit-module--context-field :flags)))
     (should (= 6 (zenit-module--context-field :features)))))
 
+(zenit-deftest zenit-module-context-get
+  (:doc "`zenit-module-context-get' retrieves the value of the given field")
+  (progn
+    (should (= 22 (zenit-module-context-get :index [22 nil nil nil nil nil nil])))
+    (should (eq nil (zenit-module-context-get :initdepth)))))
 
-;; (modulep! :lang nosuchlanguage -nosuchflag)
-;; (modulep! :lang nosuchlanguage -nosuchflag)
+(zenit-deftest zenit-module-context-fn
+  (:doc "`zenit-module-context' creates a context for given group and name")
+  (progn
+    (should (equal [nil nil nil nil nil nil nil] (zenit-module-context :nosuchcat 'nosuchname)))
+    (let ((zenit--empty-module-context [40 0 0 :testcat testname nil nil]))
+      (should (equal [40 0 0 :testcat testname nil nil] (zenit-module-context :testcat 'testname)))
+      (should (equal [40 0 0 :testcat testname nil nil] (zenit-module-context '(:testcat . testname)))))))
+
+(zenit-deftest zenit-module-context-key
+  (:doc "`zenit-module-context-key' returns the module of the active context")
+  (progn
+    (should (equal '(:testcat . testname) (zenit-module-context-key [40 0 0 :testcat testname nil nil])))))
+
+(zenit-deftest zenit-module-context-with
+  (:doc "`zenit-module-context-with' evaluates body in specified context")
+  (let ((zenit--empty-module-context [40 0 0 :testcat testname nil nil]))
+    (should (eq 'testname
+                (zenit-module-context-with '(:testcat . testname)
+                  (zenit-module-context-get :name))))))
+
+(zenit-deftest modulep!
+  (:doc "`modulep!' returns t if :CATEGORY MODULE (and +FLAGS) are enabled"
+   :before-each
+   (zenit-module-set :testcat 'testmod :flags '(+flag1 +flag2))
+   :afer-each
+   (zenit-module-set :testcat 'testmod nil))
+  (should (eq ,exp (modulep! ,@in)))
+  (in exp)
+  (:testcat testmod) t
+  (:testcat nosuchmod) nil
+  (:nosuchcat testmod) nil
+  (:nosuchcat nosuchmod) nil
+  (:testcat testmod +flag1) t
+  (:testcat testmod +flag2) t
+  (:testcat testmod +flag1 +flag2) t
+  (:testcat testmod +flag3) nil
+  (:testcat testmod -flag3) t
+  (:testcat testmod -flag3 -flag4) t
+  (:nosuchcat nosuchmod -flag3) nil)

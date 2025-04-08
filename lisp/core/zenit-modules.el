@@ -471,7 +471,7 @@ MODULE FLAGS FEATURES] Do not directly set this variable, only
 let-bind it.")
 
 (defmacro zenit-module--context-field (field)
-  "Retrieve the value of FIELD from the `zenit-module-context'.
+  "Retrieve the index of FIELD from the `zenit-module-context'.
 
 Note that FIELD is evaluated at macro-expansion time, and it
 should be a valid symbol that matches a key within the

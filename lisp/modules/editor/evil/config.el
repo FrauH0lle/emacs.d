@@ -125,7 +125,8 @@ The package should be loaded as early as possible."
   (add-hook! 'zenit-escape-hook
     (defun +evil-disable-ex-highlights-h ()
       "Disable ex search buffer highlights."
-      (when (evil-ex-hl-active-p 'evil-ex-search)
+      (when (or (evil-ex-hl-active-p 'evil-ex-search)
+                (bound-and-true-p anzu--state))
         (evil-ex-nohighlight)
         t)))
 

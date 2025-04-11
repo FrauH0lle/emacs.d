@@ -120,6 +120,10 @@
 
 (zenit-deftest +popup-buffer-mode-hook
   (:doc "`+popup-buffer-mode-hook' contains specified functions")
-  (dolist (hook-fn '(+popup-adjust-fringes-h +popup-adjust-margins-h
-                     +popup-set-modeline-on-enable-h +popup-unset-modeline-on-disable-h))
+  (dolist (hook-fn '(+popup-set-modeline-on-enable-h +popup-unset-modeline-on-disable-h))
     (should (member hook-fn +popup-buffer-mode-hook))))
+
+(zenit-deftest +popup-create-window-hook
+  (:doc "`+popup-create-window-hook' contains specified functions")
+  (dolist (hook-fn '(+popup-adjust-fringes-h +popup-adjust-margins-h))
+    (should (member hook-fn +popup-create-window-hook))))

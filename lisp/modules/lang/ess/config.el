@@ -176,6 +176,19 @@ variable.")
     (set-popup-rule! "^\\*help.R.*" :side 'bottom :height 0.33 :width 0.5 :select t :quit 'current :tabbed t))
 
 
+  ;; Workspaces
+  (eval-when! (modulep! :ui workspaces)
+    (after! persp-mode
+      (persp-def-buffer-save/load
+       :mode 'inferior-ess-r-mode :tag-symbol 'def-inferior-ess-r-buffer
+       :save-vars '(major-mode default-directory)
+       :load-function (lambda (savelist &rest _)
+                        (cl-destructuring-bind (buffer-name vars &rest _rest) (cdr savelist)
+                          (defvar ess-ask-for-ess-directory)
+                          (let ((ess-ask-for-ess-directory nil)
+                                (default-directory (alist-get 'default-directory vars)))
+                            (R)))))))
+
   ;; REPL
   ;; Use smartparens in iESS
   (add-hook! 'inferior-ess-mode-hook #'smartparens-mode)

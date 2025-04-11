@@ -621,8 +621,9 @@ and enables `+popup-buffer-mode'."
               (+popup-buffer-set-parameter
                buffer :tabbed (when tabbed side) :ttl ttl :quit quit :select select
                :modeline modeline :autosave autosave)
-              (+popup--record-parent (window-buffer origin) buffer)
-              (+popup--init tab-win alist))
+              (with-current-buffer buffer
+                (+popup--record-parent (window-buffer origin) buffer)
+                (+popup--init tab-win alist)))
             (+popup--maybe-select-window tab-win origin)))
 
         (let* ((alist (remove (assq 'window-width alist) alist))
@@ -641,8 +642,9 @@ and enables `+popup-buffer-mode'."
           (+popup-buffer-set-parameter
            buffer :tabbed (when tabbed side) :ttl ttl :quit quit :select select
            :modeline modeline :autosave autosave)
-          (+popup--record-parent (or (caar (window-prev-buffers popup)) (window-buffer origin)) buffer)
-          (+popup--init popup alist)
+          (with-current-buffer buffer
+            (+popup--record-parent (or (caar (window-prev-buffers popup)) (window-buffer origin)) buffer)
+            (+popup--init popup alist))
           (+popup--maybe-select-window popup origin)
           popup))))
 

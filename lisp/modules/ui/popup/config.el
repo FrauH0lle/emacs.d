@@ -262,11 +262,11 @@ disabled when that window has been changed or closed."
 
 (add-hook 'zenit-init-ui-hook #'+popup-mode 'append)
 
-(add-hook! '+popup-buffer-mode-hook
-           #'+popup-adjust-fringes-h
-           #'+popup-adjust-margins-h
-           #'+popup-set-modeline-on-enable-h
-           #'+popup-unset-modeline-on-disable-h)
+(add-hook '+popup-buffer-mode-hook #'+popup-set-modeline-on-enable-h)
+(add-hook '+popup-buffer-mode-hook #'+popup-unset-modeline-on-disable-h)
+
+(add-hook '+popup-create-window-hook #'+popup-adjust-fringes-h)
+(add-hook '+popup-create-window-hook #'+popup-adjust-margins-h)
 
 (compile-along! "autoload")
 

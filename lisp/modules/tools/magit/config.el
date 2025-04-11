@@ -14,6 +14,30 @@ widths for the left and right fringe.
 Only has an effect in GUI Emacs.")
 
 
+(defvar +magit-auto-revert 'local
+  "If non-nil, revert associated buffers after Git operations.
+
+These buffers are auto-reverted via side-effects immediately if
+they're visible or reverted next time they're switched to. This
+is intended to be a much more efficient replacement for
+`magit-auto-revert-mode' and `global-auto-revert-mode', and
+should not be used together with them! Set this to `nil' if you
+plan to use the above.
+
+Accepts one of three values OR a predicate function:
+
+t
+  Revert any associated buffers.
+local
+  Same as `t', except remote (TRAMP) buffers are ignored.
+nil
+  Don't do any auto-reverting at all.
+FUNCTION
+  If given a function, it will be passed a buffer associated with
+  the current Magit session and must return non-nil to signal
+  this is buffer is safe to revert (now or later, when switched
+  to).")
+
 ;;
 ;;; Packages
 
@@ -156,6 +180,11 @@ Only has an effect in GUI Emacs.")
   :preface
   (setq forge-database-file (concat zenit-data-dir "forge/forge-database.sqlite"))
   (setq forge-add-default-bindings (not (modulep! :editor evil)))
+  :init
+  (after! ghub-graphql
+    ;; Killing recreating the status buffer prevents progress updates from being
+    ;; relayed through the modeline. Use `message' instead.
+    (setq ghub-graphql-message-progress t))
   :config
   ;; All forge list modes are derived from `forge-topic-list-mode'
   (map! :map forge-topic-list-mode-map :n "q" #'kill-current-buffer)

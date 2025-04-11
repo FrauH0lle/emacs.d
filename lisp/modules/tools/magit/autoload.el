@@ -100,6 +100,17 @@ It will split otherwise."
 
 (defvar +magit--stale-p nil)
 
+(defun +magit--revertable-buffer-p (buffer)
+  (when (buffer-live-p buffer)
+    (pcase +magit-auto-revert
+      (`t t)
+      (`local
+       (not (file-remote-p
+             (or (buffer-file-name buffer)
+                 (buffer-local-value 'default-directory buffer)))))
+      ((pred functionp)
+       (funcall +magit-auto-revert buffer)))))
+
 (defun +magit--revert-buffer (buffer)
   (with-current-buffer buffer
     (kill-local-variable '+magit--stale-p)
@@ -118,11 +129,11 @@ Stale buffers are reverted when they are switched to, assuming
 they haven't been modified."
   (let ((visible-buffers (zenit-visible-buffers nil t)))
     (dolist (buffer (buffer-list))
-      (when (buffer-live-p buffer)
+      (when (+magit--revertable-buffer-p buffer)
         (if (memq buffer visible-buffers)
             (progn
               (+magit--revert-buffer buffer)
-               ;; Hasten future lookups
+              ;; Hasten future lookups
               (delq! buffer visible-buffers))
           (with-current-buffer buffer
             (setq-local +magit--stale-p t)))))))

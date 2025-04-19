@@ -364,7 +364,10 @@ Also adds support for a `:sync' parameter to override `:async'."
 
   ;; Fix #462: when refiling from org-capture, Emacs prompts to kill the
   ;; underlying, modified buffer. This fixes that.
-  (add-hook 'org-after-refile-insert-hook #'save-buffer)
+  (add-hook! 'org-after-refile-insert-hook
+    (defun +org-save-buffer-after-capture-h ()
+      (when (bound-and-true-p org-capture-is-refiling)
+        (save-buffer))))
 
   ;; HACK No support for `customize'. Best not to advertise it as an option in
   ;;   `org-capture's menu.

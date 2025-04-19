@@ -129,6 +129,7 @@ looking up a C function.")
   ;; Keybindings
   (map! :localleader
         :map (emacs-lisp-mode-map lisp-interaction-mode-map)
+        :desc "Set working buffer" "b" #'+emacs-lisp/change-working-buffer
         (:prefix ("c" . "compile")
                  "c" #'emacs-lisp-byte-compile)
         (:prefix ("d" . "debug")

@@ -1,18 +1,6 @@
 ;; lang/ess/autoload.el -*- lexical-binding: t; -*-
 
 ;;;###autoload
-(defun +ess/open-julia-repl (&optional arg)
-  "Open an ESS Julia REPL"
-  (interactive "P")
-  (run-ess-julia arg))
-
-;;;###autoload
-(defun +ess/open-r-repl (&optional arg)
-  "Open an ESS R REPL"
-  (interactive "P")
-  (run-ess-r arg))
-
-;;;###autoload
 (defun +ess/goto-end-of-prompt ()
   "Move cursor to the prompt when switching to insert mode (if point
 isn't already there)."

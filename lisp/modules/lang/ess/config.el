@@ -67,11 +67,11 @@ variable.")
          ("\\.[Jj][Aa][Gg]\\'" . ess-jags-mode)
          ("\\.[Jj][Oo][Gg]\\'" . ess-jags-mode)
          ("\\.[Jj][Mm][Dd]\\'" . ess-jags-mode))
-  :commands (R stata julia SAS ess-julia-mode)
+  :defer t
   :init
   ;; Support Juila only if no dedicated module is used.
   (eval-unless! (modulep! :lang julia)
-    (add-to-list 'auto-mode-alist '("\\.[Jj][Ll]\\'" . ess-julia-mode)))
+    (add-to-list 'auto-mode-alist '("\\.[jJ][lL]\\'" . ess-julia-mode)))
   ;; Do not use flycheck when +lsp-flymake is set
   (eval-when! (modulep! :tools lsp +lsp-flymake)
     (pushnew! +flycheck-disabled-modes 'ess-r-mode))
@@ -145,8 +145,8 @@ variable.")
     (set-lookup-handlers! '(ess-r-mode ess-julia-mode)
       :documentation #'ess-display-help-on-object))
   (eval-when! (modulep! :tools eval)
-    (set-repl-handler! 'ess-r-mode #'+ess/open-r-repl)
-    (set-repl-handler! 'ess-julia-mode #'+ess/open-julia-repl)
+    (set-repl-handler! 'ess-r-mode #'run-ess-r)
+    (set-repl-handler! 'ess-julia-mode #'run-ess-julia)
     (set-eval-handler! 'ess-help-mode #'ess-eval-region-and-go)
     (set-eval-handler! 'ess-r-help-mode #'ess-eval-region-and-go))
 
@@ -275,11 +275,13 @@ See URL `https://github.com/emacs-ess/ESS/issues/300'."
             :m "[[" #'ess-skip-to-previous-section)
            (:map ess-doc-map
                  "h"    #'ess-display-help-on-object
-                 "p"    #'ess-R-dv-pprint
-                 "t"    #'ess-R-dv-ctable
+                 "p"    #'ess-view-data-print
                  [up]   #'comint-next-input
                  [down] #'comint-previous-input
                  [C-return] #'ess-eval-line))
+   (:map ess-roxy-mode-map
+         :i "RET" #'ess-indent-new-comment-line)
+
    (:localleader
     :map ess-mode-map
     "," #'ess-eval-region-or-function-or-paragraph-and-step
@@ -328,3 +330,7 @@ See URL `https://github.com/emacs-ess/ESS/issues/300'."
   :config
   (eval-when! (modulep! :editor snippets)
     (set-tempel-minor-mode! 'poly-markdown+r-mode)))
+
+
+(use-package! quarto-mode
+  :mode (("\\.[qQ][mM][dD]" . poly-quarto-mode)))

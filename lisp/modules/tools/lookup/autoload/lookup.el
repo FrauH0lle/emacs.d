@@ -9,8 +9,8 @@ current buffer and/or location of the cursor, or a function that
 takes one argument: the identifier being looked up, and returns
 either nil (failed to find it), t
 (succeeded at changing the buffer/moving the cursor), or
-'deferred (assume this handler has succeeded, but expect changes
-not to be visible yet).
+\\='deferred (assume this handler has succeeded, but expect
+changes not to be visible yet).
 
 There are several kinds of handlers, which can be defined with
 the following properties:
@@ -55,8 +55,8 @@ the following properties:
   If you only want to specify one FN is async, declare it inline
   instead:
 
-    (set-lookup-handlers! 'rust-mode
-      :definition '(racer-find-definition :async t))
+    (set-lookup-handlers! \\='rust-mode
+      :definition \\='(racer-find-definition :async t))
 
 Handlers can either be interactive or non-interactive.
 Non-interactive handlers must take one argument: the identifier
@@ -79,7 +79,7 @@ the major mode it's activated in.
 This can be passed nil as its second argument to unset handlers
 for MODES. e.g.
 
-  (set-lookup-handlers! 'python-mode nil)
+  (set-lookup-handlers! \\='python-mode nil)
 
 \(fn MODES &key DEFINITION IMPLEMENTATIONS TYPE-DEFINITION \
 REFERENCES DOCUMENTATION FILE XREF-BACKEND ASYNC)"

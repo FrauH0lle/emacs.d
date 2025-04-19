@@ -64,11 +64,18 @@ FUNCTION
         magit-revision-insert-related-refs nil)
   (add-hook 'magit-process-mode-hook #'goto-address-mode)
 
-  ;; Since the project likely now contains new files, best we undo the
-  ;; projectile cache so it can be regenerated later.
-  (add-hook! 'magit-post-refresh-hook
+  ;; Since the project likely now contains new files, purge the projectile cache
+  ;; so `projectile-find-file' et all don't produce an stale file list
+  (add-hook! 'magit-refresh-buffer-hook
     (defun +magit-invalidate-projectile-cache-h ()
-      (projectile-invalidate-cache nil)))
+      ;; Only invalidate the hot cache and nothing else (everything else is
+      ;; expensive busy work, and we don't want to slow down magit's
+      ;; refreshing).
+      (let (projectile-require-project-root
+            projectile-enable-caching
+            projectile-verbose)
+        (letf! ((#'recentf-cleanup #'ignore))
+          (projectile-invalidate-cache nil)))))
   ;; Use a more efficient strategy to auto-revert buffers whose git state has
   ;; changed: refresh the visible buffers immediately...
   (add-hook 'magit-post-refresh-hook #'+magit-mark-stale-buffers-h)

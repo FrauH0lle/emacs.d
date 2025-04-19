@@ -127,16 +127,17 @@ It will split otherwise."
 
 Stale buffers are reverted when they are switched to, assuming
 they haven't been modified."
-  (let ((visible-buffers (zenit-visible-buffers nil t)))
-    (dolist (buffer (buffer-list))
-      (when (+magit--revertable-buffer-p buffer)
-        (if (memq buffer visible-buffers)
-            (progn
-              (+magit--revert-buffer buffer)
-              ;; Hasten future lookups
-              (delq! buffer visible-buffers))
-          (with-current-buffer buffer
-            (setq-local +magit--stale-p t)))))))
+  (when +magit-auto-revert
+    (let ((visible-buffers (zenit-visible-buffers nil t)))
+      (dolist (buffer (buffer-list))
+        (when (+magit--revertable-buffer-p buffer)
+          (if (memq buffer visible-buffers)
+              (progn
+                (+magit--revert-buffer buffer)
+                ;; Hasten future lookups
+                (delq! buffer visible-buffers))
+            (with-current-buffer buffer
+              (setq-local +magit--stale-p t))))))))
 
 ;;;###autoload
 (defun +magit-revert-buffer-maybe-h ()

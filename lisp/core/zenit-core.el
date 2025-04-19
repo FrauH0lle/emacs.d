@@ -130,8 +130,7 @@
 (add-to-list 'load-path (file-name-directory load-file-name))
 (add-to-list 'load-path (file-name-concat (file-name-directory load-file-name) "lib"))
 ;; Backports from later Emacs versions
-(when (< emacs-major-version 30)
-  (require 'zenit-compat))
+(require 'zenit-compat)
 (require 'zenit-lib)
 
 

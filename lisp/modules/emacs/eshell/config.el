@@ -61,12 +61,14 @@ You should use `set-eshell-alias!' to change this.")
 ;;; Packages
 
 (after! eshell ; built-in
+  (set-lookup-handlers! 'eshell-mode
+    :documentation #'+eshell-lookup-documentation)
   (setq eshell-banner-message
         '(format "%s %s\n"
-                 (propertize (format " %s " (string-trim (buffer-name)))
-                             'face 'mode-line-highlight)
-                 (propertize (current-time-string)
-                             'face 'font-lock-keyword-face))
+          (propertize (format " %s " (string-trim (buffer-name)))
+                      'face 'mode-line-highlight)
+          (propertize (current-time-string)
+                      'face 'font-lock-keyword-face))
         eshell-scroll-to-bottom-on-input 'all
         eshell-scroll-to-bottom-on-output 'all
         eshell-kill-processes-on-exit t
@@ -191,7 +193,24 @@ You should use `set-eshell-alias!' to change this.")
 
 (use-package! esh-help
   :after eshell
-  :config (setup-esh-help-eldoc))
+  :config
+  (setup-esh-help-eldoc)
+  ;; HACK: Fixes tom-tan/esh-help#7.
+  (defadvice! +eshell-esh-help-eldoc-man-minibuffer-string-a (cmd)
+    "Return minibuffer help string for the shell command CMD.
+Return nil if there is none."
+    :override #'esh-help-eldoc-man-minibuffer-string
+    (if-let* ((cache-result (gethash cmd esh-help-man-cache)))
+        (unless (eql 'none cache-result)
+          cache-result)
+      (let ((str (split-string (esh-help-man-string cmd) "\n")))
+        (if (equal (concat "No manual entry for " cmd) (car str))
+            (ignore (puthash cmd 'none esh-help-man-cache))
+          (puthash
+           cmd (when-let* ((str (seq-drop-while (fn! (not (string-match-p "^SYNOPSIS$" %))) str))
+                           (str (nth 1 str)))
+                 (substring str (string-match-p "[^\s\t]" str)))
+           esh-help-man-cache))))))
 
 
 ;; PATCH 2024-06-22: The way `pcomplete-completions' is originally used is
@@ -220,7 +239,28 @@ You should use `set-eshell-alias!' to change this.")
 
 (use-package eshell-syntax-highlighting
   :hook (eshell-mode . eshell-syntax-highlighting-mode)
-  :init
+  :config
+  (defadvice! +eshell-filter-history-from-highlighting-a (&rest _)
+    "Selectively inhibit `eshell-syntax-highlighting-mode'.
+So that mathces from history show up with highlighting."
+    :before-until #'eshell-syntax-highlighting--enable-highlighting
+    (memq this-command '(eshell-previous-matching-input-from-input
+                         eshell-next-matching-input-from-input)))
+
+  (defun +eshell-syntax-highlight-maybe-h ()
+    "Hook added to `pre-command-hook' to restore syntax highlighting
+when inhibited to show history matches."
+    (when (and eshell-syntax-highlighting-mode
+               (memq last-command '(eshell-previous-matching-input-from-input
+                                    eshell-next-matching-input-from-input)))
+      (eshell-syntax-highlighting--enable-highlighting)))
+
+  (add-hook! 'eshell-syntax-highlighting-elisp-buffer-setup-hook
+    (defun +eshell-syntax-highlighting-mode-h ()
+      "Hook to enable `+eshell-syntax-highlight-maybe-h'."
+      (if eshell-syntax-highlighting-mode
+          (add-hook 'pre-command-hook #'+eshell-syntax-highlight-maybe-h nil t)
+        (remove-hook 'pre-command-hook #'+eshell-syntax-highlight-maybe-h t))))
   (add-hook 'eshell-syntax-highlighting-elisp-buffer-setup-hook #'highlight-quoted-mode))
 
 

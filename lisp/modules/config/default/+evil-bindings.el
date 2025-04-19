@@ -47,36 +47,61 @@
 ;;; Global keybindings
 
 ;; Smart tab, these will only work in GUI Emacs
-(map! ;; :i [tab] (general-predicate-dispatch nil
-      ;;            (and (bound-and-true-p corfu-mode)
-      ;;                 (modulep! :completion corfu))
-      ;;            #'completion-at-point)
-      :m [tab] (general-predicate-dispatch nil
-                 (and (modulep! :editor snippets)
-                      (evil-visual-state-p)
-                      (or (eq evil-visual-selection 'line)
-                          (not (memq (char-after) (list ?\( ?\[ ?\{ ?\} ?\] ?\))))))
-                 #'tempel-insert
-                 (and (modulep! :editor fold)
-                      (or
-                       (save-excursion (end-of-line) (invisible-p (point)))
-                       (+fold--vimish-fold-p)
-                       (+fold--outline-fold-p)))
-                 #'+fold/toggle
-                 ;; Without this, this tab keybind overrides mode-local ones for
-                 ;; modes that don't have an evil keybinding scheme or users who
-                 ;; don't have :editor (evil +everywhere) enabled.
-                 (or (zenit-lookup-key
-                      [tab]
-                      (list (evil-get-auxiliary-keymap (current-local-map) evil-state)
-                            (current-local-map)))
-                     (zenit-lookup-key
-                      (kbd "TAB")
-                      (list (evil-get-auxiliary-keymap (current-local-map) evil-state)))
-                     (zenit-lookup-key (kbd "TAB") (list (current-local-map))))
-                 it
-                 (fboundp 'evil-jump-item)
-                 #'evil-jump-item)
+(map! :i [tab]
+      `(menu-item "Evil insert smart tab" nil :filter
+        (lambda (cmd)
+          (cond
+           ((or (zenit-lookup-key [tab] overriding-terminal-local-map)
+                (zenit-lookup-key (kbd "TAB") overriding-terminal-local-map))
+            cmd)
+           ,@(when (modulep! :completion corfu)
+               '(((and (bound-and-true-p corfu-mode)
+                       corfu--candidates)
+                  (if (derived-mode-p 'eshell-mode 'comint-mode)
+                      #'completion-at-point
+                    #'indent-for-tab-command)))))))
+      :m [tab] `(menu-item "Evil motion smart tab" nil :filter
+                 (lambda (cmd)
+                   (cond
+                    ((or (zenit-lookup-key [tab] overriding-terminal-local-map)
+                         (zenit-lookup-key (kbd "TAB") overriding-terminal-local-map))
+                     cmd)
+                    ,@(when (modulep! :editor snippets)
+                        '(((and (evil-visual-state-p)
+                                (or (eq evil-visual-selection 'line)
+                                    (not (memq (char-after)
+                                               (list ?\( ?\[ ?\{ ?\} ?\] ?\))))))
+                           #'tempel-insert)))
+                    ,@(when (modulep! :editor fold)
+                        '(((or
+                            (save-excursion (end-of-line) (invisible-p (point)))
+                            (+fold--vimish-fold-p)
+                            (+fold--outline-fold-p))
+                           #'+fold/toggle)))
+                    ;; Without this, this tab keybind overrides mode-local ones
+                    ;; for modes that don't have an evil keybinding scheme or if
+                    ;; :editor evil is notenabled.
+                    ((or (zenit-lookup-key
+                          [tab]
+                          (list (evil-get-auxiliary-keymap (current-local-map)
+                                                           evil-state)
+                                (current-local-map)))
+                         (zenit-lookup-key
+                          (kbd "TAB")
+                          (list (evil-get-auxiliary-keymap (current-local-map)
+                                                           evil-state)))
+                         (zenit-lookup-key (kbd "TAB") (list (current-local-map))))
+                     cmd)
+                    ((fboundp 'evil-jump-item)
+                     #'evil-jump-item))))
+
+      ;; Extend smart tab for specific modes. This way, we process the entire
+      ;; smart tab logic and only fall back to these commands at the end.
+      (:when (modulep! :emacs org)
+       (:after org :map org-mode-map
+        [remap indent-for-tab-command]
+        `(menu-item "Go to the next field" org-table-next-field
+          :filter ,(lambda (cmd) (when (org-at-table-p) cmd)))))
 
       (:after help :map help-mode-map
        :n "o"       #'link-hint-open-link)
@@ -133,36 +158,36 @@
 ;;; :completion
 
 (map! (:when (modulep! :completion corfu)
-       (:after corfu
-        (:map corfu-mode-map
-         :i "C-." #'completion-at-point
-         :i "C-n" #'+corfu/dabbrev-or-next
-         :i "C-p" #'+corfu/dabbrev-or-last
-         :n "C-." (cmd! (call-interactively #'evil-insert-state)
-                        (call-interactively #'completion-at-point))
-         :v "C-." (cmd! (call-interactively #'evil-change)
-                        (call-interactively #'completion-at-point)))
-        (:map corfu-map
-         :i "C-SPC" #'corfu-insert-separator
-         "C-k" #'corfu-previous
-         "C-j" #'corfu-next
-         "C-u" (cmd! (let (corfu-cycle)
-                       (funcall-interactively #'corfu-next (- corfu-count))))
-         "C-d" (cmd! (let (corfu-cycle)
-                       (funcall-interactively #'corfu-next corfu-count)))))
-       (:after corfu-popupinfo
-        :map corfu-popupinfo-map
-        "C-h"      #'corfu-popupinfo-toggle
-        ;; Reversed because popupinfo assumes opposite of what feels intuitive
-        ;; with evil.
-        "C-S-k"    #'corfu-popupinfo-scroll-down
-        "C-S-j"    #'corfu-popupinfo-scroll-up
-        "C-<up>"   #'corfu-popupinfo-scroll-down
-        "C-<down>" #'corfu-popupinfo-scroll-up
-        "C-S-p"    #'corfu-popupinfo-scroll-down
-        "C-S-n"    #'corfu-popupinfo-scroll-up
-        "C-S-u"    (cmd!! #'corfu-popupinfo-scroll-down nil corfu-popupinfo-min-height)
-        "C-S-d"    (cmd!! #'corfu-popupinfo-scroll-up nil corfu-popupinfo-min-height))))
+        (:after corfu
+                (:map corfu-mode-map
+                 :i "C-." #'completion-at-point
+                 :i "C-n" #'+corfu/dabbrev-or-next
+                 :i "C-p" #'+corfu/dabbrev-or-last
+                 :n "C-." (cmd! (call-interactively #'evil-insert-state)
+                                (call-interactively #'completion-at-point))
+                 :v "C-." (cmd! (call-interactively #'evil-change)
+                                (call-interactively #'completion-at-point)))
+                (:map corfu-map
+                 :i "C-SPC" #'corfu-insert-separator
+                 "C-k" #'corfu-previous
+                 "C-j" #'corfu-next
+                 "C-u" (cmd! (let (corfu-cycle)
+                               (funcall-interactively #'corfu-next (- corfu-count))))
+                 "C-d" (cmd! (let (corfu-cycle)
+                               (funcall-interactively #'corfu-next corfu-count)))))
+        (:after corfu-popupinfo
+         :map corfu-popupinfo-map
+         "C-h"      #'corfu-popupinfo-toggle
+         ;; Reversed because popupinfo assumes opposite of what feels intuitive
+         ;; with evil.
+         "C-S-k"    #'corfu-popupinfo-scroll-down
+         "C-S-j"    #'corfu-popupinfo-scroll-up
+         "C-<up>"   #'corfu-popupinfo-scroll-down
+         "C-<down>" #'corfu-popupinfo-scroll-up
+         "C-S-p"    #'corfu-popupinfo-scroll-down
+         "C-S-n"    #'corfu-popupinfo-scroll-up
+         "C-S-u"    (cmd!! #'corfu-popupinfo-scroll-down nil corfu-popupinfo-min-height)
+         "C-S-d"    (cmd!! #'corfu-popupinfo-scroll-up nil corfu-popupinfo-min-height))))
 
 
 ;;; :ui
@@ -334,57 +359,57 @@
 
       ;;; <leader> c --- code
       (:prefix-map ("c" . "code")
-        (:when (modulep! :tools lsp -eglot)
-          :desc "LSP Execute code action" "a" #'lsp-execute-code-action
-          :desc "LSP Organize imports" "o" #'lsp-organize-imports
-          (:when (modulep! :completion vertico)
-            :desc "Jump to symbol in current workspace" "j"   #'consult-lsp-symbols
-            :desc "Jump to symbol in any workspace"     "J"   (cmd!! #'consult-lsp-symbols 'all-workspaces))
-          (:when (modulep! :ui treemacs +lsp)
-            :desc "Errors list"                         "X"   #'lsp-treemacs-errors-list
-            :desc "Incoming call hierarchy"             "y"   #'lsp-treemacs-call-hierarchy
-            :desc "Outgoing call hierarchy"             "Y"   (cmd!! #'lsp-treemacs-call-hierarchy t)
-            :desc "References tree"                     "R"   (cmd!! #'lsp-treemacs-references t)
-            :desc "Symbols"                             "S"   #'lsp-treemacs-symbols)
-          :desc "LSP"                                 "l"   #'+default/lsp-command-map
-          :desc "LSP Rename"                          "r"   #'lsp-rename)
-        (:when (modulep! :tools lsp +eglot)
-          :desc "LSP Execute code action" "a" #'eglot-code-actions
-          :desc "LSP Rename" "r" #'eglot-rename
-          :desc "LSP Find declaration"                 "j"   #'eglot-find-declaration
-          (:when (modulep! :completion vertico)
-            :desc "Jump to symbol in current workspace" "j"   #'consult-eglot-symbols))
+                   (:when (modulep! :tools lsp -eglot)
+                     :desc "LSP Execute code action" "a" #'lsp-execute-code-action
+                     :desc "LSP Organize imports" "o" #'lsp-organize-imports
+                     (:when (modulep! :completion vertico)
+                       :desc "Jump to symbol in current workspace" "j"   #'consult-lsp-symbols
+                       :desc "Jump to symbol in any workspace"     "J"   (cmd!! #'consult-lsp-symbols 'all-workspaces))
+                     (:when (modulep! :ui treemacs +lsp)
+                       :desc "Errors list"                         "X"   #'lsp-treemacs-errors-list
+                       :desc "Incoming call hierarchy"             "y"   #'lsp-treemacs-call-hierarchy
+                       :desc "Outgoing call hierarchy"             "Y"   (cmd!! #'lsp-treemacs-call-hierarchy t)
+                       :desc "References tree"                     "R"   (cmd!! #'lsp-treemacs-references t)
+                       :desc "Symbols"                             "S"   #'lsp-treemacs-symbols)
+                     :desc "LSP"                                 "l"   #'+default/lsp-command-map
+                     :desc "LSP Rename"                          "r"   #'lsp-rename)
+                   (:when (modulep! :tools lsp +eglot)
+                     :desc "LSP Execute code action" "a" #'eglot-code-actions
+                     :desc "LSP Rename" "r" #'eglot-rename
+                     :desc "LSP Find declaration"                 "j"   #'eglot-find-declaration
+                     (:when (modulep! :completion vertico)
+                       :desc "Jump to symbol in current workspace" "j"   #'consult-eglot-symbols))
 
-        :desc "Compile"                               "c"   #'compile
-        :desc "Recompile"                             "C"   #'recompile
-        :desc "Jump to definition"                    "d"   #'+lookup/definition
-        :desc "Jump to references"                    "D"   #'+lookup/references
-        :desc "Evaluate buffer/region"                "e"   #'+eval/buffer-or-region
-        :desc "Evaluate & replace region"             "E"   #'+eval:replace-region
-        :desc "Format buffer/region"                  "f"   #'+format/region-or-buffer
-        :desc "Find implementations"                  "i"   #'+lookup/implementations
-        :desc "Jump to documentation"                 "k"   #'+lookup/documentation
-        :desc "Send to repl"                          "s"   #'+eval/send-region-to-repl
-        ;; :desc "Find type definition"                  "t"   #'+lookup/type-definition
-        (:prefix ("t" . "text")
-                 "f" #'copy-as-format
-                 "a" #'copy-as-format-asciidoc
-                 "b" #'copy-as-format-bitbucket
-                 "d" #'copy-as-format-disqus
-                 "g" #'copy-as-format-github
-                 "l" #'copy-as-format-gitlab
-                 "c" #'copy-as-format-hipchat
-                 "h" #'copy-as-format-html
-                 "j" #'copy-as-format-jira
-                 "m" #'copy-as-format-markdown
-                 "w" #'copy-as-format-mediawiki
-                 "o" #'copy-as-format-org-mode
-                 "p" #'copy-as-format-pod
-                 "r" #'copy-as-format-rst
-                 "s" #'copy-as-format-slack)
-        :desc "Delete trailing whitespace"            "w"   #'delete-trailing-whitespace
-        :desc "Delete trailing newlines"              "W"   #'zenit/delete-trailing-newlines
-        :desc "List errors"                           "x"   #'+default/diagnostics)
+                   :desc "Compile"                               "c"   #'compile
+                   :desc "Recompile"                             "C"   #'recompile
+                   :desc "Jump to definition"                    "d"   #'+lookup/definition
+                   :desc "Jump to references"                    "D"   #'+lookup/references
+                   :desc "Evaluate buffer/region"                "e"   #'+eval/buffer-or-region
+                   :desc "Evaluate & replace region"             "E"   #'+eval:replace-region
+                   :desc "Format buffer/region"                  "f"   #'+format/region-or-buffer
+                   :desc "Find implementations"                  "i"   #'+lookup/implementations
+                   :desc "Jump to documentation"                 "k"   #'+lookup/documentation
+                   :desc "Send to repl"                          "s"   #'+eval/send-region-to-repl
+                   ;; :desc "Find type definition"                  "t"   #'+lookup/type-definition
+                   (:prefix ("t" . "text")
+                            "f" #'copy-as-format
+                            "a" #'copy-as-format-asciidoc
+                            "b" #'copy-as-format-bitbucket
+                            "d" #'copy-as-format-disqus
+                            "g" #'copy-as-format-github
+                            "l" #'copy-as-format-gitlab
+                            "c" #'copy-as-format-hipchat
+                            "h" #'copy-as-format-html
+                            "j" #'copy-as-format-jira
+                            "m" #'copy-as-format-markdown
+                            "w" #'copy-as-format-mediawiki
+                            "o" #'copy-as-format-org-mode
+                            "p" #'copy-as-format-pod
+                            "r" #'copy-as-format-rst
+                            "s" #'copy-as-format-slack)
+                   :desc "Delete trailing whitespace"            "w"   #'delete-trailing-whitespace
+                   :desc "Delete trailing newlines"              "W"   #'zenit/delete-trailing-newlines
+                   :desc "List errors"                           "x"   #'+default/diagnostics)
 
       ;;; <leader> f --- file
       (:prefix-map ("f" . "file")

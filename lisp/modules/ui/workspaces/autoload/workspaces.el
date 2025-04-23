@@ -677,17 +677,10 @@ Format: ((frame . workspace-name) ...)")
         (let ((name (persp-name persp)))
           (dolist (fdata (persp-parameter 'workspace-frames persp))
             (let* ((fid (car fdata))
-                   (frame (gethash fid frame-map))
-                   (excl (plist-get (cdr fdata) :exclusive)))
+                   (frame (gethash fid frame-map)))
               (persp-activate persp)
               (when frame
-                (if excl
-                    (with-selected-frame frame
-                      (let ((persp-init-frame-behaviour nil))
-                        (persp-activate persp frame))
-                      (+workspaces--associate-frame frame)
-                      (set-frame-parameter frame 'workspace-exclusive t))
-                  (+workspace-move name frame))))))))
+                (+workspace-move name frame)))))))
 
     ;; Remove `+workspaces-main' if it was not part of the restored workspaces
     (when (eq (persp-get-by-name +workspaces-main) :nil)

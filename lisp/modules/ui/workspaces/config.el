@@ -320,9 +320,9 @@ Will be stored in `persp-save-dir'.")
             (let ((persp (gethash pname phash)))
               (let ((ws-frames
                      (cl-loop for (frame . excl) in (+workspaces--find-workspace-frames pname)
+                              if (not excl)
                               collect `(,(alist-get frame frame-alist)
-                                        . ,(list :exclusive excl
-                                                 :geometry (let* ((params (frame-parameters frame))
+                                        . ,(list :geometry (let* ((params (frame-parameters frame))
                                                                   (height (alist-get 'height params))
                                                                   (width (alist-get 'width params)))
                                                              `((height . ,height)

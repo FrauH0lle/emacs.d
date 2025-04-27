@@ -8,7 +8,7 @@
 
 (cl-eval-when (compile)
   (require 'el-patch)
-  (require 'comp))
+  (require 'comp-run))
 
 (declare-function zenit-compile-setup-env "zenit-lib-compile")
 (declare-function zenit-compile-generate-args "zenit-lib-compile")
@@ -20,14 +20,14 @@
      (setq zenit-disabled-packages ',zenit-disabled-packages)
      ,(apply #'zenit-compile-setup-env (zenit-compile-generate-args target))))
 
-(el-patch-defun comp-run-async-workers ()
+(el-patch-defun comp--run-async-workers ()
   "Start compiling files from `comp-files-queue' asynchronously.
 When compilation is finished, run `native-comp-async-all-done-hook' and
 display a message."
   (cl-assert (null comp-no-spawn))
   (if (or comp-files-queue
-          (> (comp-async-runnings) 0))
-      (unless (>= (comp-async-runnings) (comp-effective-async-max-jobs))
+          (> (comp--async-runnings) 0))
+      (unless (>= (comp--async-runnings) (comp--effective-async-max-jobs))
         (cl-loop
          for (source-file . load) = (pop comp-files-queue)
          while source-file
@@ -36,7 +36,7 @@ display a message."
                        source-file)
          when (or native-comp-always-compile
                   load ; Always compile when the compilation is
-                                        ; commanded for late load.
+                       ; commanded for late load.
                   ;; Skip compilation if `comp-el-to-eln-filename' fails
                   ;; to find a writable directory.
                   (with-demoted-errors "Async compilation :%S"
@@ -58,6 +58,7 @@ display a message."
                                              load-path
                                              backtrace-line-length
                                              byte-compile-warnings
+                                             comp-sanitizer-emit
                                              ;; package-load-list
                                              ;; package-user-dir
                                              ;; package-directory-list
@@ -104,8 +105,9 @@ display a message."
                              :buffer (with-current-buffer
                                          (get-buffer-create
                                           comp-async-buffer-name)
-                                       (setf buffer-read-only t)
-                                       (current-buffer))
+                                       (unless (derived-mode-p 'compilation-mode)
+                                         (emacs-lisp-compilation-mode))
+			               (current-buffer))
                              :command (list
                                        (expand-file-name invocation-name
                                                          invocation-directory)
@@ -119,7 +121,7 @@ display a message."
                                (run-hook-with-args
                                 'native-comp-async-cu-done-functions
                                 source-file)
-                               (comp-accept-and-process-async-output process)
+                               (comp--accept-and-process-async-output process)
                                (ignore-errors (delete-file temp-file))
                                (let ((eln-file (comp-el-to-eln-filename
                                                 source-file1)))
@@ -129,15 +131,17 @@ display a message."
                                             (file-exists-p eln-file))
                                    (native-elisp-load eln-file
                                                       (eq load1 'late))))
-                               (comp-run-async-workers))
+                               (comp--run-async-workers))
                              :noquery (not native-comp-async-query-on-exit))))
               (puthash source-file process comp-async-compilations))
-         when (>= (comp-async-runnings) (comp-effective-async-max-jobs))
+         when (>= (comp--async-runnings) (comp--effective-async-max-jobs))
          do (cl-return)))
     ;; No files left to compile and all processes finished.
     (run-hooks 'native-comp-async-all-done-hook)
     (with-current-buffer (get-buffer-create comp-async-buffer-name)
       (save-excursion
+        (unless (derived-mode-p 'compilation-mode)
+          (emacs-lisp-compilation-mode))
         (let ((inhibit-read-only t))
           (goto-char (point-max))
           (insert "Compilation finished.\n"))))

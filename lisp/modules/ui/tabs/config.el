@@ -12,24 +12,14 @@
   (require 'el-patch)
   (require 'tab-bar))
 
-;; PATCH 2024-08-02: `tab-bar'
+;; PATCH 2025-04-23: `tab-bar'
 (el-patch-feature tab-bar)
 
 (after! tab-bar
-  (el-patch-defun tab-bar-tab-name-format-default (tab i)
-    (let ((current-p (eq (car tab) 'current-tab)))
-      (propertize
-       (el-patch-wrap 1 4
-         (truncate-string-to-width
-          (concat (if tab-bar-tab-hints (format (el-patch-swap "%d " "  #%d: ") i) "")
-                  (alist-get 'name tab)
-                  (or (and tab-bar-close-button-show
-                           (not (eq tab-bar-close-button-show
-                                    (if current-p 'non-selected 'selected)))
-                           tab-bar-close-button)
-                      ""))
-          tab-bar-tab-name-truncated-max nil nil "..."))
-       'face (funcall tab-bar-tab-face-function tab)))))
+  (el-patch-defun tab-bar-tab-name-format-hints (name _tab i)
+    "Show absolute numbers on tabs in the tab bar before the tab name.
+It has effect when `tab-bar-tab-hints' is non-nil."
+  (if tab-bar-tab-hints (concat (format (el-patch-swap "%d " "  #%d: ") i) name) name)))
 
 
 (use-package! tab-bar

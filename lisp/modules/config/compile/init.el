@@ -1,14 +1,10 @@
 ;; config/compile/init.el -*- lexical-binding: t; -*-
 
-;; DEPRECATED 2024-09-16: Emacs 30+ moved the following from `comp' to
-;;   `comp-run' and also renamed `comp-run-async-workers' to
-;;   `comp--run-async-workers'.
-
-;; PATCH 2024-08-02: `comp'
-(el-patch-feature comp)
+;; PATCH 2025-04-23: `comp-run'
+(el-patch-feature comp-run)
 (compile-along! "patches")
 
-(after! comp
+(after! comp-run
   (load! "patches")
   ;; HACK 2024-08-10: Add ~/.emacs.d/init.el manually to the native-comp queue
   ;;   again.

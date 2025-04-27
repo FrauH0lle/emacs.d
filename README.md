@@ -4,7 +4,7 @@
 
 The pinnacle of bikeshedding
 
-![Supports Emacs 29+](https://img.shields.io/badge/Supports-Emacs_29+-blueviolet.svg?style=flat-square&logo=GNU%20Emacs&logoColor=white)
+![Supports Emacs 30+](https://img.shields.io/badge/Supports-Emacs_30+-blueviolet.svg?style=flat-square&logo=GNU%20Emacs&logoColor=white)
 ![Build status](https://img.shields.io/github/actions/workflow/status/FrauH0lle/emacs.d/ci.yml?label=pipeline&style=flat-square)
 ![Activity](https://img.shields.io/github/commit-activity/m/FrauH0lle/emacs.d?style=flat-square)
 
@@ -27,7 +27,7 @@ and Doom Emacs.
 
 ## Prerequisites
 
-* Emacs 29+
+* Emacs 30+
 * [ripgrep](https://github.com/BurntSushi/ripgrep)
 * [fd (optional)](https://github.com/sharkdp/fd)
 

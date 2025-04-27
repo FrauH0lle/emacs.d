@@ -526,6 +526,7 @@ buffers are visible in other windows, switch to
     (declare-function hl-line-mode-set-explicitly nil)
     (declare-function global-hl-line-mode-cmhh nil)
     (declare-function global-hl-line-mode-check-buffers nil)
+    (declare-function global-hl-line-mode-enable-in-buffer nil)
     (declare-function global-hl-line-mode-enable-in-buffers nil))
 
   ;; Temporarily disable `hl-line' when selection is active, since it doesn't

@@ -21,8 +21,8 @@ DOCSETS can also contain sublists, which will be flattened.
 
 Example:
 
-  (set-docsets! '(js2-mode rjsx-mode) \"JavaScript\"
-    [\"React\" (eq major-mode 'rjsx-mode)]
+  (set-docsets! \\='(js2-mode rjsx-mode) \"JavaScript\"
+    [\"React\" (eq major-mode \\='rjsx-mode)]
     [\"TypeScript\" (bound-and-true-p tide-mode)])
 
 Used by `+lookup/in-docsets' and `+lookup/documentation'."

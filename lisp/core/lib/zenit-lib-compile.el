@@ -103,8 +103,10 @@ autoloads as specified by the keyword arguments.
 Keyword arguments:
 :req-core-lib   - Whether to require zenit-lib
 :req-core       - Whether to require zenit-core
-:req-core-libs  - List of core libraries to require (or 'all for
-                  all core libs)
+
+:req-core-libs  - List of core libraries to require (or \\='all for all
+                  core libs)
+
 :req-extra      - List of extra libraries to require
 :modulep        - Whether to generate module configuration
 :autoloads      - Whether to load autoloads files
@@ -196,8 +198,8 @@ FILE - The Lisp file to compile
 Keyword arguments:
 :req-core-lib   - Whether to require zenit-lib
 :req-core       - Whether to require zenit-core
-:req-core-libs  - List of core libraries to require (or 'all for
-                  all core libs)
+:req-core-libs  - List of core libraries to require (or \\='all for all
+                  core libs)
 :req-extra      - List of extra libraries to require
 :modulep        - Whether to generate module configuration
 :autoloads      - Whether to load autoloads files

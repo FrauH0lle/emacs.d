@@ -632,11 +632,19 @@
                         (call-interactively
                          (message "Hello, world!"))))
                  (macroexpand '(cmd!! (message "Hello, world!"))))))
-
+(let ((l '(1 2)))
+  (add-to-list 'l 1)
+  (add-to-list 'l 2)
+  (add-to-list 'l 3 t)
+  l)
 (zenit-deftest zenit-splice-into
   (:vars ((test-list '("a" "b" "c" "d" "e"))))
   ,test
   (test)
+  :doc "`zenit-splice-into' prepends element if after and before arguments are not used"
+  (progn
+    (should (equal '("foo" "a" "b" "c" "d" "e") (zenit-splice-into test-list "foo")))
+    (should (equal '("foo" "bar" "a" "b" "c" "d" "e") (zenit-splice-into test-list '("foo" "bar")))))
   :doc "`zenit-splice-into' inserts element after argument"
   (progn
     (should (equal '("a" "b" "foo" "c" "d" "e") (zenit-splice-into test-list "foo" "b")))
@@ -654,6 +662,12 @@
   (:vars ((test-list '("a" "b" "c" "d" "e"))))
   ,test
   (test)
+    :doc "`spliceq!' inserts element after argument in place"
+  (progn
+    (spliceq! test-list "foo")
+    (should (equal '("foo" "a" "b" "c" "d" "e") test-list))
+    (spliceq! test-list '("foo" "bar"))
+    (should (equal '("foo" "bar" "foo" "a" "b" "c" "d" "e") test-list)))
   :doc "`spliceq!' inserts element after argument in place"
   (progn
     (spliceq! test-list "foo" "b")

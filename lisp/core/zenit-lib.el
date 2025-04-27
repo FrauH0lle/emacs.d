@@ -743,38 +743,34 @@ target for keybinds (e.g. with `define-key' or `map!')."
 ;;
 ;;; Mutation
 
-(defun zenit-splice-into (seq element after &optional before)
+(defun zenit-splice-into (seq element &optional after before)
   "Insert ELEMENT (a symbol, string or list) into the list SEQ.
 
-Insertion is done between the elements BEFORE and AFTER.
+Insertion is done between the elements BEFORE and AFTER. If both AFTER
+and BEFORE are given, ELEMENT is inserted directly after AFTER. If only
+BEFORE is given, ELEMENT is inserted before BEFORE. If neither is given,
+ELEMENT is prepended to SEQ.
 
-Comparison is done via `equal'. Returns the modified list.
-
-ELEMENT will be inserted directly after AFTER or before BEFORE.
-If both AFTER and BEFORE are given, it will be inserted directly
-after AFTER."
-  (let (;; Find the position of AFTER in SEQ, if it exists
-        (after-position (and after (cl-position after seq :test #'equal)))
-        ;; Find the position of BEFORE in SEQ, if it exists
+Comparison is done via `equal'. Returns the modified list."
+  (let ((after-position (and after (cl-position after seq :test #'equal)))
         (before-position (and before (cl-position before seq :test #'equal))))
-    ;; Combine the following parts to create the new sequence:
     (append
-     ;; 1. If AFTER exists, include all elements up to and including AFTER
+     ;; If AFTER exists, include all elements up to and including AFTER
      (and after-position (cl-subseq seq 0 (1+ after-position)))
-     ;; 2. If AFTER doesn't exist but BEFORE does, include all elements before
-     ;; BEFORE
-     (and (not after-position) (cl-subseq seq 0 before-position))
-     ;; 3. Insert the new ELEMENT (ensuring it's a list)
+     ;; If AFTER doesn't exist but BEFORE does, include elements before BEFORE
+     (and (not after-position) before-position (cl-subseq seq 0 before-position))
+     ;; Insert the new ELEMENT (ensuring it's a list)
      (ensure-list element)
-     ;; 4. If both AFTER and BEFORE exist, include elements between them
+     ;; If both AFTER and BEFORE exist, include elements between them
      (and before-position after-position (cl-subseq seq (1+ after-position) before-position))
-     ;; 5. If BEFORE exists, include all elements from BEFORE onwards
+     ;; If BEFORE exists, include remaining elements from BEFORE onwards
      (and before-position (cl-subseq seq before-position))
-     ;; 6. If BEFORE doesn't exist but AFTER does, include all elements after
-     ;; AFTER
-     (and (not before-position) (cl-subseq seq (1+ after-position))))))
+     ;; If BEFORE doesn't exist but AFTER does, include remaining elements
+     (and after-position (not before-position) (cl-subseq seq (1+ after-position)))
+     ;; If neither AFTER nor BEFORE exist, include all elements
+     (and (not after-position) (not before-position) seq))))
 
-(defmacro spliceq! (seq element after &optional before)
+(defmacro spliceq! (seq element &optional after before)
   "Splice ELEMENT into SEQ in place.
 See `zenit-splice-into' for details."
   (declare (debug t))
@@ -1128,7 +1124,7 @@ time."
      1.5 t (fn! (when-let* ((fn (pop fns)))
                   (zenit-log "compile-functions: %s" fn)
                   (or (if (featurep 'native-compile)
-                          (or (subr-native-elisp-p (indirect-function fn))
+                          (or (native-comp-function-p (indirect-function fn))
                               (ignore-errors (native-compile fn))))
                       (byte-code-function-p fn)
                       (let (byte-compile-warnings)

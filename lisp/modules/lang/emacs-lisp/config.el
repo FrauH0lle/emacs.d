@@ -253,27 +253,6 @@ looking up a C function.")
        var-bt 'action
        (lambda (button)
          (helpful-variable (button-get button 'apropos-symbol))))))
-
-  ;; DEPRECATED: Remove when support for 29 is dropped.
-  (eval-when! (= emacs-major-version 29)
-    (defadvice! zenit--find-function-search-for-symbol-save-excursion-a (fn &rest args)
-      "Suppress cursor movement by `find-function-search-for-symbol'.
-
-Addresses an unwanted side-effect in
-`find-function-search-for-symbol' on Emacs 29 where the cursor is
-moved to a variable's definition if it's defined in the current
-buffer."
-      :around #'find-function-search-for-symbol
-      (let (buf pos)
-        (letf! (defun find-library-name (library)
-                 (let ((filename (funcall find-library-name library)))
-                   (with-current-buffer (find-file-noselect filename)
-                     (setq buf (current-buffer)
-                           pos (point)))
-                   filename))
-          (prog1 (apply fn args)
-            (when (buffer-live-p buf)
-              (with-current-buffer buf (goto-char pos))))))))
   :config
   ;; REVIEW 2024-08-13: No idea why, but when you use `helpful' to find the
   ;;   definition of something, the major mode of the file is not triggered ...

@@ -7,11 +7,7 @@
 (defvar dtrt-indent-hook-mapping-list)
 
 ;; `editorconfig'
-(declare-function editorconfig-set-indentation "ext:editorconfig" (style &optional size tab_width))
-;; DEPRECATED 2024-09-15: `editorconfig--default-indent-size-function' is from
-;;   the new builtin editorconfig module in Emacs 30+. Remove the ext: after
-;;   Emacs 29 is dropped.
-(declare-function editorconfig--default-indent-size-function "ext:editorconfig" (size))
+(declare-function editorconfig--default-indent-size-function "editorconfig" (size))
 
 ;; `evil'
 (declare-function evil-visual-state-p "ext:evil-states" t t)
@@ -384,7 +380,6 @@ Respects `require-final-newline'."
   (setq indent-tabs-mode (not indent-tabs-mode))
   (message "Indent style changed to %s" (if indent-tabs-mode "tabs" "spaces")))
 
-(defvar editorconfig-lisp-use-default-indent)
 ;;;###autoload
 (defun zenit/set-indent-width (width)
   "Change the indentation size to WIDTH of the current buffer.
@@ -407,9 +402,6 @@ editorconfig or dtrt-indent installed."
                 (fboundp 'editorconfig--default-indent-size-function)))
          (pcase-dolist (`(,var . ,val) (editorconfig--default-indent-size-function width))
            (set (make-local-variable var) val)))
-        ((require 'editorconfig nil t)
-         (let (editorconfig-lisp-use-default-indent)
-           (editorconfig-set-indentation nil width)))
         ((require 'dtrt-indent nil t)
          (when-let* ((var (nth 2 (assq major-mode dtrt-indent-hook-mapping-list))))
            (set var width))))

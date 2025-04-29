@@ -229,8 +229,8 @@ prompt you for the command instead."
 ;;; Project-based minor modes
 
 (defvar zenit-project-hook nil
-  "Hook run when a project is enabled. The name of the project's
-mode and its state are passed in.")
+  "Hook run when a project is enabled.
+The name of the project's mode and its state are passed in.")
 
 (cl-defmacro def-project-mode! (name &key
                                      modes

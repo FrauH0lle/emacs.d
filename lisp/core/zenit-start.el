@@ -31,8 +31,7 @@
   :group 'zenit)
 
 (defcustom zenit-first-buffer-hook ()
-  "Transient hooks run before the first interactively opened
-buffer."
+  "Transient hooks run before the first interactively opened buffer."
   :type 'hook
   :local 'permanant-local
   :group 'zenit)

@@ -491,7 +491,11 @@ installed."
                     ;; merge the :lockfile and :modules properties
                     (if-let* ((old-plist (cdr (assq name zenit-packages))))
                         (dolist (key '(:lockfile :modules))
-                          (setq plist (plist-put plist key (append (plist-get old-plist key) (plist-get plist key))))))
+                          (setq plist (plist-put
+                                       plist key
+                                       (cl-remove-duplicates
+                                        (append (plist-get old-plist key) (plist-get plist key))
+                                        :test #'equal)))))
                     (setf (alist-get name zenit-packages) plist))))))))
     (user-error
      (user-error (error-message-string e)))

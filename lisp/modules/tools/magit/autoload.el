@@ -115,11 +115,12 @@ It will split otherwise."
   (with-current-buffer buffer
     (kill-local-variable '+magit--stale-p)
     (when (magit-auto-revert-repository-buffer-p buffer)
-      (when (bound-and-true-p vc-mode)
-        (vc-refresh-state))
-      (when (and buffer-file-name (not (buffer-modified-p buffer)))
-        (revert-buffer t t t))
-      (force-mode-line-update))))
+      (save-restriction
+        (when (bound-and-true-p vc-mode)
+          (vc-refresh-state))
+        (when (and buffer-file-name (not (buffer-modified-p buffer)))
+          (revert-buffer t t t))
+        (force-mode-line-update)))))
 
 ;;;###autoload
 (defun +magit-mark-stale-buffers-h ()

@@ -6,7 +6,7 @@
 (use-package! envrc
   :hook (zenit-first-file . envrc-global-mode)
   :config
-  (add-to-list 'zenit-debug-variables 'envrc-debug)
+  (set-debug-variable! 'envrc-debug)
 
   (set-popup-rule! "^\\*envrc\\*" :quit t :ttl 0)
 

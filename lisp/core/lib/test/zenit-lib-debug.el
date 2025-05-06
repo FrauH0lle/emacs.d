@@ -12,13 +12,17 @@
   (:doc "`zenit/toggle-profiler' is defined")
   (should (fboundp 'zenit/toggle-profiler)))
 
-(zenit-deftest zenit-debug-variables
-  (:doc "`zenit-debug-variables' is defined")
-  (should (boundp 'zenit-debug-variables)))
+(zenit-deftest zenit-debug--variables
+  (:doc "`zenit-debug--variables' is defined")
+  (should (boundp 'zenit-debug--variables)))
 
-(zenit-deftest zenit-debug--unbound-vars
-  (:doc "`zenit-debug--unbound-vars' is defined")
-  (should (boundp 'zenit-debug--unbound-vars)))
+(zenit-deftest set-debug-variable!
+  (:doc "`set-debug-variable!' is defined")
+  (should (fboundp 'set-debug-variable!)))
+
+(zenit-deftest zenit-debug--unbound-variables
+  (:doc "`zenit-debug--unbound-variables' is defined")
+  (should (boundp 'zenit-debug--unbound-variables)))
 
 (zenit-deftest zenit-debug--watch-vars-h
   (:doc "`zenit-debug--watch-vars-h' is defined")
@@ -27,6 +31,10 @@
 (zenit-deftest zenit-debug--set-var
   (:doc "`zenit-debug--set-var' is defined")
   (should (fboundp 'zenit-debug--set-var)))
+
+(zenit-deftest zenit-debug--timestamped-message-a
+  (:doc "`zenit-debug--timestamped-message-a' is defined")
+  (should (fboundp 'zenit-debug--timestamped-message-a)))
 
 (zenit-deftest zenit-debug-mode
   (:doc "`zenit-debug-mode' is defined")
@@ -51,10 +59,6 @@
 (zenit-deftest zenit-backtrace-write-to-file
   (:doc "`zenit-backtrace-write-to-file' is defined")
   (should (fboundp 'zenit-backtrace-write-to-file)))
-
-(zenit-deftest zenit--timestamped-message-a
-  (:doc "`zenit--timestamped-message-a' is defined")
-  (should (fboundp 'zenit--timestamped-message-a)))
 
 (zenit-deftest zenit-run-all-startup-hooks-h
   (:doc "`zenit-run-all-startup-hooks-h' is defined")

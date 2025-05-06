@@ -1290,7 +1290,7 @@ missing-epdfinfo errors whenever storing or exporting links."
   :config
   (zenit--log "Loading org config :)")
 
-  (add-to-list 'zenit-debug-variables 'org-export-async-debug)
+  (set-debug-variable! 'org-export-async-debug)
 
   (set-eval-handler! 'org-mode #'+org-eval-handler)
 

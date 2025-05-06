@@ -1267,17 +1267,27 @@
   (should (equal
            '(progn
               (defun zenit--setq-test-val-1-for-test-h (&rest _)
-                "test-val-1 = 1"
+                "Set buffer-local value hook function.
+
+`test-val-1' = 1"
                 (setq-local test-val-1 1))
               (eval-when-compile
-                (declare-function zenit--setq-test-val-1-for-test-h nil))
-              (add-hook 'test-hook #'zenit--setq-test-val-1-for-test-h -90)
+                (declare-function zenit--setq-test-val-1-for-test-h
+                                  nil))
+              (add-hook 'test-hook
+                        (function zenit--setq-test-val-1-for-test-h)
+                        -90)
               (defun zenit--setq-test-val-2-for-test-h (&rest _)
-                "test-val-2 = 2"
+                "Set buffer-local value hook function.
+
+`test-val-2' = 2"
                 (setq-local test-val-2 2))
               (eval-when-compile
-                (declare-function zenit--setq-test-val-2-for-test-h nil))
-              (add-hook 'test-hook #'zenit--setq-test-val-2-for-test-h -90))
+                (declare-function zenit--setq-test-val-2-for-test-h
+                                  nil))
+              (add-hook 'test-hook
+                        (function zenit--setq-test-val-2-for-test-h)
+                        -90))
            (macroexpand '(setq-hook! 'test-hook test-val-1 1 test-val-2 2)))))
 
 (zenit-deftest unsetq-hook!

@@ -513,7 +513,7 @@ module key."
   `(let ((zenit-module-context
           (let ((module-key ,module-key))
             (zenit-module-context module-key))))
-     (zenit-log ":context:module: =%s" zenit-module-context)
+     (zenit-log 2 ":context:module: =%s" zenit-module-context)
      ,@body))
 
 (defmacro modulep! (category &optional module &rest flags)

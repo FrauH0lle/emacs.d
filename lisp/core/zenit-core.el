@@ -395,7 +395,7 @@ Return non-nil if successful. Throws an error if CONTEXT is
 invalid."
   (unless (memq context zenit-context)
     (zenit-context--check context)
-    (zenit-log ":context: +%s %s" context zenit-context)
+    (zenit-log 3 ":context: +%s %s" context zenit-context)
     (push context zenit-context)))
 
 (defun zenit-context-pop (context &optional strict?)
@@ -407,7 +407,7 @@ error if CONTEXT wasn't active when this was called."
       (when strict?
         (signal 'zenit-context-error
                 (list zenit-context "Attempt to pop missing context" context)))
-    (zenit-log ":context: -%s %s" context zenit-context)
+    (zenit-log 3 ":context: -%s %s" context zenit-context)
     (setq zenit-context (delq context zenit-context))))
 
 (defmacro zenit-context-with (contexts &rest body)

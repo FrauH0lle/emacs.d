@@ -376,7 +376,7 @@ changed."
 (defun zenit-run-hook (hook)
   "Run HOOK (a hook function) with better error handling.
 Meant to be used with `run-hook-wrapped'."
-  (zenit-log "hook:%s: run %s" (or zenit--hook '*) hook)
+  (zenit-log 2 "hook:%s: run %s" (or zenit--hook '*) hook)
   (condition-case-unless-debug e
       (funcall hook)
     (error
@@ -1122,7 +1122,7 @@ time."
   (with-memoization (get 'zenit-compile-function 'timer)
     (run-with-idle-timer
      1.5 t (fn! (when-let* ((fn (pop fns)))
-                  (zenit-log "compile-functions: %s" fn)
+                  (zenit-log 3 "compile-functions: %s" fn)
                   (or (if (featurep 'native-compile)
                           (or (native-comp-function-p (indirect-function fn))
                               (ignore-errors (native-compile fn))))

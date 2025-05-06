@@ -19,7 +19,7 @@
   (el-patch-defun tab-bar-tab-name-format-hints (name _tab i)
     "Show absolute numbers on tabs in the tab bar before the tab name.
 It has effect when `tab-bar-tab-hints' is non-nil."
-  (if tab-bar-tab-hints (concat (format (el-patch-swap "%d " "  #%d: ") i) name) name)))
+    (if tab-bar-tab-hints (concat (format (el-patch-swap "%d " "  #%d: ") i) name) name)))
 
 
 (use-package! tab-bar
@@ -82,25 +82,31 @@ It has effect when `tab-bar-tab-hints' is non-nil."
 
 (use-package! tab-line
   :defer t
-  :config
-  (setq! tab-line-tab-name-function #'+tab-line-tab-name-fn
-         tab-line-close-button-show nil
-         tab-line-new-button-show nil)
-
+  :init
   (protect-macros!
     (custom-set-faces!
       ;; The tab-line bar's appearance
       `(tab-line
         :background ,(face-attribute 'mode-line-inactive :background)
-        :foreground ,(face-attribute 'mode-line-inactive :foreground))
+        :foreground ,(face-attribute 'mode-line-inactive :foreground)
+        :box
+        (:line-width 3 :color ,(face-attribute 'mode-line-inactive :background) :style nil))
       ;; Inactive tabs
       `(tab-line-tab-inactive
         :background ,(face-attribute 'mode-line-inactive :background)
-        :foreground ,(face-attribute 'mode-line-inactive :foreground))
+        :foreground ,(face-attribute 'mode-line-inactive :foreground)
+        :box
+        (:line-width 3 :color ,(face-attribute 'mode-line-inactive :background) :style nil))
       ;; Active tab
       `(tab-line-tab-current
         :background ,(face-attribute 'default :background)
-        :foreground ,(face-attribute 'font-lock-keyword-face :foreground nil t))))
+        :foreground ,(face-attribute 'font-lock-keyword-face :foreground nil t)
+        :box
+        (:line-width 3 :color ,(face-attribute 'default :background) :style nil))))
+  :config
+  (setq! tab-line-tab-name-function #'+tab-line-tab-name-fn
+         tab-line-close-button-show nil
+         tab-line-new-button-show nil)
 
   ;; HACK 2024-12-05: Recalculate tab width on frame or window resize events.
   (add-hook! 'window-configuration-change-hook

@@ -2,6 +2,7 @@
 ;; lisp/core/test/zenit-projects.el
 
 (require 'zenit-test)
+(require 'zenit-use-package)
 (require 'zenit-projects)
 
 (zenit-deftest zenit-fd-executable

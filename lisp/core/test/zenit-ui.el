@@ -2,6 +2,7 @@
 ;; lisp/core/test/zenit-ui.el
 
 (require 'zenit-test)
+(require 'zenit-use-package)
 (require 'zenit-ui)
 
 (zenit-deftest zenit-theme

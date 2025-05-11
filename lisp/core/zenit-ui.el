@@ -145,8 +145,8 @@ want to change your symbol font, use `zenit-symbol-font'.")
   :type 'hook)
 
 (defcustom zenit-load-theme-hook nil
-  "Hook run after the theme is loaded with `load-theme' or reloaded
-with `zenit/reload-theme'."
+  "Hook run after the theme is loaded.
+Either via `load-theme' or reloaded with `zenit/reload-theme'."
   :group 'zenit
   :type 'hook)
 
@@ -236,14 +236,14 @@ Meant for `kill-buffer-query-functions'."
 
 (defun zenit-highlight-non-default-indentation-h ()
   "Highlight whitespace at odds with `indent-tabs-mode'.
-That is, highlight tabs if `indent-tabs-mode' is `nil', and
-highlight spaces at the beginnings of lines if `indent-tabs-mode'
-is `t'. The purpose is to make incorrect indentation in the
-current buffer obvious to you.
 
-Does nothing if `whitespace-mode' or `global-whitespace-mode' is
-already active or if the current buffer is read-only or not
-file-visiting."
+That is, highlight tabs if `indent-tabs-mode' is nil, and highlight
+spaces at the beginnings of lines if `indent-tabs-mode' is t. The
+purpose is to make incorrect indentation in the current buffer obvious
+to you.
+
+Does nothing if `whitespace-mode' or `global-whitespace-mode' is already
+active or if the current buffer is read-only or not file-visiting."
   (unless (or (eq major-mode 'fundamental-mode)
               (bound-and-true-p global-whitespace-mode)
               (null buffer-file-name))

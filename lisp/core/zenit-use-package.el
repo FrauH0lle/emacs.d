@@ -24,9 +24,10 @@
 
 
 (defvar zenit--deferred-packages-alist '(t)
-  "Alist of packages that are deferred for loading at a later
- point in time. Packages are added by `after-call!' or the
-:after-call `use-package' keyword.")
+  "Alist of packages that are deferred for loading at a later point in time.
+
+Packages are added by `after-call!' or the :after-call `use-package'
+keyword.")
 
 (autoload 'use-package "use-package-core" nil nil t)
 (autoload 'use-package-statistics-gather "use-package-core" nil nil t)
@@ -147,27 +148,28 @@
 (defmacro use-package! (name &rest plist)
   "Declares and configures a package.
 
-This is a thin wrapper around `use-package', and is ignored if
-the NAME package is disabled (with `package!').
+This is a thin wrapper around `use-package', and is ignored if the NAME
+package is disabled (with `package!').
 
-See `use-package' to see what properties can be provided. Adds
+See `use-package' to see what properties in PLIST can be provided. Adds
 support for two extra properties:
 
 :after-call SYMBOL|LIST
-  Takes a symbol or list of symbols representing functions or
-  hook variables. The first time any of these functions or hooks
-  are executed, the package is loaded.
+
+  Takes a symbol or list of symbols representing functions or hook
+  variables. The first time any of these functions or hooks are
+  executed, the package is loaded.
 
 :defer-incrementally SYMBOL|LIST|t
-  Takes a symbol or list of symbols representing packages that
-  will be loaded incrementally at startup before this one. This
-  is helpful for large packages like magit or org, which load a
-  lot of dependencies on first load. This lets you load them
-  piece-meal during idle periods, so that when you finally do
-  need the package, it'll load quicker.
 
-  NAME is implicitly added if this property is present and
-  non-nil. No need to specify it. A value of `t' implies NAME."
+  Takes a symbol or list of symbols representing packages that will be
+  loaded incrementally at startup before this one. This is helpful for
+  large packages like magit or org, which load a lot of dependencies on
+  first load. This lets you load them piece-meal during idle periods, so
+  that when you finally do need the package, it'll load quicker.
+
+  NAME is implicitly added if this property is present and non-nil. No
+  need to specify it. A value of t implies NAME."
   (declare (indent 1))
   (unless (or (memq name (bound-and-true-p zenit-disabled-packages))
               ;; At compile-time, use-package will forcibly load packages to

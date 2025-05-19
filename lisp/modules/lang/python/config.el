@@ -231,7 +231,7 @@
   :config
   ;; Integration with term/eshell
   (conda-env-initialize-interactive-shells)
-  (after! eshell (conda-env-initialize-eshell))
+  (add-hook 'eshell-load-hook #'conda-env-initialize-eshell)
 
   (add-to-list 'global-mode-string
                '(conda-env-current-name (" conda:" conda-env-current-name " "))
@@ -241,14 +241,12 @@
 (use-package! poetry
   :when (modulep! +poetry)
   :after python
-  :init
-  (setq poetry-tracking-strategy 'switch-buffer)
-  (add-hook 'python-mode-hook #'poetry-tracking-mode))
+  :hook (zenit-first-buffer . poetry-tracking-mode)
+  :init (setq poetry-tracking-strategy 'switch-buffer))
 
 
 (use-package! cython-mode
   :when (modulep! +cython)
-  :mode "\\.p\\(yx\\|x[di]\\)\\'"
   :config
   (setq cython-default-compile-format "cython -a %s")
   (map! :map cython-mode-map

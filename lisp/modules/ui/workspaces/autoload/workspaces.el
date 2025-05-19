@@ -641,10 +641,7 @@ Format: ((frame . workspace-name) ...)")
     (set-frame-parameter frame 'workspaces workspaces)))
 
 (defun +workspaces--update-tab-bar ()
-  (dolist (f (frame-list))
-    (with-selected-frame f
-      ;; REVIEW 2025-04-06: This is kinda slow, maybe there is an alternative.
-      (tab-bar--update-tab-bar-lines t))))
+  (tab-bar--update-tab-bar-lines (frame-list)))
 
 ;;;###autoload
 (defun +workspaces-restore-frame-associations-h (&rest _)

@@ -196,7 +196,7 @@ variable.")
   ;; Popup rules
   (after! ess-r-mode
     (set-popup-rules!
-      '(("^\\*R" :side bottom :height 0.33 :width 0.5 :quit nil :ttl nil :tabbed t)
+      '(("^\\*R" :side bottom :height 0.33 :width 0.5 :quit nil :ttl nil :tabbed t :select t)
         ("^\\*R dired*" :side right :size 0.25 :height 0.5 :vslot 99 :slot 1 :select nil :quit nil))))
   (after! ess-help
     (set-popup-rule! "^\\*help.R.*" :side 'bottom :height 0.33 :width 0.5 :select t :quit 'current :tabbed t))
@@ -204,6 +204,16 @@ variable.")
 
   ;; Workspaces
   (eval-when! (modulep! :ui workspaces)
+    (defadvice! +ess--flush-accumulated-output-switch-workspace-a (proc)
+      "Switch workspace before flush of accumulated output of PROC"
+      :before #'ess--flush-accumulated-output
+      (when (modulep! :ui workspaces)
+        (+workspace-switch
+         (car
+          (cl-loop for ws in (+workspace-list)
+                   if (+workspace-contains-buffer-p (process-buffer proc) ws)
+                   collect (persp-name ws))))))
+
     (after! persp-mode
       (persp-def-buffer-save/load
        :mode 'inferior-ess-r-mode :tag-symbol 'def-inferior-ess-r-buffer
@@ -291,7 +301,8 @@ See URL `https://github.com/emacs-ess/ESS/issues/300'."
     :i "C->" (cmd! (delete-horizontal-space) (insert " |> ")))
    (:after ess-help
            (:map ess-help-mode-map
-            :n "q"  #'kill-current-buffer
+            :n "q"  (cond ((modulep! :ui popup) #'quit-window)
+                          (t #'kill-current-buffer))
             :n "Q"  #'ess-kill-buffer-and-go
             :n "K"  #'ess-display-help-on-object
             :n "go" #'ess-display-help-in-browser
@@ -306,7 +317,7 @@ See URL `https://github.com/emacs-ess/ESS/issues/300'."
                  [down] #'comint-previous-input
                  [C-return] #'ess-eval-line))
    (:map ess-roxy-mode-map
-         :i "RET" #'ess-indent-new-comment-line)
+    :i "RET" #'ess-indent-new-comment-line)
 
    (:localleader
     :map ess-mode-map

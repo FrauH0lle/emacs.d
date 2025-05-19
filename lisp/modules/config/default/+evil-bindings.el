@@ -615,9 +615,20 @@
          :desc "Open eshell here"      "E" #'+eshell/here)
        ;; REVIEW 2023-02-02: Kepp it?
        (:when (modulep! :tools docker)
-         :desc "Docker" "D" #'docker))
+         :desc "Docker" "D" #'docker)
+       (:when (modulep! :tools llm)
+        (:prefix ("l" . "llm")
+         :desc "Add text to context"        "a" #'gptel-add
+         :desc "Explain"                    "e" #'gptel-quick
+         :desc "Add file to context"        "f" #'gptel-add-file
+         :desc "Open gptel"                 "l" #'gptel
+         :desc "Send to gptel"              "s" #'gptel-send
+         :desc "Open gptel menu"            "m" #'gptel-menu
+         :desc "Rewrite"                    "r" #'gptel-rewrite
+         :desc "Org: set topic"             "o" #'gptel-org-set-topic
+         :desc "Org: set properties"        "O" #'gptel-org-set-properties)))
 
-      ;;; <leader> p --- project
+     ;;; <leader> p --- project
       (:prefix-map ("p" . "project")
        :desc "Browse project"               "." #'+default/browse-project
        :desc "Browse other project"         ">" #'zenit/browse-in-other-project

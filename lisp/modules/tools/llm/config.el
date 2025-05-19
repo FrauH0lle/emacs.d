@@ -20,7 +20,26 @@
     :endpoint "/chat/completions"
     :stream t
     :key (gptel-api-key-from-auth-source "api.deepseek.com" "apikey")
-    :models '(deepseek-chat deepseek-coder)))
+    :models '(deepseek-chat deepseek-coder))
+
+  (setq gptel-display-buffer-action nil)  ; if user changes this, popup manager will bow out
+  (set-popup-rule!
+    (lambda (bname &optional _action)
+      (and (null gptel-display-buffer-action)
+           (buffer-local-value 'gptel-mode (get-buffer bname))))
+    :select t
+    :size 0.3
+    :quit nil
+    :ttl nil))
+
+
+(use-package! gptel-quick
+  :defer t)
+
+
+(use-package! gptel-magit
+  :when (modulep! :tools magit)
+  :hook (magit-mode . gptel-magit-install))
 
 
 (use-package! aidermacs

@@ -183,6 +183,13 @@ Will be stored in `persp-save-dir'.")
   (after! tab-bar
     (setq! tab-bar-close-button-show nil
            tab-bar-new-button-show nil))
+  (add-hook! 'zenit-switch-frame-hook
+    (defun +workspaces-set-visible-tabs ()
+      "Set `tab-bar-show' according to the number of frames.
+If only one frame is visible, set it to one, otherwise to zero."
+      (setq! tab-bar-show (if (length> (visible-frame-list) 1)
+                              0
+                            1))))
 
   ;; `consult' integration
   (eval-when! (modulep! :completion vertico)

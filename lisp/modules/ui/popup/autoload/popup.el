@@ -95,13 +95,13 @@ ACTION can be \\='remove or \\='add."
          (window (get-buffer-window buf))
          (popup-entry (cons window buf)))
     (setf (alist-get group-name +popup-buried-buffers-alist nil nil #'equal)
-          (cl-remove-if-not
-           #'buffer-live-p
-           (if (eq action 'remove)
-               (cl-remove buf group-popups :key #'cdr)
-             (append (list popup-entry)
-                     (cl-remove popup-entry group-popups :key #'cdr)))
-           :key #'cdr))))
+          (cl-loop for (win . buf) in (if (eq action 'remove)
+                                            (cl-remove buf group-popups :key #'cdr)
+                                          (append (list popup-entry)
+                                                  (cl-remove popup-entry group-popups :key #'cdr)))
+                     if (buffer-live-p buf)
+                     collect `(,win . ,buf) into buried
+                     finally return (cl-remove-duplicates buried :test #'equal)))))
 
 
 ;;

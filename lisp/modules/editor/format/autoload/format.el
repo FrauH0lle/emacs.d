@@ -57,6 +57,7 @@
                (with-current-buffer cur-buffer
                  (with-silent-modifications
                    (replace-region-contents start end (lambda () formatted-buffer) 5))
+                 (set-buffer-modified-p t)
                  (when callback (funcall callback))
                  (kill-buffer formatted-buffer))))))
       (when (zenit-region-active-p)

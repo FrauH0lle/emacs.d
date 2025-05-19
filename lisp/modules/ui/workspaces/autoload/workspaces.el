@@ -655,10 +655,10 @@ Format: ((frame . workspace-name) ...)")
           (cl-pushnew (cons fid fdata) frames :test #'equal))))
     ;; Restore the associations to the current frame
     (with-selected-frame (selected-frame)
-          ;; Associate all loaded workspaces with current frame
+      ;; Associate all loaded workspaces with current frame
       (+workspaces--add-ws-to-frame +workspaces-main)
-          (dolist (ws (cons +workspaces-main (+workspace-list-names)))
-            (+workspaces--add-ws-to-frame ws)))
+      (dolist (ws (cons +workspaces-main (+workspace-list-names)))
+        (+workspaces--add-ws-to-frame ws)))
 
     ;; If we need than one frame, we create new frames and move the workspaces
     ;; accordingly
@@ -770,9 +770,12 @@ from and displays the last selected buffer."
         (+workspace-switch +workspaces-main t)
       (with-selected-frame frame
         (+workspace-switch (format "workspace-%s" (+workspace--generate-id)) t)
+        (setq +workspace--last (or (persp-name (frame-parameter (previous-frame) 'persp))
+                                   +workspaces-main))
         (unless (zenit-real-buffer-p (current-buffer))
           (switch-to-buffer (zenit-fallback-buffer)))
-        (+workspaces--associate-frame frame))
+        (+workspaces--associate-frame frame)
+        (+workspaces--update-tab-bar))
       (run-at-time 0.1 nil #'+workspace/display))))
 
 ;;;###autoload

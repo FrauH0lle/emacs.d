@@ -85,7 +85,33 @@ variable.")
                             (modulep! :checkers syntax +flymake))
         ess-nuke-trailing-whitespace-p t
         ess-style 'DEFAULT
-        ess-history-directory (expand-file-name "ess-history/" zenit-cache-dir))
+        ess-history-directory (expand-file-name "ess-history/" zenit-cache-dir)
+        ;; Don't save workspace on exit, don't restore it on start
+        inferior-R-args "--no-save --no-restore-data")
+
+  ;; Formatters
+  (set-formatter!
+    'r-styler
+    '("R" "-s" "--no-save" "--no-restore" "-e"
+      (concat
+       "options(styler.colored_print.vertical = FALSE);"
+       " con <- file('stdin');"
+       " buf <- readLines(con);"
+       " close(con);"
+       " styler::style_text(buf)")))
+  ;; box.linters integration
+  (set-formatter!
+    'r-styler-box
+    '("R" "-s" "--no-save" "--no-restore" "-e"
+      (concat
+       "options(styler.colored_print.vertical = FALSE);"
+       " con <- file('stdin');"
+       " buf <- readLines(con);"
+       " text <- paste0(buf, collapse = '\n');"
+       " close(con);"
+       " out <- capture.output(suppressWarnings(box.linters::style_box_use_text(text = text, colored = FALSE)));"
+       " if (length(out) == 0) cat(buf, sep = '\n') else cat(out, sep = '\n')")))
+
 
   ;;
   ;;; Set fontification

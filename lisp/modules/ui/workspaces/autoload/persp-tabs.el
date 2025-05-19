@@ -20,7 +20,7 @@ Used to restore them when the mode is disabled.")
                  (if (string= persp-name persp-current-name) 'current-tab 'tab)
                  (cons 'name persp-name)
                  (cons 'time (or (persp-parameter 'last-accessed-time persp)
-                                (float-time)))
+                                 (float-time)))
                  (cons 'perspective persp))))
             persp-names)))
 
@@ -42,6 +42,7 @@ ARG is the position of the perspective in the tab bar."
              (to-tab (nth to-index tabs))
              (perspective (alist-get 'perspective to-tab)))
         (setf (alist-get 'time to-tab) (float-time))  ; Update in tab list
+        (+workspace-switch (persp-name perspective))
         (persp-activate perspective)
         ;; Also store timestamp in perspective parameters for persistence
         (set-persp-parameter 'last-accessed-time (float-time) perspective)

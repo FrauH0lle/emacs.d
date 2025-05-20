@@ -18,14 +18,22 @@
 ;; `straight'
 (declare-function straight--alist-set "ext:straight" (key val alist &optional symbol))
 (declare-function straight--lockfile-read "ext:straight" (lockfile))
+(declare-function straight-vc-get-commit "ext:straight" (type local-repo))
 (defvar straight-profiles)
+(defvar straight-recipe-repositories)
 (defvar straight--recipe-cache)
+(defvar straight--repo-cache)
 (cl-eval-when (compile)
   (autoload #'straight--process-with-result "straight" nil nil 'macro)
   (autoload #'straight--with-plist "straight" nil nil 'macro))
 
 ;; `vertico'
 (defvar vertico-sort-function)
+
+;; `zenit-cli'
+(declare-function zenit--cli-recipes-update "../cli/packages" ())
+(cl-eval-when (compile)
+  (autoload #'zenit--with-package-recipes (file-name-concat zenit-core-dir "cli" "packages") nil nil 'macro))
 
 ;; `zenit-modules'
 (declare-function zenit-module-list "zenit-modules" (&optional paths-or-all initorder?))
@@ -77,6 +85,40 @@ seperate buffer."
 ;;
 ;;; Bump commands
 
+(autoload #'zenit--cli-recipes-update (file-name-concat zenit-core-dir "cli" "packages"))
+(defun zenit-packages--bump-recipe-repos ()
+  "Update and bump recipe repositories"
+  (unless (bound-and-true-p zenit--cli-updated-recipes)
+    (zenit--cli-recipes-update)
+    (zenit--with-package-recipes
+        (delq
+         nil (mapcar (zenit-rpartial #'gethash straight--repo-cache)
+                     (mapcar #'symbol-name straight-recipe-repositories)))
+        (type local-repo)
+      (when-let* ((lockfile (zenit-packages-get-lockfile 'core))
+                  (pin-list (straight--lockfile-read lockfile)))
+        (let ((new-commit (straight-vc-get-commit type local-repo)))
+          (if (null new-commit)
+              (user-error "No commit specified")
+            (setf (alist-get local-repo pin-list nil nil #'equal) new-commit))
+          (let ((kw (with-temp-buffer
+                      (insert-file-contents lockfile)
+                      (goto-char (point-max))
+                      (let (match)
+                        (when (re-search-backward "^\\(:.+\\)$" nil t)
+                          (setq match (match-string 1)))
+                        match))))
+            (with-temp-file lockfile
+              (insert
+               (format
+                "(%s)\n%s\n"
+                (mapconcat
+                 (apply-partially #'format "%S")
+                 pin-list
+                 "\n ")
+                kw)))))))))
+
+(autoload #'zenit-package-list "zenit-packages")
 ;;;###autoload
 (defun zenit/bump-package (package &optional commit)
   "Bump PACKAGE in all modules that install it.
@@ -89,6 +131,7 @@ will used as candidates."
    (list (intern (completing-read "Bump package: "
                                   (mapcar #'car (zenit-package-list 'all))))))
   (zenit-initialize-packages)
+  (zenit-packages--bump-recipe-repos)
   (let* ((packages (zenit-package-list 'all))
          (modules (plist-get (alist-get package packages) :modules))
          (lockfiles (delq nil (mapcar #'zenit-packages-get-lockfile (plist-get (alist-get package packages) :lockfile))))
@@ -162,6 +205,7 @@ for each package."
           (module (split-string module " " t)))
      (list (intern (car module))
            (ignore-errors (intern (cadr module))))))
+  (zenit-initialize-packages)
   (mapc (lambda! ((cat . mod))
           (if-let* ((packages (zenit-package-list (list (cons cat mod)))))
               (dolist (package packages)

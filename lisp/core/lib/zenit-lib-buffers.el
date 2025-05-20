@@ -146,7 +146,9 @@ easy to cast aside, so we can focus on real ones.
 The exact criteria for a real buffer is:
 
 1. A non-nil value for the buffer-local value of the
-`zenit-real-buffer-p' variable OR
+`zenit-real-buffer-p' variable
+
+OR
 
 2. Any function in `zenit-real-buffer-functions' returns non-nil
 

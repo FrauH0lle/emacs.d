@@ -180,8 +180,8 @@ variable.")
     (set-evil-initial-state! 'ess-r-help-mode 'normal))
 
   ;; HACK If `+default-want-RET-continue-comments' is true, comments are
-  ;;      continued on RET. But ess-r-mode doesn't have a sane
-  ;;      `comment-line-break-function', so...
+  ;;   continued on RET. But ess-r-mode doesn't have a sane
+  ;;   `comment-line-break-function', so...
   (setq-hook! 'ess-r-mode-hook
     comment-line-break-function nil)
 
@@ -197,7 +197,8 @@ variable.")
   (after! ess-r-mode
     (set-popup-rules!
       '(("^\\*R" :side bottom :height 0.33 :width 0.5 :quit nil :ttl nil :tabbed t :select t)
-        ("^\\*R dired*" :side right :size 0.25 :height 0.5 :vslot 99 :slot 1 :select nil :quit nil))))
+        ("^\\*R dired" :side right :size 0.25 :height 0.5 :vslot 99 :slot 1 :select nil :quit current)
+        ("^\\*R view" :side bottom :height 0.33 :width 0.5 :quit current :tabbed t :select t))))
   (after! ess-help
     (set-popup-rule! "^\\*help.R.*" :side 'bottom :height 0.33 :width 0.5 :select t :quit 'current :tabbed t))
 

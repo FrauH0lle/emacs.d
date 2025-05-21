@@ -262,8 +262,10 @@ or create new."
 
 ;;;###autoload
 (defun +workspace/load (name)
-  "Load a workspace and switch to it. If called with C-u, try to reload the
-current workspace (by name) from session files."
+  "Load a workspace and switch to it.
+
+If called with C-u, try to reload the current workspace (by name) from
+session files."
   (interactive
    (list
     (if current-prefix-arg
@@ -279,8 +281,9 @@ current workspace (by name) from session files."
 
 ;;;###autoload
 (defun +workspace/save (name)
-  "Save the current workspace. If called with C-u, autosave the current
-workspace."
+  "Save the current workspace.
+
+If called with C-u, autosave the current workspace."
   (interactive
    (list
     (if current-prefix-arg
@@ -304,8 +307,9 @@ workspace."
 
 ;;;###autoload
 (defun +workspace/kill (name)
-  "Delete this workspace. If called with C-u, prompts you for the name of the
-workspace to delete."
+  "Delete this workspace.
+
+If called with C-u, prompts you for the name of the workspace to delete."
   (interactive
    (let ((current-name (+workspace-current-name)))
      (list
@@ -477,9 +481,9 @@ A negative number will start from the end of the workspace list."
 ;;;###autoload
 (defun +workspace/close-window-or-workspace ()
   "Close the selected window.
-If it's the last window in the workspace, either close the
-workspace (as well as its associated frame, if one exists) and
-move to the next."
+
+If it's the last window in the workspace, either close the workspace (as
+well as its associated frame, if one exists) and move to the next."
   (interactive)
   (let ((delete-window-fn (if (featurep 'evil) #'evil-window-delete #'delete-window)))
     (if (window-dedicated-p)
@@ -501,8 +505,8 @@ move to the next."
 (defun +workspace/move (workspace &optional frame)
   "Move WORKSPACE to another FRAME.
 
-If FRAME is not specified, prompt to select from existing frames
-or create new."
+If FRAME is not specified, prompt to select from existing frames or
+create new."
   (interactive
    (list (+workspace-current-name)
          (let ((frames-alist (+workspaces--unique-frames-alist (mapcar #'car +workspaces-frames-alist))))
@@ -740,9 +744,9 @@ interactively created."
 (defun +workspaces--associate-frame (frame &optional workspace)
   "Associate FRAME with WORKSPACE.
 
-If WORKSPACE is omitted, uses the current workspace. Sets up the
-frame's workspace list and buffer predicate to filter buffers by
-workspace, as well as updates `+workspaces-frames-alist'."
+If WORKSPACE is omitted, uses the current workspace. Sets up the frame's
+workspace list and buffer predicate to filter buffers by workspace, as
+well as updates `+workspaces-frames-alist'."
   (let ((workspace (or workspace (+workspace-current-name))))
     (+workspaces--add-ws-to-frame workspace frame)
     ;; Ensure every buffer has a buffer-predicate
@@ -751,8 +755,8 @@ workspace, as well as updates `+workspaces-frames-alist'."
 ;;;###autoload
 (defun +workspaces-make-frame-fn (frame &optional _new-frame-p)
   "Create a new FRAME.
-The frame is associated with the same workspace it was spawned
-from and displays the last selected buffer."
+The frame is associated with the same workspace it was spawned from and
+displays the last selected buffer."
   (when persp-mode
     (with-selected-frame frame
       ;; Dp not restore the last window configuration
@@ -782,11 +786,11 @@ from and displays the last selected buffer."
 (defun +workspaces-switch-to-project-h (&optional dir)
   "Creates a workspace dedicated to a new project.
 
-If one already exists, switch to it. If in the main workspace and
-it's empty, recycle that workspace, without renaming it.
+If one already exists, switch to it. If in the main workspace and it's
+empty, recycle that workspace, without renaming it.
 
-Afterwords, runs `+workspaces-switch-project-function'. By
-default, this prompts the user to open a file in the new project.
+Afterwords, runs `+workspaces-switch-project-function'. By default, this
+prompts the user to open a file in the new project.
 
 This be hooked to `projectile-after-switch-project-hook'."
   (let* ((default-directory (or dir default-directory))

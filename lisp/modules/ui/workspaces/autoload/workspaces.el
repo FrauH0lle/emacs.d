@@ -411,6 +411,17 @@ new workspace is blank."
     ((debug error) (+workspace-error (cadr e) t))))
 
 ;;;###autoload
+(defun +workspace/new-other-frame (&optional arg)
+  "Create a new workspace in a new frame.
+If ARG (`current-prefix-arg') is non-nil, ask for a workspace name."
+  (interactive (list current-prefix-arg))
+  (let ((name (if arg
+                  (read-from-minibuffer "Enter workspace name: ")
+                (format "workspace-%s" (+workspace--generate-id)))))
+    (+workspace-new name)
+    (+workspace-move name nil t)))
+
+;;;###autoload
 (defun +workspace/new-named (name)
   "Create a new workspace with a given NAME."
   (interactive "sWorkspace Name: ")

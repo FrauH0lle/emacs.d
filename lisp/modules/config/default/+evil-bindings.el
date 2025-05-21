@@ -301,6 +301,7 @@
          :desc "Move workspace"            "m"   #'+workspace/move
          :desc "New workspace"             "n"   #'+workspace/new
          :desc "New named workspace"       "N"   #'+workspace/new-named
+         :desc "New workspace in o/frame"  "f"   #'+workspace/new-other-frame
          :desc "Load workspace from file"  "l"   #'+workspace/load
          :desc "Save workspace to file"    "s"   #'+workspace/save
          :desc "Delete session"            "x"   #'+workspace/kill-session

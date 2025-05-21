@@ -773,17 +773,24 @@ displays the last selected buffer."
 (defun +workspaces-associate-frame-fn (frame &optional _new-frame-p)
   "Create a blank, new perspective and associate it with FRAME."
   (when persp-mode
-    (if (not (persp-frame-list-without-daemon))
-        (+workspace-switch +workspaces-main t)
-      (with-selected-frame frame
-        (+workspace-switch (format "workspace-%s" (+workspace--generate-id)) t)
-        (setq +workspace--last (or (persp-name (frame-parameter (previous-frame) 'persp))
-                                   +workspaces-main))
-        (unless (zenit-real-buffer-p (current-buffer))
-          (switch-to-buffer (zenit-fallback-buffer)))
-        (+workspaces--associate-frame frame)
-        (+workspaces--update-tab-bar))
-      (run-at-time 0.1 nil #'+workspace/display))))
+    ;; HACK 2025-05-20: The frame created the emacsclient contains the last
+    ;;   focused buffer. We want a clean workspace so we register it here ...
+    (let ((initial-buffer (current-buffer)))
+      (if (not (persp-frame-list-without-daemon))
+          (+workspace-switch +workspaces-main t)
+        (with-selected-frame frame
+          (+workspace-switch (format "workspace-%s" (+workspace--generate-id)) t)
+          (setq +workspace--last (or (persp-name (frame-parameter (previous-frame) 'persp))
+                                     +workspaces-main))
+          (unless (zenit-real-buffer-p (current-buffer))
+            (switch-to-buffer (zenit-fallback-buffer)))
+          ;; HACK 2025-05-20: ... and remove it from the new perspective via a
+          ;;   transient hook.
+          (add-transient-hook! 'zenit-switch-frame-hook
+            (persp-remove-buffer initial-buffer (get-current-persp frame)))
+          (+workspaces--associate-frame frame)
+          (+workspaces--update-tab-bar))
+        (run-at-time 0.1 nil #'+workspace/display)))))
 
 ;;;###autoload
 (defun +workspaces-switch-to-project-h (&optional dir)

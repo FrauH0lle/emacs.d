@@ -224,17 +224,19 @@ exist, otherwise throws an error."
     (equal (+workspace-current-name) name)))
 
 ;;;###autoload
-(defun +workspace-move (workspace &optional frame)
+(defun +workspace-move (workspace &optional frame no-switch)
   "Move WORKSPACE to another FRAME.
-If FRAME is not specified, prompt to select from existing frames
-or create new."
+
+If FRAME is not specified, create a new frame. If NO-SWITCH is nil,
+switch to the last recent tab in the origin frame."
   (when (+workspace--protected-p workspace)
     (error "Cannot move protected workspace"))
 
-  (when-let* ((frame (if (framep frame)
-                         frame
-                       (make-frame `((width . ,(frame-parameter (selected-frame) 'width))
-                                     (height . ,(frame-parameter (selected-frame) 'height))))))
+  (when-let* ((new-frame
+               (if (framep frame)
+                   frame
+                 (make-frame `((width . ,(frame-parameter (selected-frame) 'width))
+                               (height . ,(frame-parameter (selected-frame) 'height))))))
               (old-frame (selected-frame)))
 
     ;; Remove from old frame
@@ -244,16 +246,20 @@ or create new."
         (delete-frame)))
 
     ;; Add to new frame
-    (+workspaces--add-ws-to-frame workspace frame)
-    (with-selected-frame frame
-      (persp-activate (+workspace-get workspace) frame)
-      (select-frame-set-input-focus frame))
+    (+workspaces--add-ws-to-frame workspace new-frame)
 
     ;; Switch to last recent tab in old frame
-    (when (frame-live-p old-frame)
-      (with-selected-frame old-frame
-        (tab-bar-switch-to-recent-tab)))
+    (unless no-switch
+      (when (frame-live-p old-frame)
+        (with-selected-frame old-frame
+          (tab-bar-switch-to-recent-tab))))
 
+    ;; Focus new frame
+    (with-selected-frame new-frame
+      (persp-activate (+workspace-get workspace) new-frame)
+      (select-frame-set-input-focus new-frame))
+
+    (setq +workspace--last (persp-name (frame-parameter old-frame 'persp)))
     (+workspaces--update-tab-bar)))
 
 

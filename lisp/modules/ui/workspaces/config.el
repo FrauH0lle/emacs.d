@@ -202,11 +202,11 @@ If only one frame is visible, set it to one, otherwise to zero."
 
   ;; Filter popups by workspace
   (eval-when! (modulep! :ui popup)
-    (defun +popper-group-by-workspace ()
+    (defun +popup-group-by-workspace ()
       (when (+workspace-contains-buffer-p (current-buffer))
         (+workspace-current-name)))
 
-    (setq +popup-group-function #'+popper-group-by-workspace))
+    (setq +popup-group-function #'+popup-group-by-workspace))
 
   ;; Delete the current workspace if closing the last open window
   (define-key! persp-mode-map

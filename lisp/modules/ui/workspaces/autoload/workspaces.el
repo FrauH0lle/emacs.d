@@ -193,6 +193,9 @@ buffers."
   (+workspace-get workspace) ; error checking
   (persp-kill workspace inhibit-kill-p)
   (+workspaces--remove-ws-from-frame workspace)
+  ;; If this was the last workspace, also delete frame
+  (unless (frame-parameter (selected-frame) 'workspaces)
+    (delete-frame))
   (not (+workspace-exists-p workspace)))
 
 ;;;###autoload

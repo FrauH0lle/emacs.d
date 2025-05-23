@@ -10,5 +10,5 @@ rust-mode rust-ts-mode rustic-mode
  ;; Create minor indicator, i.e. # --
  cs "--" n>
  ;; Insert region or default
- cs "* " (r "Title") n>
+ cs (p (identity "* ") level) (r "Title") n>
  q)

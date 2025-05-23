@@ -2,5 +2,5 @@ ess-r-mode
 
 (section
  >
- "# " (r "Title" title) " " (make-string (- fill-column (current-indentation) 3 (length title)) ?-) n>
+ (p (identity "# ") level) (r "Title" title) " " (make-string (- fill-column (current-indentation) (length level) (length title) 1) ?-) n>
  q)

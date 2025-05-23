@@ -175,24 +175,39 @@ included."
         (mapcar map result)
       result)))
 
-(autoload #'zenit-module-context-with "zenit-modules" nil nil 'macro)
 ;;;###autoload
-(defun zenit-file-cookie-p (file &optional cookie null-value)
-  "Returns the evaluated result of FORM in a ;;;###COOKIE FORM at
-the top of FILE. If COOKIE doesn't exist, or cookie isn't within
-the first 256 bytes of FILE, return NULL-VALUE."
+(defun zenit-file-cookie (file &optional cookie null-value)
+  "Returns the quoted FORM in a ;;;###COOKIE FORM at the top of FILE.
+
+If COOKIE doesn't exist, or cookie isn't within the first 256 bytes of
+FILE, return NULL-VALUE."
   (unless (file-exists-p file)
     (signal 'file-missing file))
   (unless (file-readable-p file)
     (error "%S is unreadable" file))
   (with-temp-buffer
     (insert-file-contents file nil 0 256)
-    (if (re-search-forward (format "^;;;###%s " (regexp-quote (or cookie "if")))
-                           nil t)
+    (if (not (re-search-forward (format "^;;;###%s" (regexp-quote (or cookie "if")))
+                                nil t))
+        null-value
+      (skip-chars-forward " \t" (pos-eol))
+      (or (eolp)
+          (read (current-buffer))))))
+
+(autoload #'zenit-module-context-with "zenit-modules" nil nil 'macro)
+;;;###autoload
+(defun zenit-file-cookie-p (file &optional cookie null-value)
+  "Returns the result of FORM in a ;;;###COOKIE FORM at the top of FILE.
+
+If COOKIE doesn't exist, or cookie isn't within the first 256 bytes of
+FILE, return NULL-VALUE."
+  (let ((sexp (zenit-file-cookie file cookie null-value)))
+    (if (equal sexp null-value)
+        null-value
+      (with-temp-buffer
         (zenit-module-context-with (zenit-module-from-path file)
           (let ((load-file-name file))
-            (eval (sexp-at-point) t)))
-      null-value)))
+            (eval (zenit-file-cookie file cookie null-value) t)))))))
 
 ;;;###autoload
 (defmacro file-exists-p! (files &optional directory)

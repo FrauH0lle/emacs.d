@@ -165,7 +165,8 @@ Returns OUTPUT."
                  (if (listp level)
                      (memq zenit-print-minimum-level level)
                    (>= (get level 'print-level)
-                       (get zenit-print-minimum-level 'print-level)))))
+                       (or (get zenit-print-minimum-level 'print-level)
+                           9999)))))
     (when format
       (setq output (zenit-print--format "%s" output)))
     (princ output stream)

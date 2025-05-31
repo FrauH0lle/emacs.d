@@ -790,12 +790,12 @@ displays the last selected buffer."
 (defun +workspaces-associate-frame-fn (frame &optional _new-frame-p)
   "Create a blank, new perspective and associate it with FRAME."
   (when persp-mode
-    ;; HACK 2025-05-20: The frame created the emacsclient contains the last
-    ;;   focused buffer. We want a clean workspace so we register it here ...
-    (let ((initial-buffer (current-buffer)))
-      (if (not (persp-frame-list-without-daemon))
-          (+workspace-switch +workspaces-main t)
-        (with-selected-frame frame
+    (with-selected-frame frame
+      ;; HACK 2025-05-20: The frame created the emacsclient contains the last
+      ;;   focused buffer. We want a clean workspace so we register it here ...
+      (let ((initial-buffer (current-buffer)))
+        (if (not (cdr-safe (persp-frame-list-without-daemon)))
+            (+workspace-switch +workspaces-main t)
           (+workspace-switch (format "workspace-%s" (+workspace--generate-id)) t)
           (setq +workspace--last (or (persp-name (frame-parameter (previous-frame) 'persp))
                                      +workspaces-main))

@@ -6,7 +6,8 @@
   (eval-when! (modulep! :ui popup)
     (set-popup-rule! "^\\*pacfiles" :ignore t))
   (eval-when! (modulep! :editor evil)
-    (set-evil-initial-state! 'pacfiles-mode 'emacs)))
+    (after! evil
+      (set-evil-initial-state! 'pacfiles-mode 'emacs))))
 
 (use-package! pkgbuild-mode
   :mode ("/PKGBUILD\\'" . pkgbuild-mode)

@@ -88,7 +88,7 @@ Respects `diff-hl-disable-on-remote'."
         (add-hook 'global-diff-hl-mode-hook #'diff-hl-margin-mode))
     (when (modulep! :os tty)
       (put 'diff-hl-mode 'last t)
-      (add-hook! 'doom-switch-window-hook
+      (add-hook! 'zenit-switch-window-hook
         (defun +vc-gutter-use-margins-in-tty-h ()
           (when (bound-and-true-p global-diff-hl-mode)
             (let ((graphic? (display-graphic-p)))

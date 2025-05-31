@@ -27,7 +27,9 @@
   :config
   ;; (set-popup-rule! "^\\*image-dired"
   ;;   :slot 20 :size 0.8 :select t :quit nil :ttl 0)
-  (set-evil-initial-state! 'image-dired-display-image-mode 'emacs)
+  (eval-when! (modulep! :editor evil)
+    (after! evil
+      (set-evil-initial-state! 'image-dired-display-image-mode 'emacs)))
 
   (let ((args (list "-ahl" "-v" "--group-directories-first")))
     (eval-when! zenit--system-bsd-p

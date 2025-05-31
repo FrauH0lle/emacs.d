@@ -177,7 +177,8 @@ variable.")
     (set-eval-handler! 'ess-r-help-mode #'ess-eval-region-and-go))
 
   (eval-when! (modulep! :editor evil)
-    (set-evil-initial-state! 'ess-r-help-mode 'normal))
+    (after! evil
+      (set-evil-initial-state! 'ess-r-help-mode 'normal)))
 
   ;; HACK If `+default-want-RET-continue-comments' is true, comments are
   ;;   continued on RET. But ess-r-mode doesn't have a sane
@@ -232,7 +233,7 @@ variable.")
 
   ;; Use evil insert state in iEES
   (eval-when! (modulep! :editor evil)
-    (after! ess-r-mode
+    (after! (ess-r-mode evil)
       (set-evil-initial-state! 'inferior-ess-mode 'insert)))
 
   (add-hook! 'inferior-ess-mode-hook

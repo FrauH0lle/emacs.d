@@ -15,17 +15,18 @@
                      (evil-normal-state-p))
                    #'bug-reference-push-button))
 
-(after! log-view
-  (set-evil-initial-state!
-    '(log-view-mode
-      vc-git-log-view-mode
-      vc-hg-log-view-mode
-      vc-bzr-log-view-mode
-      vc-svn-log-view-mode)
-    'emacs)
+(eval-when! (modulep! :editor evil)
+  (after! (log-view evil)
+    (set-evil-initial-state!
+      '(log-view-mode
+        vc-git-log-view-mode
+        vc-hg-log-view-mode
+        vc-bzr-log-view-mode
+        vc-svn-log-view-mode)
+      'emacs)
   (map! :map log-view-mode-map
         "j" #'log-view-msg-next
-        "k" #'log-view-msg-prev))
+        "k" #'log-view-msg-prev)))
 
 
 (after! vc-annotate
@@ -33,8 +34,9 @@
     (set-popup-rules!
       '(("^\\*vc-diff" :select nil)   ; *vc-diff*
         ("^\\*vc-change" :select t)))) ; *vc-change-log*
-  (after! evil
-    (set-evil-initial-state! 'vc-annotate-mode 'normal))
+  (eval-when! (modulep! :editor evil)
+    (after! evil
+      (set-evil-initial-state! 'vc-annotate-mode 'normal)))
 
   ;; Clean up after itself
   (define-key vc-annotate-mode-map [remap quit-window] #'kill-current-buffer))

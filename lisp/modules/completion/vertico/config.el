@@ -15,8 +15,7 @@
                   (car args))
           (cdr args)))
   :config
-  (setq vertico-resize nil
-        vertico-count 17
+  (setq vertico-count 17
         vertico-cycle t)
   (setq-default completion-in-region-function
                 (lambda (&rest args)

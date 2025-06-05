@@ -691,6 +691,10 @@
   (:doc "`+popup/toggle-type' is defined")
   (should (fboundp '+popup/toggle-type)))
 
+(zenit-deftest +popup-get-rule
+  (:doc "`+popup-get-rule' is defined")
+  (should (fboundp '+popup-get-rule)))
+
 (zenit-deftest +popup/diagnose
   (:doc "`+popup/diagnose' is defined")
   (should (fboundp '+popup/diagnose)))

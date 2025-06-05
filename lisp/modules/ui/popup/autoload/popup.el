@@ -1019,18 +1019,26 @@ If prefix ARG, the popup is raised into `other-window' instead."
         ((or 'popup 'user-popup) (+popup/raise window arg))
         (_ (+popup/buffer))))))
 
+(defun +popup-get-rule (&optional buffer)
+  "Get popup rule for BUFFER.
+
+Returns nil if no rule matches BUFFER."
+  (let ((buffer (or buffer (current-buffer))))
+    (with-current-buffer buffer
+      (cl-loop with bname = (buffer-name)
+               for (pred . action) in display-buffer-alist
+               if (and (functionp pred) (funcall pred bname action))
+               return (cons pred action)
+               else if (and (stringp pred) (string-match-p pred bname))
+               return (cons pred action)
+               else if (and (consp pred) (buffer-match-p pred bname))
+               return (cons pred action)))))
+
 ;;;###autoload
 (defun +popup/diagnose ()
   "Reveal what popup rule will be used for the current buffer."
   (interactive)
-  (if-let* ((rule (cl-loop with bname = (buffer-name)
-                           for (pred . action) in display-buffer-alist
-                           if (and (functionp pred) (funcall pred bname action))
-                           return (cons pred action)
-                           else if (and (stringp pred) (string-match-p pred bname))
-                           return (cons pred action)
-                           else if (and (consp pred) (buffer-match-p pred bname))
-                           return (cons pred action))))
+  (if-let* ((rule (+popup-get-rule)))
       (message "Rule matches: %s" rule)
     (message "No popup rule for this buffer")))
 

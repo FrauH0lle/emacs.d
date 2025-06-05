@@ -61,6 +61,45 @@ Returns a display-buffer action list suitable for
           ,@alist
           (window-parameters ,@params))))))
 
+;;;###autoload
+(defun +popup-make-plist (rule)
+  "Convert RULE (a `display-buffer-alist' entry) back to a plist.
+This is the reverse of `+popup-make-rule'."
+  (let ((predicate (pcase (car rule)
+                     (`(major-mode . ,pred) (car pred))
+                     (pred pred)))
+        (action-fn (cadr rule))
+        (rule-tail (cddr rule))
+        plist)
+    (cond ((null rule) nil)
+          ;; Handle ignored rules (:ignore t)
+          ((null action-fn)
+           (list predicate :ignore t))
+          (t
+           (cl-loop for (key . val) in rule-tail
+                    do (pcase key
+                         ('actions (setq plist (plist-put plist :actions val)))
+                         ('side (setq plist (plist-put plist :side val)))
+                         ('size (setq plist (plist-put plist :size val)))
+                         ('window-width (setq plist (plist-put plist :width val)))
+                         ('window-height (setq plist (plist-put plist :height val)))
+                         ('slot (setq plist (plist-put plist :slot val)))
+                         ('vslot (setq plist (plist-put plist :vslot val)))
+                         ('window-parameters
+                          (cl-loop for (wkey . wval) in val
+                                   do (pcase wkey
+                                        ('ttl (setq plist (plist-put plist :ttl wval)))
+                                        ('quit (setq plist (plist-put plist :quit wval)))
+                                        ('select (setq plist (plist-put plist :select wval)))
+                                        ('modeline (setq plist (plist-put plist :modeline wval)))
+                                        ('autosave (setq plist (plist-put plist :autosave wval)))
+                                        ('tabbed (setq plist (plist-put plist :tabbed wval)))
+                                        ('((foo t)) '(bla . t))
+                                        (x (let ((alist (plist-get plist :parameters)))
+                                             (setf (alist-get x alist) wval)
+                                             (setq plist (plist-put plist :parameters alist)))))))))
+           `(,predicate ,@plist)))))
+
 ;;;###autodef
 (defun set-popup-rule! (predicate &rest plist)
   "Define a popup rule.
@@ -72,7 +111,7 @@ these rules (as they are unaffected by `display-buffer-alist',
 which powers the popup management system).
 
 PREDICATE accepts anything that the CONDITION argument in
-`buffer-match-p' takes (Emacs 29 or newer)
+`buffer-match-p' takes (Emacs 29 or newer).
 
 Some buffers might require a regexp and major mode rule due to
 the way they are created.

@@ -28,11 +28,17 @@ Will be stored in `persp-save-dir'.")
 ;;
 ;;; Packages
 
+;; PATCH 2025-06-12: `persp-mode'
+(el-patch-feature persp-mode)
+(compile-along! "patches")
+
 (use-package! persp-mode
   :unless noninteractive
   :commands persp-switch-to-buffer
   :hook (zenit-init-ui . persp-mode)
   :config
+  (load! "patches")
+
   (setq persp-autokill-buffer-on-remove 'kill-weak
         persp-reset-windows-on-nil-window-conf nil
         persp-nil-hidden t

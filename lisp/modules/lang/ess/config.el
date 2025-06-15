@@ -197,7 +197,7 @@ variable.")
   ;; Popup rules
   (after! ess-r-mode
     (set-popup-rules!
-      '(("^\\*R" :side bottom :height 0.33 :width 0.5 :quit nil :ttl nil :tabbed t :select t)
+      '(("^\\*R.*" :side bottom :height 0.33 :width 0.5 :quit nil :ttl nil :tabbed t)
         ("^\\*R dired" :side right :size 0.25 :height 0.5 :vslot 99 :slot 1 :select nil :quit current)
         ("^\\*R view" :side bottom :height 0.33 :width 0.5 :quit current :tabbed t :select t))))
   (after! ess-help

@@ -36,9 +36,8 @@ with pre-existing user config on `+format-with'."
 (defun +format-with-lsp-toggle-h ()
   "Toggle `+format-with-lsp-mode' depending on the state of lsp-mode/eglot.
 
-Does not activate the mode if `+format-with' is already set. To
-activate the mode unconditionally, call `+format-with-lsp-mode'
-instead."
+Does not activate the mode if `+format-with' is already set. To activate
+the mode unconditionally, call `+format-with-lsp-mode' instead."
   (when (or (null +format-with) +format-with-lsp-mode)
     (+format-with-lsp-mode (if (+format--lsp-fn) +1 -1))))
 

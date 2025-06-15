@@ -150,19 +150,6 @@ necessary)."
                            (set-window-dedicated-p nil t)))))
 
 
-(after! ess-inf
-  (defadvice! +popup--ess-eval-region-or-line-visibly-and-step-a (fn &rest args)
-    "Do not select the REPL buffer popup.
-The default rule selects the popup window to early and thus, the line
-for evaluation is not inserted into the REPL buffer."
-    :around #'ess-eval-region-or-line-visibly-and-step
-    (let* ((plist (+popup-make-plist (+popup-get-rule (ess-get-process-buffer))))
-           (predicate (car plist))
-           (plist (cdr plist)))
-      (setq plist (plist-put plist :select nil))
-      (with-popup-rules! `(,(list predicate plist))
-        (apply fn args)))))
-
 ;;;###package evil
 (progn
   (defadvice! +popup--evil-command-window-execute-a ()

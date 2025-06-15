@@ -11,16 +11,13 @@
   :defer t
   :config
   ;; CLaude Sonnet
-  (gptel-make-anthropic "Claude Sonnet"
+  (gptel-make-anthropic "Claude"
     :stream t
     :key (gptel-api-key-from-auth-source "api.anthropic.com" "apikey"))
   ;; DeepSeek
-  (gptel-make-openai "DeepSeek"
-    :host "api.deepseek.com"
-    :endpoint "/chat/completions"
+  (gptel-make-deepseek "DeepSeek"
     :stream t
-    :key (gptel-api-key-from-auth-source "api.deepseek.com" "apikey")
-    :models '(deepseek-chat deepseek-coder))
+    :key (gptel-api-key-from-auth-source "api.deepseek.com" "apikey"))
 
   (setq gptel-display-buffer-action nil)  ; if user changes this, popup manager will bow out
   (set-popup-rule!

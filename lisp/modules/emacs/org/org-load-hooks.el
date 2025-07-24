@@ -469,28 +469,6 @@ relative to `org-directory', unless it is an absolute path."
   (+org-define-basic-link "zenit" 'zenit-emacs-dir)
   (+org-define-basic-link "zenit-modules" 'zenit-modules-dir)
 
-  (defadvice! +org--follow-search-string-a (fn link &optional arg)
-    "Support ::SEARCH syntax for id: links."
-    :around #'org-id-open
-    :around #'org-roam-id-open
-    (save-match-data
-      (cl-destructuring-bind (id &optional search)
-          (split-string link "::")
-        (prog1 (funcall fn id arg)
-          (cond ((null search))
-                ((string-match-p "\\`[0-9]+\\'" search)
-                 ;; Move N lines after the ID (in case it's a heading), instead
-                 ;; of the start of the buffer.
-                 (forward-line (string-to-number option)))
-                ((string-match "^/\\([^/]+\\)/$" search)
-                 (let ((match (match-string 1 search)))
-                   (save-excursion (org-link-search search))
-                   ;; `org-link-search' only reveals matches. Moving the point
-                   ;; to the first match after point is a sensible change.
-                   (when (re-search-forward match)
-                     (goto-char (match-beginning 0)))))
-                ((org-link-search search)))))))
-
   ;; Allow inline image previews of http(s)? urls or data uris.
   ;; `+org-http-image-data-fn' will respect `org-display-remote-inline-images'.
   (setq org-display-remote-inline-images 'download) ; TRAMP urls

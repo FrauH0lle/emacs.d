@@ -85,7 +85,7 @@
       :config
       (eval-when! (modulep! :completion vertico)
         (add-to-list 'vertico-multiform-categories
-                     '(jinx grid (vertico-grid-annotate . 20))))
+                     '(jinx grid (vertico-grid-annotate . 20) (vertico-count . 4))))
 
       (eval-when! (modulep! :editor evil)
         (defadvice! +spell-jinx-fix-off-by-one-a (&rest _)

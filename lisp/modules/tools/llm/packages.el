@@ -11,8 +11,6 @@
             :repo "FrauH0lle/mcp.el"
             :branch "feat-synchronous-server-init"))
   :lockfile tools_llm)
-(when (modulep! :tools magit)
-  (package! gptel-magit :lockfile tools_llm_magit))
 
 (package! macher
   :recipe (:host github :repo "kmontag/macher")

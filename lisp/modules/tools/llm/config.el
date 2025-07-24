@@ -163,11 +163,6 @@ guaranteed to be the response buffer."
   :defer t)
 
 
-(use-package! gptel-magit
-  :when (modulep! :tools magit)
-  :hook (magit-mode . gptel-magit-install))
-
-
 (use-package mcp
   :after gptel
   :config

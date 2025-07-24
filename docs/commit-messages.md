@@ -1,21 +1,23 @@
 # Commit Messages
 
-The guidelines are an adaptation from [Conventional Commits](https://www.conventionalcommits.org).
+The commit style is an adaptation from [Conventional
+Commits](https://www.conventionalcommits.org) and [GNU style
+changelog](https://www.gnu.org/prep/standards/html_node/Style-of-Change-Logs.html).
 
 ## Basic format:
 ```
 type(component): brief description (50-72 chars)
 
 * [filename].[ext] ([affected-items]): [Description of changes]
-  [Additional context and rationale]
-  [Limitations or future implications]
+[Additional context and rationale]
+[Limitations or future implications]
   
 [Optional footer(s)]
 ```
 
 ## Guidelines
 
-1. Start with the type, the optional package/component/scope name within
+1. Start with the type, the optional package/component/scope/file name within
    parenthesis followed by a colon and a brief title. The first word of the
    title should be capitalized.
    - Example: `feat(parser): Add finite state machine`
@@ -28,9 +30,26 @@ type(component): brief description (50-72 chars)
    functions/variables:
 
    ```
-   * file.ext (function1, function2, variable1): Description
+   * file.ext (function1, function2, variable1): Description.
    ```
-
+   
+   If you have multiple changes affecting different items in the same file, use
+   parentheses to separate them:
+   
+   ```
+   * file.ext (function1, variable1): Description.
+   (function2, variable2): Description.
+   (function3, variable3, variable4): Description.
+   ```
+   
+   Break long lists of function names by closing continued lines with `)`,
+   rather than `,`, and opening the continuation with `(`. Here is an example:
+   
+   ```
+   * src/keyboard.c (menu_bar_items, tool_bar_items)
+   (Fexecute_extended_command): Deal with 'keymap' property.
+   ```
+   
 3. Write the main description in present tense, explaining:
    - What changed
    - Why it changed (rationale)
@@ -41,16 +60,16 @@ type(component): brief description (50-72 chars)
    description:
 
    ```
-   * file1.ext (functions): Description
-   * file2.ext (functions): Related changes
+   * file1.ext (functions): Description.
+   * file2.ext (functions): Related changes.
    ```
 
 5. For implementation details that affect multiple components, explain shared
    changes once and use "Ditto" for repeated similar changes:
 
    ```
-   * component1.ext: Main change description
-   * component2.ext: Ditto
+   * component1.ext: Main change description.
+   * component2.ext: Ditto.
    ```
 
 6. Include important context about:
@@ -115,12 +134,12 @@ type(component): brief description (50-72 chars)
 feat!(parser): Add async event handler system
 
 * event_handler.py (AsyncEventManager, EventDispatcher, EventQueue): 
-  Implement asynchronous event handling system using asyncio.
-  This provides a more scalable approach to handling multiple
-  concurrent events with support for priorities and custom callbacks.
-  
-  Currently experimental - API may evolve based on performance metrics.
-  Known limitation: Does not support nested event triggering yet.
+Implement asynchronous event handling system using asyncio.
+This provides a more scalable approach to handling multiple
+concurrent events with support for priorities and custom callbacks.
+
+Currently experimental - API may evolve based on performance metrics.
+Known limitation: Does not support nested event triggering yet.
 
 BREAKING CHANGE: Changes event dispatch flow, existing handlers need updates
 ```
@@ -131,11 +150,11 @@ BREAKING CHANGE: Changes event dispatch flow, existing handlers need updates
 fix(storage): Resolve race condition in concurrent writes
 
 * src/storage/manager.rs (StorageManager::write_batch, acquire_lock): 
-  Fix race condition when multiple threads attempt concurrent writes
-  to the same storage partition. Implements proper mutex locking
-  with deadlock prevention.
-  
-  Performance impact is minimal (<1ms per write operation).
+Fix race condition when multiple threads attempt concurrent writes
+to the same storage partition. Implements proper mutex locking
+with deadlock prevention.
+
+Performance impact is minimal (<1ms per write operation).
 ```
 
 ### Multiple file changes example
@@ -144,15 +163,15 @@ fix(storage): Resolve race condition in concurrent writes
 feat!(auth): Implement OAuth2 provider integration
 
 * auth/provider.js (createOAuthClient, validateToken): Add OAuth2
-  client implementation with support for multiple providers.
-  Includes automatic token refresh and session management.
+client implementation with support for multiple providers.
+Includes automatic token refresh and session management.
 
 * auth/middleware.js (authGuard, refreshMiddleware): Add Express
-  middleware for protecting routes and handling token refresh.
+middleware for protecting routes and handling token refresh.
   
 * auth/storage.js (TokenStorage): Add secure token storage with
-  encryption and automatic cleanup of expired tokens.
-  Currently only supports in-memory storage, Redis support planned.
+encryption and automatic cleanup of expired tokens.
+Currently only supports in-memory storage, Redis support planned.
 
 BREAKING CHANGE: Authentication flow now requires OAuth2 configuration
 Refs: #234

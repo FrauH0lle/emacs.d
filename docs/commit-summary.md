@@ -40,6 +40,7 @@ Example:
 | ci       | CI configuration changes                                          |
 | chore    | General maintenance                                               |
 | revert   | Revert previous changes                                           |
+| pkg      | Addition of package/library or version change                     |
 | tweak    | Code changes that change user-facing defaults but not drastically |
 
 ## Examples of good summary lines:

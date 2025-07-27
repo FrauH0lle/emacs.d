@@ -3,7 +3,7 @@
  ("better-jumper" . "b1bf7a3c8cb820d942a0305e0e6412ef369f819c")
  ("copy-as-format" . "b9f6f725ca9701c5a02bfb479573fdfcce2e1e30")
  ("dtrt-indent" . "22498ca24ac93c051d233abef630aece1ac45dd1")
- ("el-get" . "56810ad86dc16e5286357e643ec514c85114441d")
+ ("el-get" . "8d3edab760ff84baf4ce36c0b33bfb8668c6d212")
  ("el-patch" . "92803e7ea6e07cd56667ed7ea0dfacfc1f37f6d9")
  ("emacs-async" . "b99658e831bc7e7d20ed4bb0a85bdb5c7dd74142")
  ("emacs-buttercup" . "c467c659b2c5b7029e20909331e072d7301af1d5")

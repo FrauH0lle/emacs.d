@@ -108,10 +108,10 @@ guaranteed to be the response buffer."
                  (error "error: buffer %s is not live." buffer))
                (with-current-buffer buffer
                  (buffer-substring-no-properties (point-min) (point-max))))
-   :description "return the contents of an emacs buffer"
+   :description "Return the contents of an emacs buffer"
    :args (list '(:name "buffer"
                  :type string
-                 :description "the name of the buffer whose contents are to be retrieved"))
+                 :description "The name of the buffer whose contents are to be retrieved"))
    :category "emacs")
 
   ;; Presets

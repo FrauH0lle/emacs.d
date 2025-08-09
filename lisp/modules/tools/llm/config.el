@@ -31,7 +31,7 @@ Files are expected to be plain text files, e.g. .md or .txt.")
         (alist-get 'org-mode gptel-response-prefix-alist) "*Response*:\n")
 
   ;; Each org heading is its own conversation
-  (after! 'gptel-org
+  (after! gptel-org
     (setq-default gptel-org-branching-context t))
 
   ;; Add `major-mode' -> language mapping

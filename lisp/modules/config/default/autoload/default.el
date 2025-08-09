@@ -35,7 +35,7 @@ otherwise use `woman'.
 (defun +default/new-buffer ()
   "TODO"
   (interactive)
-  (if (modulep! 'evil)
+  (if (modulep! :editor evil)
       (call-interactively #'evil-buffer-new)
     (let ((buffer (generate-new-buffer "*new*")))
       (set-window-buffer nil buffer)

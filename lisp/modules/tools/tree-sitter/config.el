@@ -1,8 +1,7 @@
 ;; tools/tree-sitter/config.el -*- lexical-binding: t; -*-
 
 (defvar +tree-sitter-hl-enabled-modes '(not web-mode typescript-tsx-mode)
-  "A list of major modes which should be highlighted by
- tree-sitter.
+  "A list of major modes which should be highlighted by tree-sitter.
 
 If this list begins with `not', then it negates the list.
 If it is t, it is enabled in all modes.
@@ -11,20 +10,78 @@ If nil, it is disabled in all modes")
 ;;
 ;;; Packages
 
-(use-package! tree-sitter
+(use-package! treesit
+  :when (fboundp 'treesit-available-p)
+  :when (treesit-available-p)
   :defer t
   :config
-  (require 'tree-sitter-langs)
-  ;; This makes every node a link to a section of code
-  (setq tree-sitter-debug-jump-buttons t
-        ;; and this highlights the entire sub tree in your code
-        tree-sitter-debug-highlight-jump-region t))
+  (cl-pushnew (file-name-concat zenit-data-dir "tree-sitter") treesit-extra-load-path :test #'equal)
+  ;; HACK: treesit lacks any way to dictate where to install grammars.
+  (defadvice! +tree-sitter--install-grammar-to-local-dir-a (fn &rest args)
+    "Write grammars to `zenit-data-dir'."
+    :around #'treesit-install-language-grammar
+    :around #'treesit--build-grammar
+    (let ((user-emacs-directory zenit-data-dir))
+      (apply fn args)))
 
+  ;; HACK: Some *-ts-mode packages modify `major-mode-remap-defaults'
+  ;;   inconsistently. Playing whack-a-mole to undo those changes is more hassle
+  ;;   then simply ignoring them (by overriding `major-mode-remap-defaults' for
+  ;;   any modes remapped with `set-tree-sitter!'). The user shouldn't touch
+  ;;   `major-mode-remap-defaults' anyway; `major-mode-remap-alist' will always
+  ;;   have precedence.
+  (defadvice! +tree-sitter--ignore-default-major-mode-remaps-a (fn mode)
+    :around #'major-mode-remap
+    (let ((major-mode-remap-defaults
+           (if-let* ((m (assq mode +tree-sitter--major-mode-remaps-alist)))
+               +tree-sitter--major-mode-remaps-alist
+             major-mode-remap-defaults)))
+      (funcall fn mode)))
+
+  ;; Increase the highlighting
+  (setq! treesit-font-lock-level 4)
+
+  ;; TODO: Move most of these out to modules
+  (dolist (map '((awk "https://github.com/Beaglefoot/tree-sitter-awk" nil nil nil nil)
+                 (bibtex "https://github.com/latex-lsp/tree-sitter-bibtex" nil nil nil nil)
+                 (blueprint "https://github.com/huanie/tree-sitter-blueprint" nil nil nil nil)
+                 (c-sharp "https://github.com/tree-sitter/tree-sitter-c-sharp" nil nil nil nil)
+                 (commonlisp "https://github.com/tree-sitter-grammars/tree-sitter-commonlisp" nil nil nil nil)
+                 (css "https://github.com/tree-sitter/tree-sitter-css" nil nil nil nil)
+                 (html "https://github.com/tree-sitter/tree-sitter-html" nil nil nil nil)
+                 (java "https://github.com/tree-sitter/tree-sitter-java" nil nil nil nil)
+                 (javascript "https://github.com/tree-sitter/tree-sitter-javascript" "master" "src" nil nil)
+                 (latex "https://github.com/latex-lsp/tree-sitter-latex" nil nil nil nil)
+                 (make "https://github.com/tree-sitter-grammars/tree-sitter-make" nil nil nil nil)
+                 (nu "https://github.com/nushell/tree-sitter-nu" nil nil nil nil)
+                 (org "https://github.com/milisims/tree-sitter-org" nil nil nil nil)
+                 (perl "https://github.com/ganezdragon/tree-sitter-perl" nil nil nil nil)
+                 (proto "https://github.com/mitchellh/tree-sitter-proto" nil nil nil nil)
+                 (sql "https://github.com/DerekStride/tree-sitter-sql" "gh-pages" nil nil nil)
+                 (surface "https://github.com/connorlay/tree-sitter-surface" nil nil nil nil)
+                 (toml "https://github.com/tree-sitter/tree-sitter-toml" nil nil nil nil)
+                 (tsx "https://github.com/tree-sitter/tree-sitter-typescript" "master" "tsx/src" nil nil)
+                 (typescript "https://github.com/tree-sitter/tree-sitter-typescript" "master" "typescript/src" nil nil)
+                 (typst "https://github.com/uben0/tree-sitter-typst" "master" "src" nil nil)
+                 (verilog "https://github.com/gmlarumbe/tree-sitter-verilog" nil nil nil nil)
+                 (vhdl "https://github.com/alemuller/tree-sitter-vhdl" nil nil nil nil)
+                 (vue "https://github.com/tree-sitter-grammars/tree-sitter-vue" nil nil nil nil)
+                 (wast "https://github.com/wasm-lsp/tree-sitter-wasm" nil "wast/src" nil nil)
+                 (wat "https://github.com/wasm-lsp/tree-sitter-wasm" nil "wat/src" nil nil)
+                 (wgsl "https://github.com/mehmetoguzderin/tree-sitter-wgsl" nil nil nil nil)))
+    (cl-pushnew map treesit-language-source-alist :test #'eq :key #'car)))
+
+(use-package! treesit-langs
+  :after treesit
+  :config
+  (setq treesit-langs--queries-dir (file-name-concat (file-name-directory (locate-library "tree-sitter-langs.el")) "queries"))
+  ;; The setup is handled by Emacs itself
+  (advice-add #'treesit-lang--setup :override #'ignore))
 
 (use-package! evil-textobj-tree-sitter
   :when (modulep! :editor evil)
   :defer t
-  :init (after! tree-sitter (require 'evil-textobj-tree-sitter))
+  :init (after! (evil treesit) (require 'evil-textobj-tree-sitter))
   :config
   (after! evil
     (defvar +tree-sitter-inner-text-objects-map (make-sparse-keymap))

@@ -39,6 +39,9 @@
     (add-hook 'sh-mode-local-vars-hook #'lsp! 'append))
 
   (eval-when! (modulep! +tree-sitter)
+    (cl-pushnew '(bash "https://github.com/tree-sitter/tree-sitter-bash" nil nil nil nil)
+                treesit-language-source-alist :test #'eq :key #'car)
+    (treesit-ensure-installed 'bash)
     (add-hook 'sh-mode-local-vars-hook #'tree-sitter! 'append))
 
   (setq-hook! 'sh-mode-hook

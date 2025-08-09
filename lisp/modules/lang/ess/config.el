@@ -76,10 +76,14 @@ variable.")
   (eval-when! (modulep! :tools lsp +lsp-flymake)
     (pushnew! +flycheck-disabled-modes 'ess-r-mode))
 
+  :config
   ;; Tree-sitter support
   (eval-when! (modulep! +tree-sitter)
+    (cl-pushnew '(r "https://github.com/r-lib/tree-sitter-r" nil nil nil nil)
+                treesit-language-source-alist :test #'eq :key #'car)
+    (treesit-ensure-installed 'r)
     (add-hook 'ess-r-mode-local-vars-hook #'tree-sitter! 'append))
-  :config
+
   (setq ess-offset-continued 'straight
         ess-use-flymake (or (modulep! :tools lsp +lsp-flymake)
                             (modulep! :checkers syntax +flymake))

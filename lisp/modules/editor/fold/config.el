@@ -3,8 +3,7 @@
 (defcustom +fold-ellipsis " [...] "
   "The ellipsis to show for ellided regions (folds).
 
-`org-ellipsis', `truncate-string-ellipsis', and
-`ts-fold-replacement' are set to this."
+`org-ellipsis' and `truncate-string-ellipsis' are set to this."
   :type 'string
   :group '+fold)
 
@@ -110,12 +109,10 @@ later."
   (vimish-fold-global-mode +1))
 
 
-(use-package! ts-fold
+(use-package! treesit-fold
   :when (modulep! :tools tree-sitter)
-  :after tree-sitter
-  :config
-  (setq ts-fold-replacement +fold-ellipsis)
-  (global-ts-fold-mode +1))
+  :defer t
+  :config (global-treesit-fold-mode +1))
 
 
 ;; PATCH 2025-02-10: `outline-minor-faces'

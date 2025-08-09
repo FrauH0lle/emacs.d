@@ -126,8 +126,8 @@ variable."
                            (and (file-readable-p (expand-file-name source +llm-prompts-dir))
                                 (expand-file-name source +llm-prompts-dir)))))
             (setq content (string-trim (with-temp-buffer
-                                       (zenit-file-read file-path :by 'insert)
-                                       (buffer-string))))))
+                                         (zenit-file-read file-path :by 'insert)
+                                         (buffer-string))))))
          ;; Handle raw string sources
          ((stringp source)
           (setq content source))
@@ -172,6 +172,24 @@ variable."
 
 
 ;;; Commands
+
+;;;###autoload
+(defun +gptel/previous-prompt ()
+  "Move point to the end of the previous prompt."
+  (interactive)
+  (goto-char (line-beginning-position))
+  (when (re-search-backward
+         (regexp-quote (gptel-prompt-prefix-string)) nil t)
+    (goto-char (line-end-position))))
+
+;;;###autoload
+(defun +gptel/next-prompt ()
+  "Move point to the end of the next prompt."
+  (interactive)
+  (goto-char (line-end-position))
+  (when (re-search-forward
+         (regexp-quote (gptel-prompt-prefix-string)) nil t)
+    (goto-char (line-end-position))))
 
 ;;;###autoload
 (defun +gptel/commit-summary ()

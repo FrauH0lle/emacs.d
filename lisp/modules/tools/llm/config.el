@@ -23,7 +23,9 @@ Files are expected to be plain text files, e.g. .md or .txt.")
    ;; Use `org-mode' for the `gptel' buffer
    gptel-default-mode 'org-mode
    ;; Always include tool output
-   gptel-include-tool-results t)
+   gptel-include-tool-results t
+   ;; Make expert commands available
+   gptel-expert-commands t)
   ;; Prettier prompts
   (setf (alist-get 'org-mode gptel-prompt-prefix-alist) "*Prompt*: "
         (alist-get 'org-mode gptel-response-prefix-alist) "*Response*:\n")
@@ -39,7 +41,7 @@ Files are expected to be plain text files, e.g. .md or .txt.")
   ;; Keep previous system message in `+gptel--prev-system-message'
   (advice-add #'gptel-system-prompt :around #'+gptel-prev-system-message-a)
 
-  ;; CLaude Sonnet
+  ;; CLaude
   (gptel-make-anthropic "Claude"
     :stream t
     :key (gptel-api-key-from-auth-source "api.anthropic.com" "apikey"))
@@ -48,6 +50,43 @@ Files are expected to be plain text files, e.g. .md or .txt.")
         gptel-backend (gptel-make-deepseek "DeepSeek"
                         :stream t
                         :key (gptel-api-key-from-auth-source "api.deepseek.com" "apikey")))
+  ;; GLM
+  (gptel-make-openai "GLM"
+    :host "api.z.ai"
+    :endpoint "/api/paas/v4/chat/completions"
+    :stream t
+    :key (gptel-api-key-from-auth-source "api.z.ai" "apikey")
+    ;; :key "4d1e8ce2eb2e49ef992ff85cd58effdd.9HzchDhXH6BI968P"
+    :models '((glm-4.5
+               :description "High Performance, Strong Reasoning, More Versatile"
+               :capabilities (tool-use reasoning)
+               :context-window 128
+               :input-cost 0.6
+               :output-cost 2.2)
+              (glm-4.5-x
+               :description "High Performance, Strong Reasoning, Ultra-Fast Response"
+               :capabilities (tool-use reasoning)
+               :context-window 128
+               :input-cost 2.2
+               :output-cost 8.9)
+              (glm-4.5-air
+               :description "Cost-Effective, Lightweight, High Performance"
+               :capabilities (tool-use)
+               :context-window 128
+               :input-cost 0.2
+               :output-cost 1.1)
+              (glm-4.5-airx
+               :description "Lightweight, High Performance, Ultra-Fast Response"
+               :capabilities (tool-use)
+               :context-window 128
+               :input-cost 1.1
+               :output-cost 4.5)
+              (glm-4.5-flash
+               :description "Lightweight, High Performance"
+               :capabilities (tool-use)
+               :context-window 128
+               :input-cost 0
+               :output-cost 0)))
 
   (setq gptel-display-buffer-action nil)  ; if user changes this, popup manager will bow out
   (set-popup-rule!
@@ -149,7 +188,12 @@ guaranteed to be the response buffer."
     :backend "Claude"
     :model 'claude-3-5-haiku-20241022
     :include-reasoning nil
-    :tools nil))
+    :tools nil)
+
+  ;; Keybinds
+  (map! :map gptel-mode-map
+        "C-c C-n" #'+gptel/next-prompt
+        "C-c C-p" #'+gptel/previous-prompt))
 
 
 ;; PATCH 2025-07-21: `gptel-mcp-connect'
@@ -212,78 +256,14 @@ guaranteed to be the response buffer."
     :select t
     :size 0.3
     :quit nil
-    :ttl nil))
+    :ttl nil)
+
+  ;; Load extra tools
+  (load! "macher-tools"))
 
 
+(use-package! macher-instruct
+  :after macher
+  :config
+  (setq! macher-instruct-empty-tag-query-matches-all nil))
 
-
-
-;; (defalias 'my/gptel-easy-page
-;;     (let ((map (make-composed-keymap
-;;                 (define-keymap
-;;                   "RET" 'gptel-end-of-response
-;;                   "n"   'gptel-end-of-response
-;;                   "p"   'gptel-beginning-of-response)
-;;                 my-pager-map))
-;;           (scrolling
-;;            (propertize  "SCRL" 'face '(:inherit highlight))))
-;;       (require 'pixel-scroll)
-;;       (lambda ()
-;;         (interactive)
-;;         (when (eq (window-buffer (selected-window))
-;;                   (current-buffer))
-;;           (add-to-list 'mode-line-format scrolling)
-;;           (set-transient-map
-;;            map t
-;;            (lambda () (setq mode-line-format
-;;                        (delete scrolling mode-line-format))))))))
-
-;;   (defvar-keymap my-pager-map
-;;     :doc "Keymap with paging commands"
-;;     "SPC" 'scroll-up-command
-;;     "C-l" 'recenter-top-bottom
-;;     "C-M-v" 'scroll-other-window
-;;     "C-M-S-v" 'scroll-other-window-down
-;;     "d" (lambda ()
-;;           (interactive)
-;;           (pixel-scroll-precision-interpolate
-;;            (- (floor (window-text-height nil t) 2))
-;;            nil 1))
-
-;;     "u" (lambda ()
-;;           (interactive)
-;;           (pixel-scroll-precision-interpolate
-;;            (floor (window-text-height nil t) 2)
-;;            nil 1))
-;;     "M-o" (if (fboundp 'switchy-window-minor-mode)
-;;               'switchy-window 'my/other-window)
-;;     "S-SPC" 'scroll-down-command)
-
-;;   (let ((scrolling (propertize  "SCRL" 'face '(:inherit highlight)))
-;;         ml-buffer)
-;;     (defalias 'my/easy-page
-;;       (lambda ()
-;;         (interactive)
-;;         (when (eq (window-buffer (selected-window))
-;;                   (current-buffer))
-;;           (setq ml-buffer (current-buffer))
-;;           (add-to-list 'mode-line-format scrolling)
-;;           (set-transient-map
-;;            my-pager-map t
-;;            (lambda () (with-current-buffer ml-buffer
-;;                    (setq mode-line-format
-;;                          (delete scrolling mode-line-format)))))))))
-
-;;   (defun my/gptel-previous-prompt ()
-;;     (interactive)
-;;     (goto-char (line-beginning-position))
-;;     (when (re-search-backward
-;;            (regexp-quote (gptel-prompt-prefix-string)) nil t)
-;;       (goto-char (line-end-position))))
-
-;;   (defun my/gptel-next-prompt (&rest _ignore)
-;;     (interactive)
-;;     (goto-char (line-end-position))
-;;     (when (re-search-forward
-;;            (regexp-quote (gptel-prompt-prefix-string)) nil t)
-;;       (goto-char (line-end-position))))

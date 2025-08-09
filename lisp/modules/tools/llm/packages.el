@@ -15,3 +15,7 @@
 (package! macher
   :recipe (:host github :repo "kmontag/macher")
   :lockfile tools_llm)
+
+(package! macher-instruct
+  :recipe (:host github :repo "FrauH0lle/macher-instruct" :protocol ssh :files ("*.el"))
+  :lockfile tools_llm)

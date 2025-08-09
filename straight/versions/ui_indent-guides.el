@@ -1,2 +1,2 @@
-(("indent-bars" . "fa293f98abe353599353c94177fe0bb77cdbd0b8"))
+(("indent-bars" . "aa07a3d812c64445d44796b85fca07044864f64b"))
 :gamma

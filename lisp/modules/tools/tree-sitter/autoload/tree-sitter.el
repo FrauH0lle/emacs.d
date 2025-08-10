@@ -53,7 +53,7 @@ Note that COMMIT is only available in Emacs >=31."
                          (fboundp ts-mode)
                          ;; Only prompt once, and log other times.
                          (cl-every (if ensured?
-                                       (doom-rpartial #'treesit-ready-p 'message)
+                                       (zenit-rpartial #'treesit-ready-p 'message)
                                      #'treesit-ensure-installed)
                                    (cl-loop for r in recipes
                                             if (listp r)

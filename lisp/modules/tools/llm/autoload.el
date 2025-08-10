@@ -201,6 +201,7 @@ at inferring my intent.
 
 Intended to be placed in `git-commit-setup-hook'."
   (interactive)
+  (require 'gptel)
   (gptel-with-preset 'commit-summary
     (let ((commit-buffer (current-buffer))) ;commit message buffer
 

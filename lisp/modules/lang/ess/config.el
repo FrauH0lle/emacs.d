@@ -79,8 +79,9 @@ variable.")
   :config
   ;; Tree-sitter support
   (eval-when! (modulep! +tree-sitter)
-    (cl-pushnew '(r "https://github.com/r-lib/tree-sitter-r" nil nil nil nil)
-                treesit-language-source-alist :test #'eq :key #'car)
+    (after! treesit
+      (cl-pushnew '(r "https://github.com/r-lib/tree-sitter-r" nil nil nil nil)
+                  treesit-language-source-alist :test #'eq :key #'car))
     (treesit-ensure-installed 'r)
     (add-hook 'ess-r-mode-local-vars-hook #'tree-sitter! 'append))
 

@@ -125,8 +125,9 @@
             (lsp--render-element (concat "```rust\n" sig cmt "\n```")))))))
 
   (eval-when! (modulep! +tree-sitter)
-    (cl-pushnew '(rust "https://github.com/tree-sitter/tree-sitter-rust" nil nil nil nil)
-                treesit-language-source-alist :test #'eq :key #'car)
+    (after! treesit
+      (cl-pushnew '(rust "https://github.com/tree-sitter/tree-sitter-rust" nil nil nil nil)
+                  treesit-language-source-alist :test #'eq :key #'car))
     (treesit-ensure-installed 'rust)
     (add-hook 'rustic-mode-local-vars-hook #'tree-sitter! 'append))
 

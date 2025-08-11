@@ -163,9 +163,7 @@ Otherwise return t on success, nil otherwise."
             (+popup--inhibit-transient t))
         (persp-delete-other-windows))
       (switch-to-buffer (zenit-fallback-buffer))
-      (setf (persp-window-conf persp)
-            (funcall persp-window-state-get-function (selected-frame)
-                     (funcall persp-get-window-for-state-get-put-function))))
+      (setf (persp-window-conf persp) (persp-window-state-get)))
     (+workspaces--add-ws-to-frame name)
     persp))
 

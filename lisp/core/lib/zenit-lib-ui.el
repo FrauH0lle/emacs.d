@@ -199,13 +199,30 @@ windows (unlike `zenit/window-maximize-buffer') Activate again to undo."
     (while (ignore-errors (windmove-down)) (delete-window))))
 
 ;;;###autoload
-(defun zenit/set-frame-opacity (opacity)
+(defun zenit/set-frame-opacity (opacity &optional frames)
   "Interactively change the current frame's opacity.
-OPACITY is an integer between 0 to 100, inclusive."
+
+OPACITY is an integer between 0 to 100, inclusive. FRAMES is a list of
+frames to apply the change to or `t' (meaning all open and future
+frames). If called interactively, FRAMES defaults to the current
+frame (or `t' with the prefix arg)."
   (interactive
-   (list (read-number "Opacity (0-100): "
-                      (or (frame-parameter nil 'alpha-background) 100))))
-  (set-frame-parameter nil 'alpha-background opacity))
+   (list 'interactive (if current-prefix-arg t (list (selected-frame)))))
+  (let* ((parameter
+          (if (eq window-system 'pgtk)
+              'alpha-background
+            'alpha))
+         (opacity
+          (if (eq opacity 'interactive)
+              (read-number "Opacity (0-100): "
+                           (or (frame-parameter nil parameter)
+                               100))
+            opacity))
+         (alist `((,parameter . ,opacity))))
+    (if (eq frames t)
+        (modify-all-frames-parameters alist)
+      (dolist (frame frames)
+        (modify-frame-parameters frame alist)))))
 
 (defvar zenit--narrowed-base-buffer nil
   "Variable to store the base buffer of an indirectly narrowed

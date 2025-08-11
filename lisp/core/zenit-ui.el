@@ -511,6 +511,8 @@ buffers are visible in other windows, switch to
          comint-last-prompt
          (> (cdr comint-last-prompt) (point))
          (goto-char (cdr comint-last-prompt))))
+  (eval-when-compile
+    (declare-function zenit--comint-move-cursor-to-prompt-h nil))
 
   (add-hook! 'comint-mode-hook
     (defun zenit--comint-init-move-cursor-to-prompt-h ()

@@ -1,2 +1,2 @@
-(("diff-hl" . "dafd697d2f376275abdf457b0ec7f5bceafd0aab"))
+(("diff-hl" . "39f076efa85110c4bcc9b73994f30a7d52312c98"))
 :gamma

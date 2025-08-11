@@ -44,19 +44,18 @@ Files are expected to be plain text files, e.g. .md or .txt.")
   ;; CLaude
   (gptel-make-anthropic "Claude"
     :stream t
-    :key (gptel-api-key-from-auth-source "api.anthropic.com" "apikey"))
+    :key 'gptel-api-key)
   ;; DeepSeek (as default)
   (setq gptel-model 'deepseek-chat
         gptel-backend (gptel-make-deepseek "DeepSeek"
                         :stream t
-                        :key (gptel-api-key-from-auth-source "api.deepseek.com" "apikey")))
+                        :key 'gptel-api-key))
   ;; GLM
   (gptel-make-openai "GLM"
     :host "api.z.ai"
     :endpoint "/api/paas/v4/chat/completions"
     :stream t
-    :key (gptel-api-key-from-auth-source "api.z.ai" "apikey")
-    ;; :key "4d1e8ce2eb2e49ef992ff85cd58effdd.9HzchDhXH6BI968P"
+    :key 'gptel-api-key
     :models '((glm-4.5
                :description "High Performance, Strong Reasoning, More Versatile"
                :capabilities (tool-use reasoning)

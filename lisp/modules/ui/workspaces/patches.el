@@ -32,13 +32,11 @@
            (set-frame-persp persp frame-or-window)
            (when persp-init-frame-behaviour
              (persp-restore-window-conf frame-or-window persp new-frame-p))
-           (with-selected-frame frame-or-window
-             (run-hook-with-args 'persp-activated-functions 'frame)))
+           (run-hook-with-args 'persp-activated-functions 'frame frame-or-window persp))
           (window
            (set-window-persp persp frame-or-window)
            (let ((cbuf (window-buffer frame-or-window)))
              (unless (persp-contain-buffer-p cbuf persp)
                (persp-set-another-buffer-for-window cbuf frame-or-window persp)))
-           (with-selected-window frame-or-window
-             (run-hook-with-args 'persp-activated-functions 'window)))))))
+           (run-hook-with-args 'persp-activated-functions 'window frame-or-window persp))))))
   (el-patch-add (set-buffer (window-buffer (selected-window)))))

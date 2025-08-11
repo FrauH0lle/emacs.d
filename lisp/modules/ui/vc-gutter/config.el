@@ -79,22 +79,6 @@ Respects `diff-hl-disable-on-remote'."
                    (file-remote-p default-directory))
         (diff-hl-dired-mode +1))))
 
-  ;; HACK: diff-hl won't be visible in TTY frames, but there's no simple way to
-  ;;   use the fringe in GUI Emacs *and* use the margin in the terminal *AND*
-  ;;   support daemon users, so we need more than a static `display-graphic-p'
-  ;;   check at startup.
-  (if (not (daemonp))
-      (unless (display-graphic-p)
-        (add-hook 'global-diff-hl-mode-hook #'diff-hl-margin-mode))
-    (when (modulep! :os tty)
-      (put 'diff-hl-mode 'last t)
-      (add-hook! 'zenit-switch-window-hook
-        (defun +vc-gutter-use-margins-in-tty-h ()
-          (when (bound-and-true-p global-diff-hl-mode)
-            (let ((graphic? (display-graphic-p)))
-              (unless (eq (get 'diff-hl-mode 'last) graphic?)
-                (diff-hl-margin-mode (if graphic? -1 +1))
-                (put 'diff-hl-mode 'last graphic?))))))))
   :config
   (set-popup-rule! "^\\*diff-hl" :select nil)
 
@@ -122,13 +106,18 @@ Respects `diff-hl-disable-on-remote'."
           :n "}" #'diff-hl-show-hunk-next
           :n "S" #'diff-hl-show-hunk-stage-hunk))
   ;; Refresh gutter on ESC or refocusing the Emacs frame.
+  (defvar-local +vc-gutter--last-state nil)
   (add-hook! '(zenit-escape-hook zenit-switch-window-hook zenit-switch-frame-hook) :append
     (defun +vc-gutter-update-h (&rest _)
       "Return nil to prevent shadowing other `zenit-escape-hook' hooks."
       (ignore (or inhibit-redisplay
                   (and (or (bound-and-true-p diff-hl-mode)
                            (bound-and-true-p diff-hl-dir-mode))
-                       (diff-hl-update-once))))))
+                       (or (null +vc-gutter--last-state)
+                           (not (equal +vc-gutter--last-state
+                                       (symbol-plist (intern (expand-file-name buffer-file-name)
+                                                             vc-file-prop-obarray)))))
+                       (diff-hl-update))))))
   ;; Update diff-hl when magit alters git state.
   (eval-when! (modulep! :tools magit)
     (add-hook 'magit-post-refresh-hook #'diff-hl-magit-post-refresh))
@@ -184,10 +173,8 @@ Respects `diff-hl-disable-on-remote'."
                 delay-mode-hooks
                 (null (buffer-file-name (buffer-base-buffer)))
                 (null (get-buffer-window (current-buffer))))
-      (if (and diff-hl-update-async
-               (not
-                (run-hook-with-args-until-success 'diff-hl-async-inhibit-functions
-                                                  default-directory)))
+      (setq diff-hl-timer nil)
+      (if (diff-hl--use-async-p)
           (progn
             (+vc-gutter--kill-thread)
             (setq +vc-gutter--diff-hl-thread
@@ -198,12 +185,6 @@ Respects `diff-hl-disable-on-remote'."
                                "diff-hl--update-safe")))
         (diff-hl--update))
       t))
-
-  (defadvice! +vc-gutter--only-tick-on-success-a (&rest _)
-    :override #'diff-hl-update-once
-    (unless (equal diff-hl--modified-tick (buffer-chars-modified-tick))
-      (when (diff-hl-update)
-        (setq diff-hl--modified-tick (buffer-chars-modified-tick)))))
 
   ;; HACK: This advice won't work in *all* cases (it's a C function, and any
   ;;   calls to it from C won't trigger advice), but the thread issues above are

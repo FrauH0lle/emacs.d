@@ -1,2 +1,2 @@
-(("persp-mode.el" . "40e9993a9711cba5fb56dfec81a507fabeba9668"))
+(("persp-mode.el" . "f146ddccaf598feb402664bc6848b60321b2dc78"))
 :gamma

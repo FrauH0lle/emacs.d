@@ -454,9 +454,68 @@ buffers are visible in other windows, switch to
 
 
 (after! comint
-  (setq comint-prompt-read-only t
-        ;; double the default
-        comint-buffer-maximum-size 2048))
+  ;; Double the default
+  (setq-default comint-buffer-maximum-size 2048)
+
+  ;; Temporarily disable undo history between command executions. Otherwise,
+  ;; undo could destroy output while it's being printed or delete buffer
+  ;; contents past the boundaries of the current prompt.
+  (add-hook 'comint-exec-hook #'buffer-disable-undo)
+  (defadvice! zenit--comint-enable-undo-a (process _string)
+    :after #'comint-output-filter
+    (with-current-buffer (process-buffer process)
+      (when-let* ((start-marker comint-last-output-start))
+        (when (and (< start-marker
+                      (or (if process (process-mark process))
+                          (point-max-marker)))
+                   ;; Account for some of the IELM’s wilderness.
+                   (eq (char-before start-marker) ?\n))
+          (buffer-enable-undo)
+          (setq buffer-undo-list nil)))))
+
+  ;; Protect prompts from accidental modifications.
+  (setq-default comint-prompt-read-only t)
+
+  ;; Prior output in shell and comint shells (like ielm) should be read-only.
+  ;; Otherwise, it's trivial to make edits in visual modes (like evil's or
+  ;; term's term-line-mode) and leave the buffer in a half-broken state (which
+  ;; you have to flush out with a couple RETs, which may execute the broken text
+  ;; in the buffer),
+  (defadvice! zenit--comint-protect-output-in-visual-modes-a (process _string)
+    :after #'comint-output-filter
+    ;; Adapted from
+    ;; https://github.com/michalrus/dotfiles/blob/c4421e361400c4184ea90a021254766372a1f301/.emacs.d/init.d/040-terminal.el.symlink#L33-L49
+    (with-current-buffer (process-buffer process)
+      (let ((start-marker comint-last-output-start)
+            (end-marker (process-mark process)))
+        ;; Account for some of the IELM’s wilderness.
+        (when (and start-marker (< start-marker end-marker))
+          (let ((inhibit-read-only t))
+            ;; Make all past output read-only (disallow buffer modifications)
+            (add-text-properties comint-last-input-start (1- end-marker) '(read-only t))
+            ;; Disallow interleaving.
+            (remove-text-properties start-marker (1- end-marker) '(rear-nonsticky))
+            ;; Make sure that at `max-point' you can always append. Important
+            ;; for bad REPLs that keep writing after giving us prompt (e.g.
+            ;; sbt).
+            (add-text-properties (1- end-marker) end-marker '(rear-nonsticky t))
+            ;; Protect fence (newline of input, just before output).
+            (when (eq (char-before start-marker) ?\n)
+              (remove-text-properties (1- start-marker) start-marker '(rear-nonsticky))
+              (add-text-properties (1- start-marker) start-marker '(read-only t))))))))
+
+  ;; If the user is anywhere but the last prompt, typing should move them there
+  ;; instead of unhelpfully spew read-only errors at them.
+  (defun zenit--comint-move-cursor-to-prompt-h ()
+    (and (eq this-command 'self-insert-command)
+         comint-last-prompt
+         (> (cdr comint-last-prompt) (point))
+         (goto-char (cdr comint-last-prompt))))
+
+  (add-hook! 'comint-mode-hook
+    (defun zenit--comint-init-move-cursor-to-prompt-h ()
+      (add-hook 'pre-command-hook #'zenit--comint-move-cursor-to-prompt-h
+                nil t))))
 
 
 (after! compile

@@ -304,3 +304,15 @@ delete."
                             for mode = (buffer-local-value 'major-mode buf)
                             if (eq mode 'eshell-mode)
                             return (select-window win))))))))))
+
+;;;###autoload
+(defun +eshell-switch-workspace-fn (type &rest _)
+  (when (eq type 'frame)
+    (setq +eshell-buffers
+          (or (persp-parameter 'eshell-buffers)
+              (make-ring 25)))))
+
+;;;###autoload
+(defun +eshell-save-workspace-fn (_workspace target)
+  (when (framep target)
+    (set-persp-parameter 'eshell-buffers +eshell-buffers)))

@@ -90,24 +90,41 @@ You should use `set-eshell-alias!' to change this.")
   (add-hook 'eshell-mode-hook #'+eshell-init-h)
   (add-hook 'eshell-exit-hook #'+eshell-cleanup-h)
 
+  ;; Temporarily disable undo history between command executions. Otherwise,
+  ;; undo could destroy output while it's being printed or delete buffer
+  ;; contents past the boundaries of the current prompt.
+  (add-hook 'eshell-pre-command-hook #'buffer-disable-undo)
+  (add-hook! 'eshell-post-command-hook
+    (defun +eshell--enable-undo-h ()
+      (buffer-enable-undo (current-buffer))
+      (setq buffer-undo-list nil)))
+
+  ;; Prior output in eshell buffers should be read-only. Otherwise, it's trivial
+  ;; to make edits in visual modes (like evil's or term's term-line-mode) and
+  ;; leave the buffer in a half-broken state (which you must flush out with a
+  ;; couple RETs, which may execute the broken text in the buffer),
+  (add-hook! 'eshell-pre-command-hook
+    (defun +eshell-protect-input-in-visual-modes-h ()
+      (when (and eshell-last-input-start
+                 eshell-last-input-end)
+        (add-text-properties eshell-last-input-start
+                             (1- eshell-last-input-end)
+                             '(read-only t)))))
+  (add-hook! 'eshell-post-command-hook
+    (defun +eshell-protect-output-in-visual-modes-h ()
+      (when (and eshell-last-input-end
+                 eshell-last-output-start)
+        (add-text-properties eshell-last-input-end
+                             eshell-last-output-start
+                             '(read-only t)))))
+
   ;; Enable autopairing in eshell
   (add-hook 'eshell-mode-hook #'smartparens-mode)
 
-  ;; Workspaces integration
+  ;; Persp-mode/workspaces integration
   (eval-when! (modulep! :ui workspaces)
-    (cl-eval-when (compile)
-      (require 'el-patch)
-      (require 'esh-mode))
-
-    (el-patch-feature esh-mode)
-    (after! esh-mode
-      ;; PATCH Use `+eshell/toggle' instead of `eshell' to launch the shell
-      (el-patch-defun eshell-bookmark-jump (bookmark)
-        "Default bookmark handler for Eshell buffers."
-        (let ((default-directory (bookmark-prop-get bookmark 'location)))
-          (el-patch-swap
-            (eshell)
-            (+eshell/toggle nil))))))
+    (add-hook 'persp-activated-functions #'+eshell-switch-workspace-fn)
+    (add-hook 'persp-before-switch-functions #'+eshell-save-workspace-fn))
 
   ;; UI enhancements
   (add-hook! 'eshell-mode-hook

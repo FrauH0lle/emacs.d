@@ -41,8 +41,5 @@
 (package! general :lockfile core)
 (package! which-key :lockfile core)
 
-;; tests
-(package! buttercup :lockfile core)
-
 (package! benchmark-init :lockfile core)
 (package! esup)

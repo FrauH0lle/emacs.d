@@ -5,8 +5,6 @@
 
 (package! orderless :lockfile completion_vertico)
 
-(package! compat :lockfile completion_vertico)
-
 (package! consult :lockfile completion_vertico)
 (package! consult-dir :lockfile completion_vertico)
 (when (modulep! :checkers syntax -flymake)

@@ -2,7 +2,6 @@
 ;; tools/magit/packages.el
 
 (when (package! magit :lockfile tools_magit)
-  (package! compat :lockfile tools_magit)
   (package! magit-todos :lockfile tools_magit)
   (when (modulep! +forge)
     (package! forge :lockfile tools_magit_forge)

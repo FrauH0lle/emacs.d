@@ -7,6 +7,9 @@
 ;; zenit-core.el
 (package! auto-minor-mode :lockfile core)
 (package! gcmh :lockfile core)
+(package! compat
+  :recipe (:host github :repo "emacs-compat/compat")
+  :lockfile core)
 
 ;; zenit-ui.el
 (package! nerd-icons :lockfile core)

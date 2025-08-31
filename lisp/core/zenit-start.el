@@ -270,7 +270,6 @@ it."
 (require 'zenit-modules)
 (autoload 'zenit-initialize-packages "zenit-packages")
 (autoload 'package! "zenit-packages" nil nil t)
-(function-put 'package! 'lisp-indent-function 'defun)
 (autoload 'straight-x-fetch-all "straight-x" nil t)
 (autoload 'straight-x-pull-all "straight-x" nil t)
 (autoload 'straight-x-freeze-versions "straight-x" nil t)

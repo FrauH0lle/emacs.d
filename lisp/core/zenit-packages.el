@@ -28,26 +28,20 @@ declaration.")
 
 ;; Ensure that, if we do need package.el, it is configured correctly. You really
 ;; shouldn't be using it, but it may be convenient for quick package testing.
-(setq package-enable-at-startup nil
-      package-user-dir (concat zenit-local-dir "elpa/")
-      package-gnupghome-dir (expand-file-name "gpg" package-user-dir)
-      ;; I omit Marmalade because its packages are manually submitted rather
-      ;; than pulled, so packages are often out of date with upstream.
-      package-archives
-      (let ((proto (if gnutls-verify-error "https" "http")))
-        (list (cons "gnu"   (concat proto "://elpa.gnu.org/packages/"))
-              (cons "melpa" (concat proto "://melpa.org/packages/"))
-              (cons "org"   (concat proto "://orgmode.org/elpa/")))))
+(setq package-enable-at-startup nil)
 
-(advice-add #'package--ensure-init-file :override #'ignore)
+(with-eval-after-load 'package
+  (setq package-user-dir (concat zenit-local-dir "elpa/")
+        package-gnupghome-dir (expand-file-name "gpg" package-user-dir)
+        ;; I omit Marmalade because its packages are manually submitted rather
+        ;; than pulled, so packages are often out of date with upstream.
+        package-archives
+        (let ((proto (if gnutls-verify-error "https" "http")))
+          (list (cons "melpa" (concat proto "://melpa.org/packages/"))
+                (cons "org"   (concat proto "://orgmode.org/elpa/")))))
 
-(defadvice! zenit--package-inhibit-custom-file-a (&optional value)
-  "Don't save `package-selected-packages' to `custom-file'."
-  :override #'package--save-selected-packages
-  (if value (setq package-selected-packages value)))
-
-;; Refresh package.el the first time you call `package-install'
-(add-transient-hook! 'package-install (package-refresh-contents))
+  ;; Refresh package.el the first time you call `package-install'
+  (add-transient-hook! 'package-install (package-refresh-contents)))
 
 
 ;;
@@ -650,6 +644,7 @@ ARGS same as MELPA-STYLE-RECIPE in `straight-register-package'.
               '(,(zenit-package-recipe-repo name) . ,pin)))
          ;; Return true if we did register packages
          t))))
+(function-put 'package! 'lisp-indent-function 'defun)
 
 (defmacro disable-packages! (&rest packages)
   "A convenience macro for disabling PACKAGES in bulk.

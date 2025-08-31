@@ -14,7 +14,7 @@
 
   ;; Initialize packages
   (print! "Installing packges")
-  (zenit-cli-packages-install)
+  (zenit-cli-packages-ensure)
 
   (print! "Regenerating autoloads files")
   (zenit-autoloads-reload)

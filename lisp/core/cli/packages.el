@@ -1,6 +1,6 @@
 ;; lisp/core/cli/packages.el -*- lexical-binding: t; no-byte-compile: t; -*-
 
-(require 'comp nil t)
+(require 'comp-run nil t)
 
 
 ;;

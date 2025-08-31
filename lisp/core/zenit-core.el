@@ -49,7 +49,7 @@
 ;; `auth-source'
 (defvar auth-sources)
 
-;; `comp'
+;; `comp-run'
 (defvar native-comp-async-report-warnings-errors)
 (defvar native-comp-warning-on-missing-source)
 (defvar comp-num-cpus)

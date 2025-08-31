@@ -292,7 +292,7 @@ internally)."
 ;;; native-comp
 
 (when (featurep 'native-compile)
-  (with-eval-after-load 'comp
+  (with-eval-after-load 'comp-run
     ;; HACK Disable native-compilation for some troublesome packages
     (mapc (zenit-partial #'add-to-list 'native-comp-jit-compilation-deny-list)
           (list "/emacs-jupyter.*\\.el\\'"

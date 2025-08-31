@@ -22,7 +22,6 @@ capture, the end position, and the output buffer.")
   (setq markdown-enable-math t ; syntax highlighting for latex fragments
         markdown-enable-wiki-links t
         markdown-italic-underscore t
-        markdown-asymmetric-header t
         markdown-gfm-additional-languages '("sh")
         markdown-make-gfm-checkboxes-buttons t
         markdown-fontify-whole-heading-line t

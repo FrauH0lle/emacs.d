@@ -233,7 +233,7 @@ statements."
 
 (defvar w32-get-true-file-attributes)
 ;;;###autoload
-(defun zenit-emacs-directory-size (dir)
+(defun zenit-directory-size (dir)
   "Returns the size of FILE (in DIR) in kilobytes."
   (unless (file-directory-p dir)
     (error "Directory %S does not exist" dir))
@@ -249,7 +249,7 @@ statements."
         (unless (member (car attrs) '("." ".."))
           (cl-incf
            sum (if (eq (nth 1 attrs) t) ; is directory
-                   (zenit-emacs-directory-size (expand-file-name (car attrs) dir))
+                   (zenit-directory-size (expand-file-name (car attrs) dir))
                  (/ (nth 8 attrs) 1024.0))))))))
 
 

@@ -114,9 +114,9 @@
    :after-each (delete-file test-file))
   (should (numberp (zenit-file-size test-file))))
 
-(zenit-deftest zenit-emacs-directory-size
-  (:doc "`zenit-emacs-directory-size' is defined")
-  (should (fboundp 'zenit-emacs-directory-size)))
+(zenit-deftest zenit-directory-size
+  (:doc "`zenit-directory-size' is defined")
+  (should (fboundp 'zenit-directory-size)))
 
 (zenit-deftest zenit--with-prepared-file-buffer
   (:doc "`zenit--with-prepared-file-buffer' is defined")

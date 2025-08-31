@@ -495,10 +495,6 @@ faster `prin1'."
 (use-package! better-jumper
   :hook (zenit-first-input . better-jumper-mode)
   :commands zenit-set-jump-a zenit-set-jump-maybe-a zenit-set-jump-h
-  :preface
-  ;; REVIEW: Remove if/when https://github.com/gilbertw1/better-jumper/pull/26
-  ;;   is addressed.
-  (defvaralias 'evil--jumps-jump-command 'evil--jumps-jumping-backward)
   :init
   (global-set-key [remap evil-jump-forward]  #'better-jumper-jump-forward)
   (global-set-key [remap evil-jump-backward] #'better-jumper-jump-backward)

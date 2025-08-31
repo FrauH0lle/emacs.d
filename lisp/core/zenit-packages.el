@@ -1,12 +1,13 @@
-;; lisp/init-packages.el -*- lexical-binding: t; -*-
+;; lisp/core/zenit-packages.el -*- lexical-binding: t; -*-
 
 (defvar zenit-init-packages-p nil
-  "If non-nil, the package management system has been
-initialized.")
+  "Non-nil if the package management system has been initialized.")
 
 (defvar zenit-mandatory-packages '(straight async)
-  "A list of packages that must be installed (and will be
-auto-installed if missing) and shouldn't be deleted.")
+  "A list of packages that must be installed.
+
+These packages will be auto-installed if missing and shouldn't be
+deleted.")
 
 (defvar zenit-packages ()
   "A list of enabled packages.
@@ -16,11 +17,11 @@ symbol, and whose CDR is the plist supplied to its `package!'
 declaration.")
 
 (defvar zenit-disabled-packages ()
-  "A list of packages that should be ignored by `use-package!'
- and `after!'.")
+  "List of packages that should be ignored by `use-package!' and `after!'.")
 
 (defvar zenit-packages-file "packages"
   "The basename of packages file for modules.")
+
 
 ;;
 ;;; package.el
@@ -233,42 +234,42 @@ noninteractive sessions."
                    return (funcall func))
         (print! (start "%s") (red prompt))
         (print-group!
-         (terpri)
-         (let (recommended options)
-           (print-group!
-            (print! " 1) Abort")
-            (cl-loop for (_key desc func) in actions
-                     when desc
-                     do (push func options)
-                     and do
-                     (print! "%2s) %s" (1+ (length options))
-                             (if (+straight--recommended-option-p prompt desc)
-                                 (progn
-                                   (setq +straight--auto-options nil
-                                         recommended (length options))
-                                   (green (concat desc " (Choose this if unsure)")))
-                               desc))))
-           (terpri)
-           (let* ((options
-                   (cons (lambda ()
-                           (let ((zenit-format-indent 0))
-                             (terpri)
-                             (print! (warn "Aborted")))
-                           (kill-emacs 1))
-                         (nreverse options)))
-                  (prompt
-                   (format! "How to proceed? (%s%s) "
-                            (mapconcat #'number-to-string
-                                       (number-sequence 1 (length options))
-                                       ", ")
-                            (if (not recommended) ""
-                              (format "; don't know? Pick %d" (1+ recommended)))))
-                  answer fn)
-             (while (null (nth (setq answer (1- (read-number prompt)))
-                               options))
-               (print! (warn "%s is not a valid answer, try again.")
-                       answer))
-             (funcall (nth answer options)))))))))
+          (terpri)
+          (let (recommended options)
+            (print-group!
+              (print! " 1) Abort")
+              (cl-loop for (_key desc func) in actions
+                       when desc
+                       do (push func options)
+                       and do
+                       (print! "%2s) %s" (1+ (length options))
+                               (if (+straight--recommended-option-p prompt desc)
+                                   (progn
+                                     (setq +straight--auto-options nil
+                                           recommended (length options))
+                                     (green (concat desc " (Choose this if unsure)")))
+                                 desc))))
+            (terpri)
+            (let* ((options
+                    (cons (lambda ()
+                            (let ((zenit-format-indent 0))
+                              (terpri)
+                              (print! (warn "Aborted")))
+                            (kill-emacs 1))
+                          (nreverse options)))
+                   (prompt
+                    (format! "How to proceed? (%s%s) "
+                             (mapconcat #'number-to-string
+                                        (number-sequence 1 (length options))
+                                        ", ")
+                             (if (not recommended) ""
+                               (format "; don't know? Pick %d" (1+ recommended)))))
+                   answer fn)
+              (while (null (nth (setq answer (1- (read-number prompt)))
+                                options))
+                (print! (warn "%s is not a valid answer, try again.")
+                        answer))
+              (funcall (nth answer options)))))))))
 
 (defadvice! +straight--respect-print-indent-a (args)
   "Indent straight progress messages to respect
@@ -305,8 +306,7 @@ internally)."
 ;;; Bootstrap
 
 (defun zenit-read-packages (&optional module-list)
-  "Retrieve a list of explicitly declared packages from
- MODULE-LIST.
+  "Retrieve a list of explicitly declared packages from MODULE-LIST.
 
 If MODULE-LIST is omitted, read enabled module list in
 configdepth order (see `zenit-module-set'). Otherwise,
@@ -359,8 +359,9 @@ initialized and available for them."
     (+straight--normalize-profiles)))
 
 (defun zenit-bootstrap-straight ()
-  "Ensure `straight' is installed and was compiled with this
-version of Emacs."
+  "Bootstrap `straight'.
+
+Ensure it is installed and was compiled with this version of Emacs."
   (defvar bootstrap-version)
   (let ((bootstrap-file
          (expand-file-name "straight/repos/straight.el/bootstrap.el" user-emacs-directory))
@@ -411,7 +412,10 @@ version of Emacs."
 ;;; Package management API
 
 (defun zenit-package-get (package &optional prop nil-value)
-  "Returns PACKAGE's `package!' recipe from `zenit-packages'."
+  "Return PACKAGE's `package!' recipe from `zenit-packages'.
+
+If PROP is provided, returns that property's value from the recipe. If
+the property doesn't exist, returns NIL-VALUE (defaults to nil)."
   (let ((plist (cdr (assq package zenit-packages))))
     (if prop
         (if (plist-member plist prop)
@@ -420,7 +424,7 @@ version of Emacs."
       plist)))
 
 (defun zenit-package-set (package prop value)
-  "Set PROPERTY in PACKAGE's recipe to VALUE."
+  "Set PROP in PACKAGE's recipe to VALUE."
   (setf (alist-get package zenit-packages)
         (plist-put (alist-get package zenit-packages)
                    prop value)))
@@ -434,7 +438,10 @@ version of Emacs."
     (symbol-name package)))
 
 (defun zenit-package-build-recipe (package &optional prop nil-value)
-  "Returns the `straight' recipe PACKAGE was installed with."
+  "Return the `straight' recipe PACKAGE was installed with.
+
+If PROP is provided, returns that property's value from the recipe. If
+the property doesn't exist, returns NIL-VALUE (defaults to nil)."
   (let ((plist (nth 2 (gethash (symbol-name package) straight--build-cache))))
     (if prop
         (if (plist-member plist prop)
@@ -452,8 +459,10 @@ version of Emacs."
       'built-in))
 
 (defun zenit-package-backend (package)
-  "Return 'straight, 'builtin, 'elpa or 'other, depending on how PACKAGE is
-installed."
+  "Return PACKAGE's backend.
+
+Backend is either \\='straight, \\='builtin, \\='elpa or \\='other,
+depending on how PACKAGE is installed."
   (cond ((gethash (symbol-name package) straight--build-cache)
          'straight)
         ((or (zenit-package-built-in-p package)
@@ -468,8 +477,14 @@ installed."
 ;;; Package getters
 
 (defun zenit-packages--read (file)
+  "Read package declarations from FILE and update `zenit-packages' accordingly.
+
+Extracts `package!' forms, processes their properties, and merges with
+existing package declarations. Handles errors gracefully with
+context-specific signals."
   (condition-case-unless-debug e
-      (with-temp-buffer ; prevent buffer-local state from propagating
+      ;; Prevent buffer-local state from propagating
+      (with-temp-buffer
         (when (file-exists-p file)
           (insert-file-contents file)
           (with-syntax-table emacs-lisp-mode-syntax-table
@@ -558,25 +573,27 @@ also be a list of module keys."
       (straight--load-package-autoloads pkg-name))))
 
 (cl-defmacro package! (name &rest args &key built-in recipe ignore disable lockfile pin)
-  "A wrapper around `straight-register-package' which allows to
-specifiy a lockfile and profile. NAME is the package name.
+  "A wrapper around `straight-register-package'.
 
- :built-in BOOL | \\='prefer
+It allows to specifiy a lockfile and profile. NAME is the package name,
+ARGS same as MELPA-STYLE-RECIPE in `straight-register-package'.
+
+ :BUILT-IN BOOL | \\='prefer
    Same as :ignore if the package is a built-in Emacs package. If
    set to \\='prefer, the package will not be installed if it is
    already provided by Emacs.
 
- :recipe RECIPE
+ :RECIPE RECIPE
    A straight.el recipe
 
- :ignore FORM
+ :IGNORE FORM
    Do not install this package.
 
- :disable BOOL
+ :DISABLE BOOL
    Do not install or update this package AND disable all of its
    `use-package!' and `after!' blocks.
 
- :lockfile LOCKFILE | BOOL | \\='ignore | \\='pinned
+ :LOCKFILE LOCKFILE | BOOL | \\='ignore | \\='pinned
    Which profile and lockfile to use. Will create LOCKFILE entry
    in `straight-profiles' and let bind
    `straight-current-profile'to LOCKFILE. If nil or t, default
@@ -584,7 +601,7 @@ specifiy a lockfile and profile. NAME is the package name.
    used and the package will not be tracked.
    If :pin is defined, lockfile will be set to \\='pinned.
 
- :pin STR
+ :PIN STR
    Pin this package to commit hash STR."
   (declare (indent defun))
   ;; :built-in t is basically an alias for :ignore (locate-library NAME)
@@ -607,7 +624,7 @@ specifiy a lockfile and profile. NAME is the package name.
   (when (memq name zenit-disabled-packages)
     (setq ignore t))
 
-  ;; Set lockfile if to 'pinned if :pin is non-nil
+  ;; Set lockfile to 'pinned if :pin is non-nil
   (when pin
     (setq lockfile 'pinned))
   (unless ignore

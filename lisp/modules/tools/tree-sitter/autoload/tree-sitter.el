@@ -8,16 +8,15 @@
   "Dispatch to turn on tree sitter.
 
 Used as a hook function which turns on highlighting provided by
-`treesit-langs' selectively according to `+tree-sitter-hl-enabled-modes'"
-  ;; Conditionally enable `tree-sitter-hl-mode'
-  (let ((mode (bound-and-true-p tree-sitter-hl-mode)))
-    (when-let* ((mode (if (pcase +tree-sitter-hl-enabled-modes
-                            (`(not . ,modes) (not (memq major-mode modes)))
-                            ((and `(,_ . ,_) modes) (memq major-mode modes))
-                            (bool bool))
-                          (unless mode t)
-                        (if mode nil))))
-      (treesit-hl-toggle mode))))
+`treesit-langs' selectively."
+  (treesit-hl-toggle (not treesit-hl--enabled))
+  ;; HACK 2025-08-27: `treesit-hl-toggle' will remove `font-lock' settings
+  ;;   from other packages such as `hl-todo'. Because using `treesit-langs'
+  ;;   is supposed to be a temporary solution, we just use a simple hack.
+  (when (bound-and-true-p hl-todo-mode)
+    (hl-todo-mode +1))
+  (when (bound-and-true-p outline-minor-faces-mode)
+    (outline-minor-faces-mode +1)))
 
 ;;;###autodef (fset 'set-tree-sitter! #'ignore)
 (defun set-tree-sitter! (mode ts-mode &optional recipes)

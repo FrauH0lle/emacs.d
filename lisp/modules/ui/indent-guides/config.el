@@ -24,6 +24,7 @@ the mode will not be activated."
       (indent-bars-mode +1)))
   :config
   (setq!
+   indent-bars-treesit-support (modulep! :tools tree-sitter)
    ;; Show indent guides starting from the first column.
    indent-bars-starting-column 0
    ;; Slightly thinner bars

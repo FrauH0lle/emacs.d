@@ -1,12 +1,5 @@
 ;; tools/tree-sitter/config.el -*- lexical-binding: t; -*-
 
-(defvar +tree-sitter-hl-enabled-modes '(not web-mode typescript-tsx-mode)
-  "A list of major modes which should be highlighted by tree-sitter.
-
-If this list begins with `not', then it negates the list.
-If it is t, it is enabled in all modes.
-If nil, it is disabled in all modes")
-
 ;;
 ;;; Packages
 
@@ -38,7 +31,7 @@ If nil, it is disabled in all modes")
              major-mode-remap-defaults)))
       (funcall fn mode)))
 
-  ;; Increase the highlighting
+  ;; Increase the highlighting/christmas tree
   (setq! treesit-font-lock-level 4)
 
   ;; TODO: Move most of these out to modules

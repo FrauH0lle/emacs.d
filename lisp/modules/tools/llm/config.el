@@ -261,8 +261,8 @@ guaranteed to be the response buffer."
   (load! "macher-tools"))
 
 
-(use-package! macher-instruct
+(use-package! mevedel
   :after macher
   :config
-  (setq! macher-instruct-empty-tag-query-matches-all nil))
-
+  (setq! mevedel-empty-tag-query-matches-all nil)
+  (mevedel-install))

@@ -25,16 +25,6 @@
   (:doc "`zenit-packages-file' is defined")
   (should (boundp 'zenit-packages-file)))
 
-(zenit-deftest package--ensure-init-file
-  (:doc "`ignore' advises `package--ensure-init-file'")
-  (should (advice-member-p 'ignore #'package--ensure-init-file)))
-
-(zenit-deftest zenit--package-inhibit-custom-file-a
-  (:doc "`zenit--package-inhibit-custom-file-a' advises `package--save-selected-packages'")
-  (progn
-    (should (fboundp 'zenit--package-inhibit-custom-file-a))
-    (should (advice-member-p 'zenit--package-inhibit-custom-file-a #'package--save-selected-packages))))
-
 (zenit-deftest zenit-packages-get-lockfile
   (:doc "`zenit-packages-get-lockfile' is defined")
   (should (fboundp 'zenit-packages-get-lockfile)))

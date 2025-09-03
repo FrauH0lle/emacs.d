@@ -188,6 +188,7 @@ If ALL is non-nil, simply remove all files in the eln cache."
   "Ensure packages are installed, built"
   (require 'zenit-packages)
   (zenit-initialize-packages)
+  (print! "straight-vc-use-snapshot-installation is: %s" straight-vc-use-snapshot-installation)
   (if (not (file-directory-p (straight--repos-dir)))
       (print! (start "Installing all packages for the first time (this may take a while)..."))
     (if force-p

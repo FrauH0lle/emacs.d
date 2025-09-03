@@ -65,9 +65,8 @@
     (cl-pushnew map treesit-language-source-alist :test #'eq :key #'car)))
 
 (use-package! treesit-langs
-  :after treesit
+  :defer t
   :config
-  (setq treesit-langs--queries-dir (file-name-concat (file-name-directory (locate-library "tree-sitter-langs.el")) "queries"))
   ;; The setup is handled by Emacs itself
   (advice-add #'treesit-lang--setup :override #'ignore))
 

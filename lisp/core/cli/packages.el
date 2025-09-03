@@ -76,6 +76,7 @@
         (let ((esc (if init-file-debug "" "\033[1A"))
               (ref (straight-vc-get-commit type local-repo))
               newref output)
+          (straight-vc-normalize recipe :convert-snapshots t)
           (print! (start "\rUpdating recipes for %s...%s") package esc)
           (zenit--straight-with (straight-vc-fetch-from-remote recipe)
             (when .it
@@ -393,6 +394,12 @@ If ALL is non-nil, simply remove all files in the eln cache."
                       (print! (item "\r(%d/%d) %s is up-to-date...%s") i total package esc)
                       (cl-return))
 
+                     ((file-exists-p ".straight-commit")
+                      (print! (start "\r(%d/%d) Downloading %s...%s") i total package esc)
+                      (delete-directory default-directory t)
+                      (straight-vc-git-clone recipe target-ref)
+                      (zenit--same-commit-p target-ref (straight-vc-get-commit type local-repo)))
+
                      ;; Target commit present but not checked out, check out
                      ;; target commit
                      ((if (straight-vc-commit-present-p recipe target-ref)
@@ -454,7 +461,7 @@ If ALL is non-nil, simply remove all files in the eln cache."
                           (if (> n 0)
                               (format " (w/ %d dependents)" n)
                             "")))
-                (unless (string-empty-p output)
+                (when (and (stringp output) (not (string-empty-p output)))
                   (let ((lines (split-string output "\n")))
                     (setq output
                           (if (> (length lines) 20)

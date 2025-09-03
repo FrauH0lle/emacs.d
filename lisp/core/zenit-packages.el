@@ -71,7 +71,11 @@ declaration.")
         ;; Packages which are pinned to a specific commit.
         (pinned . "pinned.el")
         ;; Packages registered in the packages.el file in `zenit-local-conf-dir'
-        (local . "local.el")))
+        (local . "local.el"))
+      ;; Install archives from forges instead of cloning them. Much faster and
+      ;; lighter.
+      straight-vc-use-snapshot-installation (and (executable-find "tar") t))
+
 
 (with-eval-after-load 'straight
   ;; HACK: We want to defer the compilation of the .elc files in order to save

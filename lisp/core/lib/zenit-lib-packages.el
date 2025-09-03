@@ -135,56 +135,72 @@ will used as candidates."
   (let* ((packages (zenit-package-list 'all))
          (modules (plist-get (alist-get package packages) :modules))
          (lockfiles (delq nil (mapcar #'zenit-packages-get-lockfile (plist-get (alist-get package packages) :lockfile))))
-         (recipe (gethash (symbol-name package) straight--recipe-cache))
-         (local-repo (plist-get (gethash (symbol-name package) straight--recipe-cache) :local-repo)))
-    (cl-block nil
-      (unless local-repo
-        (cl-return (message "The package %s isn't installed" package)))
-      (unless modules
-        (cl-return (message "The package %s isn't installed by any module" package)))
-      (unless lockfiles
-        (cl-return (message "The package %s does not have a lockfile and is probably built-in" package)))
-      (unless commit
-        (setq commit
-              (if current-prefix-arg
-                  (read-from-minibuffer (format "New commit for %s (leave empty to keep current): " package))
-                (if-let* ((default-directory (straight--repos-dir local-repo))
-                          (fetched (straight-vc-fetch-from-remote recipe)))
-                    (let* ((candidates (straight--process-with-result
-                                           (straight--process-run
-                                            "git" "log" "FETCH_HEAD" "--oneline" "--format=\"%h (%as) %s | %H\"" "-n" "50")
-                                         (if success
-                                             (let* ((output (string-trim-right (or stdout "")))
-                                                    (lines (split-string output "\n")))
-                                               (mapcar (lambda (x) (split-string (string-replace "\"" "" x) "|" t "[ ]+")) lines))
-                                           (format "ERROR: Couldn't collect commit list because: %s" stderr))))
-                           vertico-sort-function
-                           (choice (completing-read (format "New commit for %s (leave empty to keep current): " package) candidates)))
-                      (or (car (alist-get choice candidates nil nil #'equal)) ""))
-                  ""))))
-      (dolist (lockfile lockfiles)
-        (when-let* ((pin-list (straight--lockfile-read lockfile)))
-          (let* ((old-commit (alist-get local-repo pin-list nil nil #'equal))
-                 (new-commit (if (string-blank-p commit) old-commit commit)))
-            (if (null new-commit)
-                (user-error "No commit specified")
-              (setf (alist-get local-repo pin-list nil nil #'equal) new-commit))
-            (let ((kw (with-temp-buffer
-                        (insert-file-contents lockfile)
-                        (goto-char (point-max))
-                        (let (match)
-                          (when (re-search-backward "^\\(:.+\\)$" nil t)
-                            (setq match (match-string 1)))
-                          match))))
-              (with-temp-file lockfile
-                (insert
-                 (format
-                  "(%s)\n%s\n"
-                  (mapconcat
-                   (apply-partially #'format "%S")
-                   pin-list
-                   "\n ")
-                  kw))))))))))
+         (recipe (gethash (symbol-name package) straight--recipe-cache)))
+    (straight-vc-git--destructure recipe
+        (package local-repo branch remote host protocol repo)
+      (cl-block nil
+        (unless local-repo
+          (cl-return (message "The package %s isn't installed" package)))
+        (unless modules
+          (cl-return (message "The package %s isn't installed by any module" package)))
+        (unless lockfiles
+          (cl-return (message "The package %s does not have a lockfile and is probably built-in" package)))
+        (unless commit
+          (setq commit
+                (if current-prefix-arg
+                    (read-from-minibuffer (format "New commit for %s (leave empty to keep current): " package))
+                  (if-let* ((default-directory (straight--repos-dir local-repo))
+                            (temp-repo-dir (straight--repos-dir (concat local-repo ".tmp"))))
+                      (let* ((candidates (straight--process-with-result
+                                             (and (if (file-exists-p ".straight-commit")
+                                                      (progn
+                                                        ;; Do a shallow clone
+                                                        (straight-vc-git--clone-internal
+                                                         :depth '(1 single-branch)
+                                                         :remote remote
+                                                         :url (straight-vc-git--encode-url repo host protocol)
+                                                         :repo-dir temp-repo-dir
+                                                         :branch branch)
+                                                        ;; Only fetch the commit metadata
+                                                        (let ((straight--default-directory temp-repo-dir))
+                                                          (straight--process-run "git" "fetch" "--unshallow" "--filter=tree:0")))
+                                                    (straight-vc-fetch-from-remote recipe))
+                                                  (let ((straight--default-directory temp-repo-dir))
+                                                    (straight--process-run
+                                                     "git" "log" "FETCH_HEAD" "--oneline" "--format=\"%h (%as) %s | %H\"" "-n" "50")))
+                                           (delete-directory temp-repo-dir 'recursive)
+                                           (if success
+                                               (let* ((output (string-trim-right (or stdout "")))
+                                                      (lines (split-string output "\n")))
+                                                 (mapcar (lambda (x) (split-string (string-replace "\"" "" x) "|" t "[ ]+")) lines))
+                                             (format "ERROR: Couldn't collect commit list because: %s" stderr))))
+                             vertico-sort-function
+                             (choice (completing-read (format "New commit for %s (leave empty to keep current): " package) candidates)))
+                        (or (car (alist-get choice candidates nil nil #'equal)) ""))
+                    ""))))
+        (dolist (lockfile lockfiles)
+          (when-let* ((pin-list (straight--lockfile-read lockfile)))
+            (let* ((old-commit (alist-get local-repo pin-list nil nil #'equal))
+                   (new-commit (if (string-blank-p commit) old-commit commit)))
+              (if (null new-commit)
+                  (user-error "No commit specified")
+                (setf (alist-get local-repo pin-list nil nil #'equal) new-commit))
+              (let ((kw (with-temp-buffer
+                          (insert-file-contents lockfile)
+                          (goto-char (point-max))
+                          (let (match)
+                            (when (re-search-backward "^\\(:.+\\)$" nil t)
+                              (setq match (match-string 1)))
+                            match))))
+                (with-temp-file lockfile
+                  (insert
+                   (format
+                    "(%s)\n%s\n"
+                    (mapconcat
+                     (apply-partially #'format "%S")
+                     pin-list
+                     "\n ")
+                    kw)))))))))))
 
 ;;;###autoload
 (defun zenit/bump-module (category &optional module)

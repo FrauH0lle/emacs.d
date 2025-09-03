@@ -45,7 +45,7 @@
 ;;    loaded, --no-site-file skips loading site files, and --batch runs Emacs in
 ;;    non-interactive mode.
 
-;; 7) :; $emacs --load "$0" -- "$@" || exit=$?
+;; 7) :; eval "$emacs --load" "$0" -- "$@" || exit=$?
 ;;
 ;;    This line runs Emacs, loading the script itself ($0) and passing any
 ;;    command-line arguments ("$@"). If the command fails, it stores the exit

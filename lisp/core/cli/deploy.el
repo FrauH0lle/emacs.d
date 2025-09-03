@@ -14,6 +14,7 @@
 
   ;; Initialize packages
   (print! "Installing packges")
+  (print! "straight-vc-use-snapshot-installation is: %s" straight-vc-use-snapshot-installation)
   (zenit-cli-packages-ensure)
 
   (print! "Regenerating autoloads files")

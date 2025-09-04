@@ -17,7 +17,8 @@
           (tree-sitter-langs-queries-dir (file-name-concat tree-sitter-langs-dir "queries")))
      (when (and (file-exists-p tree-sitter-langs-queries-dir)
                 (not (file-exists-p treesit-langs-queries-dir)))
-       (straight--symlink-recursively tree-sitter-langs-queries-dir treesit-langs-queries-dir)))))
+       (straight--symlink-recursively tree-sitter-langs-queries-dir treesit-langs-queries-dir))))
+  :lockfile tools_tree-sitter)
 
 (package! tree-sitter-langs
   :recipe (:files ("queries")

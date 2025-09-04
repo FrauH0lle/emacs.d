@@ -7,15 +7,32 @@
 ;;
 ;;; Packages
 
+;; HACK: `rust-mode' and `rustic' add entries to `auto-mode-alist', but package
+;;   load order makes which gets precedence unpredictable. By removing them
+;;   early, we rely on our own entries in `auto-mode-alist' and
+;;   `major-mode-remap-defaults' to ensure correct order.
+(cl-callf2 rassq-delete-all 'rust-mode auto-mode-alist)
+(cl-callf2 rassq-delete-all 'rustic-mode auto-mode-alist)
+
+(use-package! rust-mode
+  :defer t
+  :preface
+  ;; Ensure rust-mode derives from rust-ts-mode, b/c rustic-mode derives from
+  ;; rust-mode. This way, rustic-mode is the only major mode we have to worry
+  ;; about.
+  (setq rust-mode-treesitter-derive (modulep! +tree-sitter))
+
+  :config
+  (setq rust-indent-method-chain t)
+
+  ;; Load order is important for these two packages.
+  (let (auto-mode-alist)
+    (require 'rustic nil t)))
+
 (use-package! rustic
   :mode ("\\.rs\\'" . rustic-mode)
+  :defer t
   :preface
-  ;; HACK: `rust-mode' and `rustic' add entries to `auto-mode-alist', but
-  ;;   package load order makes which gets precedence unpredictable. By removing
-  ;;   them early, we rely on the `:mode' directives above to re-insert them
-  ;;   with the correct order.
-  (setq auto-mode-alist (assoc-delete-all "\\.rs\\'" auto-mode-alist))
-
   ;; HACK `rustic' sets up some things too early. I'd rather disable it and let
   ;;   our respective modules standardize how they're initialized.
   (setq rustic-lsp-client nil)
@@ -26,9 +43,13 @@
     (remove-hook 'rustic-mode-hook #'flymake-mode-off)
     (remove-hook 'flycheck-mode-hook #'rustic-flycheck-setup))
   :init
+  (eval-when! (modulep! +tree-sitter)
+    (set-tree-sitter! 'rust-mode 'rustic-mode
+      `((rust :url "https://github.com/tree-sitter/tree-sitter-rust"))))
+
   ;; HACK Certainly, `rustic-babel' does this, but the package (and many other
   ;;   rustic packages) must be loaded in order for them to take effect. To lazy
-  ;;   load it all, we must do it early:
+  ;;   load it all, it must be done earlier:
   (after! org-src
     (defalias 'org-babel-execute:rust #'org-babel-execute:rustic)
     (add-to-list 'org-src-lang-modes '("rust" . rustic)))
@@ -69,8 +90,6 @@
         (add-hook 'lsp-mode-hook #'+rust-extend-imenu-h 'append)
       (add-hook 'eglot-managed-mode-hook #'+rust-extend-imenu-h 'append)))
 
-  (setq rustic-indent-method-chain t)
-
   ;; Leave automatic reformatting to the :editor format module.
   (setq rustic-babel-format-src-block nil
         rustic-format-trigger nil)
@@ -84,7 +103,7 @@
             'lsp-mode))
     (add-hook 'rustic-mode-local-vars-hook #'rustic-setup-lsp 'append)
 
-    (eval-unless! (modulep! :tools lsp +eglot)
+    (eval-when! (modulep! :tools lsp -eglot)
       (after! lsp-rust
         ;; These are optional configurations. See
         ;; https://emacs-lsp.github.io/lsp-mode/page/lsp-rust-analyzer/#lsp-rust-analyzer-display-chaining-hints
@@ -123,13 +142,6 @@
                            (--map (s-trim it))
                            (s-join " "))))
             (lsp--render-element (concat "```rust\n" sig cmt "\n```")))))))
-
-  (eval-when! (modulep! +tree-sitter)
-    (after! treesit
-      (cl-pushnew '(rust "https://github.com/tree-sitter/tree-sitter-rust" nil nil nil nil)
-                  treesit-language-source-alist :test #'eq :key #'car))
-    (treesit-ensure-installed 'rust)
-    (add-hook 'rustic-mode-local-vars-hook #'tree-sitter! 'append))
 
   ;; HACK If lsp/eglot isn't available, it attempts to install lsp-mode via
   ;;   package.el. Doom manages its own dependencies through straight so disable

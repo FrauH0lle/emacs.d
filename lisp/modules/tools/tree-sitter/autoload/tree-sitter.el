@@ -26,53 +26,40 @@ MODE and TS-MODE are major mode symbols. If RECIPES is provided, fall back to
 MODE if RECIPES don't pass `treesit-ready-p' when activating TS-MODE. Use this
 for ts modes that error out instead of failing gracefully.
 
-RECIPES are an alist of plists with the format (LANG &key URL REV SOURCE-DIR CC
-CPP COMMIT), which will be transformed into entries for
-`treesit-language-source-alist' (which descrie what each of these keys mean).
-Note that COMMIT is only available in Emacs >=31."
+RECIPES is a symbol (a grammar language name), list thereof, or alist of plists
+with the format (LANG &key URL REV SOURCE-DIR CC CPP COMMIT). If an alist of
+plists, it will be transformed into entries for `treesit-language-source-alist'
+(which describe what each of these keys mean). Note that COMMIT is ignored
+pre-Emacs 31."
   (declare (indent 2))
-  (cl-check-type mode symbol)
+  (cl-check-type mode (or list symbol))
   (cl-check-type ts-mode symbol)
-  (setq recipes (ensure-list recipes))
-  (dolist (m (ensure-list mode))
-    (add-to-list
-     '+tree-sitter--major-mode-remaps-alist
-     (cons
-      m (let (ensured?)
-          (lambda ()
-            (funcall
-             ;; Because standard major-mode remapping doesn't offer graceful
-             ;; failure in some cases, I implement it myself:
-             (cond ((null recipes) m)
-                   ((not (fboundp ts-mode))
-                    (message "Couldn't find %S, using %S instead" ts-mode m)
-                    m)
-                   ((and (fboundp 'treesit-available-p)
-                         (treesit-available-p)
-                         (fboundp ts-mode)
-                         ;; Only prompt once, and log other times.
-                         (cl-every (if ensured?
-                                       (zenit-rpartial #'treesit-ready-p 'message)
-                                     #'treesit-ensure-installed)
-                                   (cl-loop for r in recipes
-                                            if (listp r)
-                                            collect (car r)
-                                            else collect (list r))))
-                    ts-mode)
-                   ((setq ensured? t)
-                    m))))))))
-  (with-eval-after-load 'treesit
-    (dolist (recipe recipes)
-      (cl-destructuring-bind (name &key url rev source-dir cc cpp commit)
-          (ensure-list recipe)
-        (setf (alist-get name treesit-language-source-alist)
-              (append (list url rev source-dir cc cpp)
-                      ;; COMPAT: 31.1 introduced a COMMIT recipe argument. On
-                      ;;   <=30.x, extra arguments will trigger an arity error
-                      ;;   when installing grammars.
-                      (if (eq (cdr (func-arity 'treesit--install-language-grammar-1))
-                              'many)
-                          (list commit))))))))
+  (let ((recipes (mapcar #'ensure-list (ensure-list recipes))))
+    (dolist (m (or (ensure-list mode) (list nil)))
+      (when m
+        (setf (alist-get m major-mode-remap-defaults) ts-mode))
+      (put ts-mode '+tree-sitter (cons m (mapcar #'car recipes))))
+    (when-let* ((fn (intern-soft (format "%s-maybe" ts-mode))))
+      (cl-callf2 rassq-delete-all fn auto-mode-alist)
+      (cl-callf2 rassq-delete-all fn interpreter-mode-alist))
+    (when-let* ((recipes (cl-delete-if-not #'cdr recipes)))
+      (with-eval-after-load 'treesit
+        (dolist (recipe recipes)
+          (cl-destructuring-bind (name &key url rev source-dir cc cpp commit) (ensure-list recipe)
+            (setf (alist-get name treesit-language-source-alist)
+                  (append (list url rev source-dir cc cpp)
+                          ;; COMPAT: 31.1 introduced a COMMIT recipe argument.
+                          ;;   On <=30.x, extra arguments will trigger an arity
+                          ;;   error when installing grammars.
+                          (if (eq (cdr (func-arity 'treesit--install-language-grammar-1))
+                                  'many)
+                              (list commit))))))))))
+
+;;;###autoload
+(defun +tree-sitter-ts-mode-inhibit-side-effects-a (fn &rest args)
+  "Suppress changes to `auto-mode-alist' and `interpreter-mode-alist'."
+  (let (auto-mode-alist interpreter-mode-alist)
+    (apply fn args)))
 
 ;;;###autoload
 (defun +tree-sitter-get-textobj (group &optional query)

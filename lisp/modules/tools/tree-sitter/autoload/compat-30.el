@@ -6,6 +6,14 @@
 
 (autoload 'treesit-ready-p "treesit")
 
+;; In case of Emacs builds where treesit isn't built in (to avoid void-function
+;; errors and verbose, redundant checks everywhere).
+;;;###autodef
+(unless (fboundp 'treesit-available-p)
+  (defun treesit-available-p ()
+    "Return non-nil if tree-sitter support is built-in and available."
+    nil))
+
 ;;;###autoload
 (defcustom treesit-auto-install-grammar 'ask
   "Whether to install tree-sitter language grammar libraries when needed.

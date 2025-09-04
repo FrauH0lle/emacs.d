@@ -49,10 +49,17 @@ the mode will not be activated."
     ;; Don't display indent guides in childframe popups (not helpful in
     ;; completion or eldoc popups).
     (defun +indent-guides-in-childframe-p ()
-      (frame-parent)))
+      (frame-parent))
+
+    ;; indent-guides in src blocks can cause syntax highlighting to fail
+    ;; abruptly for some major modes (particularly *-ts-modes or rustic-mode).
+    ;; Since it's already working on the super org buffer, it's redundant to let
+    ;; it work on the contents of each babel block.
+    (defun +indent-guides-in-org-src-block-p ()
+      (string-prefix-p " *org-src-fontification:" (buffer-name))))
 
 
-  ;; HACK 2024-09-15: `indent-bars-mode' interactions with some packages poorly.
+  ;; HACK 2024-09-15: `indent-bars-mode' interacts with some packages poorly.
   ;;   This section is dedicated to package interop fixes.
 
   ;; HACK: The way `indent-bars-display-on-blank-lines' functions, it places

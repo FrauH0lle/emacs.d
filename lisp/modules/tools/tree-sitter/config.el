@@ -7,6 +7,92 @@
   :when (fboundp 'treesit-available-p)
   :when (treesit-available-p)
   :defer t
+  :preface
+  (setq treesit-enabled-modes t)
+
+  ;; HACK: The *-ts-mode major modes are inconsistent about how they treat
+  ;;   missing language grammars (some error out, some respect
+  ;;   `treesit-auto-install-grammar', some fall back to `fundamental-mode').
+  ;;   I'd like to address this poor UX using `major-mode-remap-alist' entries
+  ;;   created by `set-tree-sitter!' (which will fall back to the non-treesit
+  ;;   modes), but most *-ts-mode's clobber `auto-mode-alist' and/or
+  ;;   `interpreter-mode-alist' each time the major mode is activated, so those
+  ;;   must be undone too so they don't overwrite user config.
+  (save-match-data
+    (dolist (sym '(auto-mode-alist interpreter-mode-alist))
+      (set
+       sym (cl-loop for (src . fn) in (symbol-value sym)
+                    unless (and (functionp fn)
+                                (string-match "-ts-mode\\(?:-maybe\\)?$" (symbol-name fn)))
+                    collect (cons src fn)))))
+
+  ;; HACK: These *-ts-modes change `auto-mode-alist' and/or
+  ;;   `interpreter-mode-alist' every time they are activated, running the risk
+  ;;   of overwriting user config.
+  (dolist (mode '(csharp-ts-mode
+                  python-ts-mode))
+    (advice-add mode :around #'+tree-sitter-ts-mode-inhibit-side-effects-a))
+
+  ;; HACK: Intercept all ts-mode major mode remappings so grammars can be
+  ;;   dynamically checked and `treesit-auto-install-grammar' can be
+  ;;   consistently respected (which isn't currently the case with the majority
+  ;;   of ts-modes, even the built-in ones).
+  (defadvice! +tree-sitter--maybe-remap-major-mode-a (fn mode)
+    :around #'major-mode-remap
+    (let ((mode (funcall fn mode)))
+      (if-let* ((ts (get mode '+tree-sitter))
+                (fallback-mode (car ts)))
+          (cond ((or (not (fboundp 'treesit-available-p))
+                     (not (treesit-available-p)))
+                 (message "Treesit unavailable, falling back to `%S'" fallback-mode)
+                 fallback-mode)
+                ((not (fboundp mode))
+                 (message "Couldn't find `%S', falling back to `%S'" mode fallback-mode)
+                 fallback-mode)
+                ((and (or (eq treesit-enabled-modes t)
+                          (memq fallback-mode treesit-enabled-modes))
+                      ;; Lazily load autoloaded `treesit-language-source-alist'
+                      ;; entries.
+                      (let ((fn (symbol-function mode))
+                            ;; Silence "can't find grammar" warning popups from
+                            ;; `treesit-ready-p' calls in Emacs <=30.1. We'll
+                            ;; log it to *Messages* instead.
+                            (warning-suppress-types
+                             (if zenit-debug-mode
+                                 warning-suppress-types
+                               (cons '(treesit) warning-suppress-types))))
+                        (or (not (autoloadp fn))
+                            ;; ts-modes usually change these alists at autoload
+                            ;; *and* load time.
+                            (let (auto-mode-alist interpreter-mode-alist)
+                              (autoload-do-load fn mode))))
+                      ;; Only prompt once, and log other times.
+                      (or (null (cdr ts))  ; no grammars, no problem!
+                          ;; If the base/fallback mode doesn't exist, let's
+                          ;; assume we want no fallthrough for this major mode
+                          ;; and push forward anyway, even if a missing grammar
+                          ;; results in a broken state.
+                          (not (fboundp fallback-mode))
+                          ;; Ensure grammars are present (and prompt to install
+                          ;; them if needed).
+                          (if-let* ((grammars
+                                     (cl-remove-if (zenit-rpartial #'treesit-ready-p 'message)
+                                                   (cdr ts))))
+                              (if (or (eq treesit-auto-install-grammar 'always)
+                                      (if (eq treesit-auto-install-grammar 'ask)
+                                          (y-or-n-p
+                                           (format "Missing tree-sitter grammars: %s\nInstall now?"
+                                                   (mapconcat #'symbol-name grammars ", ")))))
+                                  (mapc #'treesit-install-language-grammar grammars)
+                                (message "Treesit grammars missing (%s), falling back to `%s'..."
+                                         (mapconcat #'symbol-name grammars ", ")
+                                         fallback-mode)
+                                nil)
+                            t)))
+                 (put mode '+tree-sitter-ensured t)
+                 mode)
+                (fallback-mode))
+        mode)))
   :config
   (cl-pushnew (file-name-concat zenit-data-dir "tree-sitter") treesit-extra-load-path :test #'equal)
   ;; HACK: treesit lacks any way to dictate where to install grammars.
@@ -17,20 +103,6 @@
     (let ((user-emacs-directory zenit-data-dir))
       (apply fn args)))
 
-  ;; HACK: Some *-ts-mode packages modify `major-mode-remap-defaults'
-  ;;   inconsistently. Playing whack-a-mole to undo those changes is more hassle
-  ;;   then simply ignoring them (by overriding `major-mode-remap-defaults' for
-  ;;   any modes remapped with `set-tree-sitter!'). The user shouldn't touch
-  ;;   `major-mode-remap-defaults' anyway; `major-mode-remap-alist' will always
-  ;;   have precedence.
-  (defadvice! +tree-sitter--ignore-default-major-mode-remaps-a (fn mode)
-    :around #'major-mode-remap
-    (let ((major-mode-remap-defaults
-           (if-let* ((m (assq mode +tree-sitter--major-mode-remaps-alist)))
-               +tree-sitter--major-mode-remaps-alist
-             major-mode-remap-defaults)))
-      (funcall fn mode)))
-
   ;; Increase the highlighting/christmas tree
   (setq! treesit-font-lock-level 4)
 
@@ -38,23 +110,17 @@
   (dolist (map '((awk "https://github.com/Beaglefoot/tree-sitter-awk" nil nil nil nil)
                  (bibtex "https://github.com/latex-lsp/tree-sitter-bibtex" nil nil nil nil)
                  (blueprint "https://github.com/huanie/tree-sitter-blueprint" nil nil nil nil)
-                 (c-sharp "https://github.com/tree-sitter/tree-sitter-c-sharp" nil nil nil nil)
                  (commonlisp "https://github.com/tree-sitter-grammars/tree-sitter-commonlisp" nil nil nil nil)
-                 (css "https://github.com/tree-sitter/tree-sitter-css" nil nil nil nil)
-                 (html "https://github.com/tree-sitter/tree-sitter-html" nil nil nil nil)
-                 (java "https://github.com/tree-sitter/tree-sitter-java" nil nil nil nil)
-                 (javascript "https://github.com/tree-sitter/tree-sitter-javascript" "master" "src" nil nil)
                  (latex "https://github.com/latex-lsp/tree-sitter-latex" nil nil nil nil)
                  (make "https://github.com/tree-sitter-grammars/tree-sitter-make" nil nil nil nil)
                  (nu "https://github.com/nushell/tree-sitter-nu" nil nil nil nil)
                  (org "https://github.com/milisims/tree-sitter-org" nil nil nil nil)
                  (perl "https://github.com/ganezdragon/tree-sitter-perl" nil nil nil nil)
                  (proto "https://github.com/mitchellh/tree-sitter-proto" nil nil nil nil)
+                 (r "https://github.com/r-lib/tree-sitter-r" nil nil nil nil)
                  (sql "https://github.com/DerekStride/tree-sitter-sql" "gh-pages" nil nil nil)
                  (surface "https://github.com/connorlay/tree-sitter-surface" nil nil nil nil)
                  (toml "https://github.com/tree-sitter/tree-sitter-toml" nil nil nil nil)
-                 (tsx "https://github.com/tree-sitter/tree-sitter-typescript" "master" "tsx/src" nil nil)
-                 (typescript "https://github.com/tree-sitter/tree-sitter-typescript" "master" "typescript/src" nil nil)
                  (typst "https://github.com/uben0/tree-sitter-typst" "master" "src" nil nil)
                  (verilog "https://github.com/gmlarumbe/tree-sitter-verilog" nil nil nil nil)
                  (vhdl "https://github.com/alemuller/tree-sitter-vhdl" nil nil nil nil)

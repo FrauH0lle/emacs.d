@@ -39,6 +39,7 @@
 
 ;; core-projects.el
 (package! projectile :lockfile core)
+(package! project :lockfile core)
 
 ;; core-keybinds.el
 (package! general :lockfile core)

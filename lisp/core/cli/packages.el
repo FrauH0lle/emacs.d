@@ -73,6 +73,8 @@
            nil (mapcar (zenit-rpartial #'gethash straight--repo-cache)
                        (mapcar #'symbol-name straight-recipe-repositories)))
           (recipe package type local-repo)
+          ;; Ensure recipe repo exists
+          (straight-use-package (intern package))
         (let ((esc (if init-file-debug "" "\033[1A"))
               (ref (straight-vc-get-commit type local-repo))
               newref output)

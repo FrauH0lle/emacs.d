@@ -630,18 +630,24 @@ ARGS same as MELPA-STYLE-RECIPE in `straight-register-package'.
     (unless (memq lockfile '(ignore nil t))
       (pushnew! straight-profiles `(,(zenit-unquote lockfile) . ,(format "%s.el" (zenit-unquote lockfile)))))
     ;; Set `straight-current-profile' according to lockfile
-    (let ((lockfile-profile (pcase lockfile
-                              ((or `nil `t) nil)
-                              (`ignore 'ignore)
-                              (`pinned 'pinned)
-                              (_ lockfile))))
+    (let ((lockfile-profile (if (eq (car (zenit-module-from-path (protect-macros! (file!)))) :local-conf)
+                                'local
+                              (pcase lockfile
+                                ((or `nil `t) nil)
+                                (`ignore 'ignore)
+                                (`pinned 'pinned)
+                                (_ lockfile)))))
       `(let ((straight-current-profile ',(zenit-unquote lockfile-profile)))
          ;; Explicitly register dependencies so they don't get purged and add
          ;; them to the load-path. Use a virtual straight profile so later on, a
          ;; lockfile will not be written for it.
          (zenit--process-pkg-dependencies ,(symbol-name name))
          ,(if recipe
-              `(straight-register-package '(,name ,@recipe))
+              `(progn
+                 (when (gethash (symbol-name ',name) straight--recipe-cache)
+                   (remhash (symbol-name ',name) straight--recipe-cache))
+                 (straight-override-recipe '(,name ,@recipe))
+                 (straight-register-package '(,name ,@recipe)))
             `(straight-register-package ',name))
          ,(when (and (eq lockfile 'pinned) pin)
             `(add-to-list 'straight-x-pinned-packages

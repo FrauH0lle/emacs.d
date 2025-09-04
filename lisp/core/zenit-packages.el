@@ -74,9 +74,7 @@ declaration.")
         (local . "local.el"))
       ;; Install archives from forges instead of cloning them. Much faster and
       ;; lighter.
-      ;; straight-vc-use-snapshot-installation (and (executable-find "tar") t)
-      straight-recipes-gnu-elpa-use-mirror nil
-      )
+      straight-vc-use-snapshot-installation (and (executable-find "tar") t))
 
 
 (with-eval-after-load 'straight

@@ -19,6 +19,7 @@
  ("nerd-icons.el" . "6868c05c6eb56c6625ee7fa38450b514542ab636")
  ("nongnu-elpa" . "d2dc93060bb1872f396d744b7ab856623f24b512")
  ("projectile" . "9325c45e0fd96d5421e75ad901a91ee5353e10ad")
+ ("project" . "a0ebb2e9cfda339d8ebda77447c9d822fe313c2d")
  ("rainbow-delimiters" . "f40ece58df8b2f0fb6c8576b527755a552a5e763")
  ("restart-emacs" . "1607da2bc657fe05ae01f7fdf26f716eafead02c")
  ("smartparens" . "b629b4e893ba21ba5a381f6c0054bb72f8e96df2")

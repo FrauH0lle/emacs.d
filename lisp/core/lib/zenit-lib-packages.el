@@ -135,12 +135,16 @@ will used as candidates."
   (let* ((packages (zenit-package-list 'all))
          (modules (plist-get (alist-get package packages) :modules))
          (lockfiles (delq nil (mapcar #'zenit-packages-get-lockfile (plist-get (alist-get package packages) :lockfile))))
-         (recipe (gethash (symbol-name package) straight--recipe-cache)))
+         (recipe (gethash (symbol-name package) straight--recipe-cache))
+         (recipe (or recipe
+                     (let ((rec (plist-get (alist-get package zenit-packages) :recipe)))
+                       (if rec
+                           (straight-register-package (cons package rec))
+                         (straight-register-package package))
+                       (gethash (symbol-name package) straight--recipe-cache)))))
     (straight-vc-git--destructure recipe
         (package local-repo branch remote host protocol repo)
       (cl-block nil
-        (unless local-repo
-          (cl-return (message "The package %s isn't installed" package)))
         (unless modules
           (cl-return (message "The package %s isn't installed by any module" package)))
         (unless lockfiles
@@ -149,35 +153,53 @@ will used as candidates."
           (setq commit
                 (if current-prefix-arg
                     (read-from-minibuffer (format "New commit for %s (leave empty to keep current): " package))
-                  (if-let* ((default-directory (straight--repos-dir local-repo))
-                            (temp-repo-dir (straight--repos-dir (concat local-repo ".tmp"))))
-                      (let* ((candidates (straight--process-with-result
-                                             (and (if (file-exists-p ".straight-commit")
-                                                      (progn
-                                                        ;; Do a shallow clone
-                                                        (straight-vc-git--clone-internal
-                                                         :depth '(1 single-branch)
-                                                         :remote remote
-                                                         :url (straight-vc-git--encode-url repo host protocol)
-                                                         :repo-dir temp-repo-dir
-                                                         :branch branch)
-                                                        ;; Only fetch the commit metadata
-                                                        (let ((straight--default-directory temp-repo-dir))
-                                                          (straight--process-run "git" "fetch" "--unshallow" "--filter=tree:0")))
-                                                    (straight-vc-fetch-from-remote recipe))
-                                                  (let ((straight--default-directory temp-repo-dir))
-                                                    (straight--process-run
-                                                     "git" "log" "FETCH_HEAD" "--oneline" "--format=\"%h (%as) %s | %H\"" "-n" "50")))
-                                           (delete-directory temp-repo-dir 'recursive)
-                                           (if success
-                                               (let* ((output (string-trim-right (or stdout "")))
-                                                      (lines (split-string output "\n")))
-                                                 (mapcar (lambda (x) (split-string (string-replace "\"" "" x) "|" t "[ ]+")) lines))
-                                             (format "ERROR: Couldn't collect commit list because: %s" stderr))))
-                             vertico-sort-function
-                             (choice (completing-read (format "New commit for %s (leave empty to keep current): " package) candidates)))
-                        (or (car (alist-get choice candidates nil nil #'equal)) ""))
-                    ""))))
+                  (let* ((repo-dir (straight--repos-dir local-repo))
+                         (temp-repo-dir (file-name-concat (temporary-file-directory) (make-temp-name local-repo)))
+                         (use-temp-repo-p (or (not (file-exists-p repo-dir))
+                                              (file-exists-p (file-name-concat (straight--repos-dir local-repo) ".straight-commit")))))
+                    (if (not use-temp-repo-p)
+                        (straight-vc-fetch-from-remote recipe)
+                      ;; Do a shallow clone
+                      (straight-vc-git--clone-internal
+                       :depth '(1 single-branch)
+                       :remote remote
+                       :url (straight-vc-git--encode-url repo host protocol)
+                       :repo-dir temp-repo-dir
+                       :branch branch)
+                      ;; Only fetch the commit metadata
+                      (let ((straight--default-directory temp-repo-dir))
+                        (straight--process-run "git" "fetch" "--unshallow" "--filter=tree:0")))
+
+                    (let* ((candidates (prog1
+                                           (append
+                                            ;; Collect the last 50 commits
+                                            (straight--process-with-result
+                                                (let ((straight--default-directory (or (and use-temp-repo-p temp-repo-dir)
+                                                                                       repo-dir)))
+                                                  (straight--process-run
+                                                   "git" "log" "FETCH_HEAD" "--oneline" "--format=\"(%as) %h %s | %H\"" "-50"))
+                                              (if success
+                                                  (let* ((output (string-trim-right (or stdout "")))
+                                                         (lines (split-string output "\n")))
+                                                    (mapcar (lambda (x) (split-string (string-replace "\"" "" x) "|" t "[ ]+")) lines))
+                                                (user-error "ERROR: Couldn't collect commit list because: %s" stderr)))
+                                            ;; Collect the last 20 tags
+                                            (straight--process-with-result
+                                                (let ((straight--default-directory (or (and use-temp-repo-p temp-repo-dir)
+                                                                                       repo-dir)))
+                                                  (straight--process-run
+                                                   "git" "log" "FETCH_HEAD" "--no-walk" "--tags" "--oneline" "--format=\"(%as) %h%d %s | %H\""))
+                                              (if success
+                                                  (let* ((output (string-trim-right (or stdout "")))
+                                                         (lines (split-string output "\n"))
+                                                         (lines (seq-take lines 20)))
+                                                    (mapcar (lambda (x) (split-string (string-replace "\"" "" x) "|" t "[ ]+")) lines))
+                                                (user-error "ERROR: Couldn't collect tag list because: %s" stderr))))
+                                         (delete-directory temp-repo-dir 'recursive)))
+                           vertico-sort-function
+                           (choice (completing-read (format "New commit for %s (leave empty to keep current): " package)
+                                                    (zenit-packages--sort-candidates candidates))))
+                      (or (car (alist-get choice candidates nil nil #'equal)) ""))))))
         (dolist (lockfile lockfiles)
           (when-let* ((pin-list (straight--lockfile-read lockfile)))
             (let* ((old-commit (alist-get local-repo pin-list nil nil #'equal))
@@ -202,6 +224,19 @@ will used as candidates."
                      "\n ")
                     kw)))))))))))
 
+(defun zenit-packages--sort-candidates (candidates)
+  "Sort candidates by alpha.
+
+Adapted from `vertico-sort-alpha'."
+  (let* ((buckets (make-vector 32 nil)))
+    (dolist (% candidates)
+      (let ((idx (min 31 (if (equal (car %) "") 0 (/ (aref (car %) 0) 4)))))
+          (aset buckets idx (cons % (aref buckets idx)))))
+    (nconc
+     (mapcan (lambda (bucket) (sort bucket (lambda (a b) (string> (car a) (car b)))))
+             (nbutlast (append buckets nil)))
+     (sort (aref buckets 31) (lambda (a b) (string> (car a) (car b)))))))
+
 ;;;###autoload
 (defun zenit/bump-module (category &optional module)
   "Bump packages in CATEGORY MODULE.
@@ -213,7 +248,9 @@ for each package."
                    (let ((modules (zenit-module-list 'all)))
                      (mapcar (lambda (m)
                                (if (listp m)
-                                   (format "%s %s" (car m) (cdr m))
+                                   (if (cdr m)
+                                       (format "%s %s" (car m) (cdr m))
+                                     (format "%s" (car m)))
                                  (format "%s" m)))
                              (append (delete-dups (mapcar #'car modules))
                                      modules)))

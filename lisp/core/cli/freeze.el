@@ -13,6 +13,4 @@
           (straight-vc 'normalize type recipe))))
     (delete-directory (straight--modified-dir) 'recursive)
     (print! (start "Freezing package versions..."))
-    (require 'straight-x)
-    (straight-freeze-versions t)
-    (straight-x-freeze-pinned-versions)))
+    (straight-freeze-versions t)))

@@ -39,9 +39,12 @@
 (declare-function zenit-module-list "zenit-modules" (&optional paths-or-all initorder?))
 
 ;; `zenit-packages'
+(declare-function +straight--get-lockfile-version-id "zenit-packages" ())
+(declare-function +straight--update-all-lockfile-version "zenit-packages" ())
 (declare-function zenit-initialize-packages "zenit-packages" (&optional force-p))
-(declare-function zenit-packages-get-lockfile "zenit-packages" (profile))
 (declare-function zenit-package-list "zenit-packages" (&optional module-list))
+(defvar +straight--lockfile-prefer-local-conf-versions-p)
+(defvar zenit-packages)
 
 ;; `config/default'
 (declare-function +default/search-cwd "../../modules/config/default/autoload/search.el" (&optional arg))
@@ -95,7 +98,8 @@ seperate buffer."
          nil (mapcar (zenit-rpartial #'gethash straight--repo-cache)
                      (mapcar #'symbol-name straight-recipe-repositories)))
         (type local-repo)
-      (when-let* ((lockfile (zenit-packages-get-lockfile 'core))
+      (when-let* ((lockfile (alist-get 'core straight-profiles))
+                  (lockfile (straight--versions-file lockfile))
                   (pin-list (straight--lockfile-read lockfile)))
         (let ((new-commit (straight-vc-get-commit type local-repo)))
           (if (null new-commit)
@@ -120,35 +124,38 @@ seperate buffer."
 
 (autoload #'zenit-package-list "zenit-packages")
 ;;;###autoload
-(defun zenit/bump-package (package &optional commit)
+(defun zenit/bump-package (package &optional commit local-conf)
   "Bump PACKAGE in all modules that install it.
 
-If COMMIT is nil, it will prompt the user for the new commit in
-the minibuffer. When used with the universal argument, the user
-can specify the commit directly. Otherwise the last 50 commits
-will used as candidates."
+If COMMIT is nil, it will prompt the user for the new commit in the
+minibuffer. When used with the universal argument, the user can specify
+the commit directly. Otherwise the last 50 commits will used as
+candidates.
+
+If LOCAL-CONF is non-nil, write lockfiles into
+`zenit-local-versions-dir'."
   (interactive
    (list (intern (completing-read "Bump package: "
                                   (mapcar #'car (zenit-package-list 'all))))))
   (zenit-initialize-packages)
   (zenit-packages--bump-recipe-repos)
-  (let* ((packages (zenit-package-list 'all))
-         (modules (plist-get (alist-get package packages) :modules))
-         (lockfiles (delq nil (mapcar #'zenit-packages-get-lockfile (plist-get (alist-get package packages) :lockfile))))
-         (recipe (gethash (symbol-name package) straight--recipe-cache))
-         (recipe (or recipe
-                     (let ((rec (plist-get (alist-get package zenit-packages) :recipe)))
-                       (if rec
-                           (straight-register-package (cons package rec))
-                         (straight-register-package package))
-                       (gethash (symbol-name package) straight--recipe-cache)))))
-    (straight-vc-git--destructure recipe
-        (package local-repo branch remote host protocol repo)
-      (cl-block nil
+  (cl-block nil
+    (let* ((packages (zenit-package-list 'all))
+           (modules (plist-get (alist-get package packages) :modules))
+           (_built-in-p (when (plist-get (alist-get package packages) :built-in)
+                          (cl-return (message "The package %s is built-in" package))))
+           (lockfiles (delq nil (mapcar (zenit-rpartial #'alist-get straight-profiles) (plist-get (alist-get package packages) :lockfile))))
+           (recipe (gethash (symbol-name package) straight--recipe-cache))
+           (recipe (or recipe
+                       (let ((rec (plist-get (alist-get package zenit-packages) :recipe)))
+                         (if rec
+                             (straight-register-package (cons package rec))
+                           (straight-register-package package))
+                         (gethash (symbol-name package) straight--recipe-cache)))))
+      (straight-vc-git--destructure recipe
+          (package local-repo branch remote host protocol repo)
         (unless modules
           (cl-return (message "The package %s isn't installed by any module" package)))
-        (unless lockfiles
-          (cl-return (message "The package %s does not have a lockfile and is probably built-in" package)))
         (unless commit
           (setq commit
                 (if current-prefix-arg
@@ -168,7 +175,7 @@ will used as candidates."
                        :branch branch)
                       ;; Only fetch the commit metadata
                       (let ((straight--default-directory temp-repo-dir))
-                        (straight--process-run "git" "fetch" "--unshallow" "--filter=tree:0")))
+                        (straight--process-run "git" "fetch" "--unshallow" "--filter=tree:0" "--tags")))
 
                     (let* ((candidates (prog1
                                            (append
@@ -197,32 +204,68 @@ will used as candidates."
                                                 (user-error "ERROR: Couldn't collect tag list because: %s" stderr))))
                                          (delete-directory temp-repo-dir 'recursive)))
                            vertico-sort-function
-                           (choice (completing-read (format "New commit for %s (leave empty to keep current): " package)
+                           (current-commits (cl-loop for lockfile in lockfiles
+                                                     for commit = (alist-get local-repo (straight--lockfile-read (straight--versions-file lockfile)) nil nil #'equal)
+                                                     if commit
+                                                     collect (cons lockfile commit)))
+                           (choice (completing-read (format "New commit for %s%s(leave empty to keep current):"
+                                                            package
+                                                            (if (length> current-commits 0)
+                                                                (concat
+                                                                 "\nCurrent:\n"
+                                                                 (mapconcat (lambda (pair)
+                                                                              (format "\t- %s: %s" (car pair) (substring (cdr pair) 0 7)))
+                                                                            current-commits
+                                                                            "\n")
+                                                                 "\n")
+                                                              " "))
                                                     (zenit-packages--sort-candidates candidates))))
                       (or (car (alist-get choice candidates nil nil #'equal)) ""))))))
+
+        (setq lockfiles (if local-conf
+                            (if (member (alist-get 'local straight-profiles) lockfiles)
+                                (cl-remove-if-not (lambda (x) (equal x (alist-get 'local straight-profiles))) lockfiles)
+                              lockfiles)
+                          (cl-remove-if (lambda (x) (equal x (alist-get 'local straight-profiles))) lockfiles)))
         (dolist (lockfile lockfiles)
-          (when-let* ((pin-list (straight--lockfile-read lockfile)))
-            (let* ((old-commit (alist-get local-repo pin-list nil nil #'equal))
-                   (new-commit (if (string-blank-p commit) old-commit commit)))
-              (if (null new-commit)
-                  (user-error "No commit specified")
-                (setf (alist-get local-repo pin-list nil nil #'equal) new-commit))
-              (let ((kw (with-temp-buffer
-                          (insert-file-contents lockfile)
-                          (goto-char (point-max))
-                          (let (match)
-                            (when (re-search-backward "^\\(:.+\\)$" nil t)
-                              (setq match (match-string 1)))
-                            match))))
-                (with-temp-file lockfile
-                  (insert
-                   (format
-                    "(%s)\n%s\n"
-                    (mapconcat
-                     (apply-partially #'format "%S")
-                     pin-list
-                     "\n ")
-                    kw)))))))))))
+          (+straight--update-all-lockfile-version)
+          (let* ((+straight--lockfile-prefer-local-conf-versions-p local-conf)
+                 (lockfile (straight--versions-file lockfile))
+                 (pin-list (straight--lockfile-read lockfile))
+                 (old-commit (alist-get local-repo pin-list nil nil #'equal))
+                 (new-commit (if (string-blank-p commit) old-commit commit)))
+            (if (null new-commit)
+                (user-error "No commit specified")
+              (setf (alist-get local-repo pin-list nil nil #'equal) new-commit))
+            (let ((kw (+straight--get-lockfile-version-id)))
+              (unless (file-exists-p lockfile)
+                (make-directory (file-name-directory lockfile) 'parents))
+              (with-temp-file lockfile
+                (insert
+                 (format
+                  "(%s)\n%s\n"
+                  (mapconcat
+                   (apply-partially #'format "%S")
+                   pin-list
+                   "\n ")
+                  kw))))))))))
+
+;;;###autoload
+(defun zenit/bump-local-conf-package (package &optional commit)
+  "Bump local PACKAGE in all modules that install it.
+
+Lockfiles will be written into `zenit-local-versions-dir'.
+
+If COMMIT is nil, it will prompt the user for the new commit in the
+minibuffer. When used with the universal argument, the user can specify
+the commit directly. Otherwise the last 50 commits will used as
+candidates."
+  (interactive
+   (list (intern (completing-read "Bump package: "
+                                  (mapcar #'car (zenit-package-list 'all))))))
+  (when current-prefix-arg
+    (setq commit (read-from-minibuffer (format "New commit for %s (leave empty to keep current): " package))))
+  (zenit/bump-package package commit 'local-conf))
 
 (defun zenit-packages--sort-candidates (candidates)
   "Sort candidates by alpha.
@@ -231,7 +274,7 @@ Adapted from `vertico-sort-alpha'."
   (let* ((buckets (make-vector 32 nil)))
     (dolist (% candidates)
       (let ((idx (min 31 (if (equal (car %) "") 0 (/ (aref (car %) 0) 4)))))
-          (aset buckets idx (cons % (aref buckets idx)))))
+        (aset buckets idx (cons % (aref buckets idx)))))
     (nconc
      (mapcan (lambda (bucket) (sort bucket (lambda (a b) (string> (car a) (car b)))))
              (nbutlast (append buckets nil)))
@@ -240,8 +283,8 @@ Adapted from `vertico-sort-alpha'."
 ;;;###autoload
 (defun zenit/bump-module (category &optional module)
   "Bump packages in CATEGORY MODULE.
-If prefix arg is non-nil, prompt you to choose a specific commit
-for each package."
+If prefix arg is non-nil, prompt you to choose a specific commit for
+each package."
   (interactive
    (let* ((module (completing-read
                    "Bump module: "

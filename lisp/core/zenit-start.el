@@ -270,14 +270,10 @@ it."
 (require 'zenit-modules)
 (autoload 'zenit-initialize-packages "zenit-packages")
 (autoload 'package! "zenit-packages" nil nil t)
-(autoload 'straight-x-fetch-all "straight-x" nil t)
-(autoload 'straight-x-pull-all "straight-x" nil t)
-(autoload 'straight-x-freeze-versions "straight-x" nil t)
 
 ;; In case we want to use package.el or straight via M-x
 (with-eval-after-load 'package (require 'zenit-packages))
 (with-eval-after-load 'straight (zenit-initialize-packages))
-(with-eval-after-load 'straight-x (zenit-initialize-packages))
 
 ;; A last ditch opportunity to undo dodgy optimizations or do extra
 ;; configuration before the session is complicated.

@@ -25,10 +25,6 @@
   (:doc "`zenit-packages-file' is defined")
   (should (boundp 'zenit-packages-file)))
 
-(zenit-deftest zenit-packages-get-lockfile
-  (:doc "`zenit-packages-get-lockfile' is defined")
-  (should (fboundp 'zenit-packages-get-lockfile)))
-
 (zenit-deftest +straight--normalize-profiles
   (:doc "`+straight--normalize-profiles' is defined")
   (should (fboundp '+straight--normalize-profiles)))

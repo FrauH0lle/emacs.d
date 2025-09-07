@@ -22,6 +22,11 @@ declaration.")
 (defvar zenit-packages-file "packages"
   "The basename of packages file for modules.")
 
+(defvar zenit-local-versions-dir (file-name-concat zenit-local-conf-dir "versions/")
+  "Where the local, machine specific package versions are placed.
+
+Defaults to ~/.emacs.d/site-lisp/versions/. Must end in a slash.")
+
 
 ;;
 ;;; package.el
@@ -68,8 +73,6 @@ declaration.")
         (core . "core.el")
         ;; Packages registered interactively.
         (nil . "default.el")
-        ;; Packages which are pinned to a specific commit.
-        (pinned . "pinned.el")
         ;; Packages registered in the packages.el file in `zenit-local-conf-dir'
         (local . "local.el"))
       ;; Install archives from forges instead of cloning them. Much faster and
@@ -90,15 +93,6 @@ declaration.")
 
 
 ;;;; Straight hacks
-
-(defun zenit-packages-get-lockfile (profile)
-  "Get the version lockfile for given PROFILE, a symbol.
-
-Returns nil if the profile does not exist or does not have a
-lockfile."
-  (if-let* ((filename (alist-get profile straight-profiles)))
-      (straight--versions-file filename)
-    nil))
 
 (defun +straight--normalize-profiles ()
   "Normalize packages profiles.
@@ -285,6 +279,82 @@ internally)."
               (make-string (1- (or zenit-format-indent 1)) 32)
             cause)
           interactive)))
+
+
+(defvar +straight--lockfile-prefer-local-conf-versions-p nil
+  "If non-nil, `straight--versions-file' should prefer versions from `zenit-local-versions-dir'.")
+(defadvice! +straight--read-local-lockfile-a (fn &rest args)
+  "Advice to handle local vs default version file precedence.
+
+Reading precedence:
+- `nil' and `local' profiles: ALWAYS use local conf dir
+- Other profiles: prefer local conf dir if file exists there, else use default
+
+Writing behavior (controlled by `+straight--lockfile-prefer-local-conf-versions-p'):
+- When nil: write to default location (for `zenit/bump-package')
+- When non-nil: write to local conf dir (for `zenit/bump-local-conf-package')"
+  :around #'straight--versions-file
+  (let* ((local-profile-files (cl-loop for (profile . file) in straight-profiles
+                                       if (memq profile '(nil local))
+                                       collect file))
+         (local-path (apply #'zenit-path zenit-local-versions-dir args))
+         (local-exists-p (file-exists-p local-path))
+         ;; Determine if we should use local based on reading rules
+         (should-read-local
+          (or
+           ;; Rule 1: nil and local profiles always use local
+           (seq-some (lambda (x) (member x local-profile-files))
+                     args)
+           ;; Rule 2: Other profiles use local if it exists
+           local-exists-p))
+         ;; For writing, respect the preference flag
+         (should-use-local
+          (if +straight--lockfile-prefer-local-conf-versions-p
+              ;; When bumping local conf, always use local
+              t
+            ;; Otherwise, use reading rules
+            should-read-local)))
+
+    (if should-use-local
+        local-path
+      (apply fn args))))
+
+(defvar +straight--lockfile-version-id nil
+  "Memoized version ID from `straight''s install.el file.")
+(defun +straight--get-lockfile-version-id ()
+  "Extract the version ID from `straight''s install.el file.
+Returns the version string or nil if not found."
+  (with-memoization +straight--lockfile-version-id
+    (with-temp-buffer
+      (let* ((straight-recipe (gethash "straight" straight--recipe-cache))
+             (straight-repo (straight--repos-dir (plist-get straight-recipe :local-repo)))
+             (install-file (file-name-concat straight-repo "install.el")))
+        (insert-file-contents-literally install-file)
+        (goto-char (point-min))
+        (let (match)
+          (when (re-search-forward "setq version \\(?1::[a-z]+\\)" nil t)
+            (setq match (match-string-no-properties 1)))
+          match)))))
+
+(defvar +straight--lockfile-version-updated-p nil
+  "Whether lockfile versions have been updated in this session.")
+(defun +straight--update-all-lockfile-version ()
+  "Update all lockfiles with the current `straight' version ID.
+Only runs once per session to avoid unnecessary file operations."
+  (unless +straight--lockfile-version-updated-p
+    (let ((lockfiles (append
+                      (zenit-files-in (file-name-concat zenit-emacs-dir "straight/versions") :match ".el$")
+                      (zenit-files-in (file-name-concat zenit-local-conf-dir "versions") :match ".el$")))
+          (new-version-id (+straight--get-lockfile-version-id)))
+      (when new-version-id  ; Only proceed if we have a valid version ID
+        (dolist (lockfile lockfiles)
+          (with-temp-buffer
+            (insert-file-contents-literally lockfile)
+            (goto-char (point-max))
+            (when (re-search-backward "^:.+$" nil t)
+              (replace-match new-version-id t t))
+            (write-region nil nil lockfile nil 'silent)))))
+    (setq +straight--lockfile-version-updated-p t)))
 
 
 ;;
@@ -496,7 +566,9 @@ context-specific signals."
                   (goto-char (match-beginning 0))
                   (cl-destructuring-bind (_ name . plist)
                       (read (current-buffer))
-                    (when-let* ((lockfile (plist-get plist :lockfile)))
+                    (when-let* ((lockfile (or (when (eq (car (zenit-module-from-path file)) :local-conf)
+                                                'local)
+                                              (plist-get plist :lockfile))))
                       (setq plist (plist-put plist :lockfile (ensure-list lockfile))))
                     ;; Record what module this declaration was found in
                     (setq plist (plist-put plist :modules (list (zenit-module-context-key))))
@@ -570,7 +642,7 @@ also be a list of module keys."
       (add-to-list 'load-path (directory-file-name (straight--build-dir pkg-name)))
       (straight--load-package-autoloads pkg-name))))
 
-(cl-defmacro package! (name &rest args &key built-in recipe ignore disable lockfile pin)
+(cl-defmacro package! (name &rest args &key built-in recipe ignore disable lockfile)
   "A wrapper around `straight-register-package'.
 
 It allows to specifiy a lockfile and profile. NAME is the package name,
@@ -591,16 +663,12 @@ ARGS same as MELPA-STYLE-RECIPE in `straight-register-package'.
    Do not install or update this package AND disable all of its
    `use-package!' and `after!' blocks.
 
- :LOCKFILE LOCKFILE | BOOL | \\='ignore | \\='pinned
+ :LOCKFILE LOCKFILE | BOOL | \\='ignore
    Which profile and lockfile to use. Will create LOCKFILE entry
    in `straight-profiles' and let bind
    `straight-current-profile'to LOCKFILE. If nil or t, default
    profile will be used. If set to \\='ignore, no profile will be
-   used and the package will not be tracked.
-   If :pin is defined, lockfile will be set to \\='pinned.
-
- :PIN STR
-   Pin this package to commit hash STR."
+   used and the package will not be tracked."
   (declare (indent defun))
   ;; :built-in t is basically an alias for :ignore (locate-library NAME)
   (when built-in
@@ -622,9 +690,6 @@ ARGS same as MELPA-STYLE-RECIPE in `straight-register-package'.
   (when (memq name zenit-disabled-packages)
     (setq ignore t))
 
-  ;; Set lockfile to 'pinned if :pin is non-nil
-  (when pin
-    (setq lockfile 'pinned))
   (unless ignore
     ;; Add profile to `straight-profiles' if lockfile should not be ignored
     (unless (memq lockfile '(ignore nil t))
@@ -635,7 +700,6 @@ ARGS same as MELPA-STYLE-RECIPE in `straight-register-package'.
                               (pcase lockfile
                                 ((or `nil `t) nil)
                                 (`ignore 'ignore)
-                                (`pinned 'pinned)
                                 (_ lockfile)))))
       `(let ((straight-current-profile ',(zenit-unquote lockfile-profile)))
          ;; Explicitly register dependencies so they don't get purged and add
@@ -649,9 +713,6 @@ ARGS same as MELPA-STYLE-RECIPE in `straight-register-package'.
                  (straight-override-recipe '(,name ,@recipe))
                  (straight-register-package '(,name ,@recipe)))
             `(straight-register-package ',name))
-         ,(when (and (eq lockfile 'pinned) pin)
-            `(add-to-list 'straight-x-pinned-packages
-              '(,(zenit-package-recipe-repo name) . ,pin)))
          ;; Return true if we did register packages
          t))))
 (function-put 'package! 'lisp-indent-function 'defun)

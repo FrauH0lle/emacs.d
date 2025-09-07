@@ -10,4 +10,4 @@
 (when (modulep! :editor evil)
   (package! evil-markdown
     :recipe (:host github :repo "Somelauw/evil-markdown")
-    :lockfile lang_markdown_evil))
+    :lockfile lang_markdown))

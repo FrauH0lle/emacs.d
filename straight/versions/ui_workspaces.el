@@ -1,2 +1,2 @@
-(("persp-mode.el" . "82680795b3dbb9f9fb023b1754902f38519d9875"))
-:gamma
+(("persp-mode.el" . "fab4bf76927445d2e431f06e74572acba81f47d5"))
+:epsilon

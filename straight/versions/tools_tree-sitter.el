@@ -1,4 +1,5 @@
-(("elisp-tree-sitter" . "02fe7b86d92b1aab954045146469b7893f0ab371")
- ("evil-textobj-tree-sitter" . "bce236e5d2cc2fa4eae7d284ffd19ad18d46349a")
- ("tree-sitter-langs" . "2ff446b4b813543b7a90015808d38f362f039b10"))
-:gamma
+(("treesit-langs" . "efb813b933b81c18d37b8a8acfaadba1c20b3479")
+ ("elisp-tree-sitter" . "3cfab8a0e945db9b3df84437f27945746a43cc71")
+ ("evil-textobj-tree-sitter" . "4ca5dffbd3f81361c85203bde44328ad2128d33a")
+ ("tree-sitter-langs" . "f947652b7c622096c57472a0e413df37409495b4"))
+:epsilon

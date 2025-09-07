@@ -1,9 +1,14 @@
-(("emacs-python-pytest" . "25d9801562a789ea5debceb1992bd528ebb4f689")
- ("lsp-pyright" . "b4cee81af46274303f2cb9b75de9fc8ddcba04d9")
+(("poetry.el" . "f9745fd9df1a0ff95926a9a8b165e029875e2bc1")
+ ("conda.el" . "8a1a934a2de576d4158b1b12329be4f5be931a4a")
+ ("emacs-flycheck-cython" . "ecc4454d35ab5317ab66a04406f36f0c1dbc0b76")
+ ("emacs-cython-mode" . "3e4790559d3168fe992cf2aa62f01423038cedb5")
+ ("pyenv-mode" . "364bddb8f0c8ec022796210d8d3625a520e984b0")
+ ("emacs-python-pytest" . "ed2ecee09d1cccb4245842860d91940cb2fda769")
+ ("lsp-pyright" . "3756ff971797ae04fc43ca29c66ba4d854eff038")
  ("nose" . "f8528297519eba911696c4e68fa88892de9a7b72")
  ("pip-requirements.el" . "31e0dc62abb2d88fa765e0ea88b919d756cc0e4f")
  ("pipenv.el" . "3af159749824c03f59176aff7f66ddd6a5785a10")
  ("py-isort.el" . "e67306f459c47c53a65604e4eea88a3914596560")
- ("pyimport" . "4398ce8dd64fa0f685f4bf8683a35087649346d3")
+ ("pyimport" . "99341c2bb3ca6a992fc030c9189f72a6c28a2afe")
  ("pyvenv" . "31ea715f2164dd611e7fc77b26390ef3ca93509b"))
-:gamma
+:epsilon

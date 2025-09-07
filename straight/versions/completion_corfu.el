@@ -1,5 +1,6 @@
-(("orderless" . "254f2412489bbbf62700f9d3d5f18e537841dcc3")
- ("cape" . "f72ebcaeff4252ca0d7a9ac4636d8db0fdf54c55")
- ("corfu" . "c302b0526ad9d0c99d1d0639df63f6ca65accfc3")
- ("nerd-icons-corfu" . "55b17ee20a5011c6a9be8beed6a9daf644815b5a"))
-:gamma
+(("corfu-terminal" . "501548c3d51f926c687e8cd838c5865ec45d03cc")
+ ("orderless" . "31812d9252c6cfa7eae8fa04cd40c8b2081e9936")
+ ("cape" . "97641dcd1ebca1007badd26b2fb9269b86934c22")
+ ("corfu" . "84592c1a54e8ffecff44b8f32f72cf36fc66f7f2")
+ ("nerd-icons-corfu" . "f821e953b1a3dc9b381bc53486aabf366bf11cb1"))
+:epsilon

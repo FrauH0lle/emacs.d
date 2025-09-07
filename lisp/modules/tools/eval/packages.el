@@ -3,4 +3,4 @@
 
 (package! quickrun :lockfile tools_eval)
 (when (modulep! +overlay)
-  (package! eros :lockfile tools_eval_overlay))
+  (package! eros :lockfile tools_eval))

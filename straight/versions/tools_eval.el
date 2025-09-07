@@ -1,2 +1,3 @@
-(("quickrun" . "4b6df453f80ae7eab250a312056eaef95890e4c6"))
-:gamma
+(("eros" . "a9a92bdc6be0521a6a06eb464be55ed61946639c")
+ ("quickrun" . "71324649862b14610509bfa61a3fa8551cb7a00e"))
+:epsilon

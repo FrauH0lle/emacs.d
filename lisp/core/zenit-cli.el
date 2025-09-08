@@ -107,7 +107,7 @@ and the log type.")
                      (path backtrace-file))))))))))
 
 (defmacro zenit-cli-redirect-output (&rest body)
-  "Redirect output from BODY to the appropriate log buffers in CONTEXT."
+  "Redirect output from BODY to the appropriate log buffers."
   (declare (indent 0))
   `(let* (;; Emit more user-friendly backtraces
           (debugger #'zenit-cli-debugger)

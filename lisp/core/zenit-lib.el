@@ -177,7 +177,7 @@ text can be passed via ARGS."
            args)))
 
 (defmacro zenit-log (message &rest args)
-  "Log a MESSAGE in *Messages*.
+  "Log a MESSAGE to stderr or *Messages*.
 Does not emit the message in the echo area. This is a macro
 instead of a function to prevent the potentially expensive
 evaluation of its ARGS when debug mode is off. Return non-nil."

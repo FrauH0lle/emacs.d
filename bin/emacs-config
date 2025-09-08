@@ -112,10 +112,6 @@
       "Aborting..."))
     (kill-emacs 1)))
 
-;; Switch on `zenit-debug-mode' if requested
-(when (or (getenv-internal "DEBUG") init-file-debug)
-  (zenit-debug-mode +1))
-
 ;; We need to start logging here, otherwise the messages are never shown.
 (zenit-log "cli: command line arguments: %s" command-line-args-left)
 (zenit-log "cli: zenit-cli--cmd-switches: %s" zenit-cli--cmd-switches)
@@ -141,9 +137,12 @@
 
      ((or (string= arg "--debug")
           (string= arg "-D"))
-      (setenv "DEBUG" "1") (zenit-debug-mode +1))
+      (setenv "DEBUG" "2")
+      (setq zenit-log-level 2)
+      (zenit-debug-mode +1))
      ((string-match "\\`--debug=\\(.*\\)\\'" arg)
       (setenv "DEBUG" (match-string 1 arg))
+      (setq zenit-log-level (string-to-number (getenv-internal "DEBUG")))
       (zenit-debug-mode +1))
 
      ((or (string= arg "--yes")

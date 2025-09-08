@@ -12,8 +12,6 @@
 (defun zenit-cli-refresh (&optional no-envvar-p debug-p force-p)
   "Refresh Emacs config."
   (run-hooks 'zenit-refresh-pre-hook)
-  (when (or debug-p (getenv "DEBUG"))
-    (zenit-debug-mode +1))
   (when (or force-p (getenv "FORCE"))
     (setq force-p t))
 
@@ -42,8 +40,6 @@
 (defun zenit-cli-sync (&optional no-envvar-p debug-p force-p)
   "Refresh Emacs config."
   (run-hooks 'zenit-sync-pre-hook)
-  (when (or debug-p (getenv "DEBUG"))
-    (zenit-debug-mode +1))
   (when (or force-p (getenv "FORCE"))
     (setq force-p t))
 

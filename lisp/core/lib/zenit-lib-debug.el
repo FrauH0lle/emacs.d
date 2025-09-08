@@ -53,7 +53,7 @@ Run it again to see the profiling report."
     (zenit-inhibit-log . nil)
 
     ;; Emacs variables
-    (async-debug t 2)
+    (async-debug t 3)
     debug-on-error
     (gcmh-verbose t 3)
     init-file-debug
@@ -99,22 +99,33 @@ For cons cells, the variable VAR will be set to VAL when debug
 mode is active, and restored to its initial value when debug mode
 is inactive. Unbound variables are tracked in
 `zenit-debug--unbound-variables' to be set when they become available."
-  (cond ((listp spec)
-         (pcase-let ((`(,var ,val ,level) spec))
-           (if (boundp var)
-               (set-default
-                var (if (or (not zenit-debug-mode)
-                            (> (or level 1) zenit-log-level))
-                        (prog1 (get var 'initial-value)
-                          (put var 'initial-value nil))
-                      (zenit-log 3 "debug:vars: %s = %S" var (default-toplevel-value var))
-                      (put var 'initial-value (default-toplevel-value var))
-                      val))
-             (add-to-list 'zenit-debug--unbound-variables spec))))
-        ((boundp spec)
-         (zenit-log 3 "debug:vars: %s = %S" spec zenit-debug-mode)
-         (set-default-toplevel-value spec zenit-debug-mode))
-        ((add-to-list 'zenit-debug--unbound-variables (cons spec t)))))
+  (cond
+   ;; Handle cons cells (VAR . VAL) and lists (VAR VAL LEVEL)
+   ((consp spec)
+    (let (var val level)
+      (pcase spec
+        ;; Three-element list: (VAR VAL LEVEL)
+        (`(,v ,v2 ,l)
+         (setq var v val v2 level l))
+        ;; Cons cell: (VAR . VAL)
+        (`(,v . ,v2)
+         (setq var v val v2 level nil)))
+      (if (boundp var)
+          (set-default
+           var (if (or (not zenit-debug-mode)
+                       (> (or level 1) zenit-log-level))
+                   (prog1 (get var 'initial-value)
+                     (put var 'initial-value nil))
+                 (zenit-log 3 "debug:vars: %s = %S" var (default-toplevel-value var))
+                 (put var 'initial-value (default-toplevel-value var))
+                 val))
+        (add-to-list 'zenit-debug--unbound-variables (list var val level)))))
+   ;; Handle bound symbols
+   ((boundp spec)
+    (zenit-log 3 "debug:vars: %s = %S" spec zenit-debug-mode)
+    (set-default-toplevel-value spec zenit-debug-mode))
+   ;; Track unbound symbols
+   ((add-to-list 'zenit-debug--unbound-variables (cons spec t)))))
 
 
 (defun zenit-debug--timestamped-message-a (format-string &rest _args)
@@ -149,7 +160,7 @@ Activate this advice with:
             (and (integerp current-prefix-arg)
                  (> current-prefix-arg 0)))
     (setq zenit-debug-mode t)
-    (let ((level (max 1 (min 3 (or current-prefix-arg 1)))))
+    (let ((level (max 1 zenit-log-level (min 3 (or current-prefix-arg 1)))))
       (put 'zenit-log-level 'initial-value zenit-log-level)
       (setq zenit-log-level level)))
   (zenit-log "debug: enabled! (log-level=%d)" zenit-log-level)

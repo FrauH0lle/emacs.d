@@ -1,9 +1,6 @@
 ;; lisp/core/cli/deploy.el -*- lexical-binding: t; no-byte-compile: t; -*-
 
 (defun zenit-cli-deploy (&optional debug-p)
-  (when (or debug-p (getenv "DEBUG"))
-    (zenit-debug-mode +1))
-
   (print! (green "Deploying Emacs config!\n"))
   ;; Env file
   (if (file-exists-p zenit-env-file)

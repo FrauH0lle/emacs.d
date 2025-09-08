@@ -94,6 +94,22 @@ Defaults to ~/.emacs.d/site-lisp/versions/. Must end in a slash.")
 
 ;;;; Straight hacks
 
+(defadvice! +straight--fix-loaddefs-generate--parse-file-a (fn &rest args)
+  "HACK Prevent `loaddefs-generate--parse-file' toggling `emacs-lisp-mode'.
+
+This fixes an issue introduced in emacs-mirror/emacs@0d383b592c2f and is
+present in >=29:
+
+Straight.el uses `loaddefs-generate' if it is available, which activates
+`emacs-lisp-mode' to read autoloads files, but does so without
+suppressing its hooks. Some packages (like overseer) add hooks to
+`emacs-lisp-mode-hook' in their autoloads, and once triggered,they will
+try to load their dependencies (like dash or pkg-info), causing file
+errors."
+  :around #'loaddefs-generate--parse-file
+  (let (emacs-lisp-mode-hook)
+    (apply fn args)))
+
 (defun +straight--normalize-profiles ()
   "Normalize packages profiles.
 
@@ -182,9 +198,9 @@ to select which option to recommend.")
 Emacs) with simple prompts."
   :around #'straight-are-you-sure
   (or (bound-and-true-p zenit-auto-accept)
-      (if (not noninteractive)
-          (funcall orig-fn prompt)
-        (y-or-n-p (format! "%s" (or prompt ""))))))
+      (if noninteractive
+          (y-or-n-p (format! "%s" (or prompt "")))
+        (funcall orig-fn prompt))))
 
 (defun +straight--recommended-option-p (prompt option)
   "Check if a given OPTION is recommended for a given PROMPT.
@@ -203,6 +219,15 @@ respective regular expressions; otherwise, it returns nil."
   (cl-loop for (prompt-re . opt-re) in +straight--auto-options
            if (string-match-p prompt-re prompt)
            return (string-match-p opt-re option)))
+
+(defadvice! +straight--no-compute-prefixes-a (fn &rest args)
+  "HACK Do not compute prefixes for autoloads."
+  :around #'straight--build-autoloads
+  (eval-when-compile
+    (or (require 'loaddefs-gen nil 'noerror)
+        (require 'autoload)))
+  (let (autoload-compute-prefixes)
+    (apply fn args)))
 
 (defadvice! +straight--fallback-to-tty-prompt-a (orig-fn prompt actions)
   "Modifies straight to prompt on the terminal when in
@@ -263,23 +288,53 @@ noninteractive sessions."
                         answer))
               (funcall (nth answer options)))))))))
 
-(defadvice! +straight--respect-print-indent-a (args)
-  "Indent straight progress messages to respect
-`zenit-format-indent', so we don't have to pass whitespace to
-`straight-use-package's fourth argument everywhere we use it (and
-internally)."
-  :filter-args #'straight-use-package
-  (cl-destructuring-bind
-      (melpa-style-recipe &optional no-clone no-build cause interactive)
-      args
-    (list melpa-style-recipe no-clone no-build
-          (if (and (not cause)
-                   (boundp 'zenit-format-indent)
-                   (> zenit-format-indent 0))
-              (make-string (1- (or zenit-format-indent 1)) 32)
-            cause)
-          interactive)))
+(setq straight-arrow " > ")
+(defadvice! +straight--respect-print-indent-a (string &rest objects)
+  "Same as `message' (which see for STRING and OBJECTS) normally.
+However, in batch mode, print to stdout instead of stderr."
+  :override #'straight--output
+  (let ((msg (apply #'format string objects)))
+    (save-match-data
+      (when (string-match (format "^%s\\(.+\\)$" (regexp-quote straight-arrow)) msg)
+        (setq msg (match-string 1 msg))))
+    (and (string-match-p "^\\(Cloning\\|\\(Reb\\|B\\)uilding\\) " msg)
+         (not (string-suffix-p "...done" msg))
+         (zenit-print (concat "> " msg) :format t))))
 
+(defadvice! +straight--ignore-gitconfig-a (fn &rest args)
+  "Prevent user and system git configuration from interfering with git calls."
+  :around #'straight--process-call
+  (with-environment-variables
+      (("GIT_CONFIG" nil)
+       ("GIT_CONFIG_NOSYSTEM" "1")
+       ("GIT_CONFIG_GLOBAL" "/dev/null"))
+    (apply fn args)))
+
+;; If the repo failed to clone correctly (usually due to a connection failure),
+;; straight proceeds as normal until a later call produces a garbage result
+;; (typically, when it fails to fetch the remote branch of the empty directory).
+;; This causes Straight to throw an otherwise cryptic type error when it tries
+;; to sanitize the result for its log buffer.
+;;
+;; This error is a common source of user confusion and false positive bug
+;; reports, so this advice catches them to regurgitates a more cogent
+;; explanation.
+(defadvice! +straight--throw-error-on-no-branch-a (fn &rest args)
+  :around #'straight--process-log
+  (letf! ((defun shell-quote-argument (&rest args)
+            (unless (car args)
+              (error "Package was not properly cloned due to a connection failure, please try again later"))
+            (apply shell-quote-argument args)))
+    (apply fn args)))
+
+(defadvice! +straight--regurgitate-empty-string-error-a (fn &rest args)
+  :around #'straight-vc-git-local-repo-name
+  (condition-case-unless-debug e
+      (apply fn args)
+    (wrong-type-argument
+     (if (eq (cadr e) 'stringp)
+         (error "Package was not properly cloned due to a connection failure, please try again later")
+       (signal (car e) (cdr e))))))
 
 (defvar +straight--lockfile-prefer-local-conf-versions-p nil
   "If non-nil, `straight--versions-file' should prefer versions from `zenit-local-versions-dir'.")

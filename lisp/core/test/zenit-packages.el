@@ -58,7 +58,7 @@
   (:doc "`+straight--respect-print-indent-a' advises `straight-use-package'")
   (progn
     (should (fboundp '+straight--respect-print-indent-a))
-    (should (advice-member-p '+straight--respect-print-indent-a #'straight-use-package))))
+    (should (advice-member-p '+straight--respect-print-indent-a #'straight--output))))
 
 (zenit-deftest zenit-read-packages
   (:doc "`zenit-read-packages' is defined")

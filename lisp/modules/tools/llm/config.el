@@ -195,13 +195,6 @@ guaranteed to be the response buffer."
         "C-c C-p" #'+gptel/previous-prompt))
 
 
-;; PATCH 2025-07-21: `gptel-mcp-connect'
-(el-patch-feature gptel-integrations)
-(compile-along! "patches")
-(after! gptel-integrations
-  (load! "patches"))
-
-
 (use-package! gptel-quick
   :defer t)
 
@@ -237,7 +230,7 @@ guaranteed to be the response buffer."
                    (mcp-stop-server "memory-bank")))
 
                (unless (mcp--server-running-p "memory-bank")
-                 (gptel-mcp-connect '("memory-bank") nil nil t)
+                 (gptel-mcp-connect '("memory-bank") 'sync)
                  (setq +gptel--memory-mcp-last-root-dir root-dir))))))
 
   (mcp-hub-start-all-server))

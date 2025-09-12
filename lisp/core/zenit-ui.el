@@ -870,7 +870,7 @@ during startup."
   (add-hook 'window-buffer-change-functions #'zenit-run-switch-buffer-hooks-h)
   ;; `window-buffer-change-functions' doesn't trigger for files visited via the
   ;; server.
-  (add-hook 'server-visit-hook #'zenit-run-switch-buffer-hooks-h))
+  (add-hook 'server-switch-hook #'zenit-run-switch-buffer-hooks-h))
 
 ;; Apply fonts and theme
 (let ((hook (if (daemonp)

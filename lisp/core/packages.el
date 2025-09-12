@@ -43,7 +43,7 @@
 
 ;; core-keybinds.el
 (package! general :lockfile core)
-(package! which-key :lockfile core)
+(package! which-key :lockfile core :built-in t)
 
 (package! benchmark-init :lockfile core)
 (package! esup)

@@ -33,8 +33,8 @@ an alist of plists, it will be transformed into entries for
 `treesit-language-source-alist'(which describe what each of these keys
 mean). Note that COMMIT is ignored pre-Emacs 31."
   (declare (indent 2))
-  (cl-check-type mode (or list symbol))
   (cl-check-type modes (or list symbol))
+  (cl-check-type ts-mode symbol)
   (let ((recipes (mapcar #'ensure-list (ensure-list recipes)))
         (modes (ensure-list modes)))
     (when modes

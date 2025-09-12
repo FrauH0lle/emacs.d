@@ -19,23 +19,28 @@ Used as a hook function which turns on highlighting provided by
     (outline-minor-faces-mode +1)))
 
 ;;;###autodef (fset 'set-tree-sitter! #'ignore)
-(defun set-tree-sitter! (mode ts-mode &optional recipes)
-  "Remap major MODE to TS-MODE.
+(defun set-tree-sitter! (modes ts-mode &optional recipes)
+  "Remap major MODES to TS-MODE.
 
-MODE and TS-MODE are major mode symbols. If RECIPES is provided, fall back to
-MODE if RECIPES don't pass `treesit-ready-p' when activating TS-MODE. Use this
-for ts modes that error out instead of failing gracefully.
+MODES and TS-MODE are major mode symbols. MODES can be a list thereof.
+If RECIPES is provided, fall back to MODES if RECIPES don't pass
+`treesit-ready-p' when activating TS-MODE. Use this for ts modes that
+error out instead of failing gracefully.
 
-RECIPES is a symbol (a grammar language name), list thereof, or alist of plists
-with the format (LANG &key URL REV SOURCE-DIR CC CPP COMMIT). If an alist of
-plists, it will be transformed into entries for `treesit-language-source-alist'
-(which describe what each of these keys mean). Note that COMMIT is ignored
-pre-Emacs 31."
+RECIPES is a symbol (a grammar language name), list thereof, or alist of
+plists with the format (LANG &key URL REV SOURCE-DIR CC CPP COMMIT). If
+an alist of plists, it will be transformed into entries for
+`treesit-language-source-alist'(which describe what each of these keys
+mean). Note that COMMIT is ignored pre-Emacs 31."
   (declare (indent 2))
   (cl-check-type mode (or list symbol))
-  (cl-check-type ts-mode symbol)
-  (let ((recipes (mapcar #'ensure-list (ensure-list recipes))))
-    (dolist (m (or (ensure-list mode) (list nil)))
+  (cl-check-type modes (or list symbol))
+  (let ((recipes (mapcar #'ensure-list (ensure-list recipes)))
+        (modes (ensure-list modes)))
+    (when modes
+      ;; Ensure ts-modes register their base modes as parents.
+      (put ts-mode 'derived-mode-extra-parents modes))
+    (dolist (m (or modes (list nil)))
       (when m
         (setf (alist-get m major-mode-remap-defaults) ts-mode))
       (put ts-mode '+tree-sitter (cons m (mapcar #'car recipes))))

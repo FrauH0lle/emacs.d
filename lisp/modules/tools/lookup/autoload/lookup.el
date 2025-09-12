@@ -113,6 +113,7 @@ REFERENCES DOCUMENTATION FILE XREF-BACKEND ASYNC)"
                             'xref-backend-functions)
                       (make-list 5 async)
                       (make-list 5 (or (eq major-mode mode)
+                                       (memq mode (get major-mode 'derived-mode-extra-parents))
                                        (and (boundp mode)
                                             (symbol-value mode))))))))
         (add-hook hook fn)))))

@@ -313,6 +313,45 @@ each package."
           (cl-remove-if-not (lambda (m) (eq (car m) category))
                             (zenit-module-list 'all)))))
 
+(defun zenit/remove-undeclared-packages ()
+  "Remove packages in lockfiles without a `package!' declaration."
+  (interactive)
+  (zenit-initialize-packages)
+  (let ((declared-packages (mapcar (lambda (p)
+                                     (unless (plist-get (cdr p) :built-in)
+                                       (let ((name (car p)))
+                                         (plist-get (straight--convert-recipe (or (straight--get-overridden-recipe name)
+                                                                                  name))
+                                                    :local-repo))))
+                                   (zenit-package-list 'all)))
+        removed)
+    (dolist (spec straight-profiles removed)
+      (cl-destructuring-bind (_profile . lockfile) spec
+        (when-let* ((versions-alist (straight--lockfile-read lockfile))
+                    (undeclared (cl-remove-if
+                                 (lambda (el)
+                                   (memq (intern el) straight-recipe-repositories))
+                                 (cl-set-difference (mapcar #'car versions-alist) declared-packages :test #'string=))))
+          (dolist (p undeclared)
+            (setf (alist-get p versions-alist nil 'remove) nil)
+            (push p removed))
+          (let ((kw (+straight--get-lockfile-version-id))
+                (lockfile (straight--versions-file lockfile)))
+            (unless (file-exists-p lockfile)
+              (make-directory (file-name-directory lockfile) 'parents))
+            (with-temp-file lockfile
+              (insert
+               (format
+                "(%s)\n%s\n"
+                (mapconcat
+                 (apply-partially #'format "%S")
+                 versions-alist
+                 "\n ")
+                kw)))))))
+    (when removed
+      (message "Removed the following packages:\n - %s" (string-join removed "\n - ")))))
+
+
 
 ;;
 ;;; Package metadata

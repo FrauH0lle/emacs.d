@@ -19,7 +19,7 @@
   (unwind-protect
       (print-group!
        (let ((files (list zenit-config-init-file)))
-         (pcase-dolist (`(,file . ,fn) zenit-cache-generators)
+         (pcase-dolist (`(,file . ,fn) zenit-init-generators)
            (push (file-name-concat zenit-local-dir file) files))
          (mapc #'zenit-autoloads--delete-file
                files))
@@ -47,7 +47,7 @@
   (unwind-protect
       (print-group!
        (let ((files (list zenit-config-init-file)))
-         (pcase-dolist (`(,file . ,fn) zenit-cache-generators)
+         (pcase-dolist (`(,file . ,fn) zenit-init-generators)
            (push  (file-name-concat zenit-local-dir file) files))
          (mapc #'zenit-autoloads--delete-file
                (list zenit-config-init-file)))

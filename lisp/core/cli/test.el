@@ -83,8 +83,8 @@ fail."
                             "-l" (concat zenit-core-dir "zenit-core.el")
                             ;; Set context
                             "--eval" (prin1-to-string '(zenit-context-push 'init))
-                            ;; Load `zenit-cache-generators'
-                            "-l" (file-name-concat zenit-local-dir (car (mapcar #'car zenit-cache-generators)))
+                            ;; Load `zenit-init-generators'
+                            "-l" (file-name-concat zenit-local-dir (car (mapcar #'car zenit-init-generators)))
                             ;; Set test context
                             "--eval" (prin1-to-string '(zenit-context-pop 'init))
                             "--eval" (prin1-to-string '(zenit-context-push 'tests))

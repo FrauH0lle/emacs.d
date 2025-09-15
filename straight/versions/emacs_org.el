@@ -16,7 +16,6 @@
  ("evil-org-mode" . "06518c65ff4f7aea2ea51149d701549dcbccce5d")
  ("htmlize" . "c9a8196a59973fabb3763b28069af9a4822a5260")
  ("avy" . "933d1f36cca0f71e4acb5fac707e9ae26c536264")
- ("emacs-htmlize" . "8e3841c837b4b78bd72ad7f0436e919f39315a46")
  ("ob-async" . "9aac486073f5c356ada20e716571be33a350a982")
  ("org" . "8b15a0d0b48a0e3ce09be0d208d74a01743cbbe0")
  ("org-cliplink" . "13e0940b65d22bec34e2de4bc8cba1412a7abfbc")

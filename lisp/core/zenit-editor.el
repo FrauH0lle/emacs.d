@@ -15,11 +15,6 @@
 ;; `tabify'
 (defvar tabify-regexp)
 
-;; `tramp'
-(declare-function tramp-file-name-localname "tramp" t t)
-(defvar tramp-backup-directory-alist)
-(defvar tramp-auto-save-directory)
-
 ;; `zenit-lib-buffers'
 (declare-function zenit-visible-buffers "zenit-lib-buffers" (&optional buffer-list all-frames))
 
@@ -146,8 +141,7 @@ themselves) to ensure the buffer is as fast as possible."
       delete-old-versions t ; clean up after itself
       kept-old-versions 5
       kept-new-versions 5
-      backup-directory-alist (list (cons "." (concat zenit-cache-dir "backup/")))
-      tramp-backup-directory-alist backup-directory-alist)
+      backup-directory-alist (list (cons "." (concat zenit-cache-dir "backup/"))))
 
 ;; Turn on auto-save, so we have a fallback in case of crashes or lost data. Use
 ;; `recover-file' or `recover-session' to recover them.
@@ -158,12 +152,8 @@ themselves) to ensure the buffer is as fast as possible."
       auto-save-include-big-deletions t
       ;; Keep it out of `zenit-emacs-dir' or the local directory.
       auto-save-list-file-prefix (concat zenit-cache-dir "autosave/")
-      tramp-auto-save-directory  (concat zenit-cache-dir "tramp-autosave/")
       auto-save-file-name-transforms
-      (list (list "\\`/[^/]*:\\([^/]*/\\)*\\([^/]*\\)\\'"
-                  ;; Prefix tramp autosaves to prevent conflicts with local ones
-                  (concat auto-save-list-file-prefix "tramp-\\2") t)
-            (list ".*" auto-save-list-file-prefix t)))
+      (list (list ".*" auto-save-list-file-prefix t)))
 
 (add-hook! 'after-save-hook
   (defun zenit-guess-mode-h ()
@@ -478,15 +468,6 @@ faster `prin1'."
     (setq server-name name))
   (unless (server-running-p)
     (server-start)))
-
-
-(after! tramp
-  (setq remote-file-name-inhibit-cache 60
-        tramp-verbose 1
-        vc-ignore-dir-regexp (format "%s\\|%s\\|%s"
-                                     vc-ignore-dir-regexp
-                                     tramp-file-name-regexp
-                                     "[/\\\\]node_modules")))
 
 
 ;;

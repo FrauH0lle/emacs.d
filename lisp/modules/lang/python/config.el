@@ -22,7 +22,7 @@
 
   (eval-when! (modulep! +tree-sitter)
     (set-tree-sitter! 'python-mode 'python-ts-mode
-                      '((python :url "https://github.com/tree-sitter/tree-sitter-python"))))
+      '((python :url "https://github.com/tree-sitter/tree-sitter-python"))))
 
   (eval-when! (modulep! +lsp)
     (eval-when! (modulep! :tools lsp +lsp-flymake)
@@ -30,9 +30,17 @@
 
     (add-hook 'python-mode-local-vars-hook #'lsp! 'append)
     (add-hook 'python-ts-mode-local-vars-hook #'lsp! 'append)
-    ;; Use "mspyls" in eglot if in PATH
-    (when (executable-find "Microsoft.Python.LanguageServer")
-      (set-eglot-client! '(python-mode python-ts-mode) '("Microsoft.Python.LanguageServer"))))
+
+    (set-eglot-client! '(python-mode python-ts-mode)
+                       "pylsp" "pyls"
+                       '("basedpyright" "--stdio")
+                       '("basedpyright-langserver" "--stdio")
+                       '("pyright" "--stdio")
+                       '("pyright-langserver" "--stdio")
+                       '("pyrefly" "lsp")
+                       "jedi-language-server"
+                       '("ruff" "server")
+                       "ruff-lsp"))
 
   (eval-when! (modulep! :ui indent-guides)
     (add-hook 'python-mode-local-vars-hook #'+indent-guides-init-maybe-h 'append)

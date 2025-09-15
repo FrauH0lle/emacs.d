@@ -4,6 +4,11 @@
 ;; check them all (especially in TRAMP buffers).
 (setq-default vc-handled-backends '(SVN Git Hg))
 
+;; Ignore node_modules (expensive for vc ops to index).
+(setq-default vc-ignore-dir-regexp (format "%s\\|%s"
+                                           locate-dominating-stop-dir-regexp
+                                           "[/\\\\]node_modules"))
+
 (eval-when! zenit--system-windows-p
   (setenv "GIT_ASKPASS" "git-gui--askpass"))
 
@@ -13,7 +18,7 @@
       "RET" (general-predicate-dispatch
                 (and (bound-and-true-p evil-mode)
                      (evil-normal-state-p))
-                   #'bug-reference-push-button))
+              #'bug-reference-push-button))
 
 (eval-when! (modulep! :editor evil)
   (after! (log-view evil)
@@ -24,9 +29,9 @@
         vc-bzr-log-view-mode
         vc-svn-log-view-mode)
       'emacs)
-  (map! :map log-view-mode-map
-        "j" #'log-view-msg-next
-        "k" #'log-view-msg-prev)))
+    (map! :map log-view-mode-map
+          "j" #'log-view-msg-next
+          "k" #'log-view-msg-prev)))
 
 
 (after! vc-annotate

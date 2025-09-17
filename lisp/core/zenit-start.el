@@ -314,7 +314,10 @@ it."
            (not (or (zenit-context-p 'cli) (zenit-context-p 'compile))))
   (load! (string-remove-suffix ".el" zenit-module-init-file) zenit-local-conf-dir t))
 
-;; Entry point
+
+;;
+;;; Entry point
+
 ;; HACK: This advice hijacks Emacs' initfile loader to accomplish the following:
 ;;
 ;;   1. Load the initfile (generated on `make refresh`)

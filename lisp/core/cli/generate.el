@@ -1,12 +1,9 @@
 ;; lisp/core/cli/generate.el -*- lexical-binding: t; no-byte-compile: t; -*-
 
-(defvar zenit-init-files-dir (file-name-concat zenit-local-dir "init-files/")
-  "Directory where init files are stored.")
-
 (defvar zenit-init-generators
   '(("05-zenit-cached-vars.auto.el"        . zenit--generate-vars)
-    ("90-zenit-packages-autoloads.auto.el" . zenit--generate-package-autoloads)
     ("80-zenit-autoloads.auto.el"          . zenit--generate-autoloads)
+    ("90-zenit-packages-autoloads.auto.el" . zenit--generate-package-autoloads)
     ("95-zenit-load-modules.auto.el"       . zenit--generate-load-modules))
   "An alist mapping file names to generator functions.")
 
@@ -49,44 +46,61 @@
                       config-modules-list))
          (init-file   zenit-module-init-file)
          (config-file zenit-module-config-file))
-    (letf! ((defun module-loader (group name file &optional noerror no-include)
-              (zenit-module-context-with (cons group name)
-                `(let ((zenit-module-context ,zenit-module-context))
-                   ,@(if (or (not (zenit-module-p :config 'compile))
-                             no-include)
-                         `((zenit-load ,(abbreviate-file-name (file-name-sans-extension file))))
-                       `((cl-eval-when (compile) (setq zenit-include--current-file ,file))
-                         (zenit-include ,file)
-                         (cl-eval-when (compile) (setq zenit-include--current-file nil)))))))
+    (letf! ((defun module-loader (key file &optional noerror no-include)
+              (let ((noextfile (file-name-sans-extension file)))
+                `(zenit-module-context-with ',key
+                   ,@(pcase key
+                       ('(:core . nil)
+                        `((zenit-load
+                           (file-name-concat
+                            zenit-core-dir ,(file-name-nondirectory noextfile))
+                           t)))
+                       ('(:user . nil)
+                        `((zenit-load
+                           (file-name-concat
+                            zenit-local-conf-dir ,(file-name-nondirectory noextfile))
+                           t)))
+                       (_
+                        (when (zenit-file-cookie-p file "if" t)
+                          (if (or (not (zenit-module-p :config 'compile))
+                                  no-include)
+                              `((zenit-load ,(abbreviate-file-name noextfile) t))
+                            `((cl-eval-when (compile) (setq zenit-include--current-file ,file))
+                              (zenit-include ,file)
+                              (cl-eval-when (compile) (setq zenit-include--current-file nil))))))))))
             (defun module-list-loader (modules file &optional noerror no-include)
               (cl-loop for (cat . mod) in modules
                        if (zenit-module-locate-path cat mod file)
-                       collect (module-loader cat mod it noerror no-include))))
-      ;; FIX: Same as above (see `zenit-profile--generate-init-vars').
-      `((if (or (zenit-context-p 'init)
-                (zenit-context-p 'reload))
-            (zenit-context-with 'modules
-              (set 'zenit-modules ',zenit-modules)
-              (set 'zenit-disabled-packages ',zenit-disabled-packages)
-              ;; Cache module state and flags in symbol plists for quick lookup by
-              ;; `modulep!' later.
-              ,@(cl-loop
-                 for (category . modules) in (seq-group-by #'car config-modules-list)
-                 collect
-                 `(setplist ',category
-                   (quote ,(cl-loop for (_ . module) in modules
-                                    nconc `(,module ,(get category module))))))
-              (let ((old-custom-file custom-file))
+                       collect (module-loader (cons cat mod) it noerror no-include))))
+      ;; Make sure this only runs at startup to protect us Emacs' interpreter
+      ;; re-evaluating this file when lazy-loading dynamic docstrings from the
+      ;; byte-compiled init file.
+      `((when (or (zenit-context-p 'startup)
+                  (zenit-context-p 'reload))
+          (set 'zenit-modules ',zenit-modules)
+          (set 'zenit-disabled-packages ',zenit-disabled-packages)
+          ;; Cache module state and flags in symbol plists for quick lookup by
+          ;; `modulep!' later.
+          ,@(cl-loop
+             for (category . modules) in (seq-group-by #'car config-modules-list)
+             collect
+             `(setplist ',category
+               (quote ,(cl-loop for (_ . module) in modules
+                                nconc `(,module ,(get category module))))))
+          (zenit-context-with 'module
+            (let ((old-custom-file custom-file))
+              (zenit-context-with 'init
                 ,@(module-list-loader pre-init-modules init-file)
                 (zenit-run-hooks 'zenit-before-modules-init-hook)
                 ,@(module-list-loader init-modules init-file)
-                (zenit-run-hooks 'zenit-after-modules-init-hook)
+                (zenit-run-hooks 'zenit-after-modules-init-hook))
+              (zenit-context-with 'config
                 (zenit-run-hooks 'zenit-before-modules-config-hook)
                 ,@(module-list-loader config-modules config-file)
                 (zenit-run-hooks 'zenit-after-modules-config-hook)
-                ,@(module-list-loader post-config-modules config-file t t)
-                (when (eq custom-file old-custom-file)
-                  (zenit-load custom-file 'noerror)))))))))
+                ,@(module-list-loader post-config-modules config-file t 'no-include))
+              (when (eq custom-file old-custom-file)
+                (zenit-load custom-file 'noerror)))))))))
 
 (defun zenit--generate-autoloads ()
   "Generate autoloads for core and module files.
@@ -146,7 +160,7 @@ autoloads are always met."
   (print-group!
     (cl-check-type file string)
     (zenit-initialize-packages)
-    (let ((init-dir zenit-init-files-dir))
+    (let ((init-dir zenit-autogen-dir))
       (with-file-modes #o750
         (print-group!
           (make-directory init-dir t)

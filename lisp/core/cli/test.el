@@ -82,11 +82,11 @@ fail."
                             ;; Load core
                             "-l" (concat zenit-core-dir "zenit-core.el")
                             ;; Set context
-                            "--eval" (prin1-to-string '(zenit-context-push 'init))
+                            "--eval" (prin1-to-string '(zenit-context-push 'startup))
                             ;; Load `zenit-init-generators'
                             "-l" (file-name-concat zenit-local-dir (car (mapcar #'car zenit-init-generators)))
                             ;; Set test context
-                            "--eval" (prin1-to-string '(zenit-context-pop 'init))
+                            "--eval" (prin1-to-string '(zenit-context-pop 'startup))
                             "--eval" (prin1-to-string '(zenit-context-push 'tests))
                             ;; Load test framework
                             "-l" (concat zenit-core-dir "zenit-test.el")

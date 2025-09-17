@@ -467,8 +467,9 @@ where no module specifics have been defined.")
 (defvar zenit-module-context zenit--empty-module-context
   "A vector describing the module associated it with the active context.
 Contains the following: [INDEX INITDEPTH CONFIGDEPTH :GROUP
-MODULE FLAGS FEATURES] Do not directly set this variable, only
-let-bind it.")
+MODULE FLAGS FEATURES]
+
+Do not directly set this variable, only let-bind it.")
 
 (defmacro zenit-module--context-field (field)
   "Retrieve the index of FIELD from the `zenit-module-context'.
@@ -500,8 +501,9 @@ cell: (GROUP . NAME)."
         zenit--empty-module-context)))
 
 (defun zenit-module-context-key (&optional context)
-  "Return the module of the active `zenit-module-context' as a
-module key."
+  "Return the module of the active CONTEXT as a module key.
+
+CONTEXT is a `zenit-module-context'."
   (declare (side-effect-free t))
   (let ((context (or context zenit-module-context)))
     (cons (aref context (zenit-module--context-field :group))

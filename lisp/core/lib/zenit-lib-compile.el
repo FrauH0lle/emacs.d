@@ -147,14 +147,13 @@ when evaluated."
      ;; Generate module configuration if needed
      ,@(when modulep
          (zenit-compile--generate-modules))
-     
+
      ;; Load autoloads files if requested
      ,@(when autoloads
          (let (forms)
-           (dolist (file '("zenit-autoloads.el" "zenit-packages-autoloads.el") forms)
-             (let ((fname (file-name-concat user-emacs-directory ".local" file)))
-               (when (file-exists-p fname)
-                 (push `(load ,fname) forms))))
+           (dolist (file (zenit-glob zenit-autogen-dir "*autoloads*.el") forms)
+             (when (file-exists-p file)
+               (push `(load ,file) forms)))
            (nreverse forms)))
      
      ;; Push compile context if zenit-core is loaded

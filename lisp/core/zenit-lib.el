@@ -45,7 +45,7 @@
 ;;; Custom error types
 
 (define-error 'zenit-error "Error in Emacs")
-(define-error 'zenit-nosync-error "Config could not be initialized; did you remember to run 'make refresh' in the shell?" 'zenit-error)
+(define-error 'zenit-nosync-error "Config could not be initialized; did you remember to run 'emacs-config refresh' in the shell?" 'zenit-error)
 (define-error 'zenit-core-error "Unexpected error in core directory" 'zenit-error)
 (define-error 'zenit-context-error "Incorrect context error" 'zenit-error)
 (define-error 'zenit-hook-error "Error in a startup hook" 'zenit-error)

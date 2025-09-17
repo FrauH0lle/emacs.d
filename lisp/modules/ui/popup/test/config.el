@@ -2,8 +2,9 @@
 ;; ui/popup/test/config.el
 
 (require 'zenit-test)
-(require 'zenit-modules)
 (require 'el-patch)
+(zenit-require 'zenit-lib 'modules)
+(zenit-modules-initialize)
 (zenit-load (zenit-module-locate-path :ui 'popup "autoload/popup.el"))
 (zenit-load (zenit-module-locate-path :ui 'popup "autoload/settings.el"))
 (zenit-load (zenit-module-locate-path :ui 'popup "config.el"))

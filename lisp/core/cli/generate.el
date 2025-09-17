@@ -48,7 +48,7 @@
          (config-file zenit-module-config-file))
     (letf! ((defun module-loader (key file &optional noerror no-include)
               (let ((noextfile (file-name-sans-extension file)))
-                `(zenit-module-context-with ',key
+                `(with-zenit-module-context ',key
                    ,@(pcase key
                        ('(:core . nil)
                         `((zenit-load
@@ -87,14 +87,14 @@
              `(setplist ',category
                (quote ,(cl-loop for (_ . module) in modules
                                 nconc `(,module ,(get category module))))))
-          (zenit-context-with 'module
+          (with-zenit-context 'module
             (let ((old-custom-file custom-file))
-              (zenit-context-with 'init
+              (with-zenit-context 'init
                 ,@(module-list-loader pre-init-modules init-file)
                 (zenit-run-hooks 'zenit-before-modules-init-hook)
                 ,@(module-list-loader init-modules init-file)
                 (zenit-run-hooks 'zenit-after-modules-init-hook))
-              (zenit-context-with 'config
+              (with-zenit-context 'config
                 (zenit-run-hooks 'zenit-before-modules-config-hook)
                 ,@(module-list-loader config-modules config-file)
                 (zenit-run-hooks 'zenit-after-modules-config-hook)
@@ -114,7 +114,7 @@ definitions."
    ;; and any additional files specified in `zenit-autoloads-files`.
    (delete "" (append (zenit-glob zenit-core-dir "lib/*.el")
                       (cl-loop for dir
-                               in (append (zenit-module-load-path zenit-modules-dirs)
+                               in (append (zenit-module-load-path zenit-modules-load-path)
                                           (list zenit-local-conf-dir))
                                if (zenit-glob dir "autoload.el") append it
                                if (zenit-glob dir "autoload/*.el") append it)

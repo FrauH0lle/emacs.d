@@ -4,9 +4,9 @@
 (require 'zenit-test)
 (require 'el-patch)
 (require 'zenit-el-patch)
-(require 'zenit-modules)
 (require 'zenit-use-package)
 (require 'zenit-keybinds)
+(zenit-require 'zenit-lib 'modules)
 
 (zenit-deftest zenit-leader-key
   (:doc "`zenit-leader-key' is defined")
@@ -87,7 +87,8 @@
       (function test-command-1))
     (macroexpand '(define-leader-key! "a" #'test-command-1)))))
 
-(zenit-deftest define-localleader-key! ()
+(zenit-deftest define-localleader-key!
+  (:vars ((zenit-modules (make-hash-table :test #'equal))))
   ,test
   (test)
   :doc "`define-localleader-key!' expands correctly with evil"
@@ -397,7 +398,8 @@
         (zenit--map-state nil))
     (should (null (zenit--map-state)))))
 
-(zenit-deftest map! ()
+(zenit-deftest map!
+  (:vars ((zenit-modules (make-hash-table :test #'equal))))
   ,test
   (test)
   :doc "`map!' expands correctly with evil module active"

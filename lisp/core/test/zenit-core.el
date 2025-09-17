@@ -48,6 +48,10 @@
   (:doc "`zenit-local-conf-dir' is defined")
   (should (boundp 'zenit-local-conf-dir)))
 
+(zenit-deftest zenit-modules-load-path
+  (:doc "`zenit-modules-load-path' is defined")
+  (should (boundp 'zenit-modules-load-path)))
+
 (zenit-deftest zenit-local-dir
   (:doc "`zenit-local-dir' is defined")
   (should (boundp 'zenit-local-dir)))
@@ -60,6 +64,10 @@
   (:doc "`zenit-cache-dir' is defined")
   (should (boundp 'zenit-cache-dir)))
 
+(zenit-deftest zenit-state-dir
+  (:doc "`zenit-state-dir' is defined")
+  (should (boundp 'zenit-state-dir)))
+
 (zenit-deftest zenit-env-file
   (:doc "`zenit-env-file' is defined")
   (should (boundp 'zenit-env-file)))
@@ -67,6 +75,22 @@
 (zenit-deftest zenit-config-init-file
   (:doc "`zenit-config-init-file' is defined")
   (should (boundp 'zenit-config-init-file)))
+
+(zenit-deftest zenit-module-init-file
+  (:doc "`zenit-module-init-file' is defined")
+  (should (boundp 'zenit-module-init-file)))
+
+(zenit-deftest zenit-module-config-file
+  (:doc "`zenit-module-config-file' is defined")
+  (should (boundp 'zenit-module-config-file)))
+
+(zenit-deftest zenit-module-packages-file
+  (:doc "`zenit-module-packages-file' is defined")
+  (should (boundp 'zenit-module-packages-file)))
+
+(zenit-deftest zenit-module-control-file
+  (:doc "`zenit-module-control-file' is defined")
+  (should (boundp 'zenit-module-control-file)))
 
 (zenit-deftest command-line-1@respect-file-handlers
   (:doc "`command-line-1@respect-file-handlers' advises `command-line-1'")
@@ -79,49 +103,6 @@
   (progn
     (should (fboundp 'zenit--reset-file-handler-alist-h))
     (should (member #'zenit--reset-file-handler-alist-h emacs-startup-hook))))
-
-(zenit-deftest zenit-context
-  (:doc "`zenit-context' is defined")
-  (should (boundp 'zenit-context)))
-
-(zenit-deftest zenit-context--check
-  (:doc "`zenit-context--check' does not return an error if the context is valid")
-  (progn
-    (should-not (zenit-context--check 'init))
-    (should-error (zenit-context--check 'does-not-exist))))
-
-(zenit-deftest zenit-context-p
-  (:doc "`zenit-context-p' returns non-nil if context is active"
-   :vars ((zenit-context '(init eval t))))
-  (progn
-    (should (zenit-context-p 'init))
-    (should (zenit-context-p 'eval))
-    (should-not (zenit-context-p 'does-not-exist))))
-
-(zenit-deftest zenit-context-push
-  (:doc "`zenit-context-push' returns non-nil if context is added"
-   :vars ((zenit-context '(t))))
-  (progn
-    (should (zenit-context-push 'init))
-    (should (zenit-context-push 'eval))
-    (should-error (zenit-context-push 'does-not-exist))))
-
-(zenit-deftest zenit-context-pop
-  (:doc "`zenit-context-pop' returns non-nil if context is removed"
-   :vars ((zenit-context '(init eval t))))
-  (progn
-    (should (zenit-context-pop 'init))
-    (should (zenit-context-pop 'eval))
-    (should-not (zenit-context-pop 'does-not-exist))
-    (should-error (zenit-context-pop 'does-not-exist t))))
-
-(zenit-deftest zenit-context-with
-  (:doc "`zenit-context-with' returns non-nil if context is added"
-   :vars ((zenit-context '(t))))
-  (zenit-context-with '(init eval t)
-    (should (zenit-context-p 'init))
-    (should (zenit-context-p 'eval))
-    (should-not (zenit-context-p 'does-not-exist))))
 
 (zenit-deftest zenit--write-to-etc-dir-a
   (:doc "`zenit--write-to-etc-dir-a' advises `locate-user-emacs-file'")
@@ -150,6 +131,22 @@
 (zenit-deftest zenit-after-init-hook
   (:doc "`zenit-after-init-hook' is defined")
   (should (boundp 'zenit-after-init-hook)))
+
+(zenit-deftest zenit-before-modules-init-hook
+  (:doc "`zenit-before-modules-init-hook' is defined")
+  (should (boundp 'zenit-before-modules-init-hook)))
+
+(zenit-deftest zenit-after-modules-init-hook
+  (:doc "`zenit-after-modules-init-hook' is defined")
+  (should (boundp 'zenit-after-modules-init-hook)))
+
+(zenit-deftest zenit-before-modules-config-hook
+  (:doc "`zenit-before-modules-config-hook' is defined")
+  (should (boundp 'zenit-before-modules-config-hook)))
+
+(zenit-deftest zenit-after-modules-config-hook
+  (:doc "`zenit-after-modules-config-hook' is defined")
+  (should (boundp 'zenit-after-modules-config-hook)))
 
 (zenit-deftest zenit--begin-init-h
   (:doc "`zenit--begin-init-h' is a member of `zenit-before-init-hook'")

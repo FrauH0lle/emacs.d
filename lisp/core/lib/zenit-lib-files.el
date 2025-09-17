@@ -194,7 +194,7 @@ FILE, return NULL-VALUE."
       (or (eolp)
           (read (current-buffer))))))
 
-(autoload #'zenit-module-context-with "zenit-modules" nil nil 'macro)
+(autoload #'with-zenit-module-context "zenit-modules" nil nil 'macro)
 ;;;###autoload
 (defun zenit-file-cookie-p (file &optional cookie null-value)
   "Returns the result of FORM in a ;;;###COOKIE FORM at the top of FILE.
@@ -205,7 +205,7 @@ FILE, return NULL-VALUE."
     (if (equal sexp null-value)
         null-value
       (with-temp-buffer
-        (zenit-module-context-with (zenit-module-from-path file)
+        (with-zenit-module-context (zenit-module-from-path file)
           (let ((load-file-name file))
             (eval (zenit-file-cookie file cookie null-value) t)))))))
 

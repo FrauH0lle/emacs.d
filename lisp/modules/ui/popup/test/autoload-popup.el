@@ -2,8 +2,9 @@
 ;; ui/popup/test/autoload-popup.el
 
 (require 'zenit-test)
-(require 'zenit-modules)
 (zenit-require 'zenit-lib 'plist)
+(zenit-require 'zenit-lib 'modules)
+(zenit-modules-initialize)
 (zenit-load (zenit-module-locate-path :ui 'popup "autoload/popup.el"))
 
 (zenit-deftest +popup--reference-modes

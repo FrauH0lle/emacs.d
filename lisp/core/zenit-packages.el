@@ -442,7 +442,7 @@ also be a list of module keys."
         (packages-file zenit-module-packages-file)
         zenit-disabled-packages
         zenit-packages)
-    (zenit-context-with 'packages
+    (with-zenit-context 'packages
       (when (assq :local-conf module-list)
         ;; We load the local packages file twice to populate
         ;; `zenit-disabled-packages' ASAP ...
@@ -659,11 +659,11 @@ also be a list of module keys."
         zenit-disabled-packages
         zenit-packages)
     (letf! (defun read-packages (key)
-             (zenit-module-context-with key
+             (with-zenit-module-context key
                (when-let* ((file (zenit-module-locate-path
                                   (car key) (cdr key) packages-file)))
                  (zenit-packages--read file))))
-      (zenit-context-with 'packages
+      (with-zenit-context 'packages
         (let ((user? (assq :local-conf module-list)))
           (when user?
             ;; We load the private packages file twice to populate

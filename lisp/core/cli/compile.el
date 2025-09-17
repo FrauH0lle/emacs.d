@@ -124,7 +124,7 @@ This does not include third party packages.'"
       (cl-loop with default-directory = zenit-emacs-dir
                with el-files = (append (zenit-files-in zenit-local-conf-dir :match "\\.el$")
                                        (zenit-files-in zenit-core-dir :match "\\.el$")
-                                       (zenit-files-in zenit-modules-dirs :match "\\.el$"))
+                                       (zenit-files-in zenit-modules-load-path :match "\\.el$"))
                for path in el-files
                if (file-exists-p (byte-compile-dest-file path))
                do (delete-file (byte-compile-dest-file path))
@@ -137,7 +137,7 @@ This does not include third party packages.'"
       (cl-loop with default-directory = zenit-emacs-dir
                with elc-files = (append (zenit-files-in zenit-local-conf-dir :match "\\.elc$")
                                         (zenit-files-in zenit-core-dir :match "\\.elc$")
-                                        (zenit-files-in zenit-modules-dirs :match "\\.elc$"))
+                                        (zenit-files-in zenit-modules-load-path :match "\\.elc$"))
                for path in elc-files
                if (and (string-suffix-p ".elc" path)
                        (file-exists-p path))

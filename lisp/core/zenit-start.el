@@ -267,7 +267,6 @@ it."
 ;;; Bootstrap
 
 ;; Load core modules and set up their autoloads
-(require 'zenit-modules)
 (autoload 'zenit-initialize-packages "zenit-packages")
 (autoload 'package! "zenit-packages" nil nil t)
 

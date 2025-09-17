@@ -22,11 +22,11 @@ Meant as an eval handler for the :tools eval module."
       (with-current-buffer working-buffer
         (unwind-protect
             (condition-case-unless-debug e
-                (zenit-module-context-with
+                (with-zenit-module-context
                     (zenit-module-from-path
                      (or (buffer-file-name (buffer-base-buffer))
                          default-directory))
-                  (zenit-context-with 'eval
+                  (with-zenit-context 'eval
                     (eval-region beg end buffer load-read-function))
                   (with-current-buffer buffer
                     (let ((pp-max-width nil))

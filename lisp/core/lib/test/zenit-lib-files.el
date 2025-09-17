@@ -3,7 +3,6 @@
 
 (require 'zenit-test)
 (zenit-require 'zenit-lib 'files)
-(require 'zenit-modules)
 
 (zenit-deftest zenit--resolve-path-forms
   (:doc "`zenit--resolve-path-forms' resolves nested forms")

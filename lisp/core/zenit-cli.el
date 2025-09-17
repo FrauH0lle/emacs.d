@@ -198,15 +198,13 @@ See `zenit-cli-log-file-format' for details."
   (if init-file-debug (zenit-debug-mode +1))
 
   ;; Ensure package management is ready
-  (require 'zenit-modules)
   (require 'zenit-packages)
 
   ;; Last minute initialization at the end of loading this file.
   (with-eval-after-load 'zenit-cli
     (zenit-run-hooks 'zenit-before-init-hook))
 
-  ;; Load site-lisp/init.el, which defines the modules to use.
-  (load! (string-remove-suffix ".el" zenit-module-init-file) zenit-local-conf-dir t))
+  (zenit-modules-initialize))
 
 
 ;;

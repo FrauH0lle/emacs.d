@@ -30,8 +30,6 @@ Returns a plist with the following possible keys:
     '(:req-core t))
 
    ;; Core system files that require zenit-core
-   ((string-suffix-p "zenit-modules.el" target)
-    '(:req-core t))
    ((string-suffix-p "zenit-start.el" target)
     '(:req-core t))
    ((string-suffix-p "zenit-use-package.el" target)
@@ -41,7 +39,7 @@ Returns a plist with the following possible keys:
 
    ;; Feature-specific files that require additional dependencies
    ((string-suffix-p "zenit-keybinds.el" target)
-    '(:req-core t :req-extra (zenit-modules zenit-use-package zenit-el-patch)))
+    '(:req-core t :req-extra (zenit-use-package zenit-el-patch)))
    ((string-suffix-p "zenit-ui.el" target)
     '(:req-core t :req-extra (zenit-use-package)))
    ((string-suffix-p "zenit-projects.el" target)
@@ -55,7 +53,7 @@ Returns a plist with the following possible keys:
         (file-in-directory-p target (file-name-concat user-emacs-directory "site-lisp"))
         (equal (expand-file-name target) (expand-file-name (file-name-concat user-emacs-directory "init.el"))))
     '(:req-core-lib t :req-core t :req-core-libs all
-      :req-extra (cl-lib zenit-modules zenit-use-package zenit-el-patch
+      :req-extra (cl-lib zenit-use-package zenit-el-patch
                          zenit-keybinds zenit-projects zenit-editor)
       :modulep t :autoloads t))
 

@@ -41,7 +41,7 @@ autoloads.")
                             :req-core-libs (when (zenit-module-p :config 'compile)
                                              '(files))
                             :req-extra (if (zenit-module-p :config 'compile)
-                                           '(cl-lib zenit-modules zenit-use-package zenit-el-patch zenit-keybinds)
+                                           '(cl-lib zenit-use-package zenit-el-patch zenit-keybinds)
                                          '(cl-lib))
                             :modulep (zenit-module-p :config 'compile)
                             :warnings byte-compile-warnings))))
@@ -211,7 +211,7 @@ non-nil, treat FILES as pre-generated autoload files instead."
           (let ((load-file-name file)
                 (load-path
                  (append (list zenit-local-conf-dir)
-                         zenit-modules-dirs
+                         zenit-modules-load-path
                          load-path)))
             (condition-case _
                 (while t

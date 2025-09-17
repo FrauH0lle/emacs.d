@@ -278,12 +278,6 @@ it."
 ;; configuration before the session is complicated.
 (zenit-run-hooks 'zenit-before-init-hook)
 
-;; Load envvar file
-(when (and (or initial-window-system
-               (daemonp))
-           zenit-env-file)
-  (zenit-load-envvars-file zenit-env-file 'noerror))
-
 ;; Last minute setup
 (add-hook 'zenit-after-init-hook #'zenit-load-packages-incrementally-h 100)
 (add-hook 'zenit-after-init-hook #'zenit-display-benchmark-h 110)
@@ -307,11 +301,6 @@ it."
 `MODE-local-vars-hook' section above."
     (add-hook 'after-change-major-mode-hook #'zenit-run-local-var-hooks-maybe-h 100)
     (add-hook 'hack-local-variables-hook #'zenit-run-local-var-hooks-h)))
-
-;; Load site-lisp/init.el early, but only when not in CLI mode.
-(when (and (not noninteractive)
-           (not (or (zenit-context-p 'cli) (zenit-context-p 'compile))))
-  (load! (string-remove-suffix ".el" zenit-module-init-file) zenit-local-conf-dir t))
 
 
 ;;

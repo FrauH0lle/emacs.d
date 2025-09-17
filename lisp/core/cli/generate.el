@@ -183,6 +183,14 @@ autoloads are always met."
                       (signal 'zenit-error
                               (list "The installed version of Emacs has changed since last refresh")))
                    (current-buffer))
+            (prin1 `(when (and (or initial-window-system
+                                   (daemonp))
+                               zenit-env-file)
+                      (zenit-load-envvars-file zenit-env-file 'noerror))
+                   (current-buffer))
+            (prin1 `(with-zenit-context '(module init)
+                      (zenit-load (file-name-concat zenit-local-conf-dir ,zenit-module-init-file) t))
+                   (current-buffer))
             (dolist (file (zenit-glob init-dir "*.el"))
               (print-group! :level 'info
                 (print! (start "Reading %s...") file))

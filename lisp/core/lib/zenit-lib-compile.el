@@ -149,7 +149,7 @@ when evaluated."
      ;; Load autoloads files if requested
      ,@(when autoloads
          (let (forms)
-           (dolist (file (zenit-glob zenit-autogen-dir "*autoloads*.el") forms)
+           (dolist (file (zenit-glob zenit-autogen-dir "*loaddefs*.el") forms)
              (when (file-exists-p file)
                (push `(load ,file) forms)))
            (nreverse forms)))

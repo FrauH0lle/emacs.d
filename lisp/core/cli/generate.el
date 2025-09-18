@@ -156,11 +156,11 @@ autoloads are always met."
   "Regenerates autoloads and writes them to FILE."
   (unless file
     (setq file zenit-config-init-file))
-  (print! (start "(Re)generating init file..."))
+  (print! (start "(Re)building init file..."))
   (print-group!
     (cl-check-type file string)
     (zenit-initialize-packages)
-    (let ((init-dir zenit-autogen-dir))
+    (let ((init-dir zenit-bootstrap-dir))
       (with-file-modes #o750
         (print-group!
           (make-directory init-dir t)
@@ -191,6 +191,7 @@ autoloads are always met."
             (prin1 `(with-zenit-context '(module init)
                       (zenit-load (file-name-concat zenit-local-conf-dir ,zenit-module-init-file) 'noerror))
                    (current-buffer))
+            (print! (start "Building %s...") (relpath file zenit-emacs-dir))
             (dolist (file (zenit-glob init-dir "*.el"))
               (print-group! :level 'info
                 (print! (start "Reading %s...") file))
@@ -198,7 +199,7 @@ autoloads are always met."
             (cl-loop for (genfile _ initfn) in zenit-init-generators
                      if genfile
                      if initfn
-                     do (prin1 `(defun ,initfn () (zenit-load ,(file-name-concat zenit-autogen-dir genfile) 'noerror))
+                     do (prin1 `(defun ,initfn () (zenit-load ,(file-name-concat zenit-bootstrap-dir genfile) 'noerror))
                                (current-buffer)))
             (prin1 `(defun zenit-startup ()
                       ;; Make sure this only runs at startup to protect us
@@ -212,10 +213,9 @@ autoloads are always met."
                                    if (functionp genfn)
                                    collect (list initfn))))
                    (current-buffer)))
-          (print! (start "Byte-compiling %s...")
-                  (relpath file zenit-emacs-dir))
+          (print! (start "Byte-compiling %s...") (relpath file zenit-emacs-dir))
           (zenit-autoloads--compile-file file)
-          (print! (success "Generated %s")
+          (print! (success "Built %s")
                   (relpath (byte-compile-dest-file file)
                            zenit-emacs-dir)))))))
 

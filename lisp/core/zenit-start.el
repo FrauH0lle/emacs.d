@@ -279,28 +279,29 @@ it."
 (zenit-run-hooks 'zenit-before-init-hook)
 
 ;; Last minute setup
-(add-hook 'zenit-after-init-hook #'zenit-load-packages-incrementally-h 100)
-(add-hook 'zenit-after-init-hook #'zenit-display-benchmark-h 110)
-(zenit-run-hook-on 'zenit-first-buffer-hook '(find-file-hook zenit-switch-buffer-hook))
-(zenit-run-hook-on 'zenit-first-file-hook   '(find-file-hook dired-initial-position-hook))
-(zenit-run-hook-on 'zenit-first-input-hook  '(pre-command-hook))
+(when (zenit-context-push 'emacs)
+  (add-hook 'zenit-after-init-hook #'zenit-load-packages-incrementally-h 100)
+  (add-hook 'zenit-after-init-hook #'zenit-display-benchmark-h 110)
+  (zenit-run-hook-on 'zenit-first-buffer-hook '(find-file-hook zenit-switch-buffer-hook))
+  (zenit-run-hook-on 'zenit-first-file-hook   '(find-file-hook dired-initial-position-hook))
+  (zenit-run-hook-on 'zenit-first-input-hook  '(pre-command-hook))
 
-;; If the user's already opened something (e.g. with command-line arguments),
-;; then we should assume nothing about the user's intentions and simply treat
-;; this session as fully initialized.
-(add-hook! 'zenit-after-init-hook :depth 100
-  (defun zenit-run-first-hooks-if-files-open-h ()
-    (when file-name-history
-      (zenit-run-hooks 'zenit-first-file-hook 'zenit-first-buffer-hook))))
+  ;; If the user's already opened something (e.g. with command-line arguments),
+  ;; then we should assume nothing about the user's intentions and simply treat
+  ;; this session as fully initialized.
+  (add-hook! 'zenit-after-init-hook :depth 100
+    (defun zenit-run-first-hooks-if-files-open-h ()
+      (when file-name-history
+        (zenit-run-hooks 'zenit-first-file-hook 'zenit-first-buffer-hook))))
 
-;; Activate these later, otherwise they'll fire for every buffer created between
-;; now and the end of startup.
-(add-hook! 'after-init-hook
-  (defun zenit-init-local-var-hooks-h ()
-    "These fire `MAJOR-MODE-local-vars-hook' hooks. See the
+  ;; Activate these later, otherwise they'll fire for every buffer created
+  ;; between now and the end of startup.
+  (add-hook! 'after-init-hook
+    (defun zenit-init-local-var-hooks-h ()
+      "These fire `MAJOR-MODE-local-vars-hook' hooks. See the
 `MODE-local-vars-hook' section above."
-    (add-hook 'after-change-major-mode-hook #'zenit-run-local-var-hooks-maybe-h 100)
-    (add-hook 'hack-local-variables-hook #'zenit-run-local-var-hooks-h)))
+      (add-hook 'after-change-major-mode-hook #'zenit-run-local-var-hooks-maybe-h 100)
+      (add-hook 'hack-local-variables-hook #'zenit-run-local-var-hooks-h))))
 
 
 ;;
@@ -308,7 +309,7 @@ it."
 
 ;; HACK: This advice hijacks Emacs' initfile loader to accomplish the following:
 ;;
-;;   1. Load the initfile (generated on `make refresh`)
+;;   1. Load the initfile (generated on `emacs-config refresh`)
 ;;   2. Ignore initfiles we don't care about (like $EMACSDIR/init.el, ~/.emacs,
 ;;      and ~/_emacs) and spare us the IO of searching for them.
 ;;   3. Cut down on unnecessary logic in Emacs' bootstrapper.

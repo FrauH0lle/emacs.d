@@ -91,7 +91,7 @@
                       (when msg
                         (with-output-to!
                             `((t . ,(alist-get 'complog zenit-cli-log-buffers)))
-                          (let ((zenit-print-indent 0))
+                          (print-group!
                             (print! msg))))
                       total-fail)
                      (_
@@ -99,7 +99,7 @@
                       (when msg
                         (with-output-to!
                             `((t . ,(alist-get 'complog zenit-cli-log-buffers)))
-                          (let ((zenit-print-indent 0))
+                          (print-group!
                             (print! msg))))
                       total-ok))))))
             (print! (class (if (= total-fail 0) 'success 'error)

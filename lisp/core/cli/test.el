@@ -84,7 +84,7 @@ fail."
                             ;; Set context
                             "--eval" (prin1-to-string '(zenit-context-push 'startup))
                             ;; Load `zenit-init-generators'
-                            "-l" (file-name-concat zenit-autogen-dir (car (mapcar #'car zenit-init-generators)))
+                            "-l" (file-name-concat zenit-bootstrap-dir (car (mapcar #'car zenit-init-generators)))
                             ;; Set test context
                             "--eval" (prin1-to-string '(zenit-context-pop 'startup))
                             "--eval" (prin1-to-string '(zenit-context-push 'tests))

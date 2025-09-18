@@ -48,7 +48,7 @@ autoloads.")
                (when msg
                  (with-output-to!
                      `((t . ,(alist-get 'complog zenit-cli-log-buffers)))
-                   (let ((zenit-print-indent 0))
+                   (print-group! :level 'info
                      (print! msg))))
                (setq success status))
              (if success t (signal 'error "Failed to byte-compile init file"))

@@ -11,7 +11,7 @@
 ;;
 ;;; Log settings
 
-(defvar zenit-cli-log-file-format (expand-file-name "logs/cli.%s.%s.%s" zenit-data-dir)
+(defvar zenit-cli-log-file-format (expand-file-name "logs/cli.%s.%s.%s" zenit-state-dir)
   "Where to write any output/log file to.
 
 Must have three arguments: the date/time, a context (e.g. stdout)
@@ -148,6 +148,41 @@ See `zenit-cli-log-file-format' for details."
               (insert-buffer-substring buffer)
               (ansi-color-filter-region (point-min) (point-max)))))))))
 
+(defun zenit-cli--rotate-log-file (logfile &optional num-backups)
+  "Rotate LOGFILE, keeping NUM-BACKUPS (default 20).
+
+This renames `file.log' to `file-1.log', `file-1.log' to `file-2.log',
+and so on, deleting the oldest log file."
+  (let ((backups (or num-backups 20)))
+    ;; We only need to do something if the log file to be rotated exists.
+    (when (file-exists-p logfile)
+      (let* ((dir       (file-name-directory logfile))
+             (base      (file-name-sans-extension (file-name-nondirectory logfile)))
+             (ext       (concat "." (file-name-extension logfile)))
+             (oldest    (expand-file-name (format "%s-%d%s" base backups ext) dir)))
+
+        ;; 1. Delete the oldest backup file (e.g., "async-bytecomp-20.log").
+        (when (file-exists-p oldest)
+          (delete-file oldest))
+
+        ;; 2. Rename all other backups, counting down from the oldest.
+        ;;    (e.g., rename "-19.log" to "-20.log", then "-18.log" to "-19.log",
+        ;;    etc.)
+        (let ((i (1- backups)))
+          (while (>= i 1)
+            (let ((source (expand-file-name (format "%s-%d%s" base i ext) dir))
+                  (target (expand-file-name (format "%s-%d%s" base (1+ i) ext) dir)))
+              (when (file-exists-p source)
+                (rename-file source target t)))
+            (setq i (1- i))))
+
+        ;; 3. Rename the current log file to the first backup slot.
+        ;;    (e.g., rename "async-bytecomp.log" to "async-bytecomp-1.log")
+        (rename-file logfile
+                     (expand-file-name (format "%s-1%s" base ext) dir)
+                     t)))))
+
+
 
 ;;
 ;;; Bootstrap
@@ -162,9 +197,10 @@ See `zenit-cli-log-file-format' for details."
   (mapc (zenit-rpartial #'make-directory 'parents)
         (list zenit-local-dir
               zenit-data-dir
-              zenit-cache-dir))
+              zenit-cache-dir
+              zenit-state-dir))
 
-  (delete-file async-byte-compile-log-file)
+  (zenit-cli--rotate-log-file async-byte-compile-log-file)
 
   (require 'cl-lib)
 
@@ -184,18 +220,18 @@ See `zenit-cli-log-file-format' for details."
    ;; Don't clog the user's trash with our CLI refuse.
    delete-by-moving-to-trash nil)
 
-  (require 'seq)
-  (require 'map)
+  (zenit-require 'zenit-lib 'debug)
+  (if init-file-debug (zenit-debug-mode +1))
 
   ;; Suppress any possible coding system prompts during CLI sessions.
   (set-language-environment "UTF-8")
 
   ;; Eagerly load these libraries
+  (require 'seq)
+  (require 'map)
   (mapc (zenit-rpartial #'load nil (not init-file-debug) 'nosuffix)
         (append (file-expand-wildcards (concat zenit-core-dir "lib/*.el"))
                 (file-expand-wildcards (concat zenit-core-dir "cli/*.el"))))
-
-  (if init-file-debug (zenit-debug-mode +1))
 
   ;; Ensure package management is ready
   (require 'zenit-packages)

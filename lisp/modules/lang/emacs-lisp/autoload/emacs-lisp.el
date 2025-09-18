@@ -357,8 +357,7 @@ as `+emacs-lisp-non-package-mode' will enable it and disable the other checkers.
                           (require 'zenit-core)
                           (require 'zenit-cli)
                           (require 'zenit-start)
-                          (require 'zenit-use-package)
-                          (require 'zenit-el-patch))
+                          (zenit-load (file-name-concat zenit-emacs-dir "init")))
                       (error
                        (princ
                         (format "%s:%d:%d:Error:Failed to load Emacs config: %s\n"
@@ -380,11 +379,10 @@ as `+emacs-lisp-non-package-mode' will enable it and disable the other checkers.
 Essentially, this means in any elisp file that either:
 - Is not a theme in `custom-theme-load-path',
 - Lacks a `provide' statement,
-- Lives in a project with a .doommodule file,
 - Is a dotfile (like .dir-locals.el).
 
 This generally applies to your private config (`zenit-local-conf-dir')
-or source \(`zenit-emacs-dir')."
+or source (`zenit-emacs-dir')."
   :since "3.0.0"
   (unless (and (or (bound-and-true-p flycheck-mode)
                    (bound-and-true-p flymake-mode))

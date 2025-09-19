@@ -35,9 +35,6 @@
 (cl-eval-when (compile)
   (autoload #'zenit--with-package-recipes (file-name-concat zenit-core-dir "cli" "packages") nil nil 'macro))
 
-;; `zenit-modules'
-(declare-function zenit-module-list "zenit-modules" (&optional paths-or-all initorder?))
-
 ;; `zenit-packages'
 (declare-function +straight--get-lockfile-version-id "zenit-packages" ())
 (declare-function +straight--update-all-lockfile-version "zenit-packages" ())

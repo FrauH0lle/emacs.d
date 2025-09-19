@@ -900,12 +900,6 @@ during startup."
   (put sym 'disabled "`customize' not supported, configure Emacs from ~/.emacs.d/site-lisp/config.el instead"))
 (put 'customize-themes 'disabled "Set `zenit-theme' or use `load-theme' in ~/.emacs.d/site-lisp/config.el instead")
 
-;; Doesn't exist in terminal Emacs, but some Emacs packages (internal and
-;; external) use it anyway, leading to a void-function error, so define a no-op
-;; substitute to suppress them.
-(unless (fboundp 'define-fringe-bitmap)
-  (fset 'define-fringe-bitmap #'ignore))
-
 (after! whitespace
   (defun zenit--in-parent-frame-p ()
     "`whitespace-mode' inundates child frames with whitespace

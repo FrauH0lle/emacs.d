@@ -33,7 +33,6 @@
 
     (set-eglot-client! '(python-mode python-ts-mode)
                        "pylsp" "pyls"
-                       '("basedpyright" "--stdio")
                        '("basedpyright-langserver" "--stdio")
                        '("pyright" "--stdio")
                        '("pyright-langserver" "--stdio")

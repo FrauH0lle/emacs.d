@@ -36,6 +36,8 @@ Returns a plist with the following possible keys:
     '(:req-core t))
    ((string-suffix-p "zenit-el-patch.el" target)
     '(:req-core t))
+   ((string-suffix-p "zenit-compat.el" target)
+    '(:req-core t))
 
    ;; Feature-specific files that require additional dependencies
    ((string-suffix-p "zenit-keybinds.el" target)

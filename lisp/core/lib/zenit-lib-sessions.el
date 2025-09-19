@@ -25,9 +25,6 @@
 ;; `restart-emacs'
 (declare-function restart-emacs--restore-frames-using-desktop "ext:restart-emacs" (file))
 
-;; `zenit-modules'
-(declare-function zenit-module-p "zenit-modules" (category module &optional flag))
-
 ;; `ui/workspaces'
 (declare-function +workspace-kill "../../modules/ui/workspaces/autoload/workspaces.el" (workspace &optional inhibit-kill-p))
 (declare-function +workspace-list-names "../../modules/ui/workspaces/autoload/workspaces.el" ())

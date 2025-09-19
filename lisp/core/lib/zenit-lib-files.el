@@ -32,9 +32,6 @@
 ;; `zenit-editor'
 (defvar zenit--symlink-origin)
 
-;; `zenit-modules'
-(declare-function zenit-module-from-path "zenit-modules" (path &optional enabled-only))
-
 
 (defun zenit--resolve-path-forms (spec &optional directory)
   "Converts a simple nested series of or/and forms into a series of
@@ -194,7 +191,6 @@ FILE, return NULL-VALUE."
       (or (eolp)
           (read (current-buffer))))))
 
-(autoload #'with-zenit-module-context "zenit-modules" nil nil 'macro)
 ;;;###autoload
 (defun zenit-file-cookie-p (file &optional cookie null-value)
   "Returns the result of FORM in a ;;;###COOKIE FORM at the top of FILE.

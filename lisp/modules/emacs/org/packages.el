@@ -50,7 +50,7 @@
 
 (when (modulep! +present)
   (package! centered-window
-    :recipe (:host github :repo "anler/centered-window-mode")
+    :recipe (:host github :repo "emacsmirror/centered-window")
     :lockfile emacs_org)
   (package! org-tree-slide :lockfile emacs_org)
   (package! org-re-reveal :lockfile emacs_org)

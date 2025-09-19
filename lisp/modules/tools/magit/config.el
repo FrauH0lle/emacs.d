@@ -100,8 +100,9 @@ FUNCTION
   (defvar +magit--refreshed-buffer nil)
   (add-hook! 'magit-pre-refresh-hook
     (defun +magit--set-window-state-h ()
-      (setq-local +magit--refreshed-buffer
-                  (list (current-buffer) (point) (window-start)))))
+      (when (zenit-region-active-p)
+        (setq-local +magit--refreshed-buffer
+                    (list (current-buffer) (zenit-region-beginning) (window-start))))))
   (add-hook! 'magit-post-refresh-hook
     (defun +magit--restore-window-state-h ()
       (cl-destructuring-bind (&optional buf pt beg) +magit--refreshed-buffer

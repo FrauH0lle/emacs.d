@@ -46,7 +46,7 @@
                               :filter #'zenit--byte-compile-ignore-file-p
                               :depth 0)
 
-               (zenit-glob zenit-core-dir "zenit-modules.el")
+               (zenit-glob zenit-core-dir "zenit-compat.el")
                (zenit-glob zenit-core-dir "zenit-start.el")
                (zenit-glob zenit-core-dir "zenit-use-package.el")
                (zenit-glob zenit-core-dir "zenit-keybinds.el")

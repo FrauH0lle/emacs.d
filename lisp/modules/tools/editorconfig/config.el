@@ -6,6 +6,10 @@
 (use-package! editorconfig
   :hook (zenit-first-buffer . editorconfig-mode)
   :config
+  ;; The elisp implementation is the default, rather than the external,
+  ;; editorconfig binary, because upstream claims it's "faster and more secure".
+  (setq editorconfig-get-properties-function #'editorconfig-get-properties)
+
   (when (require 'ws-butler nil t)
     (setq editorconfig-trim-whitespaces-mode 'ws-butler-mode))
 

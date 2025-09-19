@@ -8,9 +8,6 @@
 (declare-function zenit-project-find-file "zenit-lib-projects" (dir))
 (declare-function zenit-project-browse "zenit-lib-projects" (dir))
 
-;; `zenit-modules'
-(declare-function zenit-module-p "zenit-modules" (category module &optional flag))
-
 ;; `completion/vertico'
 (declare-function +vertico/project-search-from-cwd "../../modules/completion/vertico/autoload/vertico.el" (&optional arg initial-query))
 

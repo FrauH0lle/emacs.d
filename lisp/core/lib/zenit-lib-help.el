@@ -80,12 +80,6 @@
 ;; `zenit-lib-text'
 (declare-function zenit-thing-at-point-or-region "zenit-lib-text" (&optional thing prompt))
 
-;; `zenit-modules'
-(declare-function zenit-module-from-path "zenit-modules" (path &optional enabled-only))
-(declare-function zenit-module-list "zenit-modules" (&optional paths-or-all initorder?))
-(declare-function zenit-module-locate-path "zenit-modules" (category &optional module file))
-(declare-function zenit-module-p "zenit-modules" (category module &optional flag))
-
 
 ;;;###autoload
 (defvar zenit-docs-dir (file-name-concat zenit-emacs-dir "docs/")

@@ -1,4 +1,8 @@
-;; lisp/core/zenit-start.el -*- lexical-binding: t; -*-
+;;; lisp/core/zenit-start.el --- -*- lexical-binding: t; -*-
+
+;;; Commentary:
+
+;;; Code:
 
 (eval-when-compile
   (require 'cl-lib))
@@ -123,9 +127,11 @@
 ;; have run. If you want hook functions to be aware of these customizations, add
 ;; them to MODE-local-vars-hook instead.
 (defvar zenit-inhibit-local-var-hooks nil
-  "If `zenit-inhibit-local-var-hooks` is
-non-nil,`zenit-run-local-var-hooks-h' will not run these hooks.
-Default value is nil, allowing the hooks to run.")
+  "Determine if `zenit-run-local-var-hooks-h' will run hooks.
+
+If `zenit-inhibit-local-var-hooks' is non-nil,
+`zenit-run-local-var-hooks-h' will run MODE-local-vars-hook. Default
+value is nil, allowing the hooks to run.")
 
 (defun zenit-run-local-var-hooks-h ()
   "Run MODE-local-vars-hook after local variables are initialized."
@@ -136,22 +142,15 @@ Default value is nil, allowing the hooks to run.")
                " " (buffer-name (or (buffer-base-buffer)
                                     (current-buffer)))))
     (setq-local zenit-inhibit-local-var-hooks t)
-    (zenit-run-hooks (intern-soft (format "%s-local-vars-hook" major-mode)))
-    ;; The tree-sitter supported modes are usually derived from a common base
-    ;; mode. Thus, instead of having to add to the non-ts-mode and normal-mode
-    ;; hooks, we run the parent hooks as well.
-    ;; (let ((parent (get major-mode 'derived-mode-parent)))
-    ;;   (when (string-suffix-p "base-mode" (symbol-name parent))
-    ;;     (zenit-run-hooks (intern-soft (format "%s-local-vars-hook" parent))))
-    ;;   (zenit-run-hooks (intern-soft (format "%s-local-vars-hook" major-mode))))
-    ))
+    (zenit-run-hooks (intern-soft (format "%s-local-vars-hook" major-mode)))))
 
 ;; If the user has disabled `enable-local-variables', then
 ;; `hack-local-variables-hook' is never triggered, so we trigger it at the end
 ;; of `after-change-major-mode-hook':
 (defun zenit-run-local-var-hooks-maybe-h ()
-  "Run `zenit-run-local-var-hooks-h' if
-`enable-local-variables' is disabled."
+  "Maybe run `zenit-run-local-var-hooks-h'.
+
+Run only if `enable-local-variables' is disabled."
   (unless enable-local-variables
     (zenit-run-local-var-hooks-h)))
 
@@ -160,10 +159,11 @@ Default value is nil, allowing the hooks to run.")
 ;;; Incremental lazy-loading
 
 (defvar zenit-incremental-packages '(t)
-  "A list of packages to load incrementally after startup. Any
-large packages here may cause noticeable pauses, so it's
-recommended you break them up into sub-packages. For example,
-`org' is comprised of many packages, and can be broken up into:
+  "A list of packages to load incrementally after startup.
+
+Any large packages here may cause noticeable pauses, so it's recommended
+you break them up into sub-packages. For example, `org' is comprised of
+many packages, and can be broken up into:
 
   (zenit-load-packages-incrementally
  \\='(calendar find-func format-spec org-macs org-compat
@@ -173,18 +173,16 @@ recommended you break them up into sub-packages. For example,
 
 This is already done by the emacs/org module, however.
 
-If you want to disable incremental loading altogether, either
-remove `zenit-load-packages-incrementally-h' from
-`emacs-startup-hook' or set `zenit-incremental-first-idle-timer'
-to nil. Incremental loading does not occur in daemon
-sessions (they are loaded immediately at startup).")
+If you want to disable incremental loading altogether, either remove
+`zenit-load-packages-incrementally-h' from `emacs-startup-hook' or set
+`zenit-incremental-first-idle-timer' to nil. Incremental loading does
+not occur in daemon sessions (they are loaded immediately at startup).")
 
 (defvar zenit-incremental-first-idle-timer (if (daemonp) 0 2.0)
   "How long (in idle seconds) until incremental loading starts.
 
-Set this to nil to disable incremental loading. Set this to 0 to
-load all incrementally deferred packages immediately at
-`emacs-startup-hook'.")
+Set this to nil to disable incremental loading. Set this to 0 to load
+all incrementally deferred packages immediately at `emacs-startup-hook'.")
 
 (defvar zenit-incremental-idle-timer 0.75
   "How long (in idle seconds) in between incrementally loading packages.")
@@ -254,8 +252,7 @@ If this is a daemon session, load them all immediately instead."
 (defun zenit-display-benchmark-h (&optional return-p)
   "Display a benchmark including number of packages and modules loaded.
 
-If RETURN-P, return the message as a string instead of displaying
-it."
+If RETURN-P, return the message as a string instead of displaying it."
   (funcall (if return-p #'format #'message)
            "Loaded %d packages across %d modules in %.03fs"
            (- (length load-path) (length (get 'load-path 'initial-value)))
@@ -380,3 +377,5 @@ the `--debug-init' option to view a complete error backtrace."
       (setq debug-on-error debug-on-error-from-init-file))))
 
 (provide 'zenit-start)
+
+;;; zenit-start.el ends here.

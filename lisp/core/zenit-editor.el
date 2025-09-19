@@ -1,4 +1,8 @@
-;; lisp/core/zenit-editor.el -*- lexical-binding: t; -*-
+;;; lisp/core/zenit-editor.el --- -*- lexical-binding: t; -*-
+
+;;; Commentary:
+
+;;; Code:
 
 (eval-when-compile
   (require 'cl-lib))
@@ -32,17 +36,16 @@
     ;; Automatic indent detection in org files is meaningless. Not to mention, a
     ;; non-standard `tab-width' causes an error in org-mode.
     org-mode)
-  "A list of major modes where indentation shouldn't be
- auto-detected.")
+  "A list of major modes where indentation shouldn't be auto-detected.")
 
 (defvar-local zenit-inhibit-indent-detection nil
-  "A buffer-local flag that indicates whether `dtrt-indent' should
-try to detect indentation settings or not. This should be set by
-editorconfig if it successfully sets indent_style/indent_size.")
+  "Whether `dtrt-indent' should try to detect indentation settings or not.
+
+This buffer-local flag should be set by editorconfig if it successfully
+sets indent_style/indent_size.")
 
 (defvar zenit-inhibit-large-file-detection nil
-  "If non-nil, inhibit large/long file detection when opening
-files.")
+  "If non-nil, inhibit large/long file detection when opening files.")
 
 (defvar zenit-large-file-p nil)
 (put 'zenit-large-file-p 'permanent-local t)
@@ -50,9 +53,9 @@ files.")
 (defvar zenit-large-file-size-alist '(("." . 1.0))
   "An alist mapping regexps (like `auto-mode-alist') to filesize thresholds.
 
-If a file is opened and discovered to be larger than the
-threshold, we perform emergency optimizations to prevent Emacs
-from hanging, crashing or becoming unusably slow.
+If a file is opened and discovered to be larger than the threshold, we
+perform emergency optimizations to prevent Emacs from hanging, crashing
+or becoming unusably slow.
 
 These thresholds are in MB, and is used by
 `zenit--prepare-for-large-files-a'.")
@@ -61,8 +64,7 @@ These thresholds are in MB, and is used by
   '(so-long-mode special-mode archive-mode tar-mode jka-compr
     git-commit-mode image-mode doc-view-mode doc-view-mode-maybe
     ebrowse-tree-mode pdf-view-mode tags-table-mode)
-  "Major modes that `zenit-optimize-for-large-files-h' will
-ignore.")
+  "Major modes that `zenit-optimize-for-large-files-h' will ignore.")
 
 
 ;;
@@ -703,3 +705,5 @@ current buffer.")
             'diff-mode))
 
 (provide 'zenit-editor)
+
+;;; zenit-editor.el ends here.

@@ -1,4 +1,8 @@
-;; lisp/core/zenit-core.el -*- lexical-binding: t; -*-
+;;; lisp/core/zenit-core.el --- -*- lexical-binding: t; -*-
+
+;;; Commentary:
+
+;;; Code:
 
 ;; This is the core of this emacs configuration. From here, all requirements get
 ;; loaded and started.
@@ -501,26 +505,23 @@ them otherwise."
 ;;; Custom hooks
 
 (defcustom zenit-before-init-hook ()
-  "A hook run after the core has initialized and before local
-configuration.
+  "A hook run after core has initialized and before local configuration.
 
 Right before site-lisp/init.el is loaded, in the context of
-early-init.el. Use this for configuration at the latest
-opportunity before the session becomes unpredictably complicated
-by packages, etc.
+early-init.el. Use this for configuration at the latest opportunity
+before the session becomes unpredictably complicated by packages, etc.
 
-In contrast, `before-init-hook' is run just after
-site-lisp/init.el is loaded, but long before modules and
-site-lisp/config.el are loaded."
+In contrast, `before-init-hook' is run just after site-lisp/init.el is
+loaded, but long before modules and site-lisp/config.el are loaded."
   :group 'zenit
   :type 'hook)
 
 (defcustom zenit-after-init-hook ()
   "A hook run once core, modules and local config are loaded.
 
-This triggers at the absolute latest point in the eager startup
-process, and runs in both interactive and non-interactive
-sessions, so guard hooks appropriately against `noninteractive'."
+This triggers at the absolute latest point in the eager startup process,
+and runs in both interactive and non-interactive sessions, so guard
+hooks appropriately against `noninteractive'."
   :group 'zenit
   :type 'hook)
 
@@ -589,3 +590,5 @@ But before the local one."
 (setq features (cons :system (delq :system features)))
 
 (provide 'zenit-core)
+
+;;; zenit-core.el ends here.

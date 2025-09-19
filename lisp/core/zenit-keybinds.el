@@ -1,4 +1,8 @@
-;; lisp/core/zenit-keybinds.el -*- lexical-binding: t; -*-
+;;; lisp/core/zenit-keybinds.el --- -*- lexical-binding: t; -*-
+
+;;; Commentary:
+
+;;; Code:
 
 (eval-when-compile
   (require 'cl-lib))
@@ -599,3 +603,5 @@ States
       (zenit--map-process rest))))
 
 (provide 'zenit-keybinds)
+
+;;; zenit-keybinds.el ends here.

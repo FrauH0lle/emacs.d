@@ -1,4 +1,8 @@
-;; lisp/core/zenit-packages.el -*- lexical-binding: t; -*-
+;;; lisp/core/zenit-packages.el --- -*- lexical-binding: t; -*-
+
+;;; Commentary:
+
+;;; Code:
 
 (defvar zenit-init-packages-p nil
   "Non-nil if the package management system has been initialized.")
@@ -781,3 +785,5 @@ file."
            packages)))
 
 (provide 'zenit-packages)
+
+;;; zenit-packages.el ends here.

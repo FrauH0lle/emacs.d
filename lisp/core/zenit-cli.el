@@ -1,5 +1,8 @@
-;; lisp/core/zenit-cli.el -*- lexical-binding: t; -*-
+;;; lisp/core/zenit-cli.el --- -*- lexical-binding: t; -*-
 
+;;; Commentary:
+
+;;; Code:
 
 (defvar zenit-auto-accept (getenv-internal "YES")
   "If non-nil, auto-accept any confirmation prompts.")
@@ -35,7 +38,9 @@ and the log type.")
   "An alist mapping log types and buffers.")
 
 (defun zenit-cli-debugger (type data)
-  "Print a more presentable backtrace to terminal and write it to file."
+  "Print a more presentable backtrace to terminal and write it to file.
+
+TYPE is the error type. DATA is the error data."
   ;; HACK Works around a heuristic in eval.c for detecting errors in the
   ;;   debugger, which executes this handler again on subsequent calls. Taken
   ;;   from `ert--run-test-debugger'.
@@ -81,30 +86,30 @@ and the log type.")
              (error-file (zenit-cli--output-file 'error 'backtrace)))
         (print! (bold (error "An error has occured")))
         (print-group!
-         (print! "%s %s" (bold "Message:")
-                 (if generic?
-                     (error-message-string data)
-                   (get (car data) 'error-message)))
-         (unless generic?
-           (print! "%s %s" (bold "Details:")
-                   (let* ((print-level 4)
-                          (print-circle t)
-                          (print-escape-newlines t))
-                     (prin1-to-string (cdr data)))))
-         (when backtrace
-           (print! (bold "Backtrace:"))
-           (print-group!
-            (dolist (frame (seq-take backtrace zenit-cli-log-backtrace-depth))
-              (print! "%s" (truncate (prin1-to-string
-                                      (cons (backtrace-frame-fun  frame)
-                                            (backtrace-frame-args frame)))
-                                     (- 80
-                                        zenit-print-indent
-                                        1)
-                                     "..."))))
-           (when-let* ((backtrace-file (zenit-backtrace-write-to-file backtrace error-file)))
-             (print! (warn "Wrote extended backtrace to %s")
-                     (path backtrace-file))))))))))
+          (print! "%s %s" (bold "Message:")
+                  (if generic?
+                      (error-message-string data)
+                    (get (car data) 'error-message)))
+          (unless generic?
+            (print! "%s %s" (bold "Details:")
+                    (let* ((print-level 4)
+                           (print-circle t)
+                           (print-escape-newlines t))
+                      (prin1-to-string (cdr data)))))
+          (when backtrace
+            (print! (bold "Backtrace:"))
+            (print-group!
+              (dolist (frame (seq-take backtrace zenit-cli-log-backtrace-depth))
+                (print! "%s" (truncate (prin1-to-string
+                                        (cons (backtrace-frame-fun  frame)
+                                              (backtrace-frame-args frame)))
+                                       (- 80
+                                          zenit-print-indent
+                                          1)
+                                       "..."))))
+            (when-let* ((backtrace-file (zenit-backtrace-write-to-file backtrace error-file)))
+              (print! (warn "Wrote extended backtrace to %s")
+                      (path backtrace-file))))))))))
 
 (defmacro zenit-cli-redirect-output (&rest body)
   "Redirect output from BODY to the appropriate log buffers."
@@ -248,3 +253,5 @@ and so on, deleting the oldest log file."
 (define-error 'zenit-cli-error "There was an unexpected error" 'zenit-error)
 
 (provide 'zenit-cli)
+
+;;; zenit-cli.el ends here.

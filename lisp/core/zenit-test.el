@@ -1,4 +1,8 @@
-;; lisp/core/zenit-test.el -*- lexical-binding: t; -*-
+;;; lisp/core/zenit-test.el --- -*- lexical-binding: t; -*-
+
+;;; Commentary:
+
+;;; Code:
 
 ;; Adapted from https://github.com/radian-software/straight.el
 
@@ -256,7 +260,7 @@ CL-KEYS as in `cl-set-difference'.
        (null (apply #'cl-set-difference actual expected cl-keys))))
 
 (defun zenit-test-contains-items-p (expected actual &rest cl-keys)
-  "Verify that ACTUAL contains EXPECTED.
+  "Verify that ACTUAL contains EXPECTED items.
 The order of items does not matter. Returns t if lists match, nil
 otherwise.
 CL-KEYS as in `cl-set-difference'. \nKeywords
@@ -265,3 +269,5 @@ VALUE]...)"
   (null (apply #'cl-set-difference expected actual cl-keys)))
 
 (provide 'zenit-test)
+
+;;; zenit-test.el ends here.

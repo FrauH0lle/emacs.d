@@ -1,4 +1,8 @@
-;; lisp/core/zenit-use-package.el -*- lexical-binding: t; -*-
+;;; lisp/core/zenit-use-package.el --- -*- lexical-binding: t; -*-
+
+;;; Commentary:
+
+;;; Code:
 
 ;; `use-package'
 (declare-function use-package-concat "use-package-core" (&rest elems))
@@ -181,3 +185,5 @@ support for two extra properties:
     `(use-package ,name ,@plist)))
 
 (provide 'zenit-use-package)
+
+;;; zenit-use-package.el ends here.

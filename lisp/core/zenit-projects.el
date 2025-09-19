@@ -1,4 +1,8 @@
-;; lisp/core/zenit-projects.el -*- lexical-binding: t; -*-
+;;; lisp/core/zenit-projects.el --- -*- lexical-binding: t; -*-
+
+;;; Commentary:
+
+;;; Code:
 
 (eval-when-compile
   (require 'cl-lib))
@@ -241,8 +245,7 @@ The name of the project's mode and its state are passed in.")
                                      on-load
                                      on-enter
                                      on-exit)
-  "Define a project minor mode named NAME and where/how it is
-activated.
+  "Define a project minor mode named NAME and where/how it is activated.
 
 Project modes allow you to configure \\='sub-modes\\=' for
 major-modes that are specific to a folder, project structure,
@@ -255,29 +258,29 @@ PLIST may contain any of these properties, which are all checked
 to see if NAME should be activated. If they are *all* true, NAME
 is activated.
 
-  :modes MODES -- if buffers are derived from MODES (one or a
-  list of symbols).
+  :MODES MODES -- if buffers are derived from MODES (one or a list of
+    symbols).
 
-  :files FILES -- if project contains FILES; takes a string or a
+  :FILES FILES -- if project contains FILES; takes a string or a
     form comprised of nested (and ...) and/or (or ...) forms.
     Each path is relative to the project root, however, if
     prefixed with a \\='.\\=' or \\='..\\=', it is relative to
     the current buffer.
 
-  :match REGEXP -- if file name matches REGEXP
+  :MATCH REGEXP -- if file name matches REGEXP
 
-  :when PREDICATE -- if PREDICATE returns true (can be a form or
+  :WHEN PREDICATE -- if PREDICATE returns true (can be a form or
     the symbol of a function)
 
-  :add-hooks HOOKS -- HOOKS is a list of hooks to add this mode's
+  :ADD-HOOKS HOOKS -- HOOKS is a list of hooks to add this mode's
     hook.
 
-  :on-load FORM -- FORM to run the first time this project mode
+  :ON-LOAD FORM -- FORM to run the first time this project mode
     is enabled.
 
-  :on-enter FORM -- FORM is run each time the mode is activated.
+  :ON-ENTER FORM -- FORM is run each time the mode is activated.
 
-  :on-exit FORM -- FORM is run each time the mode is disabled.
+  :ON-EXIT FORM -- FORM is run each time the mode is disabled.
 
 Relevant: `zenit-project-hook'."
   (declare (indent 1))
@@ -332,3 +335,5 @@ Relevant: `zenit-project-hook'."
              `((add-to-list 'auto-minor-mode-alist (cons ,match #',name)))))))))
 
 (provide 'zenit-projects)
+
+;;; zenit-projects.el ends here.

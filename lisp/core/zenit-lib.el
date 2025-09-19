@@ -1,7 +1,11 @@
-;; lisp/core/zenit-lib.el -*- lexical-binding: t; -*-
+;;; lisp/core/zenit-lib.el --- -*- lexical-binding: t; -*-
+
+;;; Commentary:
 
 ;; This file contains many helper functions and macros which are used throughout
 ;; the configuration.
+
+;;; Code:
 
 (eval-when-compile
   (require 'cl-lib))
@@ -39,6 +43,9 @@
 ;; `zenit-lib-files'
 (declare-function zenit-files-in "zenit-lib-files" (paths &rest rest))
 (declare-function zenit-file-read "zenit-lib-files" (file &rest kwargs))
+
+;; `zenit-lib-modules'
+(defvar zenit-modules)
 
 
 ;;
@@ -455,7 +462,7 @@ functions."
    load-file-name
    (buffer-file-name (buffer-base-buffer))   ; for `eval'
    (macroexp-file-name)
-   (error "file!: cannot deduce the current file path")))
+   (error "`file!': cannot deduce the current file path")))
 
 (defmacro dir! ()
   "Return the directory of the file this macro was called."
@@ -1853,3 +1860,5 @@ For more about modules and flags, see `modules!'."
                     (backquote ,flags) (abbreviate-file-name file))))))))
 
 (provide 'zenit-lib)
+
+;;; zenit-lib.el ends here.

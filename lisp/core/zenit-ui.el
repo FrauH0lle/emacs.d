@@ -1,4 +1,8 @@
-;; lisp/core/zenit-keybinds.el -*- lexical-binding: t; -*-
+;;; lisp/core/zenit-ui.el --- -*- lexical-binding: t; -*-
+
+;;; Commentary:
+
+;;; Code:
 
 (eval-when-compile
   (require 'cl-lib))
@@ -710,7 +714,10 @@ buffers are visible in other windows, switch to
             (delq 'custom-theme-directory custom-theme-load-path)))
 
 (defun zenit-init-fonts-h (&optional reload)
-  "Load `zenit-font', `zenit-serif-font', and `zenit-variable-pitch-font'."
+  "Load `zenit-font', `zenit-serif-font', and `zenit-variable-pitch-font'.
+
+If RELOAD is non-nil, reload fonts for all frames instead of just the
+selected frame."
   (let ((initialized-frames (unless reload (get 'zenit-font 'initialized-frames))))
     (dolist (frame (if reload (frame-list) (list (selected-frame))))
       (unless (member frame initialized-frames)
@@ -910,3 +917,5 @@ markers, so disable it to fix all that visual noise."
   (add-function :before-while whitespace-enable-predicate #'zenit--in-parent-frame-p))
 
 (provide 'zenit-ui)
+
+;;; zenit-ui.el ends here.

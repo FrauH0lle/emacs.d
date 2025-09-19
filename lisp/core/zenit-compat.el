@@ -1,4 +1,8 @@
-;; lisp/core/zenit-compat.el -*- lexical-binding: t; -*-
+;;; lisp/core/zenit-compat.el --- -*- lexical-binding: t; -*-
+
+;;; Commentary:
+
+;;; Code:
 
 ;; Doesn't exist in terminal Emacs, but some Emacs packages (internal and
 ;; external) use it anyway, leading to a void-function error, so define a no-op
@@ -9,3 +13,5 @@
   (fset 'set-fontset-font #'ignore))
 
 (provide 'zenit-compat)
+
+;;; zenit-compat.el ends here.

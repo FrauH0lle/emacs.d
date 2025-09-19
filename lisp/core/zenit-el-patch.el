@@ -1,4 +1,8 @@
-;; lisp/core/zenit-el-patch.el -*- lexical-binding: t; -*-
+;;; lisp/core/zenit-el-patch.el --- -*- lexical-binding: t; -*-
+
+;;; Commentary:
+
+;;; Code:
 
 ;;
 ;;; el-patch definitions
@@ -24,3 +28,5 @@
               (indent defun))))
 
 (provide 'zenit-el-patch)
+
+;;; zenit-el-patch.el ends here.

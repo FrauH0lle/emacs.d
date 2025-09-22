@@ -96,3 +96,17 @@ your undo keybind handy!"
    (if (zenit-region-active-p)
        #'+format/region
      #'+format/buffer)))
+
+;;;###autoload
+(defun +format/save-buffer-no-reformat ()
+  "`save-buffer', but don't trigger `apheleia's save-on-format behavior."
+  (interactive)
+  (let (apheleia-mode)
+    (basic-save-buffer)))
+
+;;;###autoload
+(defun +format/save-buffer (arg)
+  "`save-buffer', but the prefix ARG also inhibits format-on-save behavior."
+  (interactive "P")
+  (let ((apheleia-mode (and apheleia-mode (memq arg '(nil 1)))))
+    (call-interactively #'save-buffer)))

@@ -38,7 +38,7 @@ This is controlled by `+format-on-save-disabled-modes'."
             (not (null (memq major-mode +format-on-save-disabled-modes)))))))
 
   ;; Use the formatter provided by lsp-mode and eglot, if available.
-  (when (modulep! +lsp)
+  (eval-when! (modulep! +lsp)
     (add-hook 'eglot-managed-mode-hook #'+format-with-lsp-toggle-h)
     (add-hook 'lsp-managed-mode-hook #'+format-with-lsp-toggle-h))
 
@@ -46,11 +46,9 @@ This is controlled by `+format-on-save-disabled-modes'."
   (set-debug-variable! 'apheleia-log-only-errors nil)
   (set-debug-variable! 'apheleia-log-debug-info  t 2)
 
-  (defadvice! +format--inhibit-reformat-on-prefix-arg-a (orig-fn &optional arg)
-    "Make it so \\[save-buffer] with prefix arg inhibits reformatting."
-    :around #'save-buffer
-    (let ((apheleia-mode (and apheleia-mode (memq arg '(nil 1)))))
-      (funcall orig-fn)))
+  ;; Use prefix-arg on `save-buffer' or `basic-save-buffer' to inhibit
+  ;; format-on-save behavior.
+  (define-key apheleia-mode-map [remap basic-save-buffer] #'+format/save-buffer)
 
   ;; HACK: Apheleia suppresses notifications that the current buffer has
   ;;   changed, so plugins that listen for them need to be manually informed:

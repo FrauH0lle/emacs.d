@@ -365,7 +365,7 @@ relative to `org-directory', unless it is an absolute path."
     :after #'org-capture-refile
     (+org-capture-cleanup-frame-h))
 
-  (eval-when! (modulep! :ui doom-dashboard)
+  (static-when (modulep! :ui doom-dashboard)
     (add-hook '+doom-dashboard-inhibit-functions #'+org-capture-frame-p)))
 
 
@@ -445,7 +445,7 @@ relative to `org-directory', unless it is an absolute path."
         org-html-validation-link nil
         org-latex-prefer-user-labels t)
 
-  (eval-when! (modulep! :lang markdown)
+  (static-when (modulep! :lang markdown)
     (add-to-list 'org-export-backends 'md))
 
   (use-package! ox-hugo

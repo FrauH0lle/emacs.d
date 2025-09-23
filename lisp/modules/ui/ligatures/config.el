@@ -134,8 +134,8 @@ isn't disabled in `+ligatures-extras-in-modes'."
 ;; When you get to the right edge, it goes back to how it normally prints
 (setq prettify-symbols-unprettify-at-point 'right-edge)
 
-(eval-when! (modulep! +auto)
-  (eval-when! (modulep! +extra)
+(static-when (modulep! +auto)
+  (static-when (modulep! +extra)
     ;; Lisp modes offer their own defaults for `prettify-symbols-mode' (just a
     ;; lambda symbol substitution), but this might be unexpected if the user
     ;; enables +extra but has unset `+ligatures-extra-symbols'.
@@ -165,7 +165,7 @@ isn't disabled in `+ligatures-extras-in-modes'."
     (dolist (lig +ligatures-alist)
       (ligature-set-ligatures (car lig) (cdr lig))))
 
-  (eval-when! (modulep! +auto)
+  (static-when (modulep! +auto)
     (add-hook! 'zenit-init-ui-hook :append
       (defun +ligature-enable-globally-h ()
         "Enables ligature checks globally in all buffers.

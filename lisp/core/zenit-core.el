@@ -399,9 +399,9 @@ handling encrypted or compressed files, among other things."
 
     ;; Unset a non-trivial list of command line options that aren't relevant
     ;; to our current OS, but `command-line-1' still processes.
-    (eval-unless! (featurep :system 'macos)
+    (static-unless (featurep :system 'macos)
       (setq command-line-ns-option-alist nil))
-    (eval-unless! (memq initial-window-system '(x pgtk))
+    (static-unless (memq initial-window-system '(x pgtk))
       (setq command-line-x-option-alist nil))))
 
 

@@ -70,24 +70,24 @@
 ;;
 ;;; Implementations
 
-(eval-if! (executable-find "enchant-2")
+(static-if (executable-find "enchant-2")
 
     (use-package! jinx
       :commands jinx-next jinx-previous jinx-correct
       :hook (text-mode . jinx-mode)
       :general ([remap ispell-word] #'+spell/correct)
       :init
-      (eval-when! (modulep! +everywhere)
+      (static-when (modulep! +everywhere)
         (add-hook! '(yaml-mode-hook
                      conf-mode-hook
                      prog-mode-hook)
                    #'jinx-mode))
       :config
-      (eval-when! (modulep! :completion vertico)
+      (static-when (modulep! :completion vertico)
         (add-to-list 'vertico-multiform-categories
                      '(jinx grid (vertico-grid-annotate . 20) (vertico-count . 4))))
 
-      (eval-when! (modulep! :editor evil)
+      (static-when (modulep! :editor evil)
         (defadvice! +spell-jinx-fix-off-by-one-a (&rest _)
           "Fix off-by-one cursor position after `jinx-next' or
 `jinx-previous'."
@@ -115,7 +115,7 @@
                  git-commit-mode-hook)
                #'flyspell-mode)
 
-    (eval-when! (modulep! +everywhere)
+    (static-when (modulep! +everywhere)
       (add-hook! '(yaml-mode-hook
                    conf-mode-hook
                    prog-mode-hook)

@@ -16,7 +16,7 @@
 ;;
 ;;; Global config
 
-(eval-when! (modulep! :editor evil)
+(static-when (modulep! :editor evil)
   (after! evil
     ;; Add vimish-fold, outline-mode & hideshow support to folding commands
     (define-key! 'global

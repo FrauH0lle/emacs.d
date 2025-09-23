@@ -73,7 +73,7 @@ complete."
   ;; Display evaluation results in an overlay at the end of the current line. If
   ;; the output is more than `+eval-popup-min-lines' (4) lines long, it is
   ;; displayed in a popup.
-  (when (modulep! +overlay)
+  (static-when (modulep! +overlay)
     (defadvice! +eval--show-output-in-overlay-a (fn)
       :filter-return #'quickrun--make-sentinel
       (lambda (process event)

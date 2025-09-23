@@ -11,12 +11,12 @@
   :init
   (setq zenit-theme 'doom-one)
   ;; more Atom-esque file icons for neotree/treemacs
-  (when (modulep! :ui neotree)
+  (static-when (modulep! :ui neotree)
     (add-hook 'zenit-load-theme-hook #'doom-themes-neotree-config)
     (setq doom-themes-neotree-enable-variable-pitch t
           doom-themes-neotree-file-icons 'simple
           doom-themes-neotree-line-spacing 2))
-  (when (modulep! :ui treemacs)
+  (static-when (modulep! :ui treemacs)
     (add-hook 'zenit-load-theme-hook #'doom-themes-treemacs-config)))
 
 

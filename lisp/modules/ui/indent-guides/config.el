@@ -79,11 +79,11 @@ the mode will not be activated."
         (goto-char nlp)
       (apply fn col args)))
 
-  (eval-when! (modulep! :tools magit)
+  (static-when (modulep! :tools magit)
     (after! magit-blame
       (add-to-list 'magit-blame-disable-modes 'indent-bars-mode)))
 
-  (eval-when! (modulep! :tools lsp)
+  (static-when (modulep! :tools lsp)
     ;; HACK: lsp-ui-peek uses overlays, and indent-bars doesn't know how to deal
     ;;   with all the whitespace it uses to format its popups, spamming it with
     ;;   indent guides. Making the two work together is a project for another
@@ -107,7 +107,7 @@ the mode will not be activated."
 
   ;; Integrate with `editorconfig'
   ;; From https://github.com/jdtsmith/indent-bars/wiki/integration-with-Editorconfig
-  (eval-when! (modulep! :tools editorconfig)
+  (static-when (modulep! :tools editorconfig)
     (defun +indent-guides--with-editorconfig (size)
       (when (bound-and-true-p indent-bars-mode)
         (setq indent-bars-spacing-override size)

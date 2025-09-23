@@ -9,7 +9,7 @@
                                            locate-dominating-stop-dir-regexp
                                            "[/\\\\]node_modules"))
 
-(eval-when! zenit--system-windows-p
+(static-when zenit--system-windows-p
   (setenv "GIT_ASKPASS" "git-gui--askpass"))
 
 ;; In case the user is using `bug-reference-mode'
@@ -20,7 +20,7 @@
                      (evil-normal-state-p))
               #'bug-reference-push-button))
 
-(eval-when! (modulep! :editor evil)
+(static-when (modulep! :editor evil)
   (after! (log-view evil)
     (set-evil-initial-state!
       '(log-view-mode
@@ -35,11 +35,11 @@
 
 
 (after! vc-annotate
-  (eval-when! (modulep! :ui popup)
+  (static-when (modulep! :ui popup)
     (set-popup-rules!
       '(("^\\*vc-diff" :select nil)   ; *vc-diff*
         ("^\\*vc-change" :select t)))) ; *vc-change-log*
-  (eval-when! (modulep! :editor evil)
+  (static-when (modulep! :editor evil)
     (after! evil
       (set-evil-initial-state! 'vc-annotate-mode 'normal)))
 

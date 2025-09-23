@@ -77,7 +77,7 @@
   :when (or (modulep! +flymake) (modulep! :tools lsp +lsp-flymake))
   :defer t
   :init
-  (eval-when! (modulep! +flymake)
+  (static-when (modulep! +flymake)
     (add-hook! '(prog-mode text-mode) #'flymake-mode))
   :config
   (setq flymake-indicator-type 'margins
@@ -92,6 +92,6 @@
   :when (or (modulep! +flymake) (modulep! :tools lsp +lsp-flymake))
   :hook (flymake-mode . flymake-popon-mode)
   :config
-  (setq flymake-popon-method (eval-if! (modulep! +childframe)
+  (setq flymake-popon-method (static-if (modulep! +childframe)
                                  'posframe
                                'popon)))

@@ -84,7 +84,7 @@ time they were followed."
 
 
 ;;;###package consult
-(eval-when! (modulep! :completion vertico)
+(static-when (modulep! :completion vertico)
   (after! consult
     ;; Remove popups by default from `consult--source-buffer'
     (consult-customize
@@ -395,12 +395,12 @@ other windows. Ugh, such an ugly hack."
 ;;;###package transient
 ;; Use the popup system also for transient, however make an exception for magit
 ;; popups
-(with-eval-after-load (eval-if! (modulep! :tools magit) 'magit 'transient)
+(with-eval-after-load (static-if (modulep! :tools magit) 'magit 'transient)
   (setq transient-display-buffer-action
         '(+popup-display-buffer-stacked-side-window-fn
           (vslot . -9999)
           (select . t)))
-  (eval-when! (modulep! :tools magit)
+  (static-when (modulep! :tools magit)
     (setq-hook! 'magit-mode-hook
       transient-display-buffer-action
       '(display-buffer-below-selected

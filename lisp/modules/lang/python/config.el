@@ -20,12 +20,12 @@
   (setq python-environment-directory zenit-cache-dir
         python-indent-guess-indent-offset-verbose nil)
 
-  (eval-when! (modulep! +tree-sitter)
+  (static-when (modulep! +tree-sitter)
     (set-tree-sitter! 'python-mode 'python-ts-mode
       '((python :url "https://github.com/tree-sitter/tree-sitter-python"))))
 
-  (eval-when! (modulep! +lsp)
-    (eval-when! (modulep! :tools lsp +lsp-flymake)
+  (static-when (modulep! +lsp)
+    (static-when (modulep! :tools lsp +lsp-flymake)
       (pushnew! +flycheck-disabled-modes 'python-mode 'python-ts-mode))
 
     (add-hook 'python-mode-local-vars-hook #'lsp! 'append)
@@ -41,7 +41,7 @@
                        '("ruff" "server")
                        "ruff-lsp"))
 
-  (eval-when! (modulep! :ui indent-guides)
+  (static-when (modulep! :ui indent-guides)
     (add-hook 'python-mode-local-vars-hook #'+indent-guides-init-maybe-h 'append)
     (add-hook 'python-ts-mode-local-vars-hook #'+indent-guides-init-maybe-h 'append))
 
@@ -103,7 +103,7 @@
         (setq-local flycheck-python-flake8-executable "flake8"))))
 
   ;; Affects pyenv and conda
-  (eval-when! (modulep! :ui modeline)
+  (static-when (modulep! :ui modeline)
     (advice-add #'pythonic-activate :after-while #'+modeline-update-env-in-all-windows-h)
     (advice-add #'pythonic-deactivate :after #'+modeline-clear-env-in-all-windows-h))
 

@@ -278,7 +278,7 @@ for a more convenient interface.
 
 See `zenit-localleader-key' and `zenit-localleader-alt-key' to
 change the localleader prefix."
-  (eval-if! (zenit-module-p :editor 'evil)
+  (static-if (zenit-module-p :editor 'evil)
       ;; :non-normal-prefix doesn't apply to non-evil sessions (only evil's
       ;; emacs state)
       `(general-define-key
@@ -414,9 +414,8 @@ REST is the forms to be processed."
                                  collect (intern (concat (symbol-name m) "-map")))
                         rest)
                   (push :map rest))
-                 ;; REVIEW 2023-06-05: Maybe replace with `eval-when!'/`eval-unless!'
                  ((or :when :unless)
-                  (zenit--map-nested (list (intern (concat "eval-" (zenit-keyword-name key) "!")) (pop rest)) rest)
+                  (zenit--map-nested (list (intern (concat "static-" (zenit-keyword-name key))) (pop rest)) rest)
                   (setq rest nil))
                  (:prefix-map
                   (cl-destructuring-bind (prefix . desc)
@@ -593,7 +592,7 @@ States
   Don't
     (map! :n :leader :desc \"Description\" \"C-c\" #\\='dosomething)
     (map! :leader :n :desc \"Description\" \"C-c\" #\\='dosomething)"
-  (eval-if! (zenit-module-p :editor 'evil)
+  (static-if (zenit-module-p :editor 'evil)
       `(general-with-eval-after-load 'evil
          ,(when (or (bound-and-true-p byte-compile-current-file)
                     (not noninteractive))

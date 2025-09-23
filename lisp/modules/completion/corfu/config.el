@@ -101,7 +101,7 @@ This function respects the value of `+corfu-want-minibuffer-completion':
                (not (run-hook-with-args-until-success '+corfu-inhibit-auto-functions)))))
       (apply fn args)))
 
-  (eval-when! (modulep! :editor evil)
+  (static-when (modulep! :editor evil)
     ;; Modifying the buffer while in replace mode can be janky.
     (add-to-list '+corfu-inhibit-auto-functions #'evil-replace-state-p))
 
@@ -149,7 +149,7 @@ This function respects the value of `+corfu-want-minibuffer-completion':
     (defun +corfu-add-cape-elisp-block-h ()
       (add-hook 'completion-at-point-functions #'cape-elisp-block 0 t)))
   ;; Enable Dabbrev completion basically everywhere as a fallback.
-  (eval-when! (modulep! +dabbrev)
+  (static-when (modulep! +dabbrev)
     (setq cape-dabbrev-check-other-buffers t)
     (add-hook! '(prog-mode-hook
                  text-mode-hook
@@ -176,7 +176,7 @@ This function respects the value of `+corfu-want-minibuffer-completion':
   (advice-add #'eglot-completion-at-point :around #'cape-wrap-nonexclusive)
   (advice-add #'pcomplete-completions-at-point :around #'cape-wrap-nonexclusive)
 
-  (eval-when! (modulep! :lang latex)
+  (static-when (modulep! :lang latex)
     ;; Allow file completion on latex directives.
     (setq-hook! '(tex-mode-local-vars-hook
                   latex-mode-local-vars-hook

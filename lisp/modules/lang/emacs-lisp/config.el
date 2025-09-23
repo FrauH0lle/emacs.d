@@ -209,10 +209,10 @@ looking up a C function.")
   ;; it will associate it with the mode.
   (defvar buttercup-minor-mode-map (make-sparse-keymap))
   :config
-  (eval-when! (modulep! :ui popup)
+  (static-when (modulep! :ui popup)
     (set-popup-rule! "^\\*Buttercup\\*$" :size 0.45 :select nil :ttl 0))
   (set-tempel-minor-mode! 'buttercup-minor-mode)
-  (eval-when! (modulep! :editor evil)
+  (static-when (modulep! :editor evil)
     (add-hook 'buttercup-minor-mode-hook #'evil-normalize-keymaps))
   (map! :localleader
         :map buttercup-minor-mode-map

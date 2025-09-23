@@ -3,7 +3,7 @@
 ;;
 ;;; Default styles
 
-(eval-when! (modulep! +pretty)
+(static-when (modulep! +pretty)
   ;; Make the fringe small enough that the diff bars aren't too domineering,
   ;; while leaving enough room for other indicators.
   (if (fboundp 'fringe-mode) (fringe-mode '8))
@@ -93,7 +93,7 @@ Respects `diff-hl-disable-on-remote'."
   (setq diff-hl-show-staged-changes nil)
 
   ;; Update diffs when it makes sense too, without being too slow
-  (eval-when! (modulep! :editor evil)
+  (static-when (modulep! :editor evil)
     (map! :after diff-hl-show-hunk
           :map diff-hl-show-hunk-map
           :n "p" #'diff-hl-show-hunk-previous
@@ -119,7 +119,7 @@ Respects `diff-hl-disable-on-remote'."
                                                              vc-file-prop-obarray)))))
                        (diff-hl-update))))))
   ;; Update diff-hl when magit alters git state.
-  (eval-when! (modulep! :tools magit)
+  (static-when (modulep! :tools magit)
     (add-hook 'magit-post-refresh-hook #'diff-hl-magit-post-refresh))
 
   ;; The revert popup consumes 50% of the frame, whether or not you're reverting
@@ -135,7 +135,7 @@ Respects `diff-hl-disable-on-remote'."
       (apply fn args)))
 
   ;; Don't delete the current hunk's indicators while we're editing
-  (eval-when! (modulep! :editor evil)
+  (static-when (modulep! :editor evil)
     (add-hook! 'diff-hl-flydiff-mode-hook
       (defun +vc-gutter-init-flydiff-mode-h ()
         (if diff-hl-flydiff-mode

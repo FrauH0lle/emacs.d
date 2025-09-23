@@ -312,9 +312,9 @@ loaded too early (during startup)."
           (append (list zenit-leader-key zenit-localleader-key
                         zenit-leader-alt-key zenit-localleader-alt-key)
                   evil-collection-key-blacklist
-                  (when (modulep! :tools lookup)
+                  (static-when (modulep! :tools lookup)
                     '("gd" "gf" "K"))
-                  (when (modulep! :tools eval)
+                  (static-when (modulep! :tools eval)
                     '("gr" "gR"))
                   '("[" "]" "gz" "<escape>")))
 

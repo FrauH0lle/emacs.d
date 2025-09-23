@@ -18,7 +18,7 @@
         tramp-auto-save-directory  (concat zenit-cache-dir "tramp-autosave/"))
 
   ;; The ssh method is faster than the default ssh on Windows
-  (eval-unless! (featurep :system 'windows)
+  (static-unless (featurep :system 'windows)
     (setq tramp-default-method "ssh")))
 
 

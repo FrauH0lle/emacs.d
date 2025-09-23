@@ -66,40 +66,6 @@
                  (macroexpand-1 '(protect-macros-maybe! emacs
                                    (message "Hello World!"))))))
 
-(zenit-deftest eval-if! ()
-  ,test
-  (test)
-  :doc "`eval-if!' evaluates THEN branch if condition is true"
-  (let ((x (eval-if! t 1 2)))
-    (should (eql 1 x)))
-  :doc "`eval-if!' evaluates ELSE branch if condition is false"
-  (let ((x (eval-if! nil 1 2)))
-    (should (eql 2 x))))
-
-(zenit-deftest eval-when! ()
-  ,test
-  (test)
-  :doc "`eval-when!' evaluates BODY if condition is true"
-  (let ((x 0))
-    (eval-when! t (setq x 1))
-    (should (eql 1 x)))
-  :doc "`eval-when!' does not evaluate BODY if condition is false"
-  (let ((x 0))
-    (eval-when! nil (setq x 1))
-    (should (eql 0 x))))
-
-(zenit-deftest eval-unless! ()
-  ,test
-  (test)
-  :doc "`eval-unless!' evaluates BODY if condition is false"
-  (let ((x 0))
-    (eval-unless! nil (setq x 1))
-    (should (eql 1 x)))
-  :doc "`eval-unless!' does not evaluate BODY if condition is true"
-  (let ((x 0))
-    (eval-unless! t (setq x 1))
-    (should (eql 0 x))))
-
 (zenit-deftest zenit-inhibit-log
   (:doc "`zenit-inhibit-log ' is defined")
   (should (boundp 'zenit-inhibit-log )))

@@ -193,9 +193,9 @@
                  (zenit--map-process '(:mode foo-mode "x" #'command))))
 
   :doc "`zenit--map-process' processes :when/:unless keywords"
-  (should (equal '(eval-when! t (general-define-key "x" #'command))
+  (should (equal '(static-when t (general-define-key "x" #'command))
                  (zenit--map-process '(:when t "x" #'command))))
-  (should (equal '(eval-unless! t (general-define-key "x" #'command))
+  (should (equal '(static-unless t (general-define-key "x" #'command))
                  (zenit--map-process '(:unless t "x" #'command))))
 
   :doc "`zenit--map-process' processes :prefix-map keyword"

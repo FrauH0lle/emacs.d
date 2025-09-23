@@ -1,5 +1,10 @@
 ;; editor/format/autoload.el -*- lexical-binding: t; -*-
 
+;; HACK: `apheleia-mode' doesn't define a keymap. By defining one before the
+;;   minor mode is loaded, `define-minor-mode' will automatically register it as
+;;   apheleia-mode's keymap.
+;;;###autoload (defvar apheleia-mode-map (make-sparse-keymap))
+
 (defun +format--current-indentation ()
   (save-excursion
     (goto-char (point-min))

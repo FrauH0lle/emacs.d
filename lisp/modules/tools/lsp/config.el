@@ -47,9 +47,8 @@ LSP/eglot-powered buffers.")
 ;;
 ;;; Implementations
 
-;; (eval-if! (modulep! +eglot)
-;;     (include! "+eglot")
-;;   (include! "+lsp"))
+(static-when (modulep! +eglot) (compile-along! "+eglot"))
+(static-when (modulep! -eglot) (compile-along! "+lsp"))
 
 (if (modulep! +eglot)
     (load! "+eglot")

@@ -35,7 +35,7 @@ Files are expected to be plain text files, e.g. .md or .txt.")
     (setq-default gptel-org-branching-context t))
 
   ;; Add `major-mode' -> language mapping
-  (eval-when! (modulep! :lang ess)
+  (static-when (modulep! :lang ess)
     (add-to-list 'gptel--mode-description-alist '(ess-r-mode . "R")))
 
   ;; Keep previous system message in `+gptel--prev-system-message'

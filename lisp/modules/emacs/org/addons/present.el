@@ -41,7 +41,7 @@ freedom to place them wherever you like.")
   (add-hook 'org-tree-slide-play-hook #'+org-present-hide-blocks-h)
   (add-hook 'org-tree-slide-stop-hook #'+org-present-hide-blocks-h)
 
-  (when (modulep! :editor evil)
+  (static-when (modulep! :editor evil)
     (map! :map org-tree-slide-mode-map
           :n [C-right] #'org-tree-slide-move-next-tree
           :n [C-left]  #'org-tree-slide-move-previous-tree

@@ -147,7 +147,7 @@
      consult-bookmark consult-recent-file
      consult--source-recent-file consult--source-project-recent-file consult--source-bookmark
      :preview-key "C-SPC"))
-  (eval-when! (modulep! :config default)
+  (static-when (modulep! :config default)
     (protect-macros!
       (consult-customize
        +default/search-project +default/search-other-project
@@ -159,7 +159,7 @@
   (consult-customize
    consult-theme
    :preview-key (list "C-SPC" :debounce 0.5 'any))
-  (eval-when! (modulep! :emacs org)
+  (static-when (modulep! :emacs org)
     (defvar +vertico--consult-org-source
       (list :name     "Org Buffer"
             :category 'buffer
@@ -193,7 +193,7 @@
             "C-x C-d" #'consult-dir
             "C-x C-j" #'consult-dir-jump-file)
   :config
-  (eval-when! (modulep! :tools docker)
+  (static-when (modulep! :tools docker)
     (defun +vertico--consult-dir-podman-hosts ()
       (tramp-container--completion-function "podman"))
 

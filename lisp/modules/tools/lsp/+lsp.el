@@ -35,7 +35,7 @@
     (setq lsp-diagnostics-provider :flymake))
 
   ;; Let us bind the lsp keymap.
-  (eval-when! (modulep! :config default +bindings)
+  (static-when (modulep! :config default +bindings)
     (setq lsp-keymap-prefix nil))
 
   :config
@@ -62,7 +62,7 @@
   (set-popup-rules!
     '(("^\\*lsp-install" :size 0.35 :quit t :select t)
       ("^\\*lsp-help" :size 0.35 :quit t :select t :tabbed t)))
-  (eval-when! (modulep! :tools lookup)
+  (static-when (modulep! :tools lookup)
     (set-lookup-handlers! 'lsp-mode
                           :definition #'+lsp-lookup-definition-handler
                           :references #'+lsp-lookup-references-handler
@@ -113,7 +113,7 @@ restarted when reverting buffers."
                                                (funcall fn))))))
              lsp--buffer-workspaces))))
 
-  (eval-when! (modulep! :ui modeline +light)
+  (static-when (modulep! :ui modeline +light)
     (defvar-local lsp-modeline-icon nil)
 
     (add-hook! '(lsp-before-initialize-hook
@@ -134,7 +134,7 @@ restarted when reverting buffers."
                        '(t (:eval lsp-modeline-icon))
                        'append)))))
 
-  (eval-when! (modulep! :completion corfu)
+  (static-when (modulep! :completion corfu)
     (setq lsp-completion-provider :none)
     (add-hook 'lsp-mode-hook #'lsp-completion-mode)))
 
@@ -150,8 +150,8 @@ instead is more sensible."
       (apply fn args)))
 
   :config
-  (eval-when! (modulep! +peek)
-    (eval-when! (modulep! :tools lookup)
+  (static-when (modulep! +peek)
+    (static-when (modulep! :tools lookup)
       (set-lookup-handlers! 'lsp-ui-mode
                             :definition 'lsp-ui-peek-find-definitions
                             :implementations 'lsp-ui-peek-find-implementation

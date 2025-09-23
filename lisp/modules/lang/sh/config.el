@@ -35,10 +35,10 @@
     ;; Other
     :dot "." :dot "source")
 
-  (eval-when! (modulep! +lsp)
+  (static-when (modulep! +lsp)
     (add-hook 'sh-mode-local-vars-hook #'lsp! 'append))
 
-  (eval-when! (modulep! +tree-sitter)
+  (static-when (modulep! +tree-sitter)
     (after! treesit
       (cl-pushnew '(bash "https://github.com/tree-sitter/tree-sitter-bash" nil nil nil nil)
                   treesit-language-source-alist :test #'eq :key #'car))
@@ -97,5 +97,5 @@
   :when (modulep! +powershell)
   :defer t
   :config
-  (when (modulep! +lsp)
+  (static-when (modulep! +lsp)
     (add-hook 'powershell-mode-local-vars-hook #'lsp! 'append)))

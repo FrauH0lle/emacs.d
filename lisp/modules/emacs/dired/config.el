@@ -27,12 +27,12 @@
   :config
   ;; (set-popup-rule! "^\\*image-dired"
   ;;   :slot 20 :size 0.8 :select t :quit nil :ttl 0)
-  (eval-when! (modulep! :editor evil)
+  (static-when (modulep! :editor evil)
     (after! evil
       (set-evil-initial-state! 'image-dired-display-image-mode 'emacs)))
 
   (let ((args (list "-ahl" "-v" "--group-directories-first")))
-    (eval-when! zenit--system-bsd-p
+    (static-when zenit--system-bsd-p
       ;; Use GNU ls as `gls' from `coreutils' if available. Add `(setq
       ;; dired-use-ls-dired nil)' to your config to suppress the Dired warning
       ;; when not using GNU ls.

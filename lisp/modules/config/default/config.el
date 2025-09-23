@@ -64,14 +64,14 @@
 
 
 ;;;###package tramp
-(eval-unless! zenit--system-windows-p
+(static-unless zenit--system-windows-p
   (setq tramp-default-method "ssh")) ; faster than the default scp
 
 
 ;;
 ;;; Smartparens config
 
-(when (modulep! +smartparens)
+(static-when (modulep! +smartparens)
   ;; You can disable :unless predicates with (sp-pair "'" nil :unless nil)
   ;; And disable :post-handlers with (sp-pair "{" nil :post-handlers nil)
   ;; or specific :post-handlers with:
@@ -373,7 +373,7 @@ Continues comments if executed from a commented line. Consults
                 which-key-replacement-alist)))
 
 
-(eval-when! (modulep! +bindings)
+(static-when (modulep! +bindings)
 
   ;; Make M-x harder to miss
   (define-key! 'override
@@ -386,7 +386,7 @@ Continues comments if executed from a commented line. Consults
                               #'consult-history))))
     (define-key!
       :keymaps (append +default-minibuffer-maps
-                       (when (modulep! :editor evil)
+                       (static-when (modulep! :editor evil)
                          '(evil-ex-completion-map)))
       "C-s" command))
 
@@ -421,7 +421,7 @@ Continues comments if executed from a commented line. Consults
          `(menu-item "Select next candidate or navigate org table" corfu-next
            :filter (lambda (cmd)
                      (cond
-                      ,@(when (modulep! :emacs org)
+                      ,@(static-when (modulep! :emacs org)
                           '(((and +corfu-want-tab-prefer-navigating-org-tables
                                   (featurep 'org)
                                   (org-at-table-p))
@@ -432,7 +432,7 @@ Continues comments if executed from a commented line. Consults
            corfu-previous
            :filter (lambda (cmd)
                      (cond
-                      ,@(when (modulep! :emacs org)
+                      ,@(static-when (modulep! :emacs org)
                           '(((and +corfu-want-tab-prefer-navigating-org-tables
                                   (featurep 'org)
                                   (org-at-table-p))
@@ -489,7 +489,7 @@ Continues comments if executed from a commented line. Consults
 ;;
 ;;; Bootstrap configs
 
-(eval-when! (modulep! :editor evil)
+(static-when (modulep! :editor evil)
   (defun +default-disable-delete-selection-mode-h ()
     (delete-selection-mode -1))
   (add-hook 'evil-insert-state-entry-hook #'delete-selection-mode)
@@ -500,6 +500,6 @@ Continues comments if executed from a commented line. Consults
         :prefix zenit-leader-key     "u" #'universal-argument-more
         :prefix zenit-leader-alt-key "u" #'universal-argument-more)
 
-  (eval-when! (modulep! +bindings)
+  (static-when (modulep! +bindings)
     (compile-along! "+evil-bindings")
     (load! "+evil-bindings")))

@@ -3,9 +3,9 @@
 (use-package! pacfiles-mode
   :commands pacfiles
   :config
-  (eval-when! (modulep! :ui popup)
+  (static-when (modulep! :ui popup)
     (set-popup-rule! "^\\*pacfiles" :ignore t))
-  (eval-when! (modulep! :editor evil)
+  (static-when (modulep! :editor evil)
     (after! evil
       (set-evil-initial-state! 'pacfiles-mode 'emacs))))
 

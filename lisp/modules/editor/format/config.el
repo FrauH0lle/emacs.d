@@ -24,7 +24,7 @@ If nil, formatting is enabled in all modes."
 (use-package! apheleia
   :defer t
   :init
-  (when (modulep! +onsave)
+  (static-when (modulep! +onsave)
     (add-hook 'zenit-first-file-hook #'apheleia-global-mode)
     ;; `apheleia' autoloads `apheleia-inhibit-functions' so it will be
     ;; immediately available to mutate early.
@@ -38,7 +38,7 @@ This is controlled by `+format-on-save-disabled-modes'."
             (not (null (memq major-mode +format-on-save-disabled-modes)))))))
 
   ;; Use the formatter provided by lsp-mode and eglot, if available.
-  (eval-when! (modulep! +lsp)
+  (static-when (modulep! +lsp)
     (add-hook 'eglot-managed-mode-hook #'+format-with-lsp-toggle-h)
     (add-hook 'lsp-managed-mode-hook #'+format-with-lsp-toggle-h))
 

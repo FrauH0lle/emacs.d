@@ -198,7 +198,7 @@ If only one frame is visible, set it to one, otherwise to zero."
                             1))))
 
   ;; `consult' integration
-  (eval-when! (modulep! :completion vertico)
+  (static-when (modulep! :completion vertico)
     (after! consult
       ;; Hide default buffer source
       (consult-customize
@@ -207,7 +207,7 @@ If only one frame is visible, set it to one, otherwise to zero."
        :default nil)))
 
   ;; Filter popups by workspace
-  (eval-when! (modulep! :ui popup)
+  (static-when (modulep! :ui popup)
     (defun +popup-group-by-workspace ()
       (when (+workspace-contains-buffer-p (current-buffer))
         (+workspace-current-name)))

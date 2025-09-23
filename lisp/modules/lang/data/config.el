@@ -31,7 +31,7 @@
   :config
   (set-electric! 'json-mode :chars '(?\n ?: ?{ ?}))
 
-  (eval-when! (modulep! +lsp)
+  (static-when (modulep! +lsp)
     (add-hook 'json-mode-local-vars-hook #'lsp! 'append))
 
   (map! :after json-mode
@@ -58,14 +58,14 @@
   ;; HACK: Rely on `major-mode-remap-defaults'.
   (cl-callf2 assq-delete-all 'json-ts-mode auto-mode-alist)
 
-  (eval-when! (modulep! +lsp)
+  (static-when (modulep! +lsp)
     (add-hook 'json-ts-mode-local-vars-hook #'lsp! 'append)))
 
 
 (use-package! yaml-mode
   :mode "Procfile\\'"
   :config
-  (when (modulep! +lsp)
+  (static-when (modulep! +lsp)
     (add-hook 'yaml-mode-local-vars-hook #'lsp! 'append))
   (setq-hook! 'yaml-mode-hook tab-width yaml-indent-offset))
 
@@ -81,5 +81,5 @@
   ;; HACK: Rely on `major-mode-remap-defaults'.
   (cl-callf2 rassq-delete-all 'yaml-ts-mode auto-mode-alist)
 
-  (when (modulep! +lsp)
+  (static-when (modulep! +lsp)
     (add-hook 'yaml-ts-mode-local-vars-hook #'lsp! 'append)))

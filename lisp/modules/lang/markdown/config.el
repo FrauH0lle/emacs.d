@@ -52,7 +52,7 @@ capture, the end position, and the output buffer.")
   :config
   (set-flyspell-predicate! '(markdown-mode gfm-mode)
                            #'+markdown-flyspell-word-p)
-  (eval-when! (modulep! :tools lookup)
+  (static-when (modulep! :tools lookup)
     (set-lookup-handlers! '(markdown-mode gfm-mode)
                           ;; `markdown-follow-thing-at-point' may open an external program or a
                           ;; buffer. No good way to tell, so pretend it's async.
@@ -62,7 +62,7 @@ capture, the end position, and the output buffer.")
                  :unless '(:add sp-point-before-word-p sp-point-before-same-p))
 
   ;; Highly rust blocks correctly
-  (eval-when! (modulep! :lang rust)
+  (static-when (modulep! :lang rust)
     (add-to-list 'markdown-code-lang-modes '("rust" . rustic-mode)))
 
   ;; Don't trigger autofill in code blocks (see `auto-fill-mode')

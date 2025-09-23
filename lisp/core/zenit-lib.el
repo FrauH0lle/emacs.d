@@ -99,36 +99,6 @@ In either case, eagerly load FEATURE during byte-compilation."
       `(protect-macros!
          (progn ,@body)))))
 
-(defmacro eval-if! (cond then &rest else)
-  "Like `if', but COND is evaluated at compile/expansion time.
-
-The macro expands directly to either THEN or ELSE, and the other
-branch is not compiled. This can be helpful to deal with code
-that that can be omitted entirely if a certain feature is not
-available."
-  (declare (indent 2) (debug t))
-  (if (eval cond)
-      then
-    (macroexp-progn else)))
-
-(defmacro eval-when! (cond &rest body)
-  "Like `when', but COND is checked at compile/expansion time.
-
-BODY is only compiled if COND evaluates to non-nil. See
-`eval-if!'."
-  (declare (indent 1) (debug t))
-  (when (eval cond)
-    (macroexp-progn body)))
-
-(defmacro eval-unless! (cond &rest body)
-  "Like `unless', but COND is checked at compile/expansion time.
-
-BODY is only compiled if COND evaluates to non-nil. See
-`eval-if!'."
-  (declare (indent 1) (debug t))
-  (unless (eval cond)
-    (macroexp-progn body)))
-
 
 ;;
 ;;; Logging

@@ -78,5 +78,5 @@
 (evil-ex-define-cmd "tabsave"     #'+workspace:save)
 
 ;; ibuffer
-(when (modulep! :emacs ibuffer)
+(static-when (modulep! :emacs ibuffer)
   (evil-ex-define-cmd "buffers" #'ibuffer))

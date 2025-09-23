@@ -27,11 +27,11 @@
             ("MDN"               "https://developer.mozilla.org/en-US/search?q=%s")
             ("Internet archive"  "https://web.archive.org/web/*/%s")
             ("Sourcegraph"       "https://sourcegraph.com/search?q=context:global+%s&patternType=literal"))
-          (when (modulep! +yandex)
+          (static-when (modulep! +yandex)
             '(("Yandex"            "https://yandex.com/search/?text=%s")
               ("Yandex images"     "https://yandex.com/images/search?text=%s")
               ("Yandex maps"       "https://yandex.com/maps?text=%s")))
-          (when (modulep! :lang rust)
+          (static-when (modulep! :lang rust)
             '(("Rust Docs" "https://doc.rust-lang.org/std/?search=%s"))))
   "An alist that maps online resources to either:
 
@@ -165,7 +165,7 @@ definitions.")
       (funcall fn)))
 
   ;; This integration is already built into evil
-  (unless (modulep! :editor evil)
+  (static-unless (modulep! :editor evil)
     ;; Use `better-jumper' instead of xref's marker stack
     (advice-add #'xref-push-marker-stack :around #'zenit-set-jump-a))
 

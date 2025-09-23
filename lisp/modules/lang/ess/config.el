@@ -70,15 +70,15 @@ variable.")
   :defer t
   :init
   ;; Support Juila only if no dedicated module is used.
-  (eval-unless! (modulep! :lang julia)
+  (static-unless (modulep! :lang julia)
     (add-to-list 'auto-mode-alist '("\\.[jJ][lL]\\'" . ess-julia-mode)))
   ;; Do not use flycheck when +lsp-flymake is set
-  (eval-when! (modulep! :tools lsp +lsp-flymake)
+  (static-when (modulep! :tools lsp +lsp-flymake)
     (pushnew! +flycheck-disabled-modes 'ess-r-mode))
 
   :config
   ;; Tree-sitter support
-  (eval-when! (modulep! +tree-sitter)
+  (static-when (modulep! +tree-sitter)
     (after! treesit
       (cl-pushnew '(r "https://github.com/r-lib/tree-sitter-r" nil nil nil nil)
                   treesit-language-source-alist :test #'eq :key #'car))
@@ -171,17 +171,17 @@ variable.")
         (setq-local outline-regexp "[ \t]*###+ [^ \t\n]"))
       (outline-minor-mode +1)))
 
-  (eval-when! (modulep! :tools lookup)
+  (static-when (modulep! :tools lookup)
     (set-docsets! 'ess-r-mode :docsets "R")
     (set-lookup-handlers! '(ess-r-mode ess-julia-mode)
       :documentation #'ess-display-help-on-object))
-  (eval-when! (modulep! :tools eval)
+  (static-when (modulep! :tools eval)
     (set-repl-handler! 'ess-r-mode #'run-ess-r)
     (set-repl-handler! 'ess-julia-mode #'run-ess-julia)
     (set-eval-handler! 'ess-help-mode #'ess-eval-region-and-go)
     (set-eval-handler! 'ess-r-help-mode #'ess-eval-region-and-go))
 
-  (eval-when! (modulep! :editor evil)
+  (static-when (modulep! :editor evil)
     (after! evil
       (set-evil-initial-state! 'ess-r-help-mode 'normal)))
 
@@ -192,7 +192,7 @@ variable.")
     comment-line-break-function nil)
 
   ;; LSP
-  (eval-when! (modulep! +lsp)
+  (static-when (modulep! +lsp)
     (add-hook! 'ess-r-mode-local-vars-hook
       (defun +ess-lsp-init-maybe-h ()
         "Use LSP mode if the buffer is not a remote."
@@ -210,11 +210,11 @@ variable.")
 
 
   ;; Workspaces
-  (eval-when! (modulep! :ui workspaces)
+  (static-when (modulep! :ui workspaces)
     (defadvice! +ess--flush-accumulated-output-switch-workspace-a (proc)
       "Switch workspace before flush of accumulated output of PROC"
       :before #'ess--flush-accumulated-output
-      (when (modulep! :ui workspaces)
+      (static-when (modulep! :ui workspaces)
         (+workspace-switch
          (car
           (cl-loop for ws in (+workspace-list)
@@ -237,7 +237,7 @@ variable.")
   (add-hook! 'inferior-ess-mode-hook #'smartparens-mode)
 
   ;; Use evil insert state in iEES
-  (eval-when! (modulep! :editor evil)
+  (static-when (modulep! :editor evil)
     (after! (ess-r-mode evil)
       (set-evil-initial-state! 'inferior-ess-mode 'insert)))
 
@@ -372,7 +372,7 @@ See URL `https://github.com/emacs-ess/ESS/issues/300'."
 (use-package! poly-R
   :mode ("\\.[rR]md\\'" . poly-markdown+r-mode)
   :config
-  (eval-when! (modulep! :editor snippets)
+  (static-when (modulep! :editor snippets)
     (set-tempel-minor-mode! 'poly-markdown+r-mode)))
 
 

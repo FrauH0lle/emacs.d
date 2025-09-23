@@ -89,7 +89,7 @@ The package should be loaded as early as possible."
   (advice-add #'help-with-tutorial :after (lambda (&rest _) (evil-emacs-state +1)))
 
   ;; Load popup rules as late as possible
-  (eval-when! (modulep! :ui popup)
+  (static-when (modulep! :ui popup)
     (add-hook! 'zenit-after-modules-config-hook
       (defun +evil--init-popup-rules-h ()
         "Initialize popop rules."

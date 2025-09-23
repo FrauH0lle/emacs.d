@@ -159,7 +159,7 @@ must be non-read-only, empty, and there must be a rule in
 ;;; Bootstrap
 
 (after! tempel
-  (eval-unless! (modulep! :editor snippets)
+  (static-unless (modulep! :editor snippets)
     ;; Keybinds, if not set up already
     (map! :map tempel-map
           "<tab>"     #'tempel-next

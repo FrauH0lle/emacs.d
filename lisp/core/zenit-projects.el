@@ -144,7 +144,7 @@ Must end with a slash.")
 
   ;; HACK: Some MSYS utilities auto expanded the `/' path separator, so we need
   ;;   to prevent it.
-  (eval-when! zenit--system-windows-p
+  (static-when zenit--system-windows-p
     (setenv "MSYS_NO_PATHCONV" "1") ; Fix path in Git Bash
     (setenv "MSYS2_ARG_CONV_EXCL" "--path-separator")) ; Fix path in MSYS2
 

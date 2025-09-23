@@ -9,7 +9,7 @@
             read-expression-map))
   "A list of all the keymaps used for the minibuffer.")
 
-(eval-when! (modulep! :editor evil)
+(static-when (modulep! :editor evil)
   ;; NOTE SPC u replaces C-u as the universal argument.
 
   ;; Minibuffer
@@ -54,7 +54,7 @@
            ((or (zenit-lookup-key [tab] overriding-terminal-local-map)
                 (zenit-lookup-key (kbd "TAB") overriding-terminal-local-map))
             cmd)
-           ,@(when (modulep! :completion corfu)
+           ,@(static-when (modulep! :completion corfu)
                '(((and (bound-and-true-p corfu-mode)
                        corfu--candidates)
                   (if (derived-mode-p 'eshell-mode 'comint-mode)
@@ -66,13 +66,13 @@
                     ((or (zenit-lookup-key [tab] overriding-terminal-local-map)
                          (zenit-lookup-key (kbd "TAB") overriding-terminal-local-map))
                      cmd)
-                    ,@(when (modulep! :editor snippets)
+                    ,@(static-when (modulep! :editor snippets)
                         '(((and (evil-visual-state-p)
                                 (or (eq evil-visual-selection 'line)
                                     (not (memq (char-after)
                                                (list ?\( ?\[ ?\{ ?\} ?\] ?\))))))
                            #'tempel-insert)))
-                    ,@(when (modulep! :editor fold)
+                    ,@(static-when (modulep! :editor fold)
                         '(((or
                             (save-excursion (end-of-line) (invisible-p (point)))
                             (+fold--vimish-fold-p)

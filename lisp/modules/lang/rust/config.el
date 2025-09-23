@@ -43,7 +43,7 @@
     (remove-hook 'rustic-mode-hook #'flymake-mode-off)
     (remove-hook 'flycheck-mode-hook #'rustic-flycheck-setup))
   :init
-  (eval-when! (modulep! +tree-sitter)
+  (static-when (modulep! +tree-sitter)
     (set-tree-sitter! 'rust-mode 'rustic-mode
       `((rust :url "https://github.com/tree-sitter/tree-sitter-rust"))))
 
@@ -54,7 +54,7 @@
     (defalias 'org-babel-execute:rust #'org-babel-execute:rustic)
     (add-to-list 'org-src-lang-modes '("rust" . rustic)))
 
-  (eval-when! (modulep! :tools lsp +lsp-flymake)
+  (static-when (modulep! :tools lsp +lsp-flymake)
     (pushnew! +flycheck-disabled-modes 'rustic-mode))
 
   :config
@@ -82,11 +82,11 @@
     (+imenu-add-items
      '((+imenu-create-nested-index
         "^[ \t]*// -\\{2,\\}\n[ \t]*// \\(?1:[\\*]*\\)[ ]*\\(?2:[^\n]+\\)$" "Section"))))
-  (eval-if! (modulep! -lsp)
+  (static-if (modulep! -lsp)
       (add-hook 'rustic-mode-hook #'+rust-extend-imenu-h 'append)
     ;; `lsp-mode' and `eglot' modify `imenu-create-index-function' on their own
     ;; already so we need to add our advice after they are loaded.
-    (eval-if! (modulep! :tools lsp -eglot)
+    (static-if (modulep! :tools lsp -eglot)
         (add-hook 'lsp-mode-hook #'+rust-extend-imenu-h 'append)
       (add-hook 'eglot-managed-mode-hook #'+rust-extend-imenu-h 'append)))
 
@@ -94,7 +94,7 @@
   (setq rustic-babel-format-src-block nil
         rustic-format-trigger nil)
 
-  (eval-if! (modulep! -lsp)
+  (static-if (modulep! -lsp)
       (after! rustic-flycheck
         (add-to-list 'flycheck-checkers 'rustic-clippy))
     (setq rustic-lsp-client
@@ -103,7 +103,7 @@
             'lsp-mode))
     (add-hook 'rustic-mode-local-vars-hook #'rustic-setup-lsp 'append)
 
-    (eval-when! (modulep! :tools lsp -eglot)
+    (static-when (modulep! :tools lsp -eglot)
       (after! lsp-rust
         ;; These are optional configurations. See
         ;; https://emacs-lsp.github.io/lsp-mode/page/lsp-rust-analyzer/#lsp-rust-analyzer-display-chaining-hints

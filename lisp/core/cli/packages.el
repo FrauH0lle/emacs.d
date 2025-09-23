@@ -213,8 +213,14 @@ If ALL is non-nil, simply remove all files in the eln cache."
       (if-let* ((built
                  (zenit--with-package-recipes recipes (package local-repo recipe)
                    (let ((repo-dir  (straight--repos-dir (or local-repo package)))
-                         (build-dir (straight--build-dir package)))
+                         (build-dir (straight--build-dir package))
+                         (build-file ".zenitpackage"))
                      (unless force-p
+                       ;; Ensure packages w/ a changed :env are rebuilt
+                       (when-let* ((plist (alist-get (intern package) zenit-packages)))
+                         (unless (equal (plist-get plist :env)
+                                        (zenit-file-read (zenit-path build-dir build-file) :by 'read :noerror t))
+                           (puthash package t straight--packages-to-rebuild)))
                        ;; Ensure packages with outdated files/bytecode are rebuilt
                        (let* ((build (if (plist-member recipe :build)
                                          (plist-get recipe :build)
@@ -269,33 +275,26 @@ If ALL is non-nil, simply remove all files in the eln cache."
                                         (print-group!
                                           (when commit
                                             (print! (item "%s: Checked out %s") package commit))))
-                                      straight-vc-git-post-clone-hook)))
-                           (straight-use-package (intern package))
-                           (when (file-in-directory-p repo-dir straight-base-dir)
-                             ;; HACK: Straight can sometimes fail to clone a
-                             ;;   repo, leaving behind an empty directory which,
-                             ;;   in future invocations, it will assume
-                             ;;   indicates a successful clone (causing load
-                             ;;   errors later).
-                             (let ((try 0))
-                               (while (not (or (file-directory-p (zenit-path repo-dir ".git"))
-                                               (file-exists-p (zenit-path repo-dir ".straight-commit"))))
-                                 (when (= try 3)
-                                   (error "Failed to clone package"))
-                                 (print! (warn "Failed to clone %S, trying again (attempt #%d)...") package (1+ try))
-                                 (delete-directory repo-dir t)
-                                 (delete-directory build-dir t)
-                                 (straight-use-package (intern package))
-                                 (cl-incf try)))
-                             ;; HACK: Line encoding issues can plague repos with
-                             ;;   dirty worktree prompts when updating packages
-                             ;;   or "Local variables entry is missing the
-                             ;;   suffix" errors when installing them (see
-                             ;;   #2637), so have git handle conversion by
-                             ;;   force.
-                             (when zenit--system-windows-p
-                               (let ((default-directory repo-dir))
-                                 (straight--process-run "git" "config" "core.autocrlf" "true")))))
+                                      straight-vc-git-post-clone-hook))
+                               (straight-use-package-prepare-functions
+                                (cons (lambda (package &rest _)
+                                        (when-let* ((plist (alist-get (intern package) zenit-packages))
+                                                    (env (plist-get plist :env)))
+                                          (cl-loop for (var . val) in env
+                                                   if (and (symbolp var)
+                                                           (string-prefix-p "_" (symbol-name var)))
+                                                   do (set-default var val)
+                                                   else if (and (stringp var) val)
+                                                   do (setenv var val))))
+                                      straight-use-package-prepare-functions))
+                               (straight-use-package-post-build-functions
+                                (cons (lambda (package &rest _)
+                                        (when-let* ((plist (alist-get (intern package) zenit-packages))
+                                                    (env (plist-get plist :env)))
+                                          (with-temp-file (straight--build-file package build-file)
+                                            (prin1 env (current-buffer)))))
+                                      straight-use-package-post-build-functions)))
+                           (straight-use-package (intern package)))
                        (error
                         (signal 'zenit-package-error (list package e)))))
                    ;; (if force-p
@@ -399,7 +398,7 @@ If ALL is non-nil, simply remove all files in the eln cache."
                      ((file-exists-p ".straight-commit")
                       (print! (start "\r(%d/%d) Downloading %s...%s") i total package esc)
                       (delete-directory default-directory t)
-                      (straight-vc-git-clone recipe target-ref)
+                      (straight-vc 'clone 'git recipe target-ref)
                       (zenit--same-commit-p target-ref (straight-vc-get-commit type local-repo)))
 
                      ;; Target commit present but not checked out, check out

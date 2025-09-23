@@ -2,6 +2,7 @@
 
 (defvar zenit-init-generators
   '(("05-cached-vars.auto.el"       zenit--generate-vars              zenit--startup-vars)
+    ("20-package-envs.auto.el"      zenit--generate-package-envs)
     ("80-loaddefs.auto.el"          zenit--generate-loaddefs          zenit--startup-loaddefs)
     ("90-loaddefs-packages.auto.el" zenit--generate-loaddefs-packages zenit--startup-loaddefs-packages)
     ("95-load-modules.auto.el"      zenit--generate-load-modules      zenit--startup-modules))
@@ -28,6 +29,16 @@
                unless (file-in-directory-p path data-directory)
                unless (file-equal-p path zenit-core-dir)
                collect `(add-to-list 'load-path ,path))))
+
+(defun zenit--generate-package-envs ()
+  (cl-loop for (_ . plist) in zenit-packages
+           if (plist-get plist :env)
+           append (cl-loop for (var . val) in it
+                           if (and (stringp var) val)
+                           collect `(setenv ,var ,val)
+                           else if (and (symbolp var)
+                                        (string-prefix-p "_" (symbol-name var)))
+                           collect `(setq-default ,var ,val))))
 
 (defun zenit--generate-load-modules ()
   (let* ((init-modules-list (zenit-module-list nil t))

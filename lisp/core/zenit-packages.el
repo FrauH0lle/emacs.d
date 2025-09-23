@@ -16,9 +16,8 @@ deleted.")
 (defvar zenit-packages ()
   "A list of enabled packages.
 
- Each element is a sublist, whose CAR is the package's name as a
-symbol, and whose CDR is the plist supplied to its `package!'
-declaration.")
+Each element is a sublist, whose CAR is the package's name as a symbol,
+and whose CDR is the plist supplied to its `package!' declaration.")
 
 (defvar zenit-disabled-packages ()
   "List of packages that should be ignored by `use-package!' and `after!'.")
@@ -340,6 +339,72 @@ However, in batch mode, print to stdout instead of stderr."
          (error "Package was not properly cloned due to a connection failure, please try again later")
        (signal (car e) (cdr e))))))
 
+;; HACK: Straight can sometimes fail to clone/update a repo, leaving behind an
+
+;;   empty directory which, in future invocations, it will assume indicates a
+;;   successful clone (causing load errors later).
+(defvar +straight-retries 3
+  "How many times to retry VC operations.")
+
+(defvar +straight-retry-methods
+  '(clone
+    normalize
+    fetch-from-remote
+    fetch-from-upstream
+    merge-from-remote
+    merge-from-upstream)
+  "Which `straight-vc' methods to retry, if they fail.")
+
+(defadvice! +straight--retry-a (fn method type &rest args)
+  :around #'straight-vc
+  (if (or (not noninteractive)
+          (memq type '(nil built-in))
+          (not (memq method +straight-retry-methods)))
+      (apply fn method type args)
+    (let ((n +straight-retries)
+          res)
+      (while (> n 0)
+        (condition-case err
+            (setq res (apply fn method type args)
+                  n 0)
+          (error
+           (cl-decf n)
+           (when (= n 0)
+             (signal (car err) (cdr err)))
+           (print! (warn "Failed %S %S operation, retrying (attempt %d/%d)...")
+                   type method (- (1+ +straight-retries) n)
+                   +straight-retries)
+           (sleep-for 1))))
+      res)))
+
+;; HACK: In some edge cases, either Straight or git silently fails to clone a
+;;   package without triggering an catchable error (and thus evading the
+;;   auto-retry logic in `+straight--retry-a') and leaves behind an empty
+;;   directory. This detects this an forces straight to emit a catchable error.
+(defadvice! +straight--clone-emit-error-a (fn recipe)
+  :around #'straight-vc-clone
+  (prog1 (funcall fn recipe)
+    (when noninteractive
+      (straight--with-plist recipe (package type local-repo)
+                            (let* ((local-repo (or local-repo package))
+                                   (repo-dir (straight--repos-dir local-repo))
+                                   (build-dir (straight--build-dir local-repo)))
+                              (when (file-in-directory-p repo-dir straight-base-dir)
+                                (unless (or (file-directory-p (zenit-path repo-dir ".git"))
+                                            (file-exists-p (zenit-path repo-dir ".straight-commit")))
+                                  (delete-directory repo-dir t)
+                                  (delete-directory build-dir t)
+                                  (error "Failed to clone %S ... " package))))))))
+
+;; HACK: Line encoding issues can plague repos with dirty worktree prompts when
+;;   updating packages or "Local variables entry is missing the suffix" errors
+;;   when installing them (see #2637), so have git handle conversion by force.
+(when zenit--system-windows-p
+  (add-hook! 'straight-vc-git-post-clone-hook
+    (lambda! (&key repo-dir)
+      (let ((default-directory repo-dir))
+        (straight--process-run "git" "config" "core.autocrlf" "true")))))
+
 (defvar +straight--lockfile-prefer-local-conf-versions-p nil
   "If non-nil, `straight--versions-file' should prefer versions from `zenit-local-versions-dir'.")
 (defadvice! +straight--read-local-lockfile-a (fn &rest args)
@@ -443,9 +508,7 @@ also be a list of module keys."
   (let ((module-list (cond ((null module-list) (zenit-module-list))
                            ((symbolp module-list) (zenit-module-list 'all))
                            (module-list)))
-        (packages-file zenit-module-packages-file)
-        zenit-disabled-packages
-        zenit-packages)
+        (packages-file zenit-module-packages-file))
     (with-zenit-context 'packages
       (when (assq :local-conf module-list)
         ;; We load the local packages file twice to populate
@@ -474,7 +537,7 @@ initialized and available for them."
     (zenit-log "Initializing straight")
     (setq zenit-init-packages-p t
           zenit-disabled-packages nil
-          zenit-packages (zenit-package-list))
+          zenit-packages nil)
     (setq straight-current-profile 'core)
     (zenit-bootstrap-straight)
     (zenit-log "Installing mandatory packages")
@@ -701,7 +764,7 @@ also be a list of module keys."
       (add-to-list 'load-path (directory-file-name (straight--build-dir pkg-name)))
       (straight--load-package-autoloads pkg-name))))
 
-(cl-defmacro package! (name &rest args &key built-in recipe ignore disable lockfile)
+(cl-defmacro package! (name &rest args &key built-in recipe ignore disable lockfile _env)
   "A wrapper around `straight-register-package'.
 
 It allows to specifiy a lockfile and profile. NAME is the package name,
@@ -727,8 +790,15 @@ ARGS same as MELPA-STYLE-RECIPE in `straight-register-package'.
    in `straight-profiles' and let bind
    `straight-current-profile'to LOCKFILE. If nil or t, default
    profile will be used. If set to \\='ignore, no profile will be
-   used and the package will not be tracked."
+   used and the package will not be tracked.
+
+ :env ALIST
+   Parameters and envvars to set while the package is building. If these
+   values change, the package will be rebuilt on next \\='emacs-config
+   refresh'."
   (declare (indent defun))
+  (when (and recipe (keywordp (car-safe recipe)))
+     (cl-callf plist-put args :recipe `(quote ,recipe)))
   ;; :built-in t is basically an alias for :ignore (locate-library NAME)
   (when built-in
     (when (and (not ignore)
@@ -760,7 +830,49 @@ ARGS same as MELPA-STYLE-RECIPE in `straight-register-package'.
                                 ((or `nil `t) nil)
                                 (`ignore 'ignore)
                                 (_ lockfile)))))
-      `(let ((straight-current-profile ',(zenit-unquote lockfile-profile)))
+      (when lockfile
+        (cl-callf plist-put args :lockfile `(quote ,lockfile-profile)))
+      `(let* ((straight-current-profile ',(zenit-unquote lockfile-profile))
+              (name ',name)
+              (plist (cdr (assq name zenit-packages)))
+              (dir (dir!))
+              (module (zenit-module-from-path dir)))
+         (unless (zenit-context-p 'packages)
+           (signal 'zenit-module-error
+                   (list module "package! can only be used in packages.el files")))
+         ;; Record what module this declaration was found in
+         (let ((module-list (plist-get plist :modules)))
+           (unless (member module module-list)
+             (cl-callf plist-put plist :modules
+                       (append module-list
+                               (list module)
+                               (when (file-in-directory-p dir zenit-local-conf-dir)
+                                 '((:local-conf . modules)))
+                               nil))))
+         ;; Merge given plist with pre-existing one
+         (cl-loop for (key value) on (list ,@args) by 'cddr
+                  when value
+                  do (cl-callf plist-put plist key value))
+         ;; Some basic key validation; throws an error on invalid properties
+         (condition-case e
+             (when-let (recipe (plist-get plist :recipe))
+               (cl-destructuring-bind
+                   (&key local-repo _files _flavor _build _pre-build _post-build
+                         _includes _type _repo _host _branch _protocol _remote
+                         _nonrecursive _fork _depth _source _inherit)
+                   recipe
+                 ;; Expand :local-repo from current directory
+                 (when local-repo
+                   (cl-callf plist-put plist :recipe
+                             (plist-put recipe :local-repo
+                                        (let ((local-path (expand-file-name local-repo dir)))
+                                          (if (file-directory-p local-path)
+                                              local-path
+                                            local-repo)))))))
+           (error
+            (signal 'zenit-package-error
+                    (cons ,(symbol-name name)
+                          (error-message-string e)))))
          ;; Explicitly register dependencies so they don't get purged and add
          ;; them to the load-path. Use a virtual straight profile so later on, a
          ;; lockfile will not be written for it.
@@ -772,8 +884,10 @@ ARGS same as MELPA-STYLE-RECIPE in `straight-register-package'.
                  (straight-override-recipe '(,name ,@recipe))
                  (straight-register-package '(,name ,@recipe)))
             `(straight-register-package ',name))
-         ;; Return true if we did register packages
-         t))))
+         ;; Return non-nil if we did register packages
+         (setf (alist-get name zenit-packages) plist)
+         (with-no-warnings
+           (cons name plist))))))
 (function-put 'package! 'lisp-indent-function 'defun)
 
 (defmacro disable-packages! (&rest packages)

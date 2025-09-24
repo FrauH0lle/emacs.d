@@ -301,8 +301,8 @@ truncated summary of the execution and set the MEVEDELUUID property."
                 (insert (concat (unless buffer-empty-p "\n\n") "* " truncated-summary "\n"
                                 (or (alist-get major-mode gptel-prompt-prefix-alist) "")))
                 (when (fboundp 'org-set-property)
-                  (org-set-property "MEVEDELUUID" mevedel-uuid))))))))
+                  (org-set-property "MEVEDELUUID" mevedel-uuid)))))))))
 
-    (defadvice! +mevedel-ensure-org-heading-a ()
-      :after #'macher--action-buffer-setup-basic
-      (add-hook 'macher-before-action-functions #'+mevedel-ensure-org-heading-h -99 t)))
+  (defadvice! +mevedel-ensure-org-heading-a ()
+    :after #'macher--action-buffer-setup-basic
+    (add-hook 'macher-before-action-functions #'+mevedel-ensure-org-heading-h -99 t)))

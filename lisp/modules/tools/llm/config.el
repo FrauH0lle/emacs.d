@@ -161,29 +161,7 @@ guaranteed to be the response buffer."
 
   (gptel-make-preset 'commit-summary
     :description "For generating commit message summaries"
-    :system (lambda ()
-              (let* ((project-root (zenit-project-root))
-                     (commit-summary-files '("commit-summary.md" "docs/commit-summary.md"))
-                     (found-file nil))
-                (dolist (file commit-summary-files)
-                  (let ((full-path (expand-file-name file project-root)))
-                    (when (and (not found-file) (file-exists-p full-path))
-                      (setq found-file full-path))))
-                (if found-file
-                    (with-temp-buffer
-                      (zenit-file-read found-file :by 'insert)
-                      (buffer-string))
-                  (let* ((files commit-summary-files)
-                         (formatted-string
-                          ;; If there are fewer than 2 files, just use the file
-                          ;; name itself.
-                          (if (< (length files) 2)
-                              (car files)
-                            ;; Otherwise, join all but the last with ", " and
-                            ;; add the last with " or ".
-                            (concat (string-join (butlast files) ", ") " or " (car (last files))))))
-
-                    (user-error "Could not find any of %s in project : %s" formatted-string project-root)))))
+    :system (+llm-get-prompt-from-files '("commit-summary.md" "docs/commit-summary.md"))
     :backend "Claude"
     :model 'claude-3-5-haiku-20241022
     :include-reasoning nil

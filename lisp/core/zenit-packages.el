@@ -429,8 +429,11 @@ Writing behavior (controlled by `+straight--lockfile-prefer-local-conf-versions-
            ;; Rule 1: nil and local profiles always use local
            (seq-some (lambda (x) (member x local-profile-files))
                      args)
-           ;; Rule 2: Other profiles use local if it exists
-           local-exists-p))
+           ;; Rule 2: Other profiles use local if it exists. If the current
+           ;;   profile is 'local or nil, use local even if the file does not
+           ;;   exist, basically unpinning the package version.
+           (or (memq straight-current-profile '(nil local))
+               local-exists-p)))
          ;; For writing, respect the preference flag
          (should-use-local
           (if +straight--lockfile-prefer-local-conf-versions-p

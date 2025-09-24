@@ -34,11 +34,13 @@ type(component): brief description (50-72 chars)
    ```
    
    If you have multiple changes affecting different items in the same file, use
-   parentheses to separate them:
+   parentheses to separate them. Add a blank line to separate the items.
    
    ```
    * file.ext (function1, variable1): Description.
+   
    (function2, variable2): Description.
+   
    (function3, variable3, variable4): Description.
    ```
    

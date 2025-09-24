@@ -258,4 +258,51 @@ guaranteed to be the response buffer."
   :after macher
   :config
   (setq! mevedel-empty-tag-query-matches-all nil)
-  (mevedel-install))
+  (mevedel-install)
+
+  (defun +mevedel-ensure-org-heading-h (execution)
+    "Ensure an Org heading exists for the current mevedel directive.
+If a heading with the current MEVEDELUUID exists, move to its end.
+Otherwise, create a new heading at the end of the buffer with a
+truncated summary of the execution and set the MEVEDELUUID property."
+    (let ((action-buffer (current-buffer))
+          (mevedel-uuid (and (boundp 'mevedel--current-directive-uuid)
+                             mevedel--current-directive-uuid)))
+      (with-current-buffer action-buffer
+        (when (and (derived-mode-p 'org-mode) mevedel-uuid)
+          (if-let* ((matched-headings (let (matches)
+                                        (org-map-entries
+                                         (lambda ()
+                                           (when (equal (org-entry-get (point) "MEVEDELUUID")
+                                                        mevedel-uuid)
+                                             (push (org-get-heading) matches)))
+                                         nil nil 'archive)
+                                        matches)))
+              (let* ((target-heading (car matched-headings))
+                     (target-heading-pos (when target-heading
+                                           (condition-case nil
+                                               (org-find-exact-headline-in-buffer target-heading action-buffer t)
+                                             (error nil)))))
+                (when target-heading-pos
+                  (goto-char target-heading-pos)
+                  (org-end-of-subtree)))
+            (let* ((summary (and (functionp 'macher-action-execution-summary)
+                                 (macher-action-execution-summary execution)))
+                   (truncated-summary (if summary
+                                          (let* ((lines (split-string summary "\n" t "[[:space:]]*"))
+                                                 (first-line (or (car lines) ""))
+                                                 (prefix (or (alist-get major-mode gptel-prompt-prefix-alist) ""))
+                                                 (used-length (length prefix))
+                                                 (available-length (max 10 (- (or fill-column 70) used-length 3))))
+                                            (truncate-string-to-width first-line available-length nil nil "..."))
+                                        "New directive")))
+              (goto-char (point-max))
+              (let ((buffer-empty-p (= (point-min) (point-max))))
+                (insert (concat (unless buffer-empty-p "\n\n") "* " truncated-summary "\n"
+                                (or (alist-get major-mode gptel-prompt-prefix-alist) "")))
+                (when (fboundp 'org-set-property)
+                  (org-set-property "MEVEDELUUID" mevedel-uuid))))))))
+
+    (defadvice! +mevedel-ensure-org-heading-a ()
+      :after #'macher--action-buffer-setup-basic
+      (add-hook 'macher-before-action-functions #'+mevedel-ensure-org-heading-h -99 t)))

@@ -33,10 +33,22 @@
 (defvar zenit-detect-indentation-excluded-modes
   '(pascal-mode
     so-long-mode
+    ;; Variable-width indentation is superior in elisp. Otherwise, `dtrt-indent'
+    ;; and `editorconfig' would force fixed indentation on elisp.
+    emacs-lisp-mode
     ;; Automatic indent detection in org files is meaningless. Not to mention, a
     ;; non-standard `tab-width' causes an error in org-mode.
     org-mode)
   "A list of major modes where indentation shouldn't be auto-detected.")
+
+(defvar zenit-detect-indentation-in-projects nil
+  "If non-nil, indentation settings will be guessed in project files.
+
+This is off by default because, generally, indent-guessing is less
+useful for projects, which have many options for configuring
+editors (editorconfig, .dir-locals.el, global settings, etc). While
+single files have fewer options and are more likely to use varied
+styles (and would be a pain to accommodate on a per-file basis).")
 
 (defvar-local zenit-inhibit-indent-detection nil
   "Whether `dtrt-indent' should try to detect indentation settings or not.
@@ -544,11 +556,14 @@ short-circuiting hooks."
     "Detect and set the appropriate indentation style for the
 current buffer. "
     (unless (or (not after-init-time)
-                zenit-inhibit-indent-detection
                 zenit-large-file-p
+                zenit-inhibit-indent-detection
                 (eq major-mode 'fundamental-mode)
                 (member (substring (buffer-name) 0 1) '(" " "*"))
-                (apply #'derived-mode-p zenit-detect-indentation-excluded-modes))
+                (apply #'derived-mode-p zenit-detect-indentation-excluded-modes)
+                buffer-read-only
+                (and (not zenit-detect-indentation-in-projects)
+                     (zenit-project-root)))
       ;; Don't display messages in the echo area, but still log them
       (let ((inhibit-message (not init-file-debug)))
         (dtrt-indent-mode +1))))

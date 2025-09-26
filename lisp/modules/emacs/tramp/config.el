@@ -17,7 +17,7 @@
         tramp-backup-directory-alist backup-directory-alist
         tramp-auto-save-directory  (concat zenit-cache-dir "tramp-autosave/"))
 
-  ;; The ssh method is faster than the default ssh on Windows
+  ;; The ssh method is faster than scp (the default) on WIndows
   (static-unless (featurep :system 'windows)
     (setq tramp-default-method "ssh")))
 

@@ -63,11 +63,6 @@
     (setq woman-manpath path)))
 
 
-;;;###package tramp
-(static-unless zenit--system-windows-p
-  (setq tramp-default-method "ssh")) ; faster than the default scp
-
-
 ;;
 ;;; Smartparens config
 

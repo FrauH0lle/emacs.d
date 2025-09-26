@@ -848,6 +848,7 @@ Otherwise a default prompt is used.
 The package list is cached in `zenit--package-cache' for
 performance. The cache is populated on first use and persists for
 the Emacs session."
+  (zenit-initialize-packages)
   (let* ((guess (or (function-called-at-point)
                     (symbol-at-point))))
     (require 'finder-inf nil t)

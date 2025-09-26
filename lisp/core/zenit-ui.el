@@ -238,29 +238,6 @@ the frame through some other means.")
 Meant for `kill-buffer-query-functions'."
   (not (eq (current-buffer) (zenit-fallback-buffer))))
 
-(defun zenit-highlight-non-default-indentation-h ()
-  "Highlight whitespace at odds with `indent-tabs-mode'.
-
-That is, highlight tabs if `indent-tabs-mode' is nil, and highlight
-spaces at the beginnings of lines if `indent-tabs-mode' is t. The
-purpose is to make incorrect indentation in the current buffer obvious
-to you.
-
-Does nothing if `whitespace-mode' or `global-whitespace-mode' is already
-active or if the current buffer is read-only or not file-visiting."
-  (unless (or (eq major-mode 'fundamental-mode)
-              (bound-and-true-p global-whitespace-mode)
-              (null buffer-file-name))
-    (require 'whitespace)
-    (set (make-local-variable 'whitespace-style)
-         (cl-union (if indent-tabs-mode
-                       '(indentation)
-                     '(tabs tab-mark))
-                   (when whitespace-mode
-                     (remq 'face whitespace-active-style))))
-    (cl-pushnew 'face whitespace-style) ; must be first
-    (whitespace-mode +1)))
-
 
 ;;
 ;;; General UX
@@ -636,15 +613,50 @@ buffers are visible in other windows, switch to
         show-paren-when-point-in-periphery t))
 
 
-;;;###package whitespace
-(setq whitespace-line-column nil
-      whitespace-style
-      '(face indentation tabs tab-mark spaces space-mark newline newline-mark
-        trailing lines-tail)
-      whitespace-display-mappings
-      '((tab-mark ?\t [?› ?\t])
-        (newline-mark ?\n [?¬ ?\n])
-        (space-mark ?\  [?·] [?.])))
+(use-package! whitespace
+  :defer t
+  :init
+  (add-hook! 'after-change-major-mode-hook :append
+    (defun +emacs-highlight-non-default-indentation-h ()
+      "Highlight whitespace at odds with `indent-tabs-mode'.
+
+That is, highlight tabs if `indent-tabs-mode' is nil, and highlight
+spaces at the beginnings of lines if `indent-tabs-mode' is t. The
+purpose is to make incorrect indentation in the current buffer obvious
+to you.
+
+Does nothing if `whitespace-mode' or `global-whitespace-mode' is already
+active or if the current buffer is read-only or not file-visiting."
+      (unless (or (eq major-mode 'fundamental-mode)
+                  (bound-and-true-p global-whitespace-mode)
+                  (null buffer-file-name))
+        (require 'whitespace)
+        (set (make-local-variable 'whitespace-style)
+             (cl-union (if indent-tabs-mode
+                           '(indentation)
+                         '(tabs tab-mark))
+                       (when whitespace-mode
+                         (remq 'face whitespace-active-style))))
+        (cl-pushnew 'face whitespace-style) ; must be first
+        (whitespace-mode +1))))
+
+  :config
+  (setq whitespace-line-column nil
+        whitespace-style
+        '(face indentation tabs tab-mark spaces space-mark newline newline-mark
+          trailing lines-tail)
+        whitespace-display-mappings
+        '((tab-mark ?\t [?› ?\t])
+          (newline-mark ?\n [?¬ ?\n])
+          (space-mark ?\  [?·] [?.])))
+
+  (defun +whitespace--in-parent-frame-p ()
+    "`whitespace-mode' inundates child frames with whitespace
+markers, so disable it to fix all that visual noise."
+    (null (frame-parameter nil 'parent-frame)))
+  (eval-when-compile
+    (declare-function +whitespace--in-parent-frame-p nil))
+  (add-function :before-while whitespace-enable-predicate #'+whitespace--in-parent-frame-p))
 
 
 ;;
@@ -865,7 +877,6 @@ during startup."
   (zenit-run-hooks 'zenit-init-ui-hook)
 
   (add-hook 'kill-buffer-query-functions #'zenit-protect-fallback-buffer-h)
-  (add-hook 'after-change-major-mode-hook #'zenit-highlight-non-default-indentation-h 'append)
 
   ;; Make `next-buffer', `other-buffer', etc. ignore unreal buffers.
   (push '(buffer-predicate . zenit-buffer-frame-predicate) default-frame-alist)
@@ -906,15 +917,6 @@ during startup."
                customize-changed-options customize-save-customized))
   (put sym 'disabled "`customize' not supported, configure Emacs from ~/.emacs.d/site-lisp/config.el instead"))
 (put 'customize-themes 'disabled "Set `zenit-theme' or use `load-theme' in ~/.emacs.d/site-lisp/config.el instead")
-
-(after! whitespace
-  (defun zenit--in-parent-frame-p ()
-    "`whitespace-mode' inundates child frames with whitespace
-markers, so disable it to fix all that visual noise."
-    (null (frame-parameter nil 'parent-frame)))
-  (eval-when-compile
-    (declare-function zenit--in-parent-frame-p nil))
-  (add-function :before-while whitespace-enable-predicate #'zenit--in-parent-frame-p))
 
 (provide 'zenit-ui)
 

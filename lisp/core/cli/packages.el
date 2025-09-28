@@ -271,10 +271,13 @@ If ALL is non-nil, simply remove all files in the eln cache."
                        (zenit--cli-recipes-update))
                      (condition-case-unless-debug e
                          (let ((straight-vc-git-post-clone-hook
-                                (cons (lambda! (&key commit)
+                                (cons (lambda! (&key repo-dir commit)
                                         (print-group!
                                           (when commit
-                                            (print! (item "%s: Checked out %s") package commit))))
+                                            (print! (item "%s: Checked out %s")
+                                                    (directory-file-name
+                                                     (file-relative-name repo-dir (straight--repos-dir)))
+                                                    commit))))
                                       straight-vc-git-post-clone-hook))
                                (straight-use-package-prepare-functions
                                 (cons (lambda (package &rest _)

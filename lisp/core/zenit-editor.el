@@ -22,6 +22,9 @@
 ;; `zenit-lib-buffers'
 (declare-function zenit-visible-buffers "zenit-lib-buffers" (&optional buffer-list all-frames))
 
+;; `zenit-lib-projects'
+(declare-function zenit-project-root "zenit-lib-projects" (&optional dir))
+
 ;; `zenit-lib-ui'
 (declare-function zenit-recenter-a "zenit-lib-ui" (&rest _))
 (declare-function zenit-shut-up-a "zenit-lib-ui" (orig-fn &rest args))

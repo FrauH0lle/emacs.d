@@ -55,6 +55,8 @@ Defaults to ~/.emacs.d/site-lisp/versions/. Must end in a slash.")
 ;;
 ;;; straight.el
 
+(defvar straight-current-profile)
+
 (setq straight-repository-branch "develop"
       ;; Since byte-code is rarely compatible across different versions of
       ;; Emacs, it's best we build them in separate directories, per emacs
@@ -432,7 +434,7 @@ Writing behavior (controlled by `+straight--lockfile-prefer-local-conf-versions-
            ;; Rule 2: Other profiles use local if it exists. If the current
            ;;   profile is 'local or nil, use local even if the file does not
            ;;   exist, basically unpinning the package version.
-           (or (memq straight-current-profile '(nil local))
+           (or (memq (bound-and-true-p straight-current-profile) '(local))
                local-exists-p)))
          ;; For writing, respect the preference flag
          (should-use-local
@@ -445,6 +447,16 @@ Writing behavior (controlled by `+straight--lockfile-prefer-local-conf-versions-
     (if should-use-local
         local-path
       (apply fn args))))
+
+(defadvice! +straight--vc-clone-prefer-local-profile-a (fn &rest args)
+  :around #'straight-vc-clone
+  (let* ((plist (car args))
+         (package (plist-get plist :package))
+         (profiles (gethash package straight--profile-cache))
+         (local-p (seq-some (lambda (x) (memq x '(nil local))) profiles))
+         (straight-current-profile (unless straight-current-profile
+                                     (if local-p 'local (car profiles)))))
+    (apply fn args)))
 
 (defvar +straight--lockfile-version-id nil
   "Memoized version ID from `straight''s install.el file.")
@@ -541,10 +553,10 @@ initialized and available for them."
     (setq zenit-init-packages-p t
           zenit-disabled-packages nil
           zenit-packages nil)
-    (setq straight-current-profile 'core)
-    (zenit-bootstrap-straight)
-    (zenit-log "Installing mandatory packages")
-    (mapc #'straight-use-package zenit-mandatory-packages)
+    (let ((straight-current-profile 'core))
+      (zenit-bootstrap-straight)
+      (zenit-log "Installing mandatory packages")
+      (mapc #'straight-use-package zenit-mandatory-packages))
     (zenit-log "Initializing packages")
     (zenit-read-packages)
     (setq straight-current-profile nil)
@@ -887,6 +899,9 @@ ARGS same as MELPA-STYLE-RECIPE in `straight-register-package'.
                  (straight-override-recipe '(,name ,@recipe))
                  (straight-register-package '(,name ,@recipe)))
             `(straight-register-package ',name))
+         (cl-pushnew straight-current-profile
+                     (gethash ,(symbol-name name) straight--profile-cache)
+                     :test #'eq)
          ;; Return non-nil if we did register packages
          (setf (alist-get name zenit-packages) plist)
          (with-no-warnings

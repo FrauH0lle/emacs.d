@@ -95,7 +95,8 @@ Files are expected to be plain text files, e.g. .md or .txt.")
     :select t
     :size 0.3
     :quit nil
-    :ttl nil)
+    :ttl nil
+    :tabbed t)
 
   (add-hook! 'gptel-post-response-functions :depth 90
     (cl-defun +gptel-clean-up-refactored-code-h (beg end)
@@ -220,13 +221,6 @@ guaranteed to be the response buffer."
   (setq! macher-action-buffer-ui 'org)
   (after! gptel
     (macher-install))
-
-  (set-popup-rule!
-    "\\*macher:.*\\*"
-    :select t
-    :size 0.3
-    :quit nil
-    :ttl nil)
 
   ;; Load extra tools
   (load! "macher-tools"))

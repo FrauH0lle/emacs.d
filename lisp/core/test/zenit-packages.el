@@ -25,9 +25,9 @@
   (:doc "`zenit-packages-file' is defined")
   (should (boundp 'zenit-packages-file)))
 
-(zenit-deftest +straight--normalize-profiles
-  (:doc "`+straight--normalize-profiles' is defined")
-  (should (fboundp '+straight--normalize-profiles)))
+(zenit-deftest +straight--fixup-profiles
+  (:doc "`+straight--fixup-profiles' is defined")
+  (should (fboundp '+straight--fixup-profiles)))
 
 (zenit-deftest +straight--auto-options
   (:doc "`+straight--auto-options' is defined")

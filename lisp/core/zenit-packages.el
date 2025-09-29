@@ -115,8 +115,8 @@ errors."
   (let (emacs-lisp-mode-hook)
     (apply fn args)))
 
-(defun +straight--normalize-profiles ()
-  "Normalize packages profiles.
+(defun +straight--fixup-profiles ()
+  "Fixup packages profiles.
 
 This involves
 
@@ -131,7 +131,7 @@ This involves
      them is nil, remove nil. This ways we make sure that there
      are no interactively registered packages after init.
 
-  4. Remove the \\='dep profile from packages which are also
+  4. Remove the \\='_pkg-dependency profile from packages which are also
      registered to proper profiles."
   ;; Build a map of repositories to their packages.
   (let ((repo-package-map (make-hash-table :test #'equal)))
@@ -147,11 +147,11 @@ This involves
     (maphash (lambda (package profiles)
                (let ((new-profiles (copy-sequence profiles)))
                  ;; Set recipe repositories to 'core' only.
-                 (when (member (intern package) straight-recipe-repositories)
+                 (when (memq (intern package) straight-recipe-repositories)
                    (setq new-profiles '(core)))
 
                  ;; Assign proper profiles based on the repository package map.
-                 (when (member 'dep profiles)
+                 (when (memq '_pkg-dependency profiles)
                    (dolist (repo-package (hash-table-values repo-package-map))
                      (when (member package repo-package)
                        (dolist (pkg repo-package)
@@ -161,13 +161,14 @@ This involves
                                            (gethash pkg straight--profile-cache)
                                            :test #'equal)))))))
 
-                 ;; Remove 'dep' profile if there are other proper profiles.
-                 (when (and (member 'dep new-profiles) (> (length new-profiles) 1))
-                   (setq new-profiles (remove 'dep new-profiles)))
+                 ;; Remove '_pkg-dependency' profile if there are other proper
+                 ;; profiles.
+                 (when (and (memq '_pkg-dependency new-profiles) (> (length new-profiles) 1))
+                   (setq new-profiles (remq '_pkg-dependency new-profiles)))
 
                  ;; Remove nil entries if there are other profiles.
-                 (when (and (remove nil new-profiles) (> (length new-profiles) 1))
-                   (setq new-profiles (remove nil new-profiles)))
+                 (when (and (remq nil new-profiles) (> (length new-profiles) 1))
+                   (setq new-profiles (remq nil new-profiles)))
 
                  ;; Update the profile cache.
                  (puthash package new-profiles straight--profile-cache)))
@@ -383,7 +384,7 @@ However, in batch mode, print to stdout instead of stderr."
 ;;   package without triggering an catchable error (and thus evading the
 ;;   auto-retry logic in `+straight--retry-a') and leaves behind an empty
 ;;   directory. This detects this an forces straight to emit a catchable error.
-(defadvice! +straight--clone-emit-error-a (fn recipe)
+(defadvice! +straight-vc-clone--emit-error-a (fn recipe)
   :around #'straight-vc-clone
   (prog1 (funcall fn recipe)
     (when noninteractive
@@ -409,7 +410,7 @@ However, in batch mode, print to stdout instead of stderr."
 
 (defvar +straight--lockfile-prefer-local-conf-versions-p nil
   "If non-nil, `straight--versions-file' should prefer versions from `zenit-local-versions-dir'.")
-(defadvice! +straight--read-local-lockfile-a (fn &rest args)
+(defadvice! +straight-versions-file--prefer-local-profile-a (fn &rest args)
   "Advice to handle local vs default version file precedence.
 
 Reading precedence:
@@ -432,8 +433,8 @@ Writing behavior (controlled by `+straight--lockfile-prefer-local-conf-versions-
            (seq-some (lambda (x) (member x local-profile-files))
                      args)
            ;; Rule 2: Other profiles use local if it exists. If the current
-           ;;   profile is 'local or nil, use local even if the file does not
-           ;;   exist, basically unpinning the package version.
+           ;;   profile is 'local, use local even if the file does not exist,
+           ;;   basically unpinning the package version.
            (or (memq (bound-and-true-p straight-current-profile) '(local))
                local-exists-p)))
          ;; For writing, respect the preference flag
@@ -448,13 +449,13 @@ Writing behavior (controlled by `+straight--lockfile-prefer-local-conf-versions-
         local-path
       (apply fn args))))
 
-(defadvice! +straight--vc-clone-prefer-local-profile-a (fn &rest args)
+(defadvice! +straight-vc-clone--prefer-local-profile-a (fn &rest args)
   :around #'straight-vc-clone
   (let* ((plist (car args))
          (package (plist-get plist :package))
          (profiles (gethash package straight--profile-cache))
          (local-p (seq-some (lambda (x) (memq x '(nil local))) profiles))
-         (straight-current-profile (unless straight-current-profile
+         (straight-current-profile (unless (bound-and-true-p straight-current-profile)
                                      (if local-p 'local (car profiles)))))
     (apply fn args)))
 
@@ -561,7 +562,7 @@ initialized and available for them."
     (zenit-read-packages)
     (setq straight-current-profile nil)
     (zenit-log "Normalizing profiles")
-    (+straight--normalize-profiles)))
+    (+straight--fixup-profiles)))
 
 (defun zenit-bootstrap-straight ()
   "Bootstrap `straight'.
@@ -774,7 +775,7 @@ also be a list of module keys."
 
     (dolist (pkg-name dependencies)
       (unless (equal pkg-name package)
-        (let ((straight-current-profile 'dep))
+        (let ((straight-current-profile '_pkg-dependency))
           (straight-register-package (intern pkg-name))))
       (add-to-list 'load-path (directory-file-name (straight--build-dir pkg-name)))
       (straight--load-package-autoloads pkg-name))))

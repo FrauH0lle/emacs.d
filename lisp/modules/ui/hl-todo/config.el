@@ -26,9 +26,19 @@
           ;; Extra keywords commonly found in the wild, whose meaning may vary
           ;; from project to project.
           ("NOTE" success bold)
+          ("DONE" success bold)
+          ("OKAY" success bold)
           ("BUG" error bold)
-          ("XXX" font-lock-constant-face bold)))
-
+          ("FAIL" error bold)
+          ("DONT" warning bold)
+          ("XXX*" font-lock-constant-face bold)
+          ("HOLD" warning bold)
+          ("NEXT" font-lock-keyword-face bold)
+          ("THEM" font-lock-keyword-face bold)
+          ("PROG" font-lock-keyword-face bold)
+          ("MAYBE" font-lock-keyword-face bold)
+          ("KLUDGE" font-lock-constant-face bold)
+          ("TEMP" font-lock-builtin-face bold)))
 
   (defadvice! +hl-todo-clamp-font-lock-fontify-region-a (fn &rest args)
     "Fix an `args-out-of-range' error in some modes."

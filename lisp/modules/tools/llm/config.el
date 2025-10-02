@@ -56,10 +56,10 @@ Files are expected to be plain text files, e.g. .md or .txt.")
     :endpoint "/api/paas/v4/chat/completions"
     :stream t
     :key 'gptel-api-key
-    :models '((glm-4.5
+    :models '((glm-4.6
                :description "High Performance, Strong Reasoning, More Versatile"
                :capabilities (tool-use reasoning)
-               :context-window 128
+               :context-window 200
                :input-cost 0.6
                :output-cost 2.2)
               (glm-4.5-x
@@ -139,7 +139,6 @@ guaranteed to be the response buffer."
             (insert-and-inherit "*"))))))
 
   ;; Tools
-
   (gptel-make-tool
    :name "read_buffer"
    :function (lambda (buffer)
@@ -163,8 +162,6 @@ guaranteed to be the response buffer."
   (gptel-make-preset 'commit-summary
     :description "For generating commit message summaries"
     :system (+llm-get-prompt-from-files '("commit-summary.md" "docs/commit-summary.md"))
-    :backend "Claude"
-    :model 'claude-3-5-haiku-20241022
     :include-reasoning nil
     :tools nil)
 

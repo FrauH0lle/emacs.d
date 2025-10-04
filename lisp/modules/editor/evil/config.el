@@ -4,6 +4,11 @@
   "If non-nil, the o/O keys will continue comment lines if the
 point is on a line with a linewise comment.")
 
+(defvar +evil-preprocessor-regexp "^\\s-*#[a-zA-Z0-9_]"
+  "The regexp used by `+evil/next-preproc-directive' and
+`+evil/previous-preproc-directive' on ]# and [#, to jump between
+preprocessor directives. By default, this only recognizes C directives.")
+
 (defvar evil-want-C-g-bindings t)
 (defvar evil-want-C-i-jump nil)
 (defvar evil-want-C-u-scroll t)  ; moved the universal arg to <leader> u
@@ -198,33 +203,6 @@ global, so..."
   (advice-add #'evil-goto-first-line :around #'zenit-set-jump-a)
   (advice-add #'evil-goto-line       :around #'zenit-set-jump-a)
 
-  ;; These arg types will highlight matches in the current buffer
-  (evil-ex-define-argument-type regexp-match
-    :runner (lambda (flag &optional arg) (+evil-ex-regexp-match flag arg 'inverted)))
-  (evil-ex-define-argument-type regexp-global-match
-    :runner +evil-ex-regexp-match)
-
-  (defun +evil--regexp-match-args (arg)
-    (when (evil-ex-p)
-      (cl-destructuring-bind (&optional arg flags)
-          (evil-delimited-arguments arg 2)
-        (list arg (string-to-list flags)))))
-
-  ;; Other commands can make use of this
-  (evil-define-interactive-code "<//>"
-    :ex-arg regexp-match
-    (+evil--regexp-match-args evil-ex-argument))
-
-  (evil-define-interactive-code "<//!>"
-    :ex-arg regexp-global-match
-    (+evil--regexp-match-args evil-ex-argument))
-
-  ;; Forward declare these so that ex completion works, even if the autoloaded
-  ;; functions aren't loaded yet.
-  (evil-add-command-properties '+evil:align :ex-arg 'regexp-match)
-  (evil-add-command-properties '+evil:align-right :ex-arg 'regexp-match)
-  (evil-add-command-properties '+multiple-cursors:evil-mc :ex-arg 'regexp-global-match)
-
   ;; Lazy load evil ex commands, part II
   (compile-along! "+commands")
   (after! evil-ex
@@ -391,7 +369,8 @@ global, so..."
   :config
   (pushnew! evil-traces-argument-type-alist
             '(+evil:align . evil-traces-global)
-            '(+evil:align-right . evil-traces-global))
+            '(+evil:align-right . evil-traces-global)
+            '(+multiple-cursors:evil-mc . evil-traces-substitute))
   (evil-traces-mode))
 
 

@@ -64,7 +64,7 @@ PATTERN is a vim-style regexp. FLAGS is an optional string of
 characters. Supports the following flags:
 
 g   Repeat alignment on all matches in each line"
-  (interactive "<r><//>")
+  (interactive "<r></>")
   (align-regexp
    beg end
    (concat "\\(\\s-*\\)" (evil-transform-vim-style-regexp pattern))
@@ -78,7 +78,7 @@ PATTERN is a vim-style regexp. FLAGS is an optional string of
 characters. Supports the following flags:
 
 g   Repeat alignment on all matches in each line"
-  (interactive "<r><//>")
+  (interactive "<r></>")
   (align-regexp
    beg end
    (concat "\\(" (evil-transform-vim-style-regexp pattern) "\\)")
@@ -167,17 +167,26 @@ underlying function and open its documentation.
 
 If QUERY is empty, this runs the equivalent of 'M-x apropos'."
   (interactive "<!><a>")
-  (save-match-data
-    (cond ((or (null query) (string-empty-p (string-trim query)))
-           (call-interactively
-            (or (command-remapping #'apropos)
-                #'apropos)))
-          ((string-match "^ *:\\([^ ]+\\)$" query)
-           (funcall (or (command-remapping #'describe-function)
-                        #'describe-function)
-                    (evil-ex-completed-binding (match-string 1 query))))
-          ((message "Searching for %S, this may take a while..." query)
-           (apropos query t)))))
+  (if bang
+      (zenit/help-search-headings query)
+    (save-match-data
+      (cond ((or (null query) (string-empty-p (string-trim query)))
+             (call-interactively
+              (or (command-remapping #'apropos)
+                  #'apropos)))
+            ((string-match "^ *:\\([^ ]+\\)$" query)
+             (funcall (or (command-remapping #'describe-function)
+                          #'describe-function)
+                      (evil-ex-completed-binding (match-string 1 query))))
+            ((or (string-match "^ *[^a-z0-9-_]$" query)
+                 (condition-case nil
+                     (ignore (string-match-p query ""))
+                   (invalid-regexp t)))
+             (user-error "Invalid query: %S" query))
+            ((< (string-width query) 3)
+             (user-error "Query too short (must be > 2 characters): %S" query))
+            ((message "Searching for %S, this may take a while..." query)
+             (apropos query t))))))
 
 ;;;###autoload (autoload '+evil:read "editor/evil/autoload/ex" nil t)
 (evil-define-command +evil:read (count file)

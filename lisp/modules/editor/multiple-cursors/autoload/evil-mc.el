@@ -62,17 +62,18 @@ pauses cursors."
 (evil-define-command +multiple-cursors:evil-mc (beg end type pattern &optional flags bang)
   "Create mc cursors at each match of PATTERN within BEG and END.
 
-This leaves the cursor where the final cursor would be. If BANG, then treat
-PATTERN as literal. PATTERN is a delimited regexp (the same that :g or :s uses).
-FLAGS can be g and/or i; which mean the same thing they do in
-`evil-ex-substitute'."
+This leaves the cursor where the final cursor would be. If BANG, then
+treat PATTERN as literal. PATTERN is a delimited regexp (the same that
+:g or :s uses). FLAGS can be g and/or i; which mean the same thing they
+do in `evil-ex-substitute'."
   :evil-mc t
   :keep-visual t
-  (interactive "<R><//!><!>")
+  (interactive "<R><g/><!>")
   (unless (and (stringp pattern)
                (not (string-empty-p pattern)))
     (user-error "A regexp pattern is required"))
   (require 'evil-mc)
+  (setq flags (mapcar #'string-to-char (ensure-list flags)))
   (let ((m (evil-ex-make-pattern
             (if bang (regexp-quote pattern) pattern)
             (cond ((memq ?i flags) 'insensitive)

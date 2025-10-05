@@ -1,0 +1,23 @@
+#+title: :emacs ibuffer
+#+created: 2025-10-05
+
+* Description :unfold:
+~ibuffer~ setup with custom columns, project grouping, and improved buffer
+management.
+
+- Custom column layout with icons and human-readable sizes
+- Project-based filtering with ~ibuffer-projectile~
+- Workspace integration when available
+
+** Module flags
+/None/
+
+** Packages
+- [[https://github.com/purcell/ibuffer-projectile][ibuffer-projectile]]
+- [[https://github.com/purcell/ibuffer-vc][ibuffer-vc]]
+
+* Installation
+/None/
+
+* Configuration
+/None/

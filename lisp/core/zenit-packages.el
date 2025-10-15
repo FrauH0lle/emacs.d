@@ -449,6 +449,30 @@ Writing behavior (controlled by `+straight--lockfile-prefer-local-conf-versions-
         local-path
       (apply fn args))))
 
+(defadvice! +straight--lockfile-read--filter-for-local-profile-a (version-alist)
+  "Filters the VERSION-ALIST for packages which have a local profile.
+
+If a package has \\='local as a profile, this version will be preferred
+even if it does not exist. In this case, the package becomes unpinned
+and always up-to-date."
+  :filter-return #'straight--lockfile-read
+  (let (new-alist)
+    (dolist (spec version-alist)
+      (cl-destructuring-bind (local-repo . commit) spec
+        (let* ((package (plist-get (gethash local-repo straight--repo-cache) :package))
+               (profiles (gethash package straight--profile-cache))
+               (local-p (seq-some (lambda (x) (memq x '(nil local))) profiles))
+               (local-versions (let ((lockfile-path (straight--versions-file (alist-get 'local straight-profiles))))
+                                 (when (file-exists-p lockfile-path)
+                                   (with-temp-buffer
+                                     (insert-file-contents-literally lockfile-path)
+                                     (read (current-buffer)))))))
+          (setf (alist-get local-repo new-alist nil 'remove)
+                (if local-p
+                    (alist-get local-repo local-versions nil nil #'equal)
+                  commit)))))
+    new-alist))
+
 (defadvice! +straight-vc-clone--prefer-local-profile-a (fn &rest args)
   :around #'straight-vc-clone
   (let* ((plist (car args))

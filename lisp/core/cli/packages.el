@@ -383,13 +383,22 @@ If ALL is non-nil, simply remove all files in the eln cache."
 
                      ;; No target commit found, simply pull
                      ((not (stringp target-ref))
-                      (print! (start "\r(%d/%d) Fetching %s...%s") i total package esc)
-                      (zenit--straight-with (straight-vc-fetch-from-remote recipe)
-                        (when .it
-                          (straight-merge-package package)
+                      (let ((snapshot-p (file-exists-p ".straight-commit")))
+                        (if snapshot-p
+                            (print! (start "\r(%d/%d) Downloading %s...%s") i total package esc)
+                          (print! (start "\r(%d/%d) Fetching %s...%s") i total package esc))
+                        (if (not (file-exists-p ".straight-commit"))
+                            (zenit--straight-with (straight-vc-fetch-from-remote recipe)
+                              (when .it
+                                (straight-merge-package package)
+                                (setq target-ref (straight-vc-get-commit type local-repo))
+                                (setq output (zenit--commit-log-between ref target-ref)
+                                      commits (length (split-string output "\n" t)))
+                                (or (not (zenit--same-commit-p target-ref ref))
+                                    (cl-return))))
+                          (delete-directory default-directory t)
+                          (straight-vc 'clone 'git recipe nil)
                           (setq target-ref (straight-vc-get-commit type local-repo))
-                          (setq output (zenit--commit-log-between ref target-ref)
-                                commits (length (split-string output "\n" t)))
                           (or (not (zenit--same-commit-p target-ref ref))
                               (cl-return)))))
 

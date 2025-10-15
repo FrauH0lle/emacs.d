@@ -91,8 +91,8 @@
 
   ;; TODO PR this to `git-timemachine'
   (defadvice! +vc-support-git-timemachine-a (fn)
-    "Allow `browse-at-remote' commands in git-timemachine buffers to open that
-file in your browser at the visited revision."
+    "Allow `browse-at-remote' commands in git-timemachine buffers to open
+that file in your browser at the visited revision."
     :around #'browse-at-remote-get-url
     (if git-timemachine-mode
         (let* ((start-line (and (use-region-p) (line-number-at-pos
@@ -120,8 +120,8 @@ file in your browser at the visited revision."
   (defadvice! +vc-update-header-line-a (revision)
     "Show revision details in the header-line, instead of the minibuffer.
 
-Sometimes I forget `git-timemachine' is enabled in a buffer. Putting revision
-info in the `header-line-format' is a more visible indicator."
+Sometimes I forget `git-timemachine' is enabled in a buffer. Putting
+revision info in the `header-line-format' is a more visible indicator."
     :override #'git-timemachine--show-minibuffer-details
     (let* ((date-relative (nth 3 revision))
            (date-full (nth 4 revision))
@@ -133,7 +133,7 @@ info in the `header-line-format' is a more visible indicator."
                     (propertize sha-or-subject 'face 'git-timemachine-minibuffer-detail-face)
                     date-full date-relative))))
 
-  ;; ;; HACK 2024-08-21: `delay-mode-hooks' suppresses font-lock-mode in later
+  ;; HACK 2024-08-21: `delay-mode-hooks' suppresses font-lock-mode in later
   ;;   versions of Emacs, so git-timemachine buffers end up unfontified.
   (add-hook 'git-timemachine-mode-hook #'font-lock-mode)
 
@@ -164,6 +164,6 @@ info in the `header-line-format' is a more visible indicator."
   ;;      detached. This creates broken links. I think it is more sensible to
   ;;      fall back to master in those cases.
   (defadvice! +vc--fallback-to-master-branch-a ()
-    "Return 'master' in detached state."
+    "Return \\='master' in detached state."
     :after-until #'browse-at-remote--get-local-branch
     "master"))

@@ -229,7 +229,7 @@ guaranteed to be the response buffer."
   (setq! mevedel-empty-tag-query-matches-all nil)
   (mevedel-install)
 
-  (defun +mevedel-ensure-org-heading-h (execution)
+  (defun +mevedel-add-org-heading-maybe-h (execution)
     "Ensure an Org heading exists for the current mevedel directive.
 If a heading with the current MEVEDELUUID exists, move to its end.
 Otherwise, create a new heading at the end of the buffer with a
@@ -244,17 +244,27 @@ truncated summary of the execution and set the MEVEDELUUID property."
                                          (lambda ()
                                            (when (equal (org-entry-get (point) "MEVEDELUUID")
                                                         mevedel-uuid)
-                                             (push (org-get-heading) matches)))
+                                             ;; Store position
+                                             (push (point) matches)))
                                          nil nil 'archive)
                                         matches)))
-              (let* ((target-heading (car matched-headings))
-                     (target-heading-pos (when target-heading
-                                           (condition-case nil
-                                               (org-find-exact-headline-in-buffer target-heading action-buffer t)
-                                             (error nil)))))
-                (when target-heading-pos
-                  (goto-char target-heading-pos)
-                  (org-end-of-subtree)))
+              ;; Found existing heading with this UUID - append to it
+              (let ((target-pos (car matched-headings)))
+                (goto-char target-pos)
+                ;; There should be a prompt prefix already under existing
+                ;; headings
+                (org-narrow-to-subtree)
+                (goto-char (point-max))
+                (when-let* ((prefix (alist-get major-mode gptel-prompt-prefix-alist)))
+                  ;; Clean up trailing whitespace after prompt prefix. This
+                  ;; should ensure that the new prompt will be inserted right
+                  ;; after the prefix.
+                  (save-excursion
+                    (goto-char (point-max))
+                    (skip-chars-backward " \t\r\n")
+                    (delete-region (point) (point-max))
+                    (insert " "))))
+            ;; No existing heading - create new one
             (let* ((summary (and (functionp 'macher-action-execution-summary)
                                  (macher-action-execution-summary execution)))
                    (truncated-summary (if summary
@@ -267,11 +277,44 @@ truncated summary of the execution and set the MEVEDELUUID property."
                                         "New directive")))
               (goto-char (point-max))
               (let ((buffer-empty-p (= (point-min) (point-max))))
+                ;; Insert prompt prefix only if the buffer is empty. As soon as
+                ;; we add a heading, `macher--before-action' will not add a
+                ;; prompt anymore.
                 (insert (concat (unless buffer-empty-p "\n\n") "* " truncated-summary "\n"
                                 (or (alist-get major-mode gptel-prompt-prefix-alist) "")))
-                (when (fboundp 'org-set-property)
-                  (org-set-property "MEVEDELUUID" mevedel-uuid)))))))))
+                (org-set-property "MEVEDELUUID" mevedel-uuid)
+                (org-end-of-subtree))))))))
 
-  (defadvice! +mevedel-ensure-org-heading-a ()
+  (defun +mevedel-fixup-action-buffer-maybe-h (_err _execution fsm)
+    "Fixup newly entered response.
+Indent the content under the current subtree, widen the buffer if
+narrowed and ensure there is newline between the end of the response and
+the next heading. The marker info from the gptel FSM is used."
+    (let* ((action-buffer (current-buffer))
+           ;; Get start and end marker positions from FSM
+           (info (gptel-fsm-info fsm))
+           (start-marker (plist-get info :position))
+           (tracking-marker (plist-get info :tracking-marker))
+           (current-marker (or tracking-marker start-marker)))
+      (with-current-buffer action-buffer
+        ;; Indent the current subtree and remove narrowing
+        (save-excursion
+          (org-mark-subtree)
+          (indent-region (region-beginning) (region-end))
+          (deactivate-mark))
+        (when (buffer-narrowed-p)
+          (widen))
+        ;; Add a newline above the following heading as a visual separator. This
+        ;; is purely cosmetic.
+        (when current-marker
+          (save-excursion
+            (goto-char current-marker)
+            (when (= (org-next-visible-heading 1) 0)
+              (beginning-of-line)
+              (newline)))))))
+
+  (defadvice! +mevedel-heading-per-directive-a ()
+    "Add and manage separate org headings for each directive."
     :after #'macher--action-buffer-setup-basic
-    (add-hook 'macher-before-action-functions #'+mevedel-ensure-org-heading-h -99 t)))
+    (add-hook 'macher-before-action-functions #'+mevedel-add-org-heading-maybe-h -99 t)
+    (add-hook 'macher-after-action-functions #'+mevedel-fixup-action-buffer-maybe-h -99 t)))

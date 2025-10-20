@@ -449,39 +449,48 @@ Writing behavior (controlled by `+straight--lockfile-prefer-local-conf-versions-
         local-path
       (apply fn args))))
 
-(defadvice! +straight--lockfile-read--filter-for-local-profile-a (version-alist)
-  "Filters the VERSION-ALIST for packages which have a local profile.
+(defadvice! +straight--lockfile-read-all--prefer-local-versions-a (versions-alist)
+  "Filter merged VERSIONS-ALIST to prefer local versions for packages.
 
-If a package has \\='local as a profile, this version will be preferred
-even if it does not exist. In this case, the package becomes unpinned
-and always up-to-date."
-  :filter-return #'straight--lockfile-read
-  (let (new-alist)
-    (dolist (spec version-alist)
+If a package has \\='local or nil as a profile, prefer the version from
+the local lockfile. If the package isn't in the local lockfile, it
+becomes unpinned (returns nil), allowing it to track the latest version."
+  :filter-return #'straight--lockfile-read-all
+  ;; Read local versions once, outside the loop
+  (let ((local-versions
+         (let ((lockfile-path (straight--versions-file (alist-get 'local straight-profiles))))
+           (when (file-exists-p lockfile-path)
+             (with-temp-buffer
+               (insert-file-contents-literally lockfile-path)
+               (read (current-buffer))))))
+        (result nil))
+    ;; Process each repo in the merged alist
+    (dolist (spec versions-alist)
       (cl-destructuring-bind (local-repo . commit) spec
-        (let* ((package (plist-get (gethash local-repo straight--repo-cache) :package))
-               (profiles (gethash package straight--profile-cache))
-               (local-p (seq-some (lambda (x) (memq x '(nil local))) profiles))
-               (local-versions (let ((lockfile-path (straight--versions-file (alist-get 'local straight-profiles))))
-                                 (when (file-exists-p lockfile-path)
-                                   (with-temp-buffer
-                                     (insert-file-contents-literally lockfile-path)
-                                     (read (current-buffer)))))))
-          (setf (alist-get local-repo new-alist nil 'remove)
-                (if local-p
-                    (alist-get local-repo local-versions nil nil #'equal)
-                  commit)))))
-    new-alist))
+        ;; Look up package info
+        (if-let* ((repo-info (gethash local-repo straight--repo-cache))
+                  (package (plist-get repo-info :package))
+                  (profiles (gethash package straight--profile-cache))
+                  (local-p (seq-some (lambda (x) (memq x '(nil local))) profiles)))
+            ;; Package has local profile - use local version (or nil if not
+            ;; present)
+            (when-let ((local-commit (alist-get local-repo local-versions nil nil #'equal)))
+              (push (cons local-repo local-commit) result))
+          ;; Package doesn't have local profile - keep original commit
+          (push spec result))))
+    (nreverse result)))
 
-(defadvice! +straight-vc-clone--prefer-local-profile-a (fn &rest args)
+(defadvice! +straight-vc-clone--use-local-profile-a (fn recipe)
+  "Ensure packages with \\='local profile are cloned with that profile."
   :around #'straight-vc-clone
-  (let* ((plist (car args))
-         (package (plist-get plist :package))
-         (profiles (gethash package straight--profile-cache))
-         (local-p (seq-some (lambda (x) (memq x '(nil local))) profiles))
-         (straight-current-profile (unless (bound-and-true-p straight-current-profile)
-                                     (if local-p 'local (car profiles)))))
-    (apply fn args)))
+  (straight--with-plist recipe (package)
+    (let* ((profiles (gethash package straight--profile-cache))
+           (has-local-p (seq-some (lambda (x) (memq x '(nil local))) profiles))
+           ;; Set profile only if not already set
+           (straight-current-profile
+            (or (bound-and-true-p straight-current-profile)
+                (if has-local-p 'local (car profiles)))))
+      (funcall fn recipe))))
 
 (defvar +straight--lockfile-version-id nil
   "Memoized version ID from `straight''s install.el file.")

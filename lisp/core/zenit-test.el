@@ -141,47 +141,142 @@ inputs/outputs and optional docstrings."
 OBJECT is the symbol being tested. It can be a function, macro,
 or other symbol.
 
-Keyword arguments:
-:before-each - Form(s) to run before each test case
-:after-each  - Form(s) to run after each test case
-:expected-result - Expected result type (:passed, :failed, etc)
-:doc         - Documentation string for the test
-:tags        - List of tags to apply to the test
-:vars        - Variables to bind using `let`
-:vars*       - Variables to bind using `let*`
+KEYWORD ARGUMENTS:
+  :before-each - Form(s) to run before each test case
+  :after-each  - Form(s) to run after each test case
+  :expected-result - Expected result type (:passed, :failed, etc)
+  :doc         - Documentation string for the test
+  :tags        - List of tags to apply to the test
+  :vars        - Variables to bind using `let'
+  :vars*       - Variables to bind using `let*'
 
 The `let'/`let*' binding introduced via :vars and :vars* will
 encompass the whole test body, including the code from
 :before-each and :after-each.
 
+TEMPLATE:
 TEMPLATE is a list of forms that will be expanded into test cases
-using `zenit-test--template'. Each template form becomes a
-separate test case.
+using `zenit-test--template'. There are several patterns:
 
-The macro automatically adds tags based on the OBJECT:
-- The object's name itself as a tag
-- \\='private if the name contains \\='--', otherwise \\='public
-- \\='macro if the object is a macro
+1. SIMPLE TEST (no variables):
+   Just provide a test body. Use ,test placeholder and (test) binding.
 
-Examples:
-  (zenit-deftest my-function
-  (:before-each (setup)
-   :after-each (cleanup)
-   :tags (integration)
-   :doc \"Test my-function's behavior\")
-  (should (equal (my-function ,input1) t))
-  (input1)
-  \\='foo)
+2. PARAMETERIZED TEST (with variables):
+   Provide a template form with placeholders, variable names, and values.
 
-  (zenit-deftest my-function
-  (:before-each (setup)
-   :after-each (cleanup)
-   :tags (integration)
-   :doc \"Test my-function's behavior\")
-  (,assert (my-function ,input))
-  (assert input)
-  should \\='foo
-  should-not \\='bar)"
+3. MULTIPLE TEST CASES:
+   Prefix test cases with :doc to provide individual descriptions.
+
+AUTOMATIC TAGS:
+The macro automatically adds tags based on OBJECT:
+  - The object's name itself as a tag
+  - \\='private if the name contains \\='--', otherwise \\='public
+  - \\='macro if the object is a macro
+
+EXAMPLES:
+
+Example 1: Simple test (no parameters)
+  (zenit-deftest zenit-plist-map
+    (:doc \"`zenit-plist-map' maps fn to plist\")
+    (let ((plist \\='(:a 1 :b 2 :c 3)))
+      (zenit-plist-map (lambda (key val) (1+ val)) plist)
+      (should (equal \\='(:a 2 :b 3 :c 4) plist))))
+
+Example 2: Simple test with placeholder
+  (zenit-deftest file-exists-p!
+    (:doc \"`file-exists-p!' tests if one or more files exist.\")
+    ,test
+    (test)
+    (should (file-exists-p! (file!)))
+    (let ((test-file (zenit-test-make-temp-file)))
+      (should (equal (expand-file-name test-file) (file-exists-p! test-file)))
+      (delete-file test-file)))
+
+Example 3: Parameterized test with multiple cases
+  (zenit-deftest zenit-path
+    (:doc \"`zenit-path' returns a path from segments\")
+    (should (equal ,out (zenit-path ,@in)))
+    (in out)
+    (\"/tmp\" \"foo\" \"bar.txt\") \"/tmp/foo/bar.txt\"
+    (\"foo\") (expand-file-name \"foo\")
+    (\"/tmp\" \"foo\" nil \"bar.txt\") \"/tmp/foo/bar.txt\")
+
+Example 4: Multiple test cases with individual docstrings
+  (zenit-deftest zenit-surrounded-p
+    (:vars ((test-buffer (get-buffer-create \"test-buffer\")))
+     :before-each
+     (with-current-buffer test-buffer
+       (erase-buffer)
+       (emacs-lisp-mode))
+     :after-each
+     (kill-buffer test-buffer))
+    ,test
+    (test)
+    :doc \"`zenit-surrounded-p' returns t when surrounded\"
+    (with-current-buffer test-buffer
+      (insert \"foo {bar} baz\")
+      (goto-char 7)
+      (should (zenit-surrounded-p \\='(:beg 5 :end 8 :op \"{\" :cl \"}\"))))
+
+    :doc \"`zenit-surrounded-p' returns nil when not surrounded\"
+    (with-current-buffer test-buffer
+      (insert \"foo {bar} baz\")
+      (goto-char 4)
+      (should-not (zenit-surrounded-p \\='(:beg 5 :end 8 :op \"{\" :cl \"}\")))))
+
+Example 5: Parameterized test with different assertions
+  (zenit-deftest zenit-file-cookie-p
+    (:doc \"`zenit-file-cookie-p' returns the evaluated result\")
+    (let ((test-file (zenit-test-make-temp-file nil \".el\" ,fcookie)))
+      (,assert (zenit-file-cookie-p test-file ,tcookie ,null-value))
+      (delete-file test-file))
+    (assert fcookie tcookie null-value)
+    should \";;;###if (equal \\\"test\\\" \\\"test\\\")\" \"if\" nil
+    should \";;;###foo-test (equal \\\"test\\\" \\\"test\\\")\" \"foo-test\" nil
+    should \";;;###foo-test (equal \\\"test\\\" \\\"test\\\")\" \"if\" t
+    should-not \";;;###foo-test (equal \\\"test\\\" \\\"test\\\")\" \"if\" nil)
+
+Example 6: Test with setup/teardown and vars
+  (zenit-deftest zenit-syntax-ppss
+    (:vars ((test-buffer (get-buffer-create \"test-buffer\")))
+     :before-each
+     (with-current-buffer test-buffer
+       (erase-buffer)
+       (emacs-lisp-mode)
+       (setq zenit--sppss-memo-last-point nil
+             zenit--sppss-memo-last-result nil))
+     :after-each
+     (kill-buffer test-buffer)
+     :doc \"`zenit-syntax-ppss' parses syntax and caches state\")
+    ,test
+    (test)
+    (with-current-buffer test-buffer
+      (insert \"(hello \\\"world\\\") ; comment\")
+      (goto-char 1)
+      (let ((result1 (zenit-syntax-ppss 8)))
+        (should (eq result1 (zenit-syntax-ppss 8))))))
+
+PATTERN DETAILS:
+
+For parameterized tests, the template form uses backquote syntax
+where commas unquote variable values:
+  - ,var    -> unquotes single variable
+  - ,@var   -> unquotes and splices list variable
+  - ,test   -> special placeholder for simple tests
+
+The variable binding line lists variables that will be bound:
+  (var1 var2 var3)
+
+Then provide values in groups matching the variable count:
+  value1 value2 value3     ; First test case
+  value4 value5 value6     ; Second test case
+
+Optionally prefix each case with :doc \"description\" for individual
+test documentation.
+
+See also:
+  `zenit-test--template' - Template expansion function
+  `zenit-test--normalize-cases' - Docstring normalization"
   (declare (indent defun) (debug t))
   ;; Initialize test counter and automatic tags
   (let ((counter 0)

@@ -83,3 +83,12 @@
 
   (static-when (modulep! +lsp)
     (add-hook 'yaml-ts-mode-local-vars-hook #'lsp! 'append)))
+
+
+(use-package! toml-ts-mode
+  :when (modulep! +tree-sitter)
+  :when (fboundp 'toml-ts-mode)
+  :defer t
+  :init
+  (set-tree-sitter! 'conf-toml-mode 'toml-ts-mode
+    '((toml :url "https://github.com/tree-sitter/tree-sitter-toml"))))

@@ -6,7 +6,7 @@
 (use-package! vertico
   :hook (zenit-first-input . vertico-mode)
   :init
-  (defadvice! +vertico-crm-indicatora-a (args)
+  (defadvice! +vertico-crm-indicator-a (args)
     :filter-args #'completing-read-multiple
     (cons (format "[CRM%s] %s"
                   (replace-regexp-in-string

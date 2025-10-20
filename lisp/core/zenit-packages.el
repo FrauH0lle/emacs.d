@@ -203,7 +203,7 @@ to select which option to recommend.")
   "HACK Replace GUI popup prompts (which hang indefinitely in tty
 Emacs) with simple prompts."
   :around #'straight-are-you-sure
-  (or (bound-and-true-p zenit-auto-accept)
+  (or (bound-and-true-p zenit-cli-auto-accept)
       (if noninteractive
           (y-or-n-p (format! "%s" (or prompt "")))
         (funcall orig-fn prompt))))
@@ -249,8 +249,8 @@ noninteractive sessions."
       ;;      possible in tty Emacs, so...
       (delq! "e" actions 'assoc)
       (delq! "g" actions 'assoc)
-      (if zenit-auto-discard
-          (cl-loop with zenit-auto-accept = t
+      (if zenit-cli-auto-discard
+          (cl-loop with zenit-cli-auto-accept = t
                    for (_key desc func) in actions
                    when desc
                    when (+straight--recommended-option-p prompt desc)

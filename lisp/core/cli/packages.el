@@ -331,7 +331,7 @@ If ALL is non-nil, simply remove all files in the eln cache."
 ;;
 ;;; Update
 
-(defun zenit-cli-packages-update (&optional force-p)
+(defun zenit-cli-packages-update (&optional force-p pinned-only-p)
   "Updates packages."
   (zenit-initialize-packages)
   (let* ((repo-dir (straight--repos-dir))
@@ -342,6 +342,9 @@ If ALL is non-nil, simply remove all files in the eln cache."
          (total (length recipes))
          (esc (if init-file-debug "" "\033[1A"))
          (i 0))
+    (if pinned-only-p
+        (print! (start "Updating pinned packages..."))
+      (print! (start "Updating all packages (this may take a while)...")))
     (zenit--with-package-recipes recipes (recipe package type local-repo)
       (cl-incf i)
       (print-group!
@@ -360,6 +363,8 @@ If ALL is non-nil, simply remove all files in the eln cache."
             (unless (or (file-directory-p ".git")
                         (file-exists-p ".straight-commit"))
               (error "%S is not a valid repository" package)))
+          (when (and pinned-only-p (not (assoc local-repo pinned)))
+            (cl-return))
           (condition-case-unless-debug e
               (let ((ref (straight-vc-get-commit type local-repo))
                     (target-ref
@@ -496,7 +501,7 @@ If ALL is non-nil, simply remove all files in the eln cache."
                 (hash-table-keys packages-to-rebuild)))
         (print! (success "\rUpdated %d package(s)")
                 (hash-table-count packages-to-rebuild))
-        (zenit-cli-packages-ensure force-p)
+        (zenit-cli-packages-ensure)
         t))))
 
 

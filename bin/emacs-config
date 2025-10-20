@@ -61,32 +61,8 @@
 (setq load-prefer-newer t)
 
 ;; Process command line arguments early
-(defvar zenit-cli--files nil
-  "Which files to pass to the CLI.")
-
 ;; Remove the -- separator
 (pop argv)
-
-;; Sort options and switches
-(require 'cl-lib)
-(defvar zenit-cli--cmd-switches nil)
-(let (options
-      rest
-      (option-order
-       '("help" "clean-straight" "clean" "deploy" "env" "sync" "refresh" "freeze" "validate" "test")))
-  (while argv
-    (let ((current (pop argv)))
-      (if (member current option-order)
-          (cl-pushnew current options :test #'equal)
-        (push current rest))))
-  (setq rest (nreverse rest))
-  (setq options
-        (sort options
-              (lambda (a b)
-                (< (cl-position a option-order :test #'equal)
-                   (cl-position b option-order :test #'equal)))))
-  (setq zenit-cli--cmd-switches rest)
-  (setq command-line-args-left (append rest options)))
 
 ;; The core file sets up everything we need
 (condition-case e
@@ -112,6 +88,44 @@
       "Aborting..."))
     (kill-emacs 1)))
 
+;; Sort options and switches
+(defvar zenit-cli--cmd-switches nil)
+(let (subcommand-groups  ; List of (subcommand . flags) pairs
+      global-switches
+      (option-order zenit-cli-known-subcommands))
+  (while argv
+    (let ((current-arg (pop argv)))
+      (if (member current-arg option-order)
+          ;; This is a subcommand - collect it and its flags
+          (let ((subcommand-flags nil))
+            (while (and argv (not (member (car argv) option-order)))
+              (push (pop argv) subcommand-flags))
+            ;; Store subcommand with its flags (in original order)
+            (push (cons current-arg (nreverse subcommand-flags))
+                  subcommand-groups))
+        ;; This is a global switch
+        (push current-arg global-switches))))
+
+  (setq global-switches (nreverse global-switches))
+
+  ;; Sort subcommand groups by their position in option-order
+  (setq subcommand-groups
+        (sort subcommand-groups
+              (lambda (a b)
+                (< (cl-position (car a) option-order :test #'equal)
+                   (cl-position (car b) option-order :test #'equal)))))
+
+  ;; Flatten subcommand groups back into a flat list
+  (let ((sorted-options nil))
+    (dolist (group subcommand-groups)
+      (push (car group) sorted-options)  ; subcommand
+      (dolist (flag (cdr group))
+        (push flag sorted-options)))     ; flags for this subcommand
+    (setq sorted-options (nreverse sorted-options))
+
+    (setq zenit-cli--cmd-switches global-switches)
+    (setq command-line-args-left (append global-switches sorted-options))))
+
 ;; We need to start logging here, otherwise the messages are never shown.
 (zenit-log "cli: command line arguments: %s" command-line-args-left)
 (zenit-log "cli: zenit-cli--cmd-switches: %s" zenit-cli--cmd-switches)
@@ -124,16 +138,19 @@
 
 ;; Process command line args
 (defvar zenit-cli--cmd-options nil)
+(defvar zenit-cli--subcommand-args nil
+  "Arguments that may belong to subcommands.")
+
 (while argv
   (let ((arg (pop argv)))
     (cond
-     ;; Switches
+     ;; Global switches (these are always processed here)
      ((or (string= arg "--force")
           (string= arg "-F"))
-      (setenv "FORCE" "1") (setq zenit-auto-discard t))
+      (setenv "FORCE" "1") (setq zenit-cli-auto-discard t))
      ((string-match "\\`--force=\\(.*\\)\\'" arg)
       (setenv "FORCE" (match-string 1 arg))
-      (setq zenit-auto-discard arg))
+      (setq zenit-cli-auto-discard arg))
 
      ((or (string= arg "--debug")
           (string= arg "-D"))
@@ -147,16 +164,10 @@
 
      ((or (string= arg "--yes")
           (string= arg "-y"))
-      (setenv "YES" "1") (setq zenit-auto-accept t))
+      (setenv "YES" "1") (setq zenit-cli-auto-accept t))
      ((string-match "\\`--yes=\\(.*\\)\\'" arg)
       (setenv "YES" (match-string 1 arg))
-      (setq zenit-auto-accept t))
-
-     ((or (string= arg "--file")
-          (string= arg "-f"))
-      (push (pop argv) zenit-cli--files))
-     ((string-match "\\`--file=\\(.*\\)\\'" arg)
-      (push (match-string 1 arg) zenit-cli--files))
+      (setq zenit-cli-auto-accept t))
 
      ;; We handled --init-directory already in early-init.el and can just ignore
      ;; it here
@@ -164,10 +175,12 @@
       (pop argv))
      ((string-match "\\`--init-directory=\\(.*\\)\\'" arg))
 
-     ;; Options
+     ;; Subcommands
      ((string= arg "deploy")
       (push arg zenit-cli--cmd-options))
      ((string= arg "env")
+      (push arg zenit-cli--cmd-options))
+     ((string= arg "eval")
       (push arg zenit-cli--cmd-options))
      ((string= arg "sync")
       (push arg zenit-cli--cmd-options))
@@ -185,32 +198,28 @@
       (push arg zenit-cli--cmd-options))
      ((string= arg "help")
       (push arg zenit-cli--cmd-options))
-     ;; Anything else is an error
-     (t (print! "%s %s\n" (error "Unknown argument:") arg)
-        (print! "%s" (bold "Run emacs-config help to show the documentation."))
-        (kill-emacs 1)))))
+
+     ;; Everything else goes to subcommand args (will be validated later)
+     (t (push arg zenit-cli--subcommand-args)))))
+
+(setq zenit-cli--subcommand-args (nreverse zenit-cli--subcommand-args))
 
 (defun zenit-cli-show-help ()
   (print-group!
-    (print! "Usage: emacs-config [--SWITCHES] [OPTIONS]\n")
+    (print! (bold "Usage: emacs-config [--SWITCHES] [OPTIONS]\n"))
     (print! (bold "OPTIONS"))
     (print! "%s\t%s" (bold "deploy") "\tDeploy Emacs configuration")
     (print! "%s\t%s" (bold "env") "\t\tGenerate an env file")
+    (print! "%s\t%s" (bold "eval") "\t\tEvaluate arbitrary elisp code")
     (print! "%s\t%s" (bold "refresh") (concat "\tRefresh configuration:\n"
-                                              "\t\t\t(Re)build packages if necessary and (re)generate autoloads.\n"
-                                              "\t\t\tWith FORCE, rebuild all packages"))
-    (print! "%s\t%s" (bold "sync") (concat "\t\tDeploy Emacs configuration\n"
-                                           "\t\t\tWith FORCE, re-clone and rebuild all packages"))
+                                              "\t\t\t(Re)build packages if necessary and (re)generate autoloads."))
+    (print! "%s\t%s" (bold "sync") (concat "\t\tSync package versions and refresh"))
     (print! "%s\t%s" (bold "freeze") "\tFreeze package versions")
-    (print! "%s\t%s" (bold "clean") "\t\tClean .elc files")
-    (print! "%s\t%s" (bold "clean-straight") "Delete straight repo and build directories")
-    (print! "%s\t%s" (bold "validate") "\tValidate el-patches")
-    (print! "%s\t%s" (bold "test") (concat "\t\tTest Emacs configuration\n"
-                                           "\t\t\tYou can specify the unit test files with --files"))
+    (print! "%s\t%s" (bold "clean") "\t\tClean .elc files and more")
+    (print! "%s\t%s" (bold "test") (concat "\t\tTest Emacs configuration"))
     (print! "%s\t%s" (bold "help") "\t\tShow this help message and quit")
     (print! (bold "\nSWITCHES"))
-    (print! "%s\t%s" (bold "--file/-f") "Use this file. Can be used multiple times")
-    (print! "%s\t%s" (bold "--debug/-D") "Switch on DEBUG mode")
+    (print! "%s\t%s" (bold "--debug[=LEVEL]/-D") "Switch on DEBUG mode. Optional LEVEL from 1 to 3 (defaults to 2).")
     (print! "%s\t%s" (bold "--force/-F") "Switch on FORCE")
     (print! "%s\t%s" (bold "--yes/-y") "Answer YES to all prompts"))
   (kill-emacs 0))
@@ -221,35 +230,123 @@
 
 ;; Run commands
 (zenit-cli-redirect-output
- (add-hook 'kill-emacs-hook #'zenit-cli--output-write-logs-h 95)
- (zenit-log "run: %s" (combine-and-quote-strings (append zenit-cli--cmd-switches zenit-cli--cmd-options)))
+  (add-hook 'kill-emacs-hook #'zenit-cli--output-write-logs-h 95)
+  (zenit-log "run: %s" (combine-and-quote-strings (append zenit-cli--cmd-switches zenit-cli--cmd-options)))
 
- (setq zenit-cli--cmd-options (nreverse zenit-cli--cmd-options))
- (while zenit-cli--cmd-options
-   (let ((option (pop zenit-cli--cmd-options)))
-     (cond
-      ((string= option "deploy")
-       (zenit-cli-deploy))
-      ((string= option "env")
-       (zenit-cli-reload-env-file t))
-      ((string= option "sync")
-       (zenit-cli-sync))
-      ((string= option "refresh")
-       (zenit-cli-refresh))
-      ((string= option "freeze")
-       (zenit-cli-freeze-packages))
-      ((string= option "clean")
-       (zenit-cli-clean-compiled-files))
-      ((string= option "clean-straight")
-       (delete-directory (file-truename (expand-file-name (concat zenit-emacs-dir "straight/repos/straight.el"))) t)
-       (delete-directory (file-truename (expand-file-name (concat zenit-emacs-dir "straight/build/straight"))) t)
-       (print! (warn "Now run 'emacs-config refresh' or 'emacs-config sync'")))
-      ((string= option "validate")
-       ;; FIXME 2023-04-28: This needs some work
-       (print! (warn "Validation currently not implemented")))
-      ((string= option "test")
-       (zenit-cli-test zenit-cli--files))
-      ((string= option "help")
-       (zenit-cli-show-help))))))
+  (setq zenit-cli--cmd-options (nreverse zenit-cli--cmd-options))
+  (while zenit-cli--cmd-options
+    (let ((option (pop zenit-cli--cmd-options)))
+      (cond
+       ((string= option "deploy")
+        (zenit-cli-with-options
+            (:subcommand "deploy" . '((("--config") :type boolean :var config-p :value :yes :default :yes
+                                       :help "Create local config dummyfiles")
+                                      (("--no-config") :type boolean :var config-p :value :no
+                                       :help "Do not create local config dummyfiles")
+                                      (("--env") :type boolean :var envfile-p :value :yes :default :yes
+                                       :help "(Re)generate an envvars file")
+                                      (("--no-env") :type boolean :var envfile-p :value :no
+                                       :help "Do not (re)generate an envvars file")
+                                      (("--fonts") :type boolean :var fonts-p :value :yes :default :yes
+                                       :help "Install nerd-icons fonts")
+                                      (("--no-fonts") :type boolean :var fonts-p :value :no
+                                       :help "Do not install nerd-icons fonts")))
+            zenit-cli--subcommand-args
+          (zenit-cli-deploy config-p envfile-p fonts-p)))
+       ((string= option "env")
+        (zenit-cli-with-options
+            (:subcommand "env" . '((("--allow-all") :type boolean :var allow-all :value t
+                                    :help "Allow all environment variables")
+                                   (("--deny-all") :type boolean :var deny-all :value t
+                                    :help "Deny all environment variables")
+                                   (("--allow") :type list :var allow-list
+                                    :help "Allow specific environment variables (can be repeated)")
+                                   (("--deny") :type list :var deny-list
+                                    :help "Deny specific environment variables (can be repeated)")
+                                   (("-o" "--output") :type file :var output-file
+                                    :help "Output file path for the generated env file")))
+            zenit-cli--subcommand-args
+          (zenit-cli-reload-env-file output-file allow-all deny-all allow-list deny-list)))
+       ((string= option "eval")
+        (zenit-cli-with-options
+            (:subcommand "eval" . '((("-e" "--expr") :type string :var expression
+                                     :help "Elisp expression to evaluate (can be repeated)")
+                                    (("-f" "--file") :type file :var eval-file
+                                     :help "File containing elisp code to evaluate")
+                                    (("-p" "--print") :type boolean :var print-result
+                                     :help "Print the result of the evaluation")
+                                    (("-r" "--raw") :type boolean :var result-only-p
+                                     :help "Only print the result of the evaluation")))
+            zenit-cli--subcommand-args
+          (zenit-cli-eval expression eval-file print-result result-only-p)))
+       ((string= option "sync")
+        (zenit-cli-with-options
+            (:subcommand "sync" . '((("-e") :type boolean :var noenvvar-p
+                                     :help "Don't regenerate the envvar file")
+                                    (("-b" "--rebuild") :type boolean :var rebuild-p
+                                     :help "Rebuild all installed packages, unconditionally")
+                                    (("-B") :type boolean :var nobuild-p
+                                     :help "Don't rebuild installed packages")
+                                    (("-u") :type boolean :var update-p
+                                     :help "Update all installed packages")
+                                    (("-U") :type boolean :var noupdate-p
+                                     :help "Don't update any packages")
+                                    (("--reclone") :type boolean :var reclone-p
+                                     :help "Reclone packages")))
+            zenit-cli--subcommand-args
+          (zenit-cli-sync noenvvar-p update-p noupdate-p reclone-p rebuild-p nobuild-p)))
+       ((string= option "refresh")
+        (zenit-cli-with-options
+            (:subcommand "refresh" . '((("-e") :type boolean :var noenvvar-p
+                                        :help "Don't regenerate the envvar file")
+                                       (("-b" "--rebuild") :type boolean :var rebuild-p
+                                        :help "Rebuild all installed packages, unconditionally")
+                                       (("-B") :type boolean :var nobuild-p
+                                        :help "Don't rebuild installed packages")))
+            zenit-cli--subcommand-args
+          (zenit-cli-refresh noenvvar-p rebuild-p nobuild-p)))
+       ((string= option "freeze")
+        (zenit-cli-freeze-packages))
+       ((string= option "clean")
+        (zenit-cli-with-options
+            (:subcommand "clean" . '((("--straight") :type boolean :var cleanstraight-p
+                                      :help "Delete straight's repository and build directory")
+                                     (("--all") :type boolean :var cleanall-p
+                                      :help "Delete all repository and build directories")))
+            zenit-cli--subcommand-args
+          (zenit-cli-clean-compiled-files)
+          (when cleanstraight-p
+            (delete-directory
+             (file-truename
+              (expand-file-name (file-name-concat zenit-emacs-dir "straight" "build" "straight.el")))
+             t)
+            (delete-directory
+             (file-truename
+              (expand-file-name (file-name-concat zenit-emacs-dir "straight" "repos" "straight")))
+             t))
+          (when cleanall-p
+            (delete-directory
+             (file-truename
+              (expand-file-name (file-name-concat zenit-emacs-dir "straight" "build")))
+             t)
+            (delete-directory
+             (file-truename
+              (expand-file-name (file-name-concat zenit-emacs-dir "straight" "repos")))
+             t))
+          (when (or cleanstraight-p cleanall-p)
+            (let ((straight-build-cache-file
+                   (file-truename
+                    (expand-file-name (file-name-concat zenit-emacs-dir "straight" "build-cache.el")))))
+              (when (file-exists-p straight-build-cache-file)
+                (delete-file straight-build-cache-file))))
+          (print! (warn "Now run 'emacs-config refresh' or 'emacs-config sync'"))))
+       ((string= option "test")
+        (zenit-cli-with-options
+            (:subcommand "test" . '((("-f" "--file") :type list :var test-files
+                                     :help "Use this test file (can be repeated)")))
+            zenit-cli--subcommand-args
+          (zenit-cli-test test-files)))
+       ((string= option "help")
+        (zenit-cli-show-help))))))
 
 (kill-emacs 0)

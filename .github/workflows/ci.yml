@@ -40,7 +40,7 @@ jobs:
           key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ matrix.emacs_version }}-${{ hashFiles('straight/versions/*') }}
 
       - name: Deploy Emacs configuration
-        run: ${{ env.emacsdir }}/bin/emacs-config deploy --yes
+        run: ${{ env.emacsdir }}/bin/emacs-config --yes deploy
 
       - name: Test Emacs configuration
         run: ${{ env.emacsdir }}/bin/emacs-config test

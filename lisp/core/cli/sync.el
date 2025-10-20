@@ -9,12 +9,9 @@
 ;;   specified in the lockfiles and then refreshing plus cleaning up the
 ;;   repositories
 
-(defun zenit-cli-refresh (&optional no-envvar-p debug-p force-p)
+(defun zenit-cli-refresh (&optional noenvvar-p rebuild-p nobuild-p)
   "Refresh Emacs config."
   (run-hooks 'zenit-refresh-pre-hook)
-  (when (or force-p (getenv "FORCE"))
-    (setq force-p t))
-
   (print! (start "Refreshing your Emacs config..."))
   (unwind-protect
       (print-group!
@@ -23,11 +20,12 @@
            (push (file-name-concat zenit-local-dir file) files))
          (mapc #'zenit-autoloads--delete-file
                files))
-       (when (and (not no-envvar-p)
+       (when (and (not noenvvar-p)
                   (file-exists-p zenit-env-file))
-         (zenit-cli-reload-env-file 'force))
+         (zenit-cli-reload-env-file))
        (zenit-cli-clean-compiled-files)
-       (zenit-cli-packages-ensure force-p)
+       (unless nobuild-p
+         (zenit-cli-packages-ensure rebuild-p))
        (zenit-packages-purge t t t)
        (zenit--remove-wrong-eln-cache)
        (run-hooks 'zenit-refresh-post-hook)
@@ -37,12 +35,9 @@
          (print! (item "Restart Emacs for changes to take effect")))
        t)))
 
-(defun zenit-cli-sync (&optional no-envvar-p debug-p force-p)
+(defun zenit-cli-sync (&optional noenvvar-p update-p noupdate-p reclone-p rebuild-p nobuild-p)
   "Refresh Emacs config."
   (run-hooks 'zenit-sync-pre-hook)
-  (when (or force-p (getenv "FORCE"))
-    (setq force-p t))
-
   (print! (start "Synchronizing your Emacs config..."))
   (unwind-protect
       (print-group!
@@ -51,14 +46,14 @@
            (push  (file-name-concat zenit-local-dir file) files))
          (mapc #'zenit-autoloads--delete-file
                (list zenit-config-init-file)))
-       (when (and (not no-envvar-p)
+       (when (and (not noenvvar-p)
                   (file-exists-p zenit-env-file))
-         (zenit-cli-reload-env-file 'force))
+         (zenit-cli-reload-env-file))
        (zenit-cli-clean-compiled-files)
-       (if force-p
-           (zenit-cli-packages-update force-p)
-         (zenit-cli-packages-ensure)
-         (zenit-cli-packages-update))
+       (unless nobuild-p
+         (zenit-cli-packages-ensure rebuild-p))
+       (unless noupdate-p
+         (zenit-cli-packages-update reclone-p (not update-p)))
        (zenit-packages-purge t t t)
        (zenit--remove-wrong-eln-cache)
        (run-hooks 'zenit-sync-post-hook)

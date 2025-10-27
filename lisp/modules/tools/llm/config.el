@@ -290,6 +290,10 @@ guaranteed to be the response buffer."
             (insert-and-inherit "*"))))))
 
   ;; Tools
+
+  ;; Todo management tools
+  (load! "tools/todo.el")
+
   (gptel-make-tool
    :name "read_buffer"
    :function (lambda (buffer)

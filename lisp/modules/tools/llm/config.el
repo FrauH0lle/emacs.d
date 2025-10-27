@@ -15,10 +15,161 @@ Files are expected to be plain text files, e.g. .md or .txt.")
   "User directory where GPTel prompts are defined, one per file.
 Files are expected to be plain text files, e.g. .md or .txt.")
 
+(defvar +llm-auto-load-project-prompts t
+  "When non-nil, automatically load project-specific system prompts.
+This searches for prompt files like AGENTS.md, CLAUDE.md, etc. in the
+project directory tree, with the nearest file taking precedence. Can be
+overridden via dir-locals for specific projects.")
+
+(defvar +llm-system-prompts-files
+  '(;; ".instructions.d/behavior.md"
+    ;; ".instructions.d/system-prompt.md"
+    ;; (".instructions.d/behavior" . "\\.md\\'")
+    (".instructions.d" . "\\.md\\'")
+    "BEHAVIOR.md")
+  "Files or directories containing LLM system prompts (behavioral instructions).
+These define HOW the LLM should behave (tone, style, expertise).
+
+Each entry can be:
+- A string: filename or directory name to search for
+  - If it's a file (e.g., \"BEHAVIOR.md\"): uses that single file
+  - If it's a directory: aggregates all .md files within
+- A cons cell (DIR . FILTER): directory with a filter where:
+  - DIR is a directory path relative to search location
+  - FILTER is either:
+    - A regexp string to match filenames
+    - A function taking a filename and returning non-nil to include it
+
+Files are searched from the current buffer's directory upward to the
+project root. The first found file wins (AGENTS.md spec behavior).
+
+Files may include other files using @ syntax (e.g., @path/to/file.md).
+These references are recursively expanded when loading prompt content.
+
+Always prepended to the final system prompt if found.")
+
+(defvar +llm-project-context-files
+  '("CLAUDE.md"
+    "AGENTS.md"
+    "CONVENTIONS.md"
+    ".github/copilot-instructions.md")
+  "Files or directories containing project-specific context.
+These define WHAT the project is about (commands, architecture, guidelines).
+
+Each entry can be:
+- A string: filename or directory name to search for
+  - If it's a file (e.g., \"AGENTS.md\"): uses that single file
+  - If it's a directory: aggregates all .md files within
+- A cons cell (DIR . FILTER): directory with a filter where:
+  - DIR is a directory path relative to search location
+  - FILTER is either:
+    - A regexp string to match filenames
+    - A function taking a filename and returning non-nil to include it
+
+Files are searched from the current buffer's directory upward to the
+project root. The first found file wins (AGENTS.md spec behavior).
+
+Files may include other files using @ syntax (e.g., @path/to/file.md).
+These references are recursively expanded when loading prompt content.
+
+Always appended after system prompt if found.")
+
+(defvar +llm-prompt-composition-strategy 'hierarchical
+  "How to compose system prompts from discovered files.
+
+Strategies:
+- `hierarchical' (recommended): Compose in layers:
+    1. System prompt (from +llm-system-prompts-files)
+    2. Project context (from +llm-project-context-files)
+    3. Ephemeral prompts (from presets, inline prompts, etc.)
+  All layers are joined with double newlines.
+
+- `replace': Project context completely replaces the system prompt.
+  This is the legacy behavior for backward compatibility.
+
+- `context-only': Only use project context, skip system prompt layer.
+  Useful when you want project-specific behavior without global defaults.")
+
+(defvar-local +llm-system-prompt-file nil
+  "Buffer-local path to the system prompt file being used.
+Set automatically by `+llm--setup-project-prompt-h'.")
+
+(defvar-local +llm-project-context-file nil
+  "Buffer-local path to the project context file being used.
+Set automatically by `+llm--setup-project-prompt-h'.")
+
+(defvar-local +llm-project-prompt-file nil
+  "Buffer-local override for which project context file to use.
+When set, this file path is used instead of auto-detection.
+Legacy variable, prefer +llm-project-context-file.")
+
+(defvar-local +llm-project-prompt-enabled nil
+  "Buffer-local flag indicating if project prompt is active.")
+
 
 (use-package! gptel
   :defer t
+  :init
+  ;; Project prompt auto-loading
+  (defun +llm--setup-project-prompt-h ()
+    "Set up buffer-local project prompt if available and enabled.
+Uses hierarchical composition strategy by default to layer:
+1. System prompt (behavioral instructions)
+2. Project context (project-specific information)
+3. Preset-specific prompts (if any)"
+    (when (and +llm-auto-load-project-prompts
+               (featurep 'gptel)
+               (zenit-project-p)
+               ;; Guard against nil default-directory
+               default-directory
+               ;; Ensure it's valid
+               (file-directory-p default-directory))
+      (let ((strategy +llm-prompt-composition-strategy)
+            (system-prompt-source nil)
+            (context-source nil)
+            (composed-content nil))
+
+        ;; Discover prompt files based on strategy
+        (cond
+         ;; Hierarchical: discover both system prompt and context
+         ((eq strategy 'hierarchical)
+          (setq system-prompt-source (+llm-find-system-prompt))
+          (setq context-source (or +llm-project-prompt-file  ; Allow override
+                                   (+llm-find-project-context))))
+
+         ;; Context-only: discover only context
+         ((eq strategy 'context-only)
+          (setq context-source (or +llm-project-prompt-file
+                                   (+llm-find-project-context))))
+
+         ;; Replace (legacy): use old behavior
+         ((eq strategy 'replace)
+          (setq context-source (or +llm-project-prompt-file
+                                   (+llm-find-nearest-project-prompt)))))
+
+        ;; Compose the system message if we found any prompts
+        (when (or system-prompt-source context-source)
+          (setq composed-content
+                (+llm-compose-gptel-system-prompt nil nil strategy)))
+
+        ;; Apply the composed prompt to buffer if we got content
+        (when composed-content
+          (setq-local gptel--system-message composed-content)
+          (setq-local +llm-project-prompt-enabled t)
+          (setq-local +llm-system-prompt-file system-prompt-source)
+          (setq-local +llm-project-context-file context-source)
+          ;; Legacy compatibility
+          (setq-local +llm-project-prompt-file context-source)))))
+
+  ;; Hook into file opening
+  (add-hook! '(find-file-hook zenit-switch-buffer-hook) #'+llm--setup-project-prompt-h)
+
+  ;; Also set up when gptel-mode is activated in a buffer
+  (add-hook 'gptel-mode-hook #'+llm--setup-project-prompt-h)
   :config
+  ;; Detect project prompt
+  (+llm--setup-project-prompt-h)
+
   (setq
    ;; Use `org-mode' for the `gptel' buffer
    gptel-default-mode 'org-mode
@@ -168,7 +319,8 @@ guaranteed to be the response buffer."
   ;; Keybinds
   (map! :map gptel-mode-map
         "C-c C-n" #'+gptel/next-prompt
-        "C-c C-p" #'+gptel/previous-prompt))
+        "C-c C-p" #'+gptel/previous-prompt
+        "C-c C-x" #'+gptel/toggle-project-prompt))
 
 
 (use-package! gptel-quick

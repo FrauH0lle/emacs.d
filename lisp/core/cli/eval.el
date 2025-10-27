@@ -29,6 +29,10 @@ Examples:
   (unless (or expression eval-file)
     (print! (error "No expression or file provided"))
     (kill-emacs 1))
+  (require 'zenit-start)
+  (if (file-exists-p zenit-config-init-file)
+      (zenit-load (file-name-sans-extension zenit-config-init-file) t)
+    (print! (warn "%s not generated. This might cause issues!")))
 
   (let (result)
     (print-group!

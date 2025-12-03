@@ -177,6 +177,7 @@ buffer selected before this command was invoked."
            (bury-buffer buf)
            buf)))))
 
+(defvar buttercup-suites)
 ;;;###autoload
 (defun +emacs-lisp/buttercup-run-file ()
   "Run all buttercup tests in the focused buffer."

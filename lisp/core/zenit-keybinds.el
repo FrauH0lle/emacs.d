@@ -328,8 +328,7 @@ change the localleader prefix."
         which-key-add-column-padding 1
         which-key-max-display-columns nil
         which-key-min-display-lines 6
-        which-key-side-window-slot -10
-        which-key-idle-delay 0)
+        which-key-side-window-slot -10)
   :config
   ;; general improvements to which-key readability
   (which-key-setup-side-window-bottom)

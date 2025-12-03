@@ -1,4 +1,4 @@
-#+title:    :editor file-templates
+#+title: :editor file-templates
 #+created: 2024-06-09
 
 * Description :unfold:

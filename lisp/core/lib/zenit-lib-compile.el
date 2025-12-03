@@ -20,6 +20,8 @@ Returns a plist with the following possible keys:
   :autoloads      - Whether to load autoloads files"
   (cond
    ;; Core library files that don't need any special handling
+   ((string-suffix-p "zenit-compat.el" target)
+    nil)
    ((string-suffix-p "zenit-lib.el" target)
     nil)
    ((string-suffix-p "zenit-core.el" target)
@@ -35,8 +37,6 @@ Returns a plist with the following possible keys:
    ((string-suffix-p "zenit-use-package.el" target)
     '(:req-core t))
    ((string-suffix-p "zenit-el-patch.el" target)
-    '(:req-core t))
-   ((string-suffix-p "zenit-compat.el" target)
     '(:req-core t))
 
    ;; Feature-specific files that require additional dependencies

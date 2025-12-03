@@ -109,6 +109,7 @@ Legacy variable, prefer +llm-project-context-file.")
 
 (use-package! gptel
   :defer t
+  :hook (gptel-mode . gptel-highlight-mode)
   :init
   ;; Project prompt auto-loading
   (defun +llm--setup-project-prompt-h ()
@@ -161,11 +162,11 @@ Uses hierarchical composition strategy by default to layer:
           ;; Legacy compatibility
           (setq-local +llm-project-prompt-file context-source)))))
 
-  ;; Hook into file opening
-  (add-hook! '(find-file-hook zenit-switch-buffer-hook) #'+llm--setup-project-prompt-h)
+  ;; ;; Hook into file opening
+  ;; (add-hook! '(find-file-hook zenit-switch-buffer-hook) #'+llm--setup-project-prompt-h)
 
-  ;; Also set up when gptel-mode is activated in a buffer
-  (add-hook 'gptel-mode-hook #'+llm--setup-project-prompt-h)
+  ;; ;; Also set up when gptel-mode is activated in a buffer
+  ;; (add-hook 'gptel-mode-hook #'+llm--setup-project-prompt-h)
   :config
   ;; Detect project prompt
   (+llm--setup-project-prompt-h)
@@ -178,8 +179,11 @@ Uses hierarchical composition strategy by default to layer:
    ;; Make expert commands available
    gptel-expert-commands t)
   ;; Prettier prompts
-  (setf (alist-get 'org-mode gptel-prompt-prefix-alist) "*Prompt*: "
-        (alist-get 'org-mode gptel-response-prefix-alist) "*Response*:\n")
+  ;; (setf (alist-get 'org-mode gptel-prompt-prefix-alist) "*Prompt*: "
+  ;;       (alist-get 'org-mode gptel-response-prefix-alist) "*Response*:\n")
+  ;; With `gptel-highlight-mode', prefixes are not neccessary anymore
+  (setq gptel-prompt-prefix-alist nil
+        gptel-response-prefix-alist nil)
 
   ;; Each org heading is its own conversation
   (after! gptel-org
@@ -238,16 +242,28 @@ Uses hierarchical composition strategy by default to layer:
                :input-cost 0
                :output-cost 0)))
 
-  (setq gptel-display-buffer-action nil)  ; if user changes this, popup manager will bow out
+  ;; (setq gptel-display-buffer-action nil)  ; if user changes this, popup manager will bow out
+  ;; (set-popup-rule!
+  ;;   (lambda (bname &optional _action)
+  ;;     (and (null gptel-display-buffer-action)
+  ;;          (buffer-local-value 'gptel-mode (get-buffer bname))))
+  ;;   :select t
+  ;;   :size 0.3
+  ;;   :quit nil
+  ;;   :ttl nil
+  ;;   :tabbed t)
+
   (set-popup-rule!
     (lambda (bname &optional _action)
       (and (null gptel-display-buffer-action)
            (buffer-local-value 'gptel-mode (get-buffer bname))))
-    :select t
-    :size 0.3
+    :actions '(display-buffer-pop-up-frame)
+    :frame-parameters '((width . 80)
+                        (height . 24)
+                        (minibuffer . t))
     :quit nil
-    :ttl nil
-    :tabbed t)
+    :ttl nil)
+
 
   (add-hook! 'gptel-post-response-functions :depth 90
     (cl-defun +gptel-clean-up-refactored-code-h (beg end)
@@ -292,20 +308,8 @@ guaranteed to be the response buffer."
   ;; Tools
 
   ;; Todo management tools
-  (load! "tools/todo.el")
-
-  (gptel-make-tool
-   :name "read_buffer"
-   :function (lambda (buffer)
-               (unless (buffer-live-p (get-buffer buffer))
-                 (error "error: buffer %s is not live." buffer))
-               (with-current-buffer buffer
-                 (buffer-substring-no-properties (point-min) (point-max))))
-   :description "Return the contents of an emacs buffer"
-   :args (list '(:name "buffer"
-                 :type string
-                 :description "The name of the buffer whose contents are to be retrieved"))
-   :category "emacs")
+  ;; (load! "tools/todo.el")
+  ;; (load! "tools/agent_task_v3.el")
 
   ;; Presets
   (gptel-make-preset 'tool-use
@@ -368,109 +372,115 @@ guaranteed to be the response buffer."
   (mcp-hub-start-all-server))
 
 
-(use-package! macher
-  :after gptel
-  :config
-  (setq! macher-action-buffer-ui 'org)
-  (after! gptel
-    (macher-install))
+;; (use-package! macher
+;;   :after gptel
+;;   :config
+;;   (setq! macher-action-buffer-ui 'org)
+;;   (after! gptel
+;;     (macher-install))
 
-  ;; Load extra tools
-  (load! "macher-tools"))
+;;   ;; Load extra tools
+;;   (load! "macher-tools"))
+
+
+(use-package! gptel-agent
+  :after gptel)
 
 
 (use-package! mevedel
-  :after macher
+  :after gptel
   :config
   (setq! mevedel-empty-tag-query-matches-all nil)
   (mevedel-install)
 
-  (defun +mevedel-add-org-heading-maybe-h (execution)
-    "Ensure an Org heading exists for the current mevedel directive.
-If a heading with the current MEVEDELUUID exists, move to its end.
-Otherwise, create a new heading at the end of the buffer with a
-truncated summary of the execution and set the MEVEDELUUID property."
-    (let ((action-buffer (current-buffer))
-          (mevedel-uuid (and (boundp 'mevedel--current-directive-uuid)
-                             mevedel--current-directive-uuid)))
-      (with-current-buffer action-buffer
-        (when (and (derived-mode-p 'org-mode) mevedel-uuid)
-          (if-let* ((matched-headings (let (matches)
-                                        (org-map-entries
-                                         (lambda ()
-                                           (when (equal (org-entry-get (point) "MEVEDELUUID")
-                                                        mevedel-uuid)
-                                             ;; Store position
-                                             (push (point) matches)))
-                                         nil nil 'archive)
-                                        matches)))
-              ;; Found existing heading with this UUID - append to it
-              (let ((target-pos (car matched-headings)))
-                (goto-char target-pos)
-                ;; There should be a prompt prefix already under existing
-                ;; headings
-                (org-narrow-to-subtree)
-                (goto-char (point-max))
-                (when-let* ((prefix (alist-get major-mode gptel-prompt-prefix-alist)))
-                  ;; Clean up trailing whitespace after prompt prefix. This
-                  ;; should ensure that the new prompt will be inserted right
-                  ;; after the prefix.
-                  (save-excursion
-                    (goto-char (point-max))
-                    (skip-chars-backward " \t\r\n")
-                    (delete-region (point) (point-max))
-                    (insert " "))))
-            ;; No existing heading - create new one
-            (let* ((summary (and (functionp 'macher-action-execution-summary)
-                                 (macher-action-execution-summary execution)))
-                   (truncated-summary (if summary
-                                          (let* ((lines (split-string summary "\n" t "[[:space:]]*"))
-                                                 (first-line (or (car lines) ""))
-                                                 (prefix (or (alist-get major-mode gptel-prompt-prefix-alist) ""))
-                                                 (used-length (length prefix))
-                                                 (available-length (max 10 (- (or fill-column 70) used-length 3))))
-                                            (truncate-string-to-width first-line available-length nil nil "..."))
-                                        "New directive")))
-              (goto-char (point-max))
-              (let ((buffer-empty-p (= (point-min) (point-max))))
-                ;; Insert prompt prefix only if the buffer is empty. As soon as
-                ;; we add a heading, `macher--before-action' will not add a
-                ;; prompt anymore.
-                (insert (concat (unless buffer-empty-p "\n\n") "* " truncated-summary "\n"
-                                (or (alist-get major-mode gptel-prompt-prefix-alist) "")))
-                (org-set-property "MEVEDELUUID" mevedel-uuid)
-                (org-end-of-subtree))))))))
+  ;; TODO 2025-11-27: Add sequential thinking if model is deepseek-chat
+  (defun +mevedel-system--tool-instructions-seqthink ()
+    "Return instructions for the sequentialthinking tool."
+    "<tool name=\"sequentialthinking\">
+**When to use `sequentialthinking`:**
+- Complex problems requiring multi-step reasoning
+- Design and planning tasks that may need revision during analysis
+- Problems where the full scope isn't clear initially
+- Analysis that might need course correction as understanding deepens
+- Tasks requiring hypothesis generation and verification
+- Situations where you need to filter irrelevant information
+- Problems that benefit from explicit reasoning traces
 
-  (defun +mevedel-fixup-action-buffer-maybe-h (_err _execution fsm)
-    "Fixup newly entered response.
-Indent the content under the current subtree, widen the buffer if
-narrowed and ensure there is newline between the end of the response and
-the next heading. The marker info from the gptel FSM is used."
-    (let* ((action-buffer (current-buffer))
-           ;; Get start and end marker positions from FSM
-           (info (gptel-fsm-info fsm))
-           (start-marker (plist-get info :position))
-           (tracking-marker (plist-get info :tracking-marker))
-           (current-marker (or tracking-marker start-marker)))
-      (with-current-buffer action-buffer
-        ;; Indent the current subtree and remove narrowing
-        (save-excursion
-          (org-mark-subtree)
-          (indent-region (region-beginning) (region-end))
-          (deactivate-mark))
-        (when (buffer-narrowed-p)
-          (widen))
-        ;; Add a newline above the following heading as a visual separator. This
-        ;; is purely cosmetic.
-        (when current-marker
-          (save-excursion
-            (goto-char current-marker)
-            (when (= (org-next-visible-heading 1) 0)
-              (beginning-of-line)
-              (newline)))))))
+**When NOT to use `sequentialthinking`:**
+- Simple, straightforward tasks with obvious solutions
+- Questions that can be answered directly from available information
+- Tasks where reasoning steps are trivial
+- When you're confident in a direct approach
 
-  (defadvice! +mevedel-heading-per-directive-a ()
-    "Add and manage separate org headings for each directive."
-    :after #'macher--action-buffer-setup-basic
-    (add-hook 'macher-before-action-functions #'+mevedel-add-org-heading-maybe-h -99 t)
-    (add-hook 'macher-after-action-functions #'+mevedel-fixup-action-buffer-maybe-h -99 t)))
+**How to use `sequentialthinking`:**
+- Start with an estimate of thoughts needed (can adjust later)
+- Each thought builds your understanding incrementally
+- Feel free to revise previous thoughts using `isRevision` and `revisesThought`
+- Branch into alternative approaches using `branchFromThought` and `branchId`
+- Adjust `totalThoughts` up or down as understanding evolves
+- Continue adding thoughts even after initial estimate if needed
+- Express uncertainty and explore alternatives when appropriate
+- Generate hypotheses and verify them in subsequent thoughts
+- Only set `nextThoughtNeeded` to false when satisfied with solution
+- Filter out irrelevant information at each step
+
+**Flexible thinking process:**
+- Not all thoughts need to build linearly—you can branch or backtrack
+- Question previous decisions when new insights emerge
+- Revise your approach if initial direction proves unproductive
+- Use `needsMoreThoughts` when reaching estimated end but realizing more analysis needed
+
+**Final output:**
+- Provide a single, well-reasoned answer after thought process completes
+- The answer should synthesize insights from your reasoning chain
+- Ensure the solution is verified against your chain of thought
+</tool>")
+
+  (gptel-make-preset 'mevedel-discuss-deepseek
+    :description "mevedel-discuss with sequential thinking for deepseek-chat"
+    :parents '(mevedel-discuss)
+    :pre (lambda ()
+           (when-let* ((_ (eq gptel-model 'deepseek-chat))
+                       (chat-buffer (mevedel--chat-buffer (mevedel-workspace))))
+             (with-current-buffer chat-buffer
+               (gptel-mcp-connect '("sequential-thinking") 'sync)
+               (setq-local mevedel-tools--ro-tools (cons "sequentialthinking" mevedel-tools--ro-tools))
+               (setf (alist-get "sequentialthinking" mevedel-system-tool-name-to-instruction-alist nil nil #'equal)
+                     '+mevedel-system--tool-instructions-seqthink))))
+    :tools '(:function (lambda (tools)
+                         (if (eq gptel-model 'deepseek-chat)
+                             (cons
+                              (alist-get
+                               "sequentialthinking"
+                               (alist-get "mcp-sequential-thinking" gptel--known-tools nil nil #'equal)
+                               nil nil #'equal)
+                              tools)
+                           tools)))
+    :system '(:function (lambda (_system)
+                          (mevedel-system-build-prompt mevedel-tools--ro-tools))))
+  (gptel-make-preset 'mevedel-implement-deepseek
+    :description "mevedel-implement with sequential thinking for deepseek-chat"
+    :parents '(mevedel-implement)
+    :pre (lambda ()
+           (when-let* ((_ (eq gptel-model 'deepseek-chat))
+                       (chat-buffer (mevedel--chat-buffer (mevedel-workspace))))
+             (with-current-buffer chat-buffer
+               (gptel-mcp-connect '("sequential-thinking") 'sync)
+               (setq-local mevedel-tools--ro-tools (cons "sequentialthinking" mevedel-tools--ro-tools))
+               (setf (alist-get "sequentialthinking" mevedel-system-tool-name-to-instruction-alist nil nil #'equal)
+                     '+mevedel-system--tool-instructions-seqthink))))
+    :tools '(:function (lambda (tools)
+                         (if (eq gptel-model 'deepseek-chat)
+                             (cons
+                              (alist-get
+                               "sequentialthinking"
+                               (alist-get "mcp-sequential-thinking" gptel--known-tools nil nil #'equal)
+                               nil nil #'equal)
+                              tools)
+                           tools)))
+    :system '(:function (lambda (_system)
+                          (mevedel-system-build-prompt
+                           (append mevedel-tools--ro-tools mevedel-tools--rw-tools)))))
+
+  (setf (alist-get 'discuss mevedel-action-preset-alist) 'mevedel-discuss-deepseek)
+  (setf (alist-get 'implement mevedel-action-preset-alist) 'mevedel-implement-deepseek))

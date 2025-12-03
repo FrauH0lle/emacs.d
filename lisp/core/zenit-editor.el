@@ -20,6 +20,8 @@
 (defvar tabify-regexp)
 
 ;; `zenit-lib-buffers'
+(declare-function zenit-special-buffer-p "zenit-lib-buffers" (buf))
+(declare-function zenit-temp-buffer-p "zenit-lib-buffers" (buf))
 (declare-function zenit-visible-buffers "zenit-lib-buffers" (&optional buffer-list all-frames))
 
 ;; `zenit-lib-projects'
@@ -682,6 +684,17 @@ current buffer.")
 (use-package! so-long
   :hook (zenit-first-file . global-so-long-mode)
   :config
+  (unless (featurep 'native-compile)
+    (setq so-long-threshold 5000))
+
+  ;; HACK: so-long triggers in places where we don't want it, like special
+  ;;   buffers (e.g. magit status) or temp buffers.
+  (defadvice! zenit--exclude-special-modes-a (&rest _)
+    :before-while #'so-long-statistics-excessive-p
+    :before-while #'so-long-detected-long-line-p
+    (not (or (zenit-temp-buffer-p (current-buffer))
+             (zenit-special-buffer-p (current-buffer)))))
+
   ;; Don't disable syntax highlighting and line numbers, or make the buffer
   ;; read-only, in `so-long-minor-mode', so we can have a basic editing
   ;; experience in them, at least. It will remain off in `so-long-mode',

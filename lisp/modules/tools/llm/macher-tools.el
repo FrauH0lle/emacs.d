@@ -381,5 +381,11 @@ If INCLUDE_CHILDREN is non-nil, include child nodes."
 
 (setq macher-read-tools-function #'macher--read-tools)
 (add-function :around macher-read-tools-function (lambda (orig-fn &rest args)
-                                                   (append (apply #'+macher--extra-tools args)
+                                                   (let ((tools (append (apply #'+macher--extra-tools args)
                                                            (apply orig-fn args))))
+                                                     (gptel-mcp-connect '("duckduckgo") 'sync)
+                                                     (cl-loop for (_name . tooldef) in (alist-get "mcp-duckduckgo" gptel--known-tools nil nil #'equal)
+                                                              do (push tooldef tools))
+                                                     (cl-loop for (_name . tooldef) in (alist-get "task-management" gptel--known-tools nil nil #'equal)
+                                                              do (push tooldef tools))
+                                                     tools)))

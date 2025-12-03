@@ -29,17 +29,7 @@
       (pushnew! +flycheck-disabled-modes 'python-mode 'python-ts-mode))
 
     (add-hook 'python-mode-local-vars-hook #'lsp! 'append)
-    (add-hook 'python-ts-mode-local-vars-hook #'lsp! 'append)
-
-    (set-eglot-client! '(python-mode python-ts-mode)
-                       "pylsp" "pyls"
-                       '("basedpyright-langserver" "--stdio")
-                       '("pyright" "--stdio")
-                       '("pyright-langserver" "--stdio")
-                       '("pyrefly" "lsp")
-                       "jedi-language-server"
-                       '("ruff" "server")
-                       "ruff-lsp"))
+    (add-hook 'python-ts-mode-local-vars-hook #'lsp! 'append))
 
   (static-when (modulep! :ui indent-guides)
     (add-hook 'python-mode-local-vars-hook #'+indent-guides-init-maybe-h 'append)

@@ -2,8 +2,11 @@ emacs-lisp-mode
 
 ;; Templates for emacs-lisp files used within this Emacs configuration
 (__
- ";;; " (or (buffer-file-name) (buffer-name)) " -- " (p "DESCRIPTION") " -*- lexical-binding: t -*-" n n
- q n n
+ ";;; " (file-name-nondirectory (or (buffer-file-name) (buffer-name))) " -- " (p "DESCRIPTION") " -*- lexical-binding: t -*-" n n
+ ";;; Commentary:" n
+ n
+ ";;; Code: " n
+ n q n n
  "(provide '" (file-name-base (or (buffer-file-name) (buffer-name))) ")" n
  ";;; " (file-name-nondirectory (or (buffer-file-name) (buffer-name))) " ends here" n)
 

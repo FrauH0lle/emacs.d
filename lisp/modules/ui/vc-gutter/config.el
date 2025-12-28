@@ -86,11 +86,21 @@ Respects `diff-hl-disable-on-remote'."
   ;; A slightly faster algorithm for diffing.
   (setq vc-git-diff-switches '("--histogram"))
   ;; Slightly more conservative delay before updating the diff
-  (setq diff-hl-flydiff-delay 0.5)  ; default: 0.3
+  (setq diff-hl-flydiff-delay (if (featurep :system 'macos) 1.0 0.5))  ; default: 0.3
   ;; Don't block Emacs when updating vc gutter
-  (setq diff-hl-update-async t)
+  (setq diff-hl-update-async (or (> emacs-major-version 30) 'thread))
   ;; Get realtime feedback in diffs after staging/unstaging hunks.
   (setq diff-hl-show-staged-changes nil)
+
+
+  ;; HACK: diff-hl exploits the auto-save mechanism to generate its temp file
+  ;;   paths in /tmp (in `diff-hl-diff-buffer-with-reference'), which triggers
+  ;;   an "autosave file in local temp dir, do you want to continue?" prompt
+  ;;   anytime diff-hl wants to save one for TRAMP buffers.
+  (defadvice! +vc-gutter--silence-temp-file-prompts-a (fn &rest args)
+    :around #'diff-hl-diff-buffer-with-reference
+    (let ((tramp-allow-unsafe-temporary-files t))
+      (apply fn args)))
 
   ;; Update diffs when it makes sense too, without being too slow
   (static-when (modulep! :editor evil)
@@ -110,14 +120,18 @@ Respects `diff-hl-disable-on-remote'."
   (add-hook! '(zenit-escape-hook zenit-switch-window-hook zenit-switch-frame-hook) :append
     (defun +vc-gutter-update-h (&rest _)
       "Return nil to prevent shadowing other `zenit-escape-hook' hooks."
-      (ignore (or inhibit-redisplay
-                  (and (or (bound-and-true-p diff-hl-mode)
-                           (bound-and-true-p diff-hl-dir-mode))
-                       (or (null +vc-gutter--last-state)
-                           (not (equal +vc-gutter--last-state
-                                       (symbol-plist (intern (expand-file-name buffer-file-name)
-                                                             vc-file-prop-obarray)))))
-                       (diff-hl-update))))))
+      (and (or (bound-and-true-p diff-hl-mode)
+               (bound-and-true-p diff-hl-dir-mode))
+           (buffer-file-name (buffer-base-buffer))
+           (not ; debouncing
+            (equal (cons (point) +vc-gutter--last-state)
+                   (setq +vc-gutter--last-state
+                         (cons (point)
+                               (copy-sequence
+                                (symbol-plist
+                                 (intern (expand-file-name buffer-file-name)
+                                         vc-file-prop-obarray)))))))
+           (ignore (diff-hl-update)))))
   ;; Update diff-hl when magit alters git state.
   (static-when (modulep! :tools magit)
     (add-hook 'magit-post-refresh-hook #'diff-hl-magit-post-refresh))
@@ -134,7 +148,7 @@ Respects `diff-hl-disable-on-remote'."
               (shrink-window-if-larger-than-buffer)))
       (apply fn args)))
 
-  ;; Don't delete the current hunk's indicators while we're editing
+  ;; Update diff-hl immediately upon exiting insert mode.
   (static-when (modulep! :editor evil)
     (add-hook! 'diff-hl-flydiff-mode-hook
       (defun +vc-gutter-init-flydiff-mode-h ()
@@ -149,51 +163,4 @@ Respects `diff-hl-disable-on-remote'."
     :around #'diff-hl-revert-hunk
     (let ((pt (point)))
       (prog1 (apply fn args)
-        (goto-char pt))))
-
-  ;; FIX: `global-diff-hl-mode' enables `diff-hl-mode' *everywhere*, which calls
-  ;;   `diff-hl-update'. If `diff-hl-update-async' is non-nil, this means a new
-  ;;   thread is spawned for *every* buffer, whether they're visible or not. Not
-  ;;   only can this slow a lot down, but `kill-buffer' will silently refuse to
-  ;;   kill buffers with a thread associated with it. Chaos ensues (see #7991
-  ;;   and #7954).
-  (defun +vc-gutter--kill-thread (&optional block?)
-    (when-let* ((th +vc-gutter--diff-hl-thread))
-      (when (thread-live-p th)
-        (thread-signal th 'quit nil)
-        (when block?
-          (condition-case _
-              (thread-join th)
-            ((quit error) nil))))))
-
-  (defvar-local +vc-gutter--diff-hl-thread nil)
-  (defadvice! +vc-gutter--debounce-threads-a (&rest _)
-    :override #'diff-hl-update
-    (unless (or non-essential
-                delay-mode-hooks
-                (null (buffer-file-name (buffer-base-buffer)))
-                (null (get-buffer-window (current-buffer))))
-      (setq diff-hl-timer nil)
-      (if (and diff-hl-update-async
-               (not
-                (run-hook-with-args-until-success 'diff-hl-async-inhibit-functions
-                                                  default-directory)))
-          (progn
-            (+vc-gutter--kill-thread)
-            (setq +vc-gutter--diff-hl-thread
-                  (make-thread (lambda ()
-                                 (unwind-protect
-                                     (diff-hl--update-safe)
-                                   (setq +vc-gutter--diff-hl-thread nil)))
-                               "diff-hl--update-safe")))
-        (diff-hl--update))
-      t))
-
-  ;; HACK: This advice won't work in *all* cases (it's a C function, and any
-  ;;   calls to it from C won't trigger advice), but the thread issues above are
-  ;;   triggered from Elisp's buffer API (from what I can tell).
-  (defadvice! +vc-gutter--kill-diff-hl-thread-a (&optional buf)
-    :before #'kill-buffer
-    (when-let* ((buf (ignore-errors (window-normalize-buffer buf))))
-      (with-current-buffer buf
-        (+vc-gutter--kill-thread t)))))
+        (goto-char pt)))))

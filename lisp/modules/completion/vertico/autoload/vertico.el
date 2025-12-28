@@ -274,5 +274,7 @@ See URL `https://github.com/minad/consult/issues/770'."
 ;;;###autoload
 (defun +vertico-orderless-disambiguation-dispatch (pattern _index _total)
   "Ensure $ works with Consult commands, which add disambiguation suffixes."
-  (when (char-equal (aref pattern (1- (length pattern))) ?$)
-    `(orderless-regexp . ,(concat (substring pattern 0 -1) "[\x200000-\x300000]*$"))))
+  (let ((len (length pattern)))
+    (when (and (> len 0)
+               (char-equal (aref pattern (1- len)) ?$))
+      `(orderless-regexp . ,(concat (substring pattern 0 -1) "[\x200000-\x300000]*$")))))

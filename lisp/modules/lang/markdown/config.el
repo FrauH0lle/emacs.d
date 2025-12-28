@@ -169,8 +169,7 @@ capture, the end position, and the output buffer.")
         "N"     #'markdown-next-link
         "f"     #'markdown-follow-thing-at-point
         "P"     #'markdown-previous-link
-        "<RET>" #'markdown-do
-        ))
+        "<RET>" #'markdown-do))
 
 
 (use-package! evil-markdown

@@ -269,8 +269,8 @@
 
 (map! :leader
       :desc "Eval expression"       ":"    #'pp-eval-expression
-      :desc "M-x"                   "SPC"    #'execute-extended-command
-      :desc "Pop up scratch buffer" "x"    #'zenit/open-scratch-buffer
+      :desc "M-x"                   "SPC"  #'execute-extended-command
+      :desc "Toggle scratch buffer" "x"    #'zenit/toggle-scratch-buffer
       :desc "Org Capture"           "X"    #'org-capture
       ;; C-u is used by evil
       :desc "Universal argument"    "u"    #'universal-argument
@@ -289,7 +289,7 @@
       :desc "Search for symbol in project" "*" #'+default/search-project-for-symbol-at-point
       :desc "Search project"               "/" #'+default/search-project
 
-      :desc "Find file in project"  ";"  #'projectile-find-file
+      :desc "Find file in project"  ";"    #'projectile-find-file
       :desc "Jump to bookmark"      "RET"  #'bookmark-jump
 
       ;;; <leader> TAB --- workspace
@@ -352,7 +352,7 @@
        :desc "Save buffer"                 "s"   #'basic-save-buffer
        :desc "Save all buffers"            "S"   #'evil-write-all
        :desc "Save buffer as root"         "u"   #'zenit/sudo-save-buffer
-       :desc "Pop up scratch buffer"       "x"   #'zenit/open-scratch-buffer
+       :desc "Toggle scratch buffer"       "x"   #'zenit/toggle-scratch-buffer
        :desc "Switch to scratch buffer"    "X"   #'zenit/switch-to-scratch-buffer
        :desc "Yank buffer"                 "y"   #'+default/yank-buffer-contents
        :desc "Bury buffer"                 "z"   #'bury-buffer
@@ -654,7 +654,7 @@
        :desc "Save project files"           "s" #'projectile-save-project-buffers
        :desc "List project todos"           "t" #'magit-todos-list
        :desc "Test project"                 "T" #'projectile-test-project
-       :desc "Pop up scratch buffer"        "x" #'zenit/open-project-scratch-buffer
+       :desc "Toggle scratch buffer"        "x" #'zenit/toggle-project-scratch-buffer
        :desc "Switch to scratch buffer"     "X" #'zenit/switch-to-project-scratch-buffer)
 
       ;;; <leader> q --- quit/session

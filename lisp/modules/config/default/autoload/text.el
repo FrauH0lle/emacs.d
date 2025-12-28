@@ -44,7 +44,7 @@
   (interactive)
   (if-let* ((filename (or (buffer-file-name (buffer-base-buffer))
                           (bound-and-true-p list-buffers-directory))))
-      (let ((path (abbreviate-file-name
+      (let ((path (expand-file-name
                    (if root
                        (file-relative-name filename root)
                      filename))))

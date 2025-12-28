@@ -265,6 +265,12 @@ looking up a C function.")
 
   (setq helpful-set-variable-function #'setq!)
 
+  (setq-hook! 'helpful-mode-hook
+    ;; Elisp code using tab indentation always use a tab-width of 8. C source
+    ;; code from Emacs also use a tab-width of 8. Therefore Helpful needs a
+    ;; tab-width of 8 to display tab indentation correctly.
+    tab-width 8)
+
   (when +emacs-lisp-clone-emacs-C-src
     ;; Standard location for the Emacs source code
     (setq source-directory (file-name-concat zenit-data-dir "src/"))

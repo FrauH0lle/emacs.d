@@ -96,12 +96,13 @@
   :config
   (cl-pushnew (file-name-concat zenit-data-dir "tree-sitter") treesit-extra-load-path :test #'equal)
   ;; HACK: treesit lacks any way to dictate where to install grammars.
-  (defadvice! +tree-sitter--install-grammar-to-local-dir-a (fn &rest args)
-    "Write grammars to `zenit-data-dir'."
+  (defadvice! +tree-sitter--install-grammar-to-local-dir-a (fn lang &optional outdir &rest args)
+    "Write grammars to `zenit-data-dir' instead."
     :around #'treesit-install-language-grammar
     :around #'treesit--build-grammar
-    (let ((user-emacs-directory zenit-data-dir))
-      (apply fn args)))
+    (apply fn lang
+           (or outdir (file-name-concat zenit-data-dir "tree-sitter"))
+           args))
 
   ;; Increase the highlighting/christmas tree
   (setq! treesit-font-lock-level 4)

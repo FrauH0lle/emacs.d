@@ -206,41 +206,9 @@ Uses hierarchical composition strategy by default to layer:
                         :stream t
                         :key 'gptel-api-key))
   ;; GLM
-  (gptel-make-openai "GLM"
-    :host "api.z.ai"
-    :endpoint "/api/paas/v4/chat/completions"
+  (gptel-make-glm "GLM"
     :stream t
-    :key 'gptel-api-key
-    :models '((glm-4.6
-               :description "High Performance, Strong Reasoning, More Versatile"
-               :capabilities (tool-use reasoning)
-               :context-window 200
-               :input-cost 0.6
-               :output-cost 2.2)
-              (glm-4.5-x
-               :description "High Performance, Strong Reasoning, Ultra-Fast Response"
-               :capabilities (tool-use reasoning)
-               :context-window 128
-               :input-cost 2.2
-               :output-cost 8.9)
-              (glm-4.5-air
-               :description "Cost-Effective, Lightweight, High Performance"
-               :capabilities (tool-use)
-               :context-window 128
-               :input-cost 0.2
-               :output-cost 1.1)
-              (glm-4.5-airx
-               :description "Lightweight, High Performance, Ultra-Fast Response"
-               :capabilities (tool-use)
-               :context-window 128
-               :input-cost 1.1
-               :output-cost 4.5)
-              (glm-4.5-flash
-               :description "Lightweight, High Performance"
-               :capabilities (tool-use)
-               :context-window 128
-               :input-cost 0
-               :output-cost 0)))
+    :key 'gptel-api-key)
 
   ;; (setq gptel-display-buffer-action nil)  ; if user changes this, popup manager will bow out
   ;; (set-popup-rule!
@@ -372,17 +340,6 @@ guaranteed to be the response buffer."
   (mcp-hub-start-all-server))
 
 
-;; (use-package! macher
-;;   :after gptel
-;;   :config
-;;   (setq! macher-action-buffer-ui 'org)
-;;   (after! gptel
-;;     (macher-install))
-
-;;   ;; Load extra tools
-;;   (load! "macher-tools"))
-
-
 (use-package! gptel-agent
   :after gptel)
 
@@ -393,94 +350,343 @@ guaranteed to be the response buffer."
   (setq! mevedel-empty-tag-query-matches-all nil)
   (mevedel-install)
 
-  ;; TODO 2025-11-27: Add sequential thinking if model is deepseek-chat
-  (defun +mevedel-system--tool-instructions-seqthink ()
-    "Return instructions for the sequentialthinking tool."
-    "<tool name=\"sequentialthinking\">
-**When to use `sequentialthinking`:**
-- Complex problems requiring multi-step reasoning
-- Design and planning tasks that may need revision during analysis
-- Problems where the full scope isn't clear initially
-- Analysis that might need course correction as understanding deepens
-- Tasks requiring hypothesis generation and verification
-- Situations where you need to filter irrelevant information
-- Problems that benefit from explicit reasoning traces
+  ;;   ;; TODO 2025-11-27: Add sequential thinking if model is deepseek-chat
+  ;;   (defun +mevedel-system--tool-instructions-seqthink ()
+  ;;     "Return instructions for the sequentialthinking tool."
+  ;;     "<tool name=\"sequentialthinking\">
+  ;; **When to use `sequentialthinking`:**
+  ;; - Complex problems requiring multi-step reasoning
+  ;; - Design and planning tasks that may need revision during analysis
+  ;; - Problems where the full scope isn't clear initially
+  ;; - Analysis that might need course correction as understanding deepens
+  ;; - Tasks requiring hypothesis generation and verification
+  ;; - Situations where you need to filter irrelevant information
+  ;; - Problems that benefit from explicit reasoning traces
 
-**When NOT to use `sequentialthinking`:**
-- Simple, straightforward tasks with obvious solutions
-- Questions that can be answered directly from available information
-- Tasks where reasoning steps are trivial
-- When you're confident in a direct approach
+  ;; **When NOT to use `sequentialthinking`:**
+  ;; - Simple, straightforward tasks with obvious solutions
+  ;; - Questions that can be answered directly from available information
+  ;; - Tasks where reasoning steps are trivial
+  ;; - When you're confident in a direct approach
 
-**How to use `sequentialthinking`:**
-- Start with an estimate of thoughts needed (can adjust later)
-- Each thought builds your understanding incrementally
-- Feel free to revise previous thoughts using `isRevision` and `revisesThought`
-- Branch into alternative approaches using `branchFromThought` and `branchId`
-- Adjust `totalThoughts` up or down as understanding evolves
-- Continue adding thoughts even after initial estimate if needed
-- Express uncertainty and explore alternatives when appropriate
-- Generate hypotheses and verify them in subsequent thoughts
-- Only set `nextThoughtNeeded` to false when satisfied with solution
-- Filter out irrelevant information at each step
+  ;; **How to use `sequentialthinking`:**
+  ;; - Start with an estimate of thoughts needed (can adjust later)
+  ;; - Each thought builds your understanding incrementally
+  ;; - Feel free to revise previous thoughts using `isRevision` and `revisesThought`
+  ;; - Branch into alternative approaches using `branchFromThought` and `branchId`
+  ;; - Adjust `totalThoughts` up or down as understanding evolves
+  ;; - Continue adding thoughts even after initial estimate if needed
+  ;; - Express uncertainty and explore alternatives when appropriate
+  ;; - Generate hypotheses and verify them in subsequent thoughts
+  ;; - Only set `nextThoughtNeeded` to false when satisfied with solution
+  ;; - Filter out irrelevant information at each step
 
-**Flexible thinking process:**
-- Not all thoughts need to build linearly—you can branch or backtrack
-- Question previous decisions when new insights emerge
-- Revise your approach if initial direction proves unproductive
-- Use `needsMoreThoughts` when reaching estimated end but realizing more analysis needed
+  ;; **Flexible thinking process:**
+  ;; - Not all thoughts need to build linearly—you can branch or backtrack
+  ;; - Question previous decisions when new insights emerge
+  ;; - Revise your approach if initial direction proves unproductive
+  ;; - Use `needsMoreThoughts` when reaching estimated end but realizing more analysis needed
 
-**Final output:**
-- Provide a single, well-reasoned answer after thought process completes
-- The answer should synthesize insights from your reasoning chain
-- Ensure the solution is verified against your chain of thought
-</tool>")
+  ;; **Final output:**
+  ;; - Provide a single, well-reasoned answer after thought process completes
+  ;; - The answer should synthesize insights from your reasoning chain
+  ;; - Ensure the solution is verified against your chain of thought
+  ;; </tool>")
 
-  (gptel-make-preset 'mevedel-discuss-deepseek
-    :description "mevedel-discuss with sequential thinking for deepseek-chat"
-    :parents '(mevedel-discuss)
-    :pre (lambda ()
-           (when-let* ((_ (eq gptel-model 'deepseek-chat))
-                       (chat-buffer (mevedel--chat-buffer (mevedel-workspace))))
-             (with-current-buffer chat-buffer
-               (gptel-mcp-connect '("sequential-thinking") 'sync)
-               (setq-local mevedel-tools--ro-tools (cons "sequentialthinking" mevedel-tools--ro-tools))
-               (setf (alist-get "sequentialthinking" mevedel-system-tool-name-to-instruction-alist nil nil #'equal)
-                     '+mevedel-system--tool-instructions-seqthink))))
-    :tools '(:function (lambda (tools)
-                         (if (eq gptel-model 'deepseek-chat)
-                             (cons
-                              (alist-get
-                               "sequentialthinking"
-                               (alist-get "mcp-sequential-thinking" gptel--known-tools nil nil #'equal)
-                               nil nil #'equal)
-                              tools)
-                           tools)))
-    :system '(:function (lambda (_system)
-                          (mevedel-system-build-prompt mevedel-tools--ro-tools))))
-  (gptel-make-preset 'mevedel-implement-deepseek
-    :description "mevedel-implement with sequential thinking for deepseek-chat"
-    :parents '(mevedel-implement)
-    :pre (lambda ()
-           (when-let* ((_ (eq gptel-model 'deepseek-chat))
-                       (chat-buffer (mevedel--chat-buffer (mevedel-workspace))))
-             (with-current-buffer chat-buffer
-               (gptel-mcp-connect '("sequential-thinking") 'sync)
-               (setq-local mevedel-tools--ro-tools (cons "sequentialthinking" mevedel-tools--ro-tools))
-               (setf (alist-get "sequentialthinking" mevedel-system-tool-name-to-instruction-alist nil nil #'equal)
-                     '+mevedel-system--tool-instructions-seqthink))))
-    :tools '(:function (lambda (tools)
-                         (if (eq gptel-model 'deepseek-chat)
-                             (cons
-                              (alist-get
-                               "sequentialthinking"
-                               (alist-get "mcp-sequential-thinking" gptel--known-tools nil nil #'equal)
-                               nil nil #'equal)
-                              tools)
-                           tools)))
-    :system '(:function (lambda (_system)
-                          (mevedel-system-build-prompt
-                           (append mevedel-tools--ro-tools mevedel-tools--rw-tools)))))
+  ;;   (gptel-make-preset 'mevedel-discuss-deepseek
+  ;;     :description "mevedel-discuss with sequential thinking for deepseek-chat"
+  ;;     :parents '(mevedel-discuss)
+  ;;     :pre (lambda ()
+  ;;            (when-let* ((_ (eq gptel-model 'deepseek-chat))
+  ;;                        (chat-buffer (mevedel--chat-buffer (mevedel-workspace))))
+  ;;              (with-current-buffer chat-buffer
+  ;;                (gptel-mcp-connect '("sequential-thinking") 'sync)
+  ;;                (setq-local mevedel-tools--ro-tools (cons "sequentialthinking" mevedel-tools--ro-tools))
+  ;;                (setf (alist-get "sequentialthinking" mevedel-system-tool-name-to-instruction-alist nil nil #'equal)
+  ;;                      '+mevedel-system--tool-instructions-seqthink))))
+  ;;     :tools '(:function (lambda (tools)
+  ;;                          (if (eq gptel-model 'deepseek-chat)
+  ;;                              (cons
+  ;;                               (alist-get
+  ;;                                "sequentialthinking"
+  ;;                                (alist-get "mcp-sequential-thinking" gptel--known-tools nil nil #'equal)
+  ;;                                nil nil #'equal)
+  ;;                               tools)
+  ;;                            tools)))
+  ;;     :system '(:function (lambda (_system)
+  ;;                           (mevedel-system-build-prompt mevedel-tools--ro-tools))))
+  ;;   (gptel-make-preset 'mevedel-implement-deepseek
+  ;;     :description "mevedel-implement with sequential thinking for deepseek-chat"
+  ;;     :parents '(mevedel-implement)
+  ;;     :pre (lambda ()
+  ;;            (when-let* ((_ (eq gptel-model 'deepseek-chat))
+  ;;                        (chat-buffer (mevedel--chat-buffer (mevedel-workspace))))
+  ;;              (with-current-buffer chat-buffer
+  ;;                (gptel-mcp-connect '("sequential-thinking") 'sync)
+  ;;                (setq-local mevedel-tools--ro-tools (cons "sequentialthinking" mevedel-tools--ro-tools))
+  ;;                (setf (alist-get "sequentialthinking" mevedel-system-tool-name-to-instruction-alist nil nil #'equal)
+  ;;                      '+mevedel-system--tool-instructions-seqthink))))
+  ;;     :tools '(:function (lambda (tools)
+  ;;                          (if (eq gptel-model 'deepseek-chat)
+  ;;                              (cons
+  ;;                               (alist-get
+  ;;                                "sequentialthinking"
+  ;;                                (alist-get "mcp-sequential-thinking" gptel--known-tools nil nil #'equal)
+  ;;                                nil nil #'equal)
+  ;;                               tools)
+  ;;                            tools)))
+  ;;     :system '(:function (lambda (_system)
+  ;;                           (mevedel-system-build-prompt
+  ;;                            (append mevedel-tools--ro-tools mevedel-tools--rw-tools)))))
 
-  (setf (alist-get 'discuss mevedel-action-preset-alist) 'mevedel-discuss-deepseek)
-  (setf (alist-get 'implement mevedel-action-preset-alist) 'mevedel-implement-deepseek))
+  ;;   (setf (alist-get 'discuss mevedel-action-preset-alist) 'mevedel-discuss-deepseek)
+  ;;   (setf (alist-get 'implement mevedel-action-preset-alist) 'mevedel-implement-deepseek)
+  )
+;; (cl-defmethod gptel--parse-buffer :around ((_backend gptel-deepseek) _max-entries)
+;;   "Merge successive prompts in the prompts list that have the same role.
+
+;; The Deepseek API requires strictly alternating roles (user/assistant) in messages."
+;;   (let* ((prompts (cl-call-next-method))
+;;          (index prompts))
+;;     (prog1 prompts
+;;       (while index
+;;         (let ((p1 (car index))
+;;               (p2 (cadr index))
+;;               (rest (cdr index)))
+;;           ;; Only merge if both messages are simple text messages (no tool calls, reasoning, etc.)
+;;           (when (and p2
+;;                      (equal (plist-get p1 :role) (plist-get p2 :role))
+;;                      ;; Don't merge if either message has special fields
+;;                      (not (or (plist-get p1 :tool_calls)
+;;                               (plist-get p2 :tool_calls)
+;;                               (plist-get p1 :reasoning_content)
+;;                               (plist-get p2 :reasoning_content))))
+;;             (setf (plist-get p1 :content)
+;;                   (concat (plist-get p1 :content) "\n"
+;;                           (plist-get p2 :content)))
+;;             (setcdr index (cdr rest)))
+;;           (setq index (cdr index)))))))
+
+;; (cl-defmethod gptel-curl--parse-stream ((_backend gptel-openai) info)
+;;   "Parse an OpenAI API data stream.
+
+;; Return the text response accumulated since the last call to this
+;; function.  Additionally, mutate state INFO to add tool-use
+;; information if the stream contains it."
+;;   (let* ((content-strs))
+;;     (condition-case nil
+;;         (while (re-search-forward "^data:" nil t)
+;;           (save-match-data
+;;             (if (looking-at " *\\[DONE\\]")
+;;                 ;; The stream has ended, so we do the following thing (if we found tool calls)
+;;                 ;; - pack tool calls into the messages prompts list to send (INFO -> :data -> :messages)
+;;                 ;; - collect tool calls (formatted differently) into (INFO -> :tool-use)
+;;                 (when-let* ((tool-use (plist-get info :tool-use))
+;;                             (args (apply #'concat (nreverse (plist-get info :partial_json))))
+;;                             (func (plist-get (car tool-use) :function)))
+;;                   (plist-put func :arguments args) ;Update arguments for last recorded tool
+;;                   (gptel--inject-prompt
+;;                    (plist-get info :backend) (plist-get info :data)
+;;                    `(:role "assistant" :content :null :tool_calls ,(vconcat tool-use)
+;;                      ,@(when-let ((reasoning (plist-get info :reasoning)))
+;;                          (list :reasoning_content reasoning)))) ; :refusal :null
+;;                   (cl-loop
+;;                    for tool-call in tool-use ; Construct the call specs for running the function calls
+;;                    for spec = (plist-get tool-call :function)
+;;                    collect (list :id (plist-get tool-call :id)
+;;                                  :name (plist-get spec :name)
+;;                                  :args (ignore-errors (gptel--json-read-string
+;;                                                        (plist-get spec :arguments))))
+;;                    into call-specs
+;;                    finally (plist-put info :tool-use call-specs)))
+;;               (when-let* ((response (gptel--json-read))
+;;                           (delta (map-nested-elt response '(:choices 0 :delta))))
+;;                 (if-let* ((content (plist-get delta :content))
+;;                           ((not (or (eq content :null) (string-empty-p content)))))
+;;                     (push content content-strs)
+;;                   ;; No text content, so look for tool calls
+;;                   (when-let* ((tool-call (map-nested-elt delta '(:tool_calls 0)))
+;;                               (func (plist-get tool-call :function)))
+;;                     (if (and (plist-get func :name)
+;;                              ;; TEMP: This check is for litellm compatibility, should be removed
+;;                              (not (equal (plist-get func :name) "null"))) ; new tool block begins
+;;                         (progn
+;;                           ;; If we have accumulated reasoning and a tool call starts, mark reasoning as ended
+;;                           (when (and (plist-member info :reasoning)
+;;                                      (not (eq (plist-get info :reasoning-block) t))
+;;                                      (not (eq (plist-get info :reasoning-block) 'done)))
+;;                             (plist-put info :reasoning-block t))
+;;                           (when-let* ((partial (plist-get info :partial_json)))
+;;                             (let* ((prev-tool-call (car (plist-get info :tool-use)))
+;;                                    (prev-func (plist-get prev-tool-call :function)))
+;;                               (plist-put prev-func :arguments ;update args for old tool block
+;;                                          (apply #'concat (nreverse (plist-get info :partial_json)))))
+;;                             (plist-put info :partial_json nil)) ;clear out finished chain of partial args
+;;                           ;; Start new chain of partial argument strings
+;;                           (plist-put info :partial_json (list (plist-get func :arguments)))
+;;                           ;; NOTE: Do NOT use `push' for this, it prepends and we lose the reference
+;;                           (plist-put info :tool-use (cons tool-call (plist-get info :tool-use))))
+;;                       ;; old tool block continues, so continue collecting arguments in :partial_json
+;;                       (push (plist-get func :arguments) (plist-get info :partial_json)))))
+;;                 ;; Check for reasoning blocks, currently only used by Openrouter
+;;                 (unless (eq (plist-get info :reasoning-block) 'done)
+;;                   (if-let* ((reasoning-chunk (or (plist-get delta :reasoning) ;for Openrouter and co
+;;                                                  (plist-get delta :reasoning_content))) ;for Deepseek, Llama.cpp
+;;                             ((not (or (eq reasoning-chunk :null) (string-empty-p reasoning-chunk)))))
+;;                       (plist-put info :reasoning
+;;                                  (concat (plist-get info :reasoning) reasoning-chunk))
+;;                     ;; Done with reasoning if we get non-empty content
+;;                     (if-let* (((plist-member info :reasoning)) ;Is this a reasoning model?
+;;                               (c (plist-get delta :content)) ;Started receiving text content?
+;;                               ((not (or (eq c :null) (string-blank-p c)))))
+;;                         (plist-put info :reasoning-block t)))))))) ;Signal end of reasoning block
+;;       (error (goto-char (match-beginning 0))))
+;;     (apply #'concat (nreverse content-strs))))
+
+;; (cl-defmethod gptel--parse-buffer ((backend gptel-openai) &optional max-entries)
+;;   (let ((prompts) (prev-pt (point)))
+;;     (if (or gptel-mode gptel-track-response)
+;;         (while (and (or (not max-entries) (>= max-entries 0))
+;;                     (/= prev-pt (point-min))
+;;                     (goto-char (previous-single-property-change
+;;                                 (point) 'gptel nil (point-min))))
+;;           (pcase (get-char-property (point) 'gptel)
+;;             ('response
+;;              (when-let* ((content (gptel--trim-prefixes
+;;                                    (buffer-substring-no-properties (point) prev-pt))))
+;;                (push (list :role "assistant" :content content) prompts)))
+;;             (`(tool . ,id)
+;;              (save-excursion
+;;                (condition-case nil
+;;                    (let* ((tool-call (read (current-buffer)))
+;;                           (name (plist-get tool-call :name))
+;;                           (arguments (decode-coding-string
+;;                                       (gptel--json-encode (plist-get tool-call :args))
+;;                                       'utf-8 t))
+;;                           (reasoning (get-char-property (point) 'gptel-reasoning)))
+;;                      (setq id (gptel--openai-format-tool-id id))
+;;                      (plist-put tool-call :id id)
+;;                      (plist-put tool-call :result
+;;                                 (string-trim (buffer-substring-no-properties
+;;                                               (point) prev-pt)))
+;;                      (push (car (gptel--parse-tool-results backend (list tool-call)))
+;;                            prompts)
+;;                      (push `(:role "assistant"
+;;                              :tool_calls
+;;                              ,(vector (list :type "function"
+;;                                             :id id
+;;                                             :function `( :name ,name
+;;                                                          :arguments ,arguments)))
+;;                              ,@(when reasoning
+;;                                  (list :reasoning_content reasoning)))
+;;                            prompts))
+;;                  ((end-of-file invalid-read-syntax)
+;;                   (message (format "Could not parse tool-call %s on line %s"
+;;                                    id (line-number-at-pos (point))))))))
+;;             ('ignore)
+;;             ('nil
+;;              (and max-entries (cl-decf max-entries))
+;;              (if gptel-track-media
+;;                  (when-let* ((content (gptel--openai-parse-multipart
+;;                                        (gptel--parse-media-links major-mode
+;;                                                                  (point) prev-pt))))
+;;                    (when (> (length content) 0)
+;;                      (push (list :role "user" :content content) prompts)))
+;;                (when-let* ((content (gptel--trim-prefixes (buffer-substring-no-properties
+;;                                                            (point) prev-pt))))
+;;                  (push (list :role "user" :content content) prompts)))))
+;;           (setq prev-pt (point)))
+;;       (let ((content (string-trim (buffer-substring-no-properties
+;;                                     (point-min) (point-max)))))
+;;         (push (list :role "user" :content content) prompts)))
+;;     prompts))
+
+;; (defun gptel--display-tool-results (tool-results info)
+;;   "Insert TOOL-RESULTS into buffer.
+
+;; TOOL-RESULTS is
+
+;;  ((tool args result) ...)
+
+;; for tool call results.  INFO contains the state of the request."
+;;   (let* ((start-marker (plist-get info :position))
+;;          (tool-marker (plist-get info :tool-marker))
+;;          (tracking-marker (plist-get info :tracking-marker)))
+;;     ;; Insert tool results
+;;     (when gptel-include-tool-results
+;;       (with-current-buffer (marker-buffer start-marker)
+;;         (cl-loop
+;;          for (tool args result) in tool-results
+;;          with include-names =
+;;          (mapcar #'gptel-tool-name
+;;                  (cl-remove-if-not #'gptel-tool-include (plist-get info :tools)))
+;;          if (or (eq gptel-include-tool-results t)
+;;                 (member (gptel-tool-name tool) include-names))
+;;          do (funcall
+;;              (plist-get info :callback)
+;;              (let* ((name (gptel-tool-name tool))
+;;                     (separator        ;Separate from response prefix if required
+;;                      (cond ((not tracking-marker)
+;;                             (and gptel-mode
+;;                                  (not (string-suffix-p
+;;                                        "\n" (gptel-response-prefix-string)))
+;;                                  "\n"))           ;start of response
+;;                            ((not (and tool-marker ;not consecutive tool result blocks
+;;                                       (= tracking-marker tool-marker)))
+;;                             gptel-response-separator)))
+;;                     (tool-use
+;;                      ;; TODO(tool) also check args since there may be more than
+;;                      ;; one call/result for the same tool
+;;                      (cl-find-if
+;;                       (lambda (tu) (equal (plist-get tu :name) name))
+;;                       (plist-get info :tool-use)))
+;;                     (id (plist-get tool-use :id))
+;;                     (display-call (format "(%s %s)" name
+;;                                           (string-trim (prin1-to-string args) "(" ")")))
+;;                     (call (prin1-to-string `(:name ,name :args ,args)))
+;;                     (truncated-call
+;;                      (string-replace "\n" " "
+;;                                      (truncate-string-to-width
+;;                                       display-call
+;;                                       (floor (* (window-width) 0.6)) 0 nil " ...)"))))
+;;                (if (derived-mode-p 'org-mode)
+;;                    (concat
+;;                     separator
+;;                     "#+begin_tool "
+;;                     truncated-call
+;;                     (propertize
+;;                      (concat "\n" call "\n\n" (org-escape-code-in-string result))
+;;                      'gptel `(tool . ,id)
+;;                      'gptel-reasoning (plist-get info :reasoning))
+;;                     "\n#+end_tool\n")
+;;                  ;; TODO(tool) else branch is handling all front-ends as markdown.
+;;                  ;; At least escape markdown.
+;;                  (concat
+;;                   separator
+;;                   ;; TODO(tool) remove properties and strip instead of ignoring
+;;                   (propertize (format "``` tool %s" truncated-call)
+;;                               'gptel 'ignore 'keymap gptel--markdown-block-map)
+;;                   (propertize
+;;                    ;; TODO(tool) escape markdown in result
+;;                    (concat "\n" call "\n\n" result)
+;;                    'gptel `(tool . ,id)
+;;                    'gptel-reasoning (plist-get info :reasoning))
+;;                   ;; TODO(tool) remove properties and strip instead of ignoring
+;;                   (propertize "\n```\n" 'gptel 'ignore
+;;                               'keymap gptel--markdown-block-map))))
+;;              info
+;;              'raw)
+;;          ;; tool-result insertion has updated the tracking marker
+;;          (unless tracking-marker
+;;            (setq tracking-marker (plist-get info :tracking-marker)))
+;;          (if tool-marker
+;;                (move-marker tool-marker tracking-marker)
+;;              (setq tool-marker (copy-marker tracking-marker nil))
+;;              (plist-put info :tool-marker tool-marker))
+;;          (ignore-errors                 ;fold drawer
+;;            (save-excursion
+;;              (goto-char tracking-marker)
+;;              (forward-line -1)
+;;              (if (derived-mode-p 'org-mode)
+;;                  (when (looking-at-p "^#\\+end_tool") (org-cycle))
+;;                (when (looking-at-p "^```") (gptel-markdown-cycle-block))))))))))

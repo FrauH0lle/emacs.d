@@ -1,2 +1,2 @@
-(("diff-hl" . "0fe1bc0fd8716e8521f49fdbeae68da64ea4772f"))
+(("diff-hl" . "e79aa49ad3cbbe85379cf6646db3aaacd3b04708"))
 :epsilon

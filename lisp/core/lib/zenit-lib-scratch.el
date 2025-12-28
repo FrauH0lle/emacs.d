@@ -42,6 +42,19 @@ the first, fresh scratch buffer you create. This accepts:
   "The hooks to run after a scratch buffer is created.")
 
 
+(defun zenit--scratch-buffer-initial-mode ()
+  "Return the initial major mode for a new scratch buffer.
+Respects `zenit-scratch-initial-major-mode' configuration."
+  (cond ((eq zenit-scratch-initial-major-mode t)
+         (unless (or buffer-read-only
+                     (derived-mode-p 'special-mode)
+                     (string-match-p "^ ?\\*" (buffer-name)))
+           major-mode))
+        ((null zenit-scratch-initial-major-mode)
+         nil)
+        ((symbolp zenit-scratch-initial-major-mode)
+         zenit-scratch-initial-major-mode)))
+
 (defun zenit--load-persistent-scratch-buffer (project-name)
   "Load the persistent scratch buffer associated with
  PROJECT-NAME.
@@ -160,15 +173,7 @@ If PROJECT-P is non-nil, open a persistent scratch buffer associated with the
        #'pop-to-buffer)
      (zenit-scratch-buffer
       arg
-      (cond ((eq zenit-scratch-initial-major-mode t)
-             (unless (or buffer-read-only
-                         (derived-mode-p 'special-mode)
-                         (string-match-p "^ ?\\*" (buffer-name)))
-               major-mode))
-            ((null zenit-scratch-initial-major-mode)
-             nil)
-            ((symbolp zenit-scratch-initial-major-mode)
-             zenit-scratch-initial-major-mode))
+      (zenit--scratch-buffer-initial-mode)
       default-directory
       (when project-p
         (zenit-project-name))))))
@@ -194,6 +199,32 @@ window.
 If passed the prefix ARG, do not restore the last scratch buffer."
   (interactive "P")
   (zenit/open-project-scratch-buffer arg 'same-window))
+
+;;;###autoload
+(defun zenit/toggle-scratch-buffer (&optional arg project-p same-window-p)
+  "Toggle a persistent scratch buffer.
+
+If the scratch buffer is visible, close its window. Otherwise, open it.
+If passed the prefix ARG, do not restore the last scratch buffer.
+If PROJECT-P is non-nil, use a project-associated scratch buffer."
+  (interactive "P")
+  (let* ((project-name (when project-p (zenit-project-name)))
+         (buf (zenit-scratch-buffer arg (zenit--scratch-buffer-initial-mode)
+                                   default-directory project-name))
+         (win (get-buffer-window buf)))
+    (if win
+        (delete-window win)
+      (funcall (if same-window-p #'switch-to-buffer #'pop-to-buffer) buf))))
+
+;;;###autoload
+(defun zenit/toggle-project-scratch-buffer (&optional arg same-window-p)
+  "Toggle the project-associated scratch buffer.
+
+If the scratch buffer is visible, close its window. Otherwise, open it.
+If passed the prefix ARG, do not restore the last scratch buffer."
+  (interactive "P")
+  (zenit/toggle-scratch-buffer arg 'project same-window-p))
+
 
 ;;;###autoload
 (defun zenit/revert-scratch-buffer ()

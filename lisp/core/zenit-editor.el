@@ -19,6 +19,9 @@
 ;; `tabify'
 (defvar tabify-regexp)
 
+;; `tramp'
+(defvar tramp-backup-directory-alist)
+
 ;; `zenit-lib-buffers'
 (declare-function zenit-special-buffer-p "zenit-lib-buffers" (buf))
 (declare-function zenit-temp-buffer-p "zenit-lib-buffers" (buf))
@@ -160,7 +163,8 @@ themselves) to ensure the buffer is as fast as possible."
       delete-old-versions t ; clean up after itself
       kept-old-versions 5
       kept-new-versions 5
-      backup-directory-alist (list (cons "." (concat zenit-cache-dir "backup/"))))
+      backup-directory-alist `(("." . ,(concat zenit-cache-dir "backup/")))
+      tramp-backup-directory-alist backup-directory-alist)
 
 ;; Turn on auto-save, so we have a fallback in case of crashes or lost data. Use
 ;; `recover-file' or `recover-session' to recover them.
@@ -171,8 +175,19 @@ themselves) to ensure the buffer is as fast as possible."
       auto-save-include-big-deletions t
       ;; Keep it out of `zenit-emacs-dir' or the local directory.
       auto-save-list-file-prefix (concat zenit-cache-dir "autosave/")
+      ;; Emacs generates long file paths for its auto-save files; long =
+      ;; `auto-save-list-file-prefix' + `buffer-file-name'. If too long, this
+      ;; will murder the filesystem. Thus, we compress `buffer-file-name' to a
+      ;; stable 40 characters via `sha1'.
       auto-save-file-name-transforms
-      (list (list ".*" auto-save-list-file-prefix t)))
+      `(("\\`/[^/]*:\\([^/]*/\\)*\\([^/]*\\)\\'"
+         ,(file-name-concat auto-save-list-file-prefix "tramp-\\2-") sha1)
+        ("\\`/\\([^/]+/\\)*\\([^/]+\\)\\'" ,(file-name-concat auto-save-list-file-prefix "\\2-") sha1)))
+
+(add-hook! 'auto-save-hook
+  (defun zenit-ensure-auto-save-prefix-exists-h ()
+    (with-file-modes #o700
+      (make-directory auto-save-list-file-prefix t))))
 
 (add-hook! 'after-save-hook
   (defun zenit-guess-mode-h ()
@@ -193,29 +208,8 @@ second to tell you about it. Very annoying. This prevents that."
   (letf! ((#'sit-for #'ignore))
     (apply fn args)))
 
-;; HACK Emacs generates long file paths for its auto-save files; long =
-;;      `auto-save-list-file-prefix' + `buffer-file-name'. If too long, this
-;;      will murder the filesystem. Thus, we compress `buffer-file-name' to a
-;;      stable 40 characters via `sha1'.
-(defadvice! zenit-make-hashed-auto-save-file-name-a (fn)
-  "Compress the auto-save file name so paths don't get too long."
-  :around #'make-auto-save-file-name
-  (let ((buffer-file-name
-         (if (or
-              ;; Don't do anything for non-file-visiting buffers. Names
-              ;; generated for those are short enough already.
-              (null buffer-file-name)
-              ;; If an alternate handler exists for this path, bow out. Most of
-              ;; them end up calling `make-auto-save-file-name' again anyway, so
-              ;; we still achieve this advice's ultimate goal.
-              (find-file-name-handler buffer-file-name
-                                      'make-auto-save-file-name))
-             buffer-file-name
-           (sha1 buffer-file-name))))
-    (funcall fn)))
-
-;; HACK ...does the same for Emacs backup files, but also packages that use
-;;      `make-backup-file-name-1' directly (like undo-tree).
+;; HACK: Make sure backup files (like undo-tree's) don't have ridiculously long
+;;   file names that some filesystems will refuse.
 (defadvice! zenit-make-hashed-backup-file-name-a (fn file)
   "A few places use the backup file name so paths don't get too
 long."
@@ -236,9 +230,9 @@ long."
                           (file-name-directory file))))))
 
 ;; HACK In order to make the hashed file names compatible with
-;;      `zenit-file-backup-mode', we store the hashed filenames together with
-;;      the original file names in a hash table. We can use that information to
-;;      check if a backup file has been orphaned.
+;;   `zenit-file-backup-mode', we store the hashed filenames together with the
+;;   original file names in a hash table. We can use that information to check
+;;   if a backup file has been orphaned.
 (defadvice! zenit-cache-hashed-backup-file-name-a (fn &rest _)
   "Let `backup-buffer' also create the cache entry for the backup
 system."

@@ -358,9 +358,9 @@ CL-KEYS as in `cl-set-difference'.
   "Verify that ACTUAL contains EXPECTED items.
 The order of items does not matter. Returns t if lists match, nil
 otherwise.
-CL-KEYS as in `cl-set-difference'. \nKeywords
-supported: :test :test-not :key \n(fn EXPECTED ACTUAL [KEYWORD
-VALUE]...)"
+CL-KEYS as in `cl-set-difference'.
+\nKeywords supported: :test :test-not :key
+\n(fn EXPECTED ACTUAL [KEYWORD VALUE]...)"
   (null (apply #'cl-set-difference expected actual cl-keys)))
 
 (provide 'zenit-test)

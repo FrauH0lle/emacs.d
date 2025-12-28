@@ -63,16 +63,6 @@
     (should (fboundp 'zenit--shut-up-autosave-a))
     (should (advice-member-p 'zenit--shut-up-autosave-a #'after-find-file))))
 
-(zenit-deftest zenit-make-hashed-auto-save-file-name-a
-  (:doc "`zenit-make-hashed-auto-save-file-name-a' advises `make-auto-save-file-name'")
-  (progn
-    (should (fboundp 'zenit-make-hashed-auto-save-file-name-a))
-    (should (advice-member-p 'zenit-make-hashed-auto-save-file-name-a #'make-auto-save-file-name))
-    (let ((temp-file (zenit-test-make-temp-file)))
-      (with-current-buffer (find-file-noselect temp-file)
-        (should (equal (concat "#" (sha1 buffer-file-name) "#")
-                       (file-name-base (make-auto-save-file-name))))))))
-
 (zenit-deftest zenit-make-hashed-backup-file-name-a
   (:doc "`zenit-make-hashed-backup-file-name-a' advises `make-auto-save-file-name'")
   (progn

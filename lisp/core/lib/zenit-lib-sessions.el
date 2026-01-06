@@ -9,6 +9,16 @@
 (defvar desktop-dirname)
 (defvar desktop-file-modtime)
 (defvar desktop-restore-eager)
+(defvar desktop-base-lock-name)
+(defvar desktop-restore-reuses-frames)
+
+;; `faces'
+(declare-function display-color-p "faces" (&optional display))
+(defvar display-color-p)
+
+;; `faces'
+(declare-function display-graphic-p "frame" (&optional display))
+(defvar display-graphic-p)
 
 ;; `persp-mode'
 (defvar *persp-hash*)
@@ -123,7 +133,7 @@ signals an error."
            (persp-load-state-from-file file)))
         ((and (require 'frameset nil t)
               (require 'restart-emacs nil t))
-         (let* ((file (expand-file-name (doom-session-file)))
+         (let* ((file (expand-file-name (zenit-session-file)))
                 desktop-file-modtime
                 (desktop-dirname (file-name-directory file))
                 (desktop-base-file-name (file-name-nondirectory file))

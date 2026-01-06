@@ -142,7 +142,17 @@ value is nil, allowing the hooks to run.")
                " " (buffer-name (or (buffer-base-buffer)
                                     (current-buffer)))))
     (setq-local zenit-inhibit-local-var-hooks t)
-    (zenit-run-hooks (intern-soft (format "%s-local-vars-hook" major-mode)))))
+    ;; Add some rudimentary documentation to understand where these hooks came
+    ;; from.
+    (let* ((hook-var (intern (format "%s-local-vars-hook" major-mode))))
+      (unless (boundp hook-var)
+        (set hook-var nil))
+      (unless (get hook-var 'variable-documentation)
+        (put hook-var 'variable-documentation
+             (format (concat "Hooks to run after file/dir local variables are set in `%s', well after `%s-hook'.\n\n"
+                             "These hooks are defined and executed by `zenit-run-local-var-hooks-h'.")
+                     major-mode major-mode)))
+      (zenit-run-hooks hook-var))))
 
 ;; If the user has disabled `enable-local-variables', then
 ;; `hack-local-variables-hook' is never triggered, so we trigger it at the end

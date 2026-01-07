@@ -23,8 +23,7 @@
     (remove-hook 'rustic-mode-hook 'rustic-setup-lsp))
   (after! rustic-flycheck
     (remove-hook 'rustic-mode-hook #'flycheck-mode)
-    (remove-hook 'rustic-mode-hook #'flymake-mode-off)
-    (remove-hook 'flycheck-mode-hook #'rustic-flycheck-setup))
+    (remove-hook 'rustic-mode-hook #'flymake-mode-off))
   :init
   (static-when (modulep! +tree-sitter)
     (set-tree-sitter! 'rust-mode 'rustic-mode

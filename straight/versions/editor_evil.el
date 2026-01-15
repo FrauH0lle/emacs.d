@@ -8,7 +8,7 @@
  ("evil-indent-plus" . "f392696e4813f1d3a92c7eeed333248914ba6dae")
  ("evil-lion" . "5a0bca151466960e090d1803c4c5ded88875f90a")
  ("evil-nerd-commenter" . "ae52c5070a48793e2c24474c9c8dbf20175d18a0")
- ("evil-numbers" . "e96d656158e3c712a33cced2ea1a088f44448fe3")
+ ("evil-numbers" . "616aff9e5cee012954756ed2715209fa90308cdf")
  ("evil-quick-diff" . "69c883720b30a892c63bc89f49d4f0e8b8028908")
  ("evil-snipe" . "16317d7e54313490a0fe8642ed9a1a72498e7ad2")
  ("evil-surround" . "da05c60b0621cf33161bb4335153f75ff5c29d91")

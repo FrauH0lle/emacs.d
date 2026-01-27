@@ -13,6 +13,9 @@
 ;; `evil'
 (defvar evil--jumps-jumping)
 
+;; `outline'
+(declare-function outline-up-heading "outline" (arg &optional invisible-ok))
+
 ;; `smie'
 (declare-function smie-config-guess "smie" ())
 
@@ -536,7 +539,8 @@ short-circuiting hooks."
   ;; interactively killed buffers.
   (add-hook 'kill-buffer-hook #'zenit-set-jump-h)
 
-  ;; Create a jump point before jumping with imenu.
+  ;; Manual support for specific commands:
+  (advice-add #'outline-up-heading :around #'zenit-set-jump-a)
   (advice-add #'imenu :around #'zenit-set-jump-a)
 
   ;; Recenter after jumping

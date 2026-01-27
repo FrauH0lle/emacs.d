@@ -545,6 +545,7 @@ buffers are visible in other windows, switch to
       org-agenda-mode dired-mode)
     "What modes to enable `hl-line-mode' in.")
   :config
+  ;; DEPRECATED 2026-01-27: Adjust when 31 is released.
   (if (boundp 'global-hl-line-buffers)
       (setq global-hl-line-buffers
             `(not (or (lambda (b)

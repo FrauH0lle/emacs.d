@@ -1,2 +1,2 @@
-(("ligature.el" . "fb21f957cdac52b0bc48576b4d87acdb7768995e"))
+(("ligature.el" . "6ac1634612dbd42f7eb81ecaf022bd239aabb954"))
 :epsilon

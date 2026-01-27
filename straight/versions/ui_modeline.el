@@ -1,4 +1,4 @@
 (("evil-anzu" . "7309650425797420944075c9c1556c7c1ff960b3")
- ("anzu" . "be015183090dbe8fe5f9eeb26ddf469af3ee360c")
- ("doom-modeline" . "7182b612d97cd4b72d814f709abfd96bb8e62700"))
+ ("anzu" . "21cb5ab2295614372cb9f1a21429381e49a6255f")
+ ("doom-modeline" . "94a5f5e14c626786d834331625282cfe06d1b810"))
 :epsilon

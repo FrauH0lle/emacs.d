@@ -564,17 +564,21 @@ buffers are visible in other windows, switch to
     ;; HACK: `global-hl-line-buffers' wasn't introduced until 31.1, so I
     ;;   reimplement to `global-hl-line-modes' give us a major mode
     ;;   white/blacklist via `global-hl-line-modes'.
+    (defun +hl-line--enable-global-mode ()
+      "Switch on `hl-line-mode'."
+      (and (cond (hl-line-mode nil)
+                 ((null global-hl-line-modes) nil)
+                 ((eq global-hl-line-modes t))
+                 ((eq (car global-hl-line-modes) 'not)
+                  (not (derived-mode-p global-hl-line-modes)))
+                 ((apply #'derived-mode-p global-hl-line-modes)))
+           (hl-line-mode +1)))
+
     (define-globalized-minor-mode global-hl-line-mode hl-line-mode
-      (lambda ()
-        (and (cond (hl-line-mode nil)
-                   ((null global-hl-line-modes) nil)
-                   ((eq global-hl-line-modes t))
-                   ((eq (car global-hl-line-modes) 'not)
-                    (not (derived-mode-p global-hl-line-modes)))
-                   ((apply #'derived-mode-p global-hl-line-modes)))
-             (hl-line-mode +1)))
+      +hl-line--enable-global-mode
       :group 'hl-line)
     (eval-when-compile
+      (declare-function +hl-line--enable-global-mode nil)
       (declare-function hl-line-mode-set-explicitly nil)
       (declare-function global-hl-line-mode-cmhh nil)
       (declare-function global-hl-line-mode-check-buffers nil)

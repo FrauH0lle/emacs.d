@@ -81,9 +81,9 @@
   (:doc "`zenit-protect-fallback-buffer-h' is defined")
   (should (fboundp 'zenit-protect-fallback-buffer-h)))
 
-(zenit-deftest +emacs-highlight-non-default-indentation-h
-  (:doc "`+emacs-highlight-non-default-indentation-h' is defined")
-  (should (fboundp '+emacs-highlight-non-default-indentation-h)))
+(zenit-deftest +whitespace-highlight-incorrect-indentation-again-h
+  (:doc "`+whitespace-highlight-incorrect-indentation-again-h' is defined")
+  (should (fboundp '+whitespace-highlight-incorrect-indentation-again-h)))
 
 (zenit-deftest zenit--switch-to-fallback-buffer-maybe-a
   (:doc "`zenit--switch-to-fallback-buffer-maybe-a' advises `kill-current-buffer'")

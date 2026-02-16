@@ -632,7 +632,7 @@ buffers are visible in other windows, switch to
   :defer t
   :init
   (add-hook! 'after-change-major-mode-hook :append
-    (defun +emacs-highlight-non-default-indentation-h ()
+    (defun +whitespace-highlight-incorrect-indentation-again-h ()
       "Highlight whitespace at odds with `indent-tabs-mode'.
 
 That is, highlight tabs if `indent-tabs-mode' is nil, and highlight
@@ -655,6 +655,15 @@ active or if the current buffer is read-only or not file-visiting."
         (cl-pushnew 'face whitespace-style) ; must be first
         (whitespace-mode +1))))
 
+  (static-when (modulep! :tools editorconfig)
+    (add-hook! 'editorconfig-after-apply-functions :append
+      (defun +whitespace-highlight-incorrect-indentation-again-h (props)
+        "Editorconfig may change the tab-width or indent style later in a file's
+init process, so whitespace-mode needs refreshing."
+        ;; In case user disabled it
+        (when (and (bound-and-true-p whitespace-mode)
+                   (gethash 'indent_style props))
+          (+whitespace-highlight-incorrect-indentation-h)))))
   :config
   (setq whitespace-line-column nil
         whitespace-style

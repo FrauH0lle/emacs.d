@@ -41,4 +41,25 @@
   ;; Undo-tree is too chatty about saving its history files. This doesn't
   ;; totally suppress it logging to *Messages*, it only stops it from appearing
   ;; in the echo-area.
-  (advice-add #'undo-tree-save-history :around #'zenit-shut-up-a))
+  (advice-add #'undo-tree-save-history :around #'zenit-shut-up-a)
+
+  ;; HACK: If undo-tree creates its diff window next to a popup/side window, the
+  ;;   `balance-window' calls in `undo-tree-visualizer-update-diff' can wreck
+  ;;   havoc on the window tree, making the diff window an unclosable "root"
+  ;;   window (which emacs will happily throw errors about when you call
+  ;;   `undo-tree-visualizer-quit'). Breakage ensues.
+  (defadvice! +undo-tree--show-visualizer-diff-safely-a (&optional node)
+    :override #'undo-tree-visualizer-show-diff
+    (setq undo-tree-visualizer-diff t)
+    (let ((buff (with-current-buffer undo-tree-visualizer-parent-buffer
+                  (with-current-buffer (undo-tree-diff node)
+                    (hide-mode-line-mode +1))))
+          (display-buffer-mark-dedicated 'soft)
+          (win (split-window (get-buffer-window undo-tree-visualizer-parent-buffer))))
+      (set-window-buffer win buff)
+      (shrink-window-if-larger-than-buffer win)))
+
+  (defadvice! +undo-tree--suppress-balance-windows-a (fn &rest args)
+    :around #'undo-tree-visualizer-update-diff
+    (letf! ((#'balance-windows #'ignore))
+      (apply fn args))))

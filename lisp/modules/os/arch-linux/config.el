@@ -1,4 +1,4 @@
-;; tools/arch-linux/config.el -*- lexical-binding: t; -*-
+;; os/arch-linux/config.el -*- lexical-binding: t; -*-
 
 (use-package! pacfiles-mode
   :commands pacfiles

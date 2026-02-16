@@ -1,3 +1,3 @@
 (("pacfiles-mode" . "a613d1d88dba4cb293ecaf42a9aeff7d8a3ce8aa")
- ("pkgbuild-mode" . "9525be8ecbd3a0d0bc7cc27e6d0f403e111aa067"))
+ ("pkgbuild-mode" . "aadf3d1d19c5eb9b52c15c5b73b1a46faac5b7d5"))
 :epsilon

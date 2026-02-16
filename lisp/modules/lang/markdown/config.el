@@ -16,6 +16,11 @@ capture, the end position, and the output buffer.")
 ;;
 ;;; Packages
 
+
+;; PATCH 2026-02-10: `markdown-mode'
+(el-patch-feature markdown-mode)
+(compile-along! "patches")
+
 (use-package! markdown-mode
   :mode ("/README\\(?:\\.md\\)?\\'" . gfm-mode)
   :init
@@ -50,6 +55,8 @@ capture, the end position, and the output buffer.")
                 "<script>document.addEventListener('DOMContentLoaded', () => { document.body.classList.add('markdown-body'); document.querySelectorAll('pre[lang] > code').forEach((code) => { code.classList.add(code.parentElement.lang); }); document.querySelectorAll('pre > code').forEach((code) => { hljs.highlightBlock(code); }); });</script>"))
 
   :config
+  (load! "patches")
+
   (set-flyspell-predicate! '(markdown-mode gfm-mode)
                            #'+markdown-flyspell-word-p)
   (static-when (modulep! :tools lookup)

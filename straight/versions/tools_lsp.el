@@ -1,7 +1,7 @@
-(("consult-lsp" . "fb8ca4e91487d4f4bd15df55863d04e4cbf71f1c")
- ("flycheck-eglot" . "0d7f0afc9bf08fce4a3ee225ec6540a91f8cfd76")
+(("consult-lsp" . "d11102c9db33c4ca7817296a2edafc3e26a61117")
+ ("flycheck-eglot" . "6cf99e53b4e43ac62604ebcb73a6c0794b19a5fe")
  ("consult-eglot" . "d8b444aac39edfc6473ffbd228df3e9119451b51")
- ("eglot" . "cecaadb0efe415ccbf24b97904df2bbdbd19f775")
- ("lsp-mode" . "d9057bf4673a762fb3c8864026a1fb17125934fd")
- ("lsp-ui" . "030d36960338fd633a98b332bc3734c412c25ca6"))
+ ("eglot" . "76dae6a0756dd54946129a8ef170abcee63cf1ff")
+ ("lsp-mode" . "0e53347d767b2fa28958328125da82ee3881b0c8")
+ ("lsp-ui" . "ff349658ed69086bd18c336c8a071ba15f7fd574"))
 :epsilon

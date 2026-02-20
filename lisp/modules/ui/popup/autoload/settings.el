@@ -94,7 +94,6 @@ This is the reverse of `+popup-make-rule'."
                                         ('modeline (setq plist (plist-put plist :modeline wval)))
                                         ('autosave (setq plist (plist-put plist :autosave wval)))
                                         ('tabbed (setq plist (plist-put plist :tabbed wval)))
-                                        ('((foo t)) '(bla . t))
                                         (x (let ((alist (plist-get plist :parameters)))
                                              (setf (alist-get x alist) wval)
                                              (setq plist (plist-put plist :parameters alist)))))))))

@@ -86,9 +86,9 @@ time they were followed."
 ;;;###package consult
 (static-when (modulep! :completion vertico)
   (after! consult
-    ;; Remove popups by default from `consult--source-buffer'
+    ;; Remove popups by default from `consult-source-buffer'
     (consult-customize
-     consult--source-buffer
+     consult-source-buffer
      :items
      (lambda () (consult--buffer-query :sort 'visibility
                                        :predicate (lambda (x) (not (+popup-buffer-p x)))
@@ -113,7 +113,7 @@ time they were followed."
                                            :as #'buffer-name)))
       "Popup buffer candidate source for `consult-buffer'.")
 
-    (spliceq! consult-buffer-sources '+consult--source-popup-buffer nil 'consult--source-buffer))
+    (spliceq! consult-buffer-sources '+consult--source-popup-buffer nil 'consult-source-buffer))
 
   ;; PATCH Refine integration of `consult' and the popup system.
   (cl-eval-when (compile)
@@ -331,7 +331,7 @@ other windows. Ugh, such an ugly hack."
   :after #'persp-load-state-from-file
   (dolist (window (window-list))
     (when (+popup-window-parameter 'popup window)
-      (+popup--init window nil))))
+      (+popup--init window))))
 
 
 (after! pdf-tools

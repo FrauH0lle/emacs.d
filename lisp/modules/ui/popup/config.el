@@ -93,6 +93,8 @@ grouped by the predicate `+popup-group-function'.")
   "Alist storing old `display-buffer-alist'.")
 (defvar +popup--old-reference-buffers nil
   "Alist storing old `+popup-reference-buffers'.")
+(defvar +popup--old-window--sides-inhibit-check nil
+  "Stores old `window--sides-inhibit-check'.")
 (defvar +popup--remember-last t
   "If non-nil, store last popup.")
 (defvar +popup--last nil
@@ -138,10 +140,14 @@ See `+popup-mode'.")
          (add-hook 'zenit-switch-frame-hook #'+popup-update-popup-alists-h)
 
          (add-hook 'zenit-escape-hook #'+popup-close-on-escape-h 'append)
+
+         (advice-add #'tab-line-select-tab-buffer :around #'+tab-line-temp-undedicate-win-a)
+
          (setq +popup--old-display-buffer-alist display-buffer-alist
                display-buffer-alist +popup--display-buffer-alist
                +popup--old-reference-buffers +popup-reference-buffers
                +popup-reference-buffers +popup--reference-buffers
+               +popup--old-window--sides-inhibit-check window--sides-inhibit-check
                window--sides-inhibit-check t)
          (dolist (prop +popup-window-parameters)
            (push (cons prop 'writable) window-persistent-parameters)))
@@ -153,19 +159,24 @@ See `+popup-mode'.")
          (remove-hook 'zenit-switch-frame-hook #'+popup-update-popup-alists-h)
 
          (remove-hook 'zenit-escape-hook #'+popup-close-on-escape-h)
+
+         (advice-remove #'tab-line-select-tab-buffer #'+tab-line-temp-undedicate-win-a)
+
          (setq display-buffer-alist +popup--old-display-buffer-alist
                +popup-reference-buffers +popup--old-reference-buffers
-               window--sides-inhibit-check nil)
+               window--sides-inhibit-check +popup--old-window--sides-inhibit-check)
          (+popup-cleanup-rules-h)
          (dolist (prop +popup-window-parameters)
-           (delq (assq prop window-persistent-parameters)
-                 window-persistent-parameters)))))
+           (setq window-persistent-parameters
+                 (delq (assq prop window-persistent-parameters)
+                       window-persistent-parameters))))))
 
 (defun +popup-buffer--kill-last-tab-h ()
   "Intended to run on `kill-buffer-hook'."
   (when (+popup-tab-single-tab-p)
     (set-window-dedicated-p (selected-window) 'popup)
     (set-window-parameter (selected-window) 'tabbed nil)))
+(put '+popup-buffer--kill-last-tab-h 'permanent-local-hook t)
 
 ;; HACK 2025-01-05: For whatever reason this is necessary as otherwise the
 ;;   window with the tabs won't stay dedicated.
@@ -178,7 +189,6 @@ See `+popup-mode'.")
             (apply fn args)
           (set-window-dedicated-p window old-dedicated)))
     (apply fn args)))
-(advice-add #'tab-line-select-tab-buffer :around #'+tab-line-temp-undedicate-win-a)
 
 (define-minor-mode +popup-buffer-mode
   "Minor mode for individual popup windows.

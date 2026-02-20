@@ -24,6 +24,7 @@
     (set-tree-sitter! 'python-mode 'python-ts-mode
       '((python :url "https://github.com/tree-sitter/tree-sitter-python"))))
 
+  :config
   (static-when (modulep! +lsp)
     (add-hook 'python-mode-local-vars-hook #'lsp! 'append)
     (add-hook 'python-ts-mode-local-vars-hook #'lsp! 'append))
@@ -32,7 +33,6 @@
     (add-hook 'python-mode-local-vars-hook #'+indent-guides-init-maybe-h 'append)
     (add-hook 'python-ts-mode-local-vars-hook #'+indent-guides-init-maybe-h 'append))
 
-  :config
   (set-repl-handler! '(python-mode python-ts-mode) #'+python/open-repl
     :persist t
     :send-region #'python-shell-send-region
@@ -70,7 +70,11 @@
              (executable-find "python3"))
     (setq python-shell-interpreter "python3"))
 
-  (add-hook! 'python-mode-hook
+  ;; HACK: Python 3.13's pyrepl mishandles SIGINT under Emacs's comint
+  ;;   (TERM=dumb)
+  (add-to-list 'python-shell-process-environment "PYTHON_BASIC_REPL=1")
+
+  (add-hook! '(python-mode-hook python-ts-mode-hook)
     (defun +python-use-correct-flycheck-executables-h ()
       "Use the correct Python executables for Flycheck."
       (let ((executable python-shell-interpreter))
@@ -97,14 +101,6 @@
   ;; HACK: `python-mode' doesn't update `tab-width' to reflect
   ;;   `python-indent-offset', causing issues anywhere `tab-width' is respected.
   (setq-hook! '(python-mode-hook python-ts-mode-hook) tab-width python-indent-offset)
-
-  ;; HACK: `python-ts-mode' changes `auto-mode-alist' and
-  ;;   `interpreter-mode-alist' every time the mode is activated, which runs the
-  ;;   risk of overwriting user entries.
-  (defadvice! +python--undo-ts-side-effects-a (fn &rest args)
-    :around #'python-ts-mode
-    (let (auto-mode-alist interpreter-mode-alist)
-      (apply fn args)))
 
   ;; Make the REPL buffer more responsive.
   (setq-hook! 'inferior-python-mode-hook
@@ -296,8 +292,4 @@
   :when (modulep! +lsp)
   :when (modulep! +pyright)
   :when (modulep! :tools lsp -eglot)
-  :defer t
-  :init
-  (add-hook! 'python-mode-local-vars-hook
-    (when-let* ((exe (executable-find "basedpyright")))
-      (setq lsp-pyright-langserver-command (file-name-nondirectory exe)))))
+  :defer t)

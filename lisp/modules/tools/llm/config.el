@@ -107,6 +107,13 @@ Legacy variable, prefer +llm-project-context-file.")
   "Buffer-local flag indicating if project prompt is active.")
 
 
+;; PATCH 2026-02-11: `gptel'
+(el-patch-feature gptel)
+(compile-along! "patches/gptel")
+(compile-along! "patches/gptel-anthropic")
+(compile-along! "patches/gptel-openai")
+
+
 (use-package! gptel
   :defer t
   :hook (gptel-mode . gptel-highlight-mode)
@@ -168,6 +175,12 @@ Uses hierarchical composition strategy by default to layer:
   ;; ;; Also set up when gptel-mode is activated in a buffer
   ;; (add-hook 'gptel-mode-hook #'+llm--setup-project-prompt-h)
   :config
+  (load! "patches/gptel")
+  (after! gptel-anthropic
+    (load! "patches/gptel-anthropic"))
+  (after! gptel-openai
+    (load! "patches/gptel-openai"))
+
   ;; Detect project prompt
   (+llm--setup-project-prompt-h)
 

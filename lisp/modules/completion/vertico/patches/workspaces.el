@@ -85,7 +85,7 @@ configuration of the virtual buffer sources.")
   (el-patch-swap (interactive) (interactive (list nil current-prefix-arg)))
   (let ((selected (consult--multi (or sources (el-patch-swap
                                                 consult-buffer-sources
-                                                (zenit-splice-into consult-buffer-sources (+vertico--workspace-generate-sources) 'consult--source-buffer)))
+                                                (zenit-splice-into consult-buffer-sources (+vertico--workspace-generate-sources) 'consult-source-buffer)))
                                   :require-match
                                   (confirm-nonexistent-file-or-buffer)
                                   :prompt (el-patch-swap

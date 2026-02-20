@@ -202,7 +202,7 @@ If only one frame is visible, set it to one, otherwise to zero."
     (after! consult
       ;; Hide default buffer source
       (consult-customize
-       consult--source-buffer
+       consult-source-buffer
        :hidden t
        :default nil)))
 

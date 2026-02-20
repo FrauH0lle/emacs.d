@@ -5,8 +5,7 @@
   (package! flycheck :lockfile checkers_syntax)
   (package! flycheck-popup-tip :lockfile checkers_syntax))
 
-(when (or (modulep! +flymake)
-          (modulep! :tools lsp +lsp-flymake))
+(when (modulep! +flymake)
   (package! flymake-popon
     :recipe (:host github :repo "doomelpa/flymake-popon")
     :lockfile checkers_syntax))

@@ -25,9 +25,6 @@
       '((python :url "https://github.com/tree-sitter/tree-sitter-python"))))
 
   (static-when (modulep! +lsp)
-    (static-when (modulep! :tools lsp +lsp-flymake)
-      (pushnew! +flycheck-disabled-modes 'python-mode 'python-ts-mode))
-
     (add-hook 'python-mode-local-vars-hook #'lsp! 'append)
     (add-hook 'python-ts-mode-local-vars-hook #'lsp! 'append))
 

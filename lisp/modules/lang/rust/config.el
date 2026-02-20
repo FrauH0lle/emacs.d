@@ -36,9 +36,6 @@
     (defalias 'org-babel-execute:rust #'org-babel-execute:rustic)
     (add-to-list 'org-src-lang-modes '("rust" . rustic)))
 
-  (static-when (modulep! :tools lsp +lsp-flymake)
-    (pushnew! +flycheck-disabled-modes 'rustic-mode))
-
   :config
   (add-hook 'rustic-mode-hook #'rainbow-delimiters-mode)
   ;; Rust uses a line width of 100

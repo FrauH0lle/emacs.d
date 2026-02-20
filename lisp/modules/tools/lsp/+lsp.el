@@ -30,8 +30,7 @@
 
   ;; Explicitly tell lsp to use flymake; Lsp will default to flycheck if found
   ;; even if its a dependency
-  (when (or (modulep! :checkers syntax +flymake)
-            (modulep! +lsp-flymake))
+  (when (modulep! :checkers syntax +flymake)
     (setq lsp-diagnostics-provider :flymake))
 
   ;; Let us bind the lsp keymap.

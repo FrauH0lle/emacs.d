@@ -9,7 +9,7 @@
         ;; NOTE We disable eglot-auto-display-help-buffer because :select t in
         ;;   its popup rule causes eglot to steal focus too often.
         eglot-auto-display-help-buffer nil)
-  (static-when (or (modulep! -lsp-flymake) (modulep! :checkers syntax -flymake))
+  (static-when (modulep! :checkers syntax -flymake)
     (setq eglot-stay-out-of '(flymake)))
 
   :config
@@ -22,7 +22,7 @@
     :documentation   #'+eglot-lookup-documentation)
 
   ;; Leave management of flymake to the :checkers syntax module.
-  (static-when (or (modulep! -lsp-flymake) (modulep! :checkers syntax -flymake))
+  (static-when (modulep! :checkers syntax -flymake)
     (add-to-list 'eglot-stay-out-of 'flymake))
 
   ;; NOTE: This setting disable the eglot-events-buffer enabling more consistent
@@ -65,5 +65,5 @@ server getting expensively restarted when reverting buffers."
 
 
 (use-package! flycheck-eglot
-  :when (or (modulep! -lsp-flymake) (modulep! :checkers syntax -flymake))
+  :when (modulep! :checkers syntax -flymake)
   :hook (eglot-managed-mode . flycheck-eglot-mode))

@@ -72,9 +72,6 @@ variable.")
   ;; Support Juila only if no dedicated module is used.
   (static-unless (modulep! :lang julia)
     (add-to-list 'auto-mode-alist '("\\.[jJ][lL]\\'" . ess-julia-mode)))
-  ;; Do not use flycheck when +lsp-flymake is set
-  (static-when (modulep! :tools lsp +lsp-flymake)
-    (pushnew! +flycheck-disabled-modes 'ess-r-mode))
 
   :config
   ;; Tree-sitter support
@@ -86,8 +83,7 @@ variable.")
     (add-hook 'ess-r-mode-local-vars-hook #'tree-sitter! 'append))
 
   (setq ess-offset-continued 'straight
-        ess-use-flymake (or (modulep! :tools lsp +lsp-flymake)
-                            (modulep! :checkers syntax +flymake))
+        ess-use-flymake (modulep! :checkers syntax +flymake)
         ess-nuke-trailing-whitespace-p t
         ess-style 'DEFAULT
         ess-history-directory (expand-file-name "ess-history/" zenit-cache-dir)

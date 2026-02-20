@@ -4,15 +4,11 @@
 ;;; Flycheck
 
 
-(defvar +flycheck-disabled-modes '())
-
 (use-package! flycheck
   :unless (modulep! +flymake)
   :commands flycheck-list-errors flycheck-buffer
   :hook (zenit-first-buffer . global-flycheck-mode)
   :config
-  (setq! flycheck-global-modes (cons 'not +flycheck-disabled-modes))
-
   (setq flycheck-emacs-lisp-load-path 'inherit)
 
   ;; Rerunning checks on every newline is a mote excessive.
@@ -74,7 +70,7 @@
 ;;; Flymake
 
 (use-package! flymake
-  :when (or (modulep! +flymake) (modulep! :tools lsp +lsp-flymake))
+  :when (modulep! +flymake)
   :defer t
   :init
   (static-when (modulep! +flymake)
@@ -89,7 +85,7 @@
 
 
 (use-package! flymake-popon
-  :when (or (modulep! +flymake) (modulep! :tools lsp +lsp-flymake))
+  :when (modulep! +flymake)
   :hook (flymake-mode . flymake-popon-mode)
   :config
   (setq flymake-popon-method (static-if (modulep! +childframe)

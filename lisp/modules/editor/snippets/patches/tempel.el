@@ -144,7 +144,7 @@
 ;;   the patch for `tempel--element'.
 (el-patch-defun tempel--insert (template region)
   "Insert TEMPLATE given the current REGION."
-  (let ((plist template)
+  (let ((plist (tempel--template-plist template))
         ;; Capture fixed region bounds if region is active
         (el-patch-add
           (fixed-region (when region
@@ -154,8 +154,6 @@
                            (copy-marker (car region) t)
                            ;; nil = front-advance
                            (copy-marker (cdr region) nil))))))
-    (while (and plist (not (keywordp (car plist))))
-      (pop plist))
     (eval (plist-get plist :pre) 'lexical)
     (unless (eq buffer-undo-list t)
       (push '(apply tempel--disable) buffer-undo-list))
@@ -170,8 +168,8 @@
       (let ((st (cons nil nil))
             (ov (point))
             (tempel--inhibit-hooks t))
-        (while (and template (not (keywordp (car template))))
-          (tempel--element st (el-patch-swap region fixed-region) (pop template)))
+        (cl-loop for x in template until (keywordp x)
+                 do (tempel--element st (el-patch-swap region fixed-region) x))
         (setq ov (make-overlay ov (point) nil t))
         (push ov (car st))
         (overlay-put ov 'modification-hooks (list #'tempel--range-modified))

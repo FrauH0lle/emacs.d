@@ -31,7 +31,7 @@
   (:doc "`+popup--suppressed-predicates' is defined")
   (should (boundp '+popup--suppressed-predicates)))
 
-(zenit-deftest +popup--find-popup-buffers
+(zenit-deftest +popup--classify-popup-buffers
   (:vars
    (+popup--suppressed-names
     (a (get-buffer-create "a"))
@@ -57,15 +57,15 @@
      (mapc #'kill-buffer (list a b c d))))
   ,test
   (test)
-  :doc "`+popup--find-popup-buffers' returns popup buffers"
+  :doc "`+popup--classify-popup-buffers' returns popup buffers"
   (should (zenit-test-same-items-p
            `((nil . ,a) (nil . ,c) (nil . ,d))
-           (+popup--find-popup-buffers (list a b c d))
+           (+popup--classify-popup-buffers (list a b c d))
            :test #'equal))
-  :doc "`+popup--find-popup-buffers' marks buffers which should be suppressed"
+  :doc "`+popup--classify-popup-buffers' marks buffers which should be suppressed"
   (should (eq 'suppressed
               (progn
-                (+popup--find-popup-buffers (list a b c d))
+                (+popup--classify-popup-buffers (list a b c d))
                 (+popup-buffer-parameter 'status d)))))
 
 (zenit-deftest +popup--find-buried-popup-buffers

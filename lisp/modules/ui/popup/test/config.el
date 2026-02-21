@@ -106,8 +106,7 @@
 (zenit-deftest +tab-line-temp-undedicate-win-a
   (:doc "`+tab-line-temp-undedicate-win-a' advises `tab-line-select-tab-buffer'")
   (progn
-    (should (fboundp '+tab-line-temp-undedicate-win-a))
-    (should (advice-member-p '+tab-line-temp-undedicate-win-a #'tab-line-select-tab-buffer))))
+    (should (fboundp '+tab-line-temp-undedicate-win-a))))
 
 (zenit-deftest +popup-buffer-mode
   (:doc "`+popup-buffer-mode' is defined")

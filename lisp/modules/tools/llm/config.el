@@ -186,14 +186,11 @@ Uses hierarchical composition strategy by default to layer:
 
   (setq
    ;; Use `org-mode' for the `gptel' buffer
-   gptel-default-mode 'org-mode
+   gptel-default-mode 'markdown-mode
    ;; Always include tool output
    gptel-include-tool-results t
    ;; Make expert commands available
    gptel-expert-commands t)
-  ;; Prettier prompts
-  ;; (setf (alist-get 'org-mode gptel-prompt-prefix-alist) "*Prompt*: "
-  ;;       (alist-get 'org-mode gptel-response-prefix-alist) "*Response*:\n")
   ;; With `gptel-highlight-mode', prefixes are not neccessary anymore
   (setq gptel-prompt-prefix-alist nil
         gptel-response-prefix-alist nil)
@@ -213,15 +210,44 @@ Uses hierarchical composition strategy by default to layer:
   (gptel-make-anthropic "Claude"
     :stream t
     :key 'gptel-api-key)
-  ;; DeepSeek (as default)
-  (setq gptel-model 'deepseek-chat
-        gptel-backend (gptel-make-deepseek "DeepSeek"
-                        :stream t
-                        :key 'gptel-api-key))
-  ;; GLM
-  (gptel-make-glm "GLM"
+  ;; DeepSeek (Anthropic API)
+  (gptel-make-anthropic "DeepSeek-Chat-coding"
     :stream t
-    :key 'gptel-api-key)
+    :key 'gptel-api-key
+    :request-params '(:max_tokens 8192
+                      :temperature 0.0
+                      :thinking (:type "enabled"))
+    :host "api.deepseek.com"
+    :endpoint "/anthropic/v1/messages"
+    :models '((deepseek-chat
+               :capabilities (tool)
+               :context-window 128
+               :input-cost 0.56
+               :output-cost 1.68)))
+  (gptel-make-anthropic "DeepSeek-R-coding"
+    :stream t
+    :key 'gptel-api-key
+    :request-params '(:max_tokens 65536
+                      :temperature 0.0
+                      :thinking (:type "enabled"))
+    :host "api.deepseek.com"
+    :endpoint "/anthropic/v1/messages"
+    :models '((deepseek-reasoner
+               :capabilities (tool reasoning)
+               :context-window 128
+               :input-cost 0.56
+               :output-cost 1.68)))
+
+  ;; GLM
+  (setq gptel-model 'glm-5
+        gptel-backend (gptel-make-glm-openai "GLM-coding"
+                        :stream t
+                        :key 'gptel-api-key
+                        :request-params '(:thinking
+                                          (:type "enabled"
+                                           :clear_thinking :json-false)
+                                          :max_tokens 16384
+                                          :temperature 0.7)))
 
   ;; (setq gptel-display-buffer-action nil)  ; if user changes this, popup manager will bow out
   ;; (set-popup-rule!

@@ -91,7 +91,7 @@ Respects `diff-hl-disable-on-remote'."
   ;; Slightly more conservative delay before updating the diff
   (setq diff-hl-flydiff-delay (if (featurep :system 'macos) 1.0 0.5))  ; default: 0.3
   ;; Don't block Emacs when updating vc gutter
-  (setq diff-hl-update-async (or (> emacs-major-version 30) 'thread))
+  (setq diff-hl-update-async (> emacs-major-version 30))
   ;; Get realtime feedback in diffs after staging/unstaging hunks.
   (setq diff-hl-show-staged-changes nil)
 

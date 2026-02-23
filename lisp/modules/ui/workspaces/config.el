@@ -190,14 +190,34 @@ Will be stored in `persp-save-dir'.")
   ;; `tab-bar' integration
   (after! tab-bar
     (setq! tab-bar-close-button-show nil
-           tab-bar-new-button-show nil))
+           tab-bar-new-button-show nil
+           tab-bar-tab-name-function #'tab-bar-tab-name-truncated)
+
+    ;; Ensure new tabs get assigned to the current workspace group
+    (add-hook 'tab-bar-tab-post-open-functions
+              #'+workspaces-assign-tab-group-h)
+
+    ;; Prevent moving tabs between workspaces via tab-bar-change-tab-group
+    (defadvice! +workspaces-restrict-tab-group-change-a (&rest _)
+      "Prevent changing tab groups directly; use workspace commands instead."
+      :override #'tab-bar-change-tab-group
+      (user-error "Use workspace commands to move tabs between workspaces")))
+
   (add-hook! 'zenit-switch-frame-hook
     (defun +workspaces-set-visible-tabs ()
-      "Set `tab-bar-show' according to the number of frames.
-If only one frame is visible, set it to one, otherwise to zero."
-      (setq! tab-bar-show (if (length> (visible-frame-list) 1)
-                              0
-                            1))))
+      "Set `tab-bar-show' according to the number of frames and workspaces.
+
+With multiple visible frames, always show the tab bar. Otherwise, show
+it when there is more than one workspace group, or fall back to showing
+when there is more than one tab."
+      (setq! tab-bar-show
+             (cond
+              ;; Multiple visible frames: always show
+              ((length> (visible-frame-list) 1) 0)
+              ;; Multiple workspace groups: always show
+              ((length> (frame-parameter nil 'workspaces) 1) 0)
+              ;; Single group: show only if more than 1 tab
+              (t 1)))))
 
   ;; `consult' integration
   (static-when (modulep! :completion vertico)
@@ -293,7 +313,7 @@ If only one frame is visible, set it to one, otherwise to zero."
       ;; Load and save configurations for tab-bar.
       (add-hook 'persp-before-save-state-to-file-functions #'+workspaces-save-tab-bar-data-to-file-h)
       (+workspaces-load-tab-bar-data-from-file-h)))
-  (add-hook 'persp-mode-hook #'perspective-tabs-mode)
+  (add-hook 'persp-mode-hook #'+workspace-tabs-mode)
 
   ;;;; Restore frames
 

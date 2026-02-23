@@ -308,6 +308,7 @@
          :desc "Kill this workspace"       "d"   #'+workspace/kill
          :desc "Rename workspace"          "r"   #'+workspace/rename
          :desc "Restore last session"      "R"   #'+workspace/restore-last-session
+         :desc "Tabs"                      "t"   tab-prefix-map
          :desc "Next workspace"            "]"   #'+workspace/switch-right
          :desc "Previous workspace"        "["   #'+workspace/switch-left
          :desc "Switch to 1st workspace"   "1"   #'+workspace/switch-to-0

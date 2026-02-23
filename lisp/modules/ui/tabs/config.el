@@ -19,7 +19,13 @@
   (el-patch-defun tab-bar-tab-name-format-hints (name _tab i)
     "Show absolute numbers on tabs in the tab bar before the tab name.
 It has effect when `tab-bar-tab-hints' is non-nil."
-    (if tab-bar-tab-hints (concat (format (el-patch-swap "%d " "  #%d: ") i) name) name)))
+    (if tab-bar-tab-hints (concat (format (el-patch-swap "%d " "  #%d: ") i) name) name))
+
+  (el-patch-defun tab-bar-tab-group-format-default (tab i &optional current-p)
+    (propertize
+     (concat (if (and tab-bar-tab-hints (not current-p)) (format (el-patch-swap "%d " "  #%d: ") i) "")
+             (funcall tab-bar-tab-group-function tab))
+     'face (if current-p 'tab-bar-tab-group-current 'tab-bar-tab-group-inactive))))
 
 
 (use-package! tab-bar
@@ -66,11 +72,11 @@ It has effect when `tab-bar-tab-hints' is non-nil."
 
       ;; Active tab
       `(tab-bar-tab-group-current
-        :background ,(face-attribute 'mode-line-inactive :background) :foreground ,(face-attribute 'default :foreground)
+        :inherit font-lock-escape-face
+        :background ,(face-attribute 'mode-line-inactive :background)
         :box (:line-width 3
               :color ,(face-attribute 'mode-line-inactive :background)
               :style nil)))))
-
 
 ;; Based on
 ;; https://andreyor.st/posts/2020-05-10-making-emacs-tabs-look-like-in-atom/

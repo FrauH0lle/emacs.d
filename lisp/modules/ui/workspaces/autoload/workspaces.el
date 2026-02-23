@@ -22,8 +22,8 @@
 
 (defun +workspace--generate-id ()
   (or (cl-loop for name in (+workspace-list-names)
-               when (string-match-p "^workspace-[0-9]+$" name)
-               maximize (string-to-number (substring name 10)) into max
+               when (string-match "^workspace-\\([0-9]+\\)$" name)
+               maximize (string-to-number (match-string 1 name)) into max
                finally return (if max (1+ max)))
       1))
 
@@ -82,14 +82,19 @@ error if NAME doesn't exist."
            collect it))
 
 ;;;###autoload
-(defun +workspace-buffer-list (&optional persp)
-  "Return a list of buffers in PERSP.
+(defun +workspace-buffer-list (&optional frame-or-persp)
+  "Return a list of buffers in FRAME-OR-PERSP.
 
-PERSP can be a string (name of a workspace) or a workspace (satisfies
-`+workspace-p'). If nil or omitted, it defaults to the current workspace."
-  (let ((persp (or persp (+workspace-current))))
-    (unless (+workspace-p persp)
-      (user-error "Not in a valid workspace (%s)" persp))
+FRAME-OR-PERSP can be:
+
+- A frame: return buffers from the current workspace of that frame
+- A string: return buffers from the workspace with that name
+- A workspace object (satisfies `+workspace-p'): return its buffers
+- nil: return buffers from the current workspace"
+  (let ((persp (cond ((framep frame-or-persp) (+workspace-current frame-or-persp))
+                     ((stringp frame-or-persp) (+workspace-get frame-or-persp))
+                     ((+workspace-p frame-or-persp) frame-or-persp)
+                     (t (+workspace-current)))))
     (persp-buffers persp)))
 
 ;;;###autoload
@@ -144,7 +149,7 @@ found or wasn't saved with `+workspace-save'."
      fname (list (cl-remove-if (lambda (ws) (equal workspace-name (nth 1 ws)))
                                (zenit-file-read fname :by 'read)
                                :count 1)))
-    (not (member name (persp-list-persp-names-in-file fname)))))
+    (not (member workspace-name (persp-list-persp-names-in-file fname)))))
 
 ;;;###autoload
 (defun +workspace-new (name)
@@ -156,8 +161,7 @@ Otherwise return t on success, nil otherwise."
     (error "A workspace named '%s' already exists" name))
   (when (frame-parameter (selected-frame) 'workspace-exclusive)
     (error "New workspaces are not allowed in this frame"))
-  (let ((persp (persp-add-new name))
-        (+popup--inhibit-transient t))
+  (let ((persp (persp-add-new name)))
     (save-window-excursion
       (let ((ignore-window-parameters t)
             (+popup--inhibit-transient t))
@@ -258,7 +262,7 @@ switch to the last recent tab in the origin frame."
       (persp-activate (+workspace-get workspace) new-frame)
       (select-frame-set-input-focus new-frame))
 
-    (setq +workspace--last (persp-name (frame-parameter old-frame 'persp)))
+    (setq +workspace--last (safe-persp-name (frame-parameter old-frame 'persp)))
     (+workspaces--update-tab-bar)))
 
 
@@ -330,7 +334,7 @@ If called with C-u, prompts you for the name of the workspace to delete."
       (let ((workspaces (+workspace-list-names)))
         (if (not (member name workspaces))
             (+workspace-message (format "'%s' workspace doesn't exist" name) 'warn)
-          (cond ((delq (selected-frame) (persp-frames-with-persp (get-frame-persp)))
+          (cond ((remq (selected-frame) (persp-frames-with-persp (get-frame-persp)))
                  (user-error "Can't close workspace, it's visible in another frame"))
                 ((not (equal (+workspace-current-name) name))
                  (+workspace-kill name))
@@ -354,7 +358,7 @@ If called with C-u, prompts you for the name of the workspace to delete."
 (defun +workspace/delete (name)
   "Delete a saved workspace in `persp-save-dir'.
 
-Can only selete workspaces saved with `+workspace/save' or
+Can only delete workspaces saved with `+workspace/save' or
 `+workspace-save'."
   (interactive
    (list
@@ -578,7 +582,8 @@ create new."
       (setq persp-names-cache
             (append (cl-subseq persp-names 0 persp-index)
                     (list current-name)
-                    (cl-subseq persp-names persp-index)))
+                    (cl-subseq persp-names persp-index)
+                    (list persp-nil-name)))
       (let ((frame-ws-new
              (append (cl-subseq frame-ws-names 0 frame-ws-index)
                      (list current-name)
@@ -650,9 +655,9 @@ Format: ((frame . workspace-name) ...)")
 
 (defun +workspaces--add-ws-to-frame (name &optional frame)
   (let* ((frame (or frame (selected-frame)))
-         (workspaces (nreverse (frame-parameter frame 'workspaces))))
+         (workspaces (reverse (frame-parameter frame 'workspaces))))
     (cl-pushnew name workspaces :test #'string=)
-    (let ((workspaces (nreverse workspaces)))
+    (let ((workspaces (reverse workspaces)))
       (setf (alist-get frame +workspaces-frames-alist) workspaces)
       (set-frame-parameter frame 'workspaces workspaces))))
 
@@ -777,13 +782,14 @@ well as updates `+workspaces-frames-alist'."
 The frame is associated with the same workspace it was spawned from and
 displays the last selected buffer."
   (when persp-mode
-    (with-selected-frame frame
-      ;; Dp not restore the last window configuration
-      (let ((persp-init-frame-behaviour nil))
-        (persp-activate (frame-parameter (previous-frame) 'persp) frame))
-      (+workspaces--associate-frame frame)
-      (set-frame-parameter frame 'workspace-exclusive t)
-      (+workspaces--update-tab-bar))))
+    (let ((persp-to-activate (frame-parameter (selected-frame) 'persp)))
+      (with-selected-frame frame
+        ;; Do not restore the last window configuration
+        (let ((persp-init-frame-behaviour nil))
+          (persp-activate persp-to-activate frame))
+        (+workspaces--associate-frame frame)
+        (set-frame-parameter frame 'workspace-exclusive t)
+        (+workspaces--update-tab-bar)))))
 
 ;;;###autoload
 (defun +workspaces-associate-frame-fn (frame &optional _new-frame-p)

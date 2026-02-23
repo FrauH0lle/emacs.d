@@ -62,7 +62,9 @@ Will be stored in `persp-save-dir'.")
         (dolist (frame (frame-list))
           (when (string= (safe-persp-name (get-current-persp frame)) persp-nil-name)
             ;; Take extra steps to ensure no frame ends up in the nil perspective
-            (persp-frame-switch (or (cadr (hash-table-keys *persp-hash*))
+            (persp-frame-switch (or (car-safe (cl-remove-if
+                                               (lambda (x) (string= x persp-nil-name))
+                                               (hash-table-keys *persp-hash*)))
                                     +workspaces-main)
                                 frame))))))
 
@@ -71,7 +73,7 @@ Will be stored in `persp-save-dir'.")
       "Ensure a main workspace exists."
       (when persp-mode
         (let (persp-before-switch-functions)
-          (unless (or (persp-get-by-name +workspaces-main)
+          (unless (or (persp-get-by-name +workspaces-main *persp-hash* nil)
                       ;; Start from 2 b/c persp-mode counts the nil workspace
                       (> (hash-table-count *persp-hash*) 2))
             (persp-add-new +workspaces-main))
@@ -142,7 +144,7 @@ Will be stored in `persp-save-dir'.")
       "Add default buffers to perspective."
       (let ((persp (get-current-persp)))
         (when persp
-          (dolist (regexp '("^\\*\\Messages" "^\\*Warnings"))
+          (dolist (regexp '("^\\*Messages" "^\\*Warnings"))
             (persp-do-buffer-list-by-regexp
              :regexp regexp :func 'persp-add-buffer :rest-args (list persp nil)
              :blist (persp-buffer-list-restricted (selected-frame) 1) :noask t))))))

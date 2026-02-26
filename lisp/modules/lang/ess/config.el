@@ -250,11 +250,6 @@ See URL `https://github.com/emacs-ess/ESS/issues/300'."
     comint-scroll-to-bottom-on-output t
     comint-move-point-for-output t)
 
-  (add-hook! 'zenit-real-buffer-functions
-    (defun +ess-inferior-buffer-p (buf)
-      "Returns non-nil if BUF is a `inferior-ess' buffer."
-      (with-current-buffer buf (derived-mode-p 'inferior-ess-mode))))
-
   ;; Save history when killing the ess inferior buffer. See
   ;; https://github.com/emacs-ess/ESS/issues/970
   (defun +ess-kill-proc-before-buffer-h ()

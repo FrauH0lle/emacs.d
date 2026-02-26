@@ -18,8 +18,7 @@
 
 
 ;;;###autoload
-(defvar zenit-real-buffer-functions
-  '(zenit-dired-buffer-p)
+(defvar zenit-real-buffer-functions '()
   "A list of predicate functions run to determine if a buffer is
 real, unlike `zenit-unreal-buffer-functions'. They are passed one
 argument: the buffer to be tested.
@@ -40,6 +39,11 @@ Should any of these functions return non-nil, the rest of the
 functions are ignored and the buffer is considered unreal.
 
 See `zenit-real-buffer-p' for more information.")
+
+;;;###autoload
+(defvar zenit-real-buffer-modes
+  '(dired-mode comint-mode term-mode shell-mode eshell-mode vterm-mode)
+  "A list of major modes whose buffers are considered real.")
 
 ;;;###autoload
 (defvar-local zenit-real-buffer-p nil
@@ -97,15 +101,14 @@ PROJECT is nil, default to the current project."
            finally return (hash-table-keys projects)))
 
 ;;;###autoload
-(defun zenit-dired-buffer-p (buf)
-  "Returns non-nil if BUF is a dired buffer."
-  (provided-mode-derived-p (buffer-local-value 'major-mode buf)
-                           'dired-mode))
+(defun zenit-special-buffer-p (buf &optional consider-mode-p)
+  "Returns non-nil if BUF's name starts with an *.
 
-;;;###autoload
-(defun zenit-special-buffer-p (buf)
-  "Returns non-nil if BUF's name starts with an *."
-  (char-equal ?* (aref (buffer-name buf) 0)))
+If CONSIDER-MODE-P is non-nil, returns non-nil if BUF's mode is derived
+from `special-mode'."
+  (or (char-equal ?* (aref (buffer-name buf) 0))
+      (and consider-mode-p
+           (provided-mode-derived-p (buffer-local-value 'major-mode buf) 'special-mode))))
 
 ;;;###autoload
 (defun zenit-temp-buffer-p (buf)
@@ -166,6 +169,8 @@ If BUFFER-OR-NAME is omitted or nil, the current buffer is tested."
     (and (buffer-live-p buf)
          (not (zenit-temp-buffer-p buf))
          (or (buffer-local-value 'zenit-real-buffer-p buf)
+             (provided-mode-derived-p (buffer-local-value 'major-mode buf)
+                                      zenit-real-buffer-modes)
              (run-hook-with-args-until-success 'zenit-real-buffer-functions buf)
              (not (run-hook-with-args-until-success 'zenit-unreal-buffer-functions buf))))))
 

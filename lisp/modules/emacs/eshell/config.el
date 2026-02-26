@@ -83,9 +83,6 @@ You should use `set-eshell-alias!' to change this.")
         eshell-glob-case-insensitive t
         eshell-error-if-no-glob t)
 
-  ;; Consider eshell buffers real
-  (add-hook 'eshell-mode-hook #'zenit-mark-buffer-as-real-h)
-
   ;; Keep track of open eshell buffers
   (add-hook 'eshell-mode-hook #'+eshell-init-h)
   (add-hook 'eshell-exit-hook #'+eshell-cleanup-h)

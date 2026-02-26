@@ -98,14 +98,6 @@
     (kill-buffer a)
     (should (equal nil (zenit-open-projects)))))
 
-(zenit-deftest zenit-dired-buffer-p
-  (:doc "`zenit-dired-buffer-p' detects `dired' buffers")
-  (let ((dired-buf (dired ".")))
-    (with-temp-buffer
-      (should-not (zenit-dired-buffer-p (current-buffer))))
-    (should (equal 'dired-mode (zenit-dired-buffer-p dired-buf)))
-    (kill-buffer dired-buf)))
-
 (zenit-deftest zenit-special-buffer-p
   (:doc "`zenit-special-buffer-p' detects special buffers")
   ,test
@@ -115,6 +107,16 @@
     (kill-buffer buf))
   (let ((buf (get-buffer-create "test-buffer")))
     (should-not (zenit-special-buffer-p buf))
+    (kill-buffer buf))
+  (let ((buf (get-buffer-create "test-buffer")))
+    (with-current-buffer buf
+      (special-mode))
+    (should (zenit-special-buffer-p buf t))
+    (kill-buffer buf))
+  (let ((buf (get-buffer-create "test-buffer")))
+    (with-current-buffer buf
+      (text-mode))
+    (should-not (zenit-special-buffer-p buf t))
     (kill-buffer buf)))
 
 (zenit-deftest zenit-temp-buffer-p
@@ -168,7 +170,8 @@
 
 (zenit-deftest zenit-real-buffer-p
   (:vars (zenit-real-buffer-functions
-          zenit-unreal-buffer-functions))
+          zenit-unreal-buffer-functions
+          zenit-real-buffer-modes))
   ,test
   (test)
   :doc "`zenit-real-buffer-p' returns nil if the buffer is not live"
@@ -183,6 +186,12 @@
   (let ((buf (get-buffer-create "test-buffer")))
     (with-current-buffer buf
       (setq zenit-real-buffer-p t))
+    (should (zenit-real-buffer-p buf))
+    (kill-buffer buf))
+  :doc "`zenit-real-buffer-p' returns t if the buffer's major mode is in `zenit-real-buffer-modes'"
+  (let ((buf (get-buffer-create "test-buffer")))
+    (with-current-buffer buf
+      (comint-mode))
     (should (zenit-real-buffer-p buf))
     (kill-buffer buf))
   :doc "`zenit-real-buffer-p' returns t if any of the functions in `zenit-real-buffer-functions' return non-nil"

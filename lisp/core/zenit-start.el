@@ -209,14 +209,14 @@ If NOW is non-nil, load PACKAGES incrementally, in
         (let ((req (pop packages))
               idle-time)
           (if (and (locate-library (symbol-name req)) (featurep req))
-              (zenit-log "start:inc-loader: Already loaded %s (%d left)" req (length packages))
+              (zenit-log 2 "start:inc-loader: Already loaded %s (%d left)" req (length packages))
             (condition-case-unless-debug e
                 (and
                  (or (null (setq idle-time (current-idle-time)))
                      (< (float-time idle-time) zenit-incremental-first-idle-timer)
                      (not
                       (while-no-input
-                        (zenit-log "start:inc-loader: Loading %s (%d left)" req (length packages))
+                        (zenit-log 2 "start:inc-loader: Loading %s (%d left)" req (length packages))
                         ;; If `default-directory' doesn't exist or is
                         ;; unreadable, Emacs throws file errors.
                         (let ((default-directory zenit-emacs-dir)
@@ -232,7 +232,7 @@ If NOW is non-nil, load PACKAGES incrementally, in
                (message "Error: failed to incrementally load %S because: %s" req e)
                (setq packages nil)))
             (if (null packages)
-                (zenit-log "start:inc-loader: Finished!")
+                (zenit-log 2 "start:inc-loader: Finished!")
               (run-at-time (if idle-time
                                zenit-incremental-idle-timer
                              zenit-incremental-first-idle-timer)

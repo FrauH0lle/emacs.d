@@ -284,7 +284,7 @@ omitted."
   "Load PATH and handle any errors that arise from it.
 
 If NOERROR, don't throw an error if PATH doesn't exist."
-  (zenit-log "load: %s %s" (abbreviate-file-name path) noerror)
+  (zenit-log 2 "load: %s %s" (abbreviate-file-name path) noerror)
   (condition-case-unless-debug e
       (load path noerror 'nomessage)
     (zenit-error
@@ -353,7 +353,7 @@ changed."
 (defun zenit-run-hook (hook)
   "Run HOOK (a hook function) with better error handling.
 Meant to be used with `run-hook-wrapped'."
-  (zenit-log 2 "hook:%s: run %s" (or zenit--hook '*) hook)
+  (zenit-log 3 "hook:%s: run %s" (or zenit--hook '*) hook)
   (condition-case-unless-debug e
       (funcall hook)
     (error
@@ -1443,7 +1443,7 @@ CONTEXT is a `zenit-module-context'."
   `(let ((zenit-module-context
           (let ((module-key ,module-key))
             (zenit-module-context module-key))))
-     (zenit-log 2 ":context:module: =%s" zenit-module-context)
+     (zenit-log 3 ":context:module: =%s" zenit-module-context)
      ,@body))
 
 

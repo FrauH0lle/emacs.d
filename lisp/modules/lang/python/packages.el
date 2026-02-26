@@ -27,7 +27,3 @@
 ;; Testing frameworks
 (package! nose :lockfile lang_python)
 (package! python-pytest :lockfile lang_python)
-
-;; Import managements
-(package! pyimport :lockfile lang_python)
-(package! py-isort :lockfile lang_python)

@@ -115,28 +115,6 @@
     :n "RET" #'+python/goto-end-of-prompt)))
 
 
-(use-package! pyimport
-  :defer t
-  :init
-  (map! :after python
-        :map python-base-mode-map
-        :localleader
-        (:prefix ("i" . "imports")
-         :desc "Insert missing imports" "i" #'pyimport-insert-missing
-         :desc "Remove unused imports"  "R" #'pyimport-remove-unused
-         :desc "Optimize imports"       "o" #'+python/optimize-imports)))
-
-
-(use-package! py-isort
-  :defer t
-  :init
-  (map! :after python
-        :map python-base-mode-map
-        :localleader
-        (:prefix ("i" . "imports")
-         :desc "Sort imports"      "s" #'py-isort-buffer
-         :desc "Sort region"       "r" #'py-isort-region)))
-
 (use-package! nose
   :commands nose-mode
   :preface (defvar nose-mode-map (make-sparse-keymap))

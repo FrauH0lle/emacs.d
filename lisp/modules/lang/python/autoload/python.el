@@ -73,10 +73,3 @@ isn't already there)."
   (interactive)
   (goto-char (point-max))
   (evil-append 1))
-
-;;;###autoload
-(defun +python/optimize-imports ()
-  "organize imports"
-  (interactive)
-  (pyimport-remove-unused)
-  (py-isort-buffer))

@@ -8,6 +8,8 @@ changelog](https://www.gnu.org/prep/standards/html_node/Style-of-Change-Logs.htm
 ```
 type(component): brief description (50-72 chars)
 
+[Optional overall description]
+
 * [filename].[ext] ([affected-items]): [Description of changes]
 [Additional context and rationale]
 [Limitations or future implications]
@@ -23,10 +25,14 @@ type(component): brief description (50-72 chars)
    - Example: `feat(parser): Add finite state machine`
    - Example: `fix(api): Prevent racing of requests`
    
-   1. Append a `!` after the type/scope if the commit introduces a breaking
-      change
+   Append a `!` after the type/scope if the commit introduces a breaking change
    
-2. For files changed, list them in parentheses followed by affected
+2. **Optional**: Describe the overall changes made by this commit in present
+   tense, explaining:
+   - What changed
+   - Why it changed (rationale)
+      
+3. For files changed, list them in parentheses followed by affected
    functions/variables:
 
    ```
@@ -35,15 +41,15 @@ type(component): brief description (50-72 chars)
    
    If you have multiple changes affecting different items in the same file, use
    parentheses to separate them. Add a blank line to separate the items.
-   
+
    ```
    * file.ext (function1, variable1): Description.
-   
+
    (function2, variable2): Description.
-   
+
    (function3, variable3, variable4): Description.
    ```
-   
+
    Break long lists of function names by closing continued lines with `)`,
    rather than `,`, and opening the continuation with `(`. Here is an example:
    
@@ -51,14 +57,8 @@ type(component): brief description (50-72 chars)
    * src/keyboard.c (menu_bar_items, tool_bar_items)
    (Fexecute_extended_command): Deal with 'keymap' property.
    ```
-   
-3. Write the main description in present tense, explaining:
-   - What changed
-   - Why it changed (rationale)
-   - Any limitations or caveats
-   - Future implications if relevant
 
-4. When multiple files are changed, list each one with its own bullet point and
+   When **multiple files** are changed, list each one with its own bullet point and
    description:
 
    ```
@@ -66,24 +66,28 @@ type(component): brief description (50-72 chars)
    * file2.ext (functions): Related changes.
    ```
 
-5. For implementation details that affect multiple components, explain shared
-   changes once and use "Ditto" for repeated similar changes:
+   For implementation details that affect **multiple components**, explain **shared
+   changes** once and use "Ditto" for repeated similar changes:
 
    ```
    * component1.ext: Main change description.
    * component2.ext: Ditto.
    ```
 
-6. Include important context about:
+   Include important context about:
    - Experimental features or APIs
    - Testing configurations
    - Known limitations
    - Future plans or potential changes
 
-7. Write descriptions that are clear enough to be understood without needing to
-   look at the code, while still being concise
+   > [!IMPORTANT] 
+   > Write descriptions that are clear enough to be understood without needing to
+   > look at the code, while still being concise
 
-8. One or more footers may be provided one blank line after the body. Each
+4. **Optional**: Mention any limitations, caveats or future implications if
+   relevant due to the overall changes.
+
+5. One or more footers may be provided one blank line after the body. Each
    footer must consist of a word token, followed by a `:<space>` separator,
    followed by a string value (see [git trailer
    convention](https://git-scm.com/docs/git-interpret-trailers)). A footer’s
@@ -124,9 +128,7 @@ type(component): brief description (50-72 chars)
 | ci       | CI configuration changes                                          |
 | chore    | General maintenance                                               |
 | revert   | Revert previous changes                                           |
-| pkg      | Addition of package/library or version change                     |
 | tweak    | Code changes that change user-facing defaults but not drastically |
-
 
 ## Examples:
 
@@ -135,8 +137,10 @@ type(component): brief description (50-72 chars)
 ```
 feat!(parser): Add async event handler system
 
+Implement asynchronous event handling system using asyncio, which
+should provide better scaling for high load situations.
+
 * event_handler.py (AsyncEventManager, EventDispatcher, EventQueue): 
-Implement asynchronous event handling system using asyncio.
 This provides a more scalable approach to handling multiple
 concurrent events with support for priorities and custom callbacks.
 
@@ -164,6 +168,10 @@ Performance impact is minimal (<1ms per write operation).
 ```
 feat!(auth): Implement OAuth2 provider integration
 
+OAuth2 was a longstanding feature request which we now finally 
+implement. Redis is used for caching of security tokens which 
+provides very high and scalable performance.
+
 * auth/provider.js (createOAuthClient, validateToken): Add OAuth2
 client implementation with support for multiple providers.
 Includes automatic token refresh and session management.
@@ -179,5 +187,3 @@ BREAKING CHANGE: Authentication flow now requires OAuth2 configuration
 Refs: #234
 Reviewed-by: @security-team
 ```
-
-

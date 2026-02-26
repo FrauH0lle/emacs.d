@@ -1,5 +1,6 @@
 ;; lisp/core/lib/zenit-lib-compile.el -*- lexical-binding: t; no-byte-compile: t; -*-
 
+(require 'cl-lib)
 (autoload #'async-inject-variables "async")
 (autoload #'async-get "async")
 

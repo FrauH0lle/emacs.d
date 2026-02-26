@@ -20,14 +20,21 @@
                             magic-mode-alist
                             magic-fallback-mode-alist)
                collect `(set-default-toplevel-value ',var ',(symbol-value var)))
-    ,@(cl-loop with site-run-dir =
+    ;; Ensure site lisp entries are placed at the end of `load-path' in
+    ;; interactive sessions, or malformed/strange EMACSLOADPATH values could
+    ;; mess with load order expectations.
+    ,@(cl-loop for path in (reverse (get 'load-path 'initial-value))
+               collect `(add-to-list 'load-path ,path))
+    ,@(cl-loop with init-load-path = (get 'load-path 'initial-value)
+               with site-run-dir =
                (ignore-errors
                  (directory-file-name (file-name-directory
                                        (locate-library site-run-file))))
                for path in load-path
-               unless (and site-run-dir (file-in-directory-p path site-run-dir))
-               unless (file-in-directory-p path data-directory)
+               unless (member path init-load-path)
                unless (file-equal-p path zenit-core-dir)
+               unless (file-in-directory-p path data-directory)
+               unless (and site-run-dir (file-in-directory-p path site-run-dir))
                collect `(add-to-list 'load-path ,path))))
 
 (defun zenit--generate-package-envs ()

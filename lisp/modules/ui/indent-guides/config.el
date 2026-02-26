@@ -20,6 +20,7 @@ the mode will not be activated."
   (defun +indent-guides-init-maybe-h ()
     "Enable `indent-bars-mode' depending on `+indent-guides-inhibit-functions'."
     (unless (or (eq major-mode 'fundamental-mode)
+                (zenit-temp-buffer-p (current-buffer))
                 (run-hook-with-args-until-success '+indent-guides-inhibit-functions))
       (indent-bars-mode +1)))
   :config
@@ -43,11 +44,12 @@ the mode will not be activated."
 
   (add-hook! '+indent-guides-inhibit-functions
     (defun +inodent-guides-in-special-buffers-p ()
-      ;; Buffers that may have special fontification or may be invisible to
-      ;; the user. Particularly src blocks, org agenda, or special buffers
-      ;; like magit.
-      (or (zenit-special-buffer-p (current-buffer))
-          (zenit-temp-buffer-p (current-buffer))))
+      ;; Buffers that may have special fontification or may be invisible to the
+      ;; user. Particularly src blocks, org agenda, or special modes like magit.
+      (and (not (derived-mode-p 'text-mode 'prog-mode 'conf-mode))
+           (or buffer-read-only
+               (bound-and-true-p cursor-intangible-mode)
+               (derived-mode-p 'special-mode))))
     ;; Org's virtual indentation messes up indent-guides.
     (defun +indent-guides-in-org-indent-mode-p ()
       (bound-and-true-p org-indent-mode))

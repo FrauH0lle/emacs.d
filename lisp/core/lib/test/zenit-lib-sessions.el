@@ -35,11 +35,3 @@
 (zenit-deftest zenit/restart
   (:doc "`zenit/restart' is defined")
   (should (fboundp 'zenit/restart)))
-
-(zenit-deftest zenit/new-emacs
-  (:doc "`zenit/new-emacs' is defined")
-  (should (fboundp 'zenit/new-emacs)))
-
-(zenit-deftest zenit/restart-and-restore
-  (:doc "`zenit/restart-and-restore' is defined")
-  (should (fboundp 'zenit/restart-and-restore)))

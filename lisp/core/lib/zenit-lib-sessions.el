@@ -32,9 +32,6 @@
 (declare-function persp-save-state-to-file "ext:persp-mode")
 (declare-function persp-mode "ext:persp-mode")
 
-;; `restart-emacs'
-(declare-function restart-emacs--restore-frames-using-desktop "ext:restart-emacs" (file))
-
 ;; `ui/workspaces'
 (declare-function +workspace-kill "../../modules/ui/workspaces/autoload/workspaces.el" (workspace &optional inhibit-kill-p))
 (declare-function +workspace-list-names "../../modules/ui/workspaces/autoload/workspaces.el" ())
@@ -79,8 +76,7 @@ saving the session state. Otherwise, the default file names for
 the respective backends are used.
 
 When `desktop' is available, the session state is saved using
-`desktop-save' with the specified FILE, and the `frameset' and
-`restart-emacs' packages are used to enhance the session state.
+`desktop-save' with the specified FILE.
 
 If neither `persp-mode' nor `desktop' is available, the
 function signals an error."
@@ -90,10 +86,8 @@ function signals an error."
          (setq persp-auto-save-opt 0)
          (persp-save-state-to-file file))
         ((and (require 'frameset nil t)
-              (require 'restart-emacs nil t))
-         (let ((frameset-filter-alist (append '((client . restart-emacs--record-tty-file))
-                                              frameset-filter-alist))
-               (desktop-base-file-name (file-name-nondirectory file))
+              (require 'desktop nil t))
+         (let ((desktop-base-file-name (file-name-nondirectory file))
                (desktop-dirname (file-name-directory file))
                (desktop-restore-eager t)
                desktop-file-modtime)
@@ -113,9 +107,8 @@ backends. If FILE is provided, it is used as the source file for
 loading the session state. Otherwise, the default file names for
 the respective backends are used.
 
-When `desktop' is available, the session state is loaded using
-`restart-emacs--restore-frames-using-desktop' with the specified
-FILE.
+When `desktop' is available, the session state is loaded with the
+specified FILE.
 
 If neither `persp-mode' nor `desktop' is available, the function
 signals an error."
@@ -132,17 +125,13 @@ signals an error."
                     do (persp-kill name))
            (persp-load-state-from-file file)))
         ((and (require 'frameset nil t)
-              (require 'restart-emacs nil t))
+              (require 'desktop nil t))
          (let* ((file (expand-file-name (zenit-session-file)))
                 desktop-file-modtime
                 (desktop-dirname (file-name-directory file))
                 (desktop-base-file-name (file-name-nondirectory file))
                 (desktop-base-lock-name (concat desktop-base-file-name ".lock"))
                 (desktop-restore-reuses-frames nil)
-                ;; Add filter for tty frames, the filter simply logs a message
-                ;; on the parent ttys of the frame
-                (frameset-filter-alist (append '((tty . restart-emacs--frameset-tty-filter))
-                                               frameset-filter-alist))
                 ;; Disable prompts for safe variables during restoration
                 (enable-local-variables :safe)
                 ;; We mock these two functions while restoring frames calls to
@@ -228,43 +217,7 @@ command then calls `zenit-save-session' with the selected FILE."
   (message "Saving '%s' session" file)
   (zenit-save-session file))
 
-;; NOTE 2023-02-05: Emacs 29+ includes its own `restart-emacs' command which has
-;;   less features. Emacs lacks namespaces so we need to require `restart-emacs'
-;;   after `files' has loaded.
-(eval-and-compile
-  (with-eval-after-load 'files
-    (require 'restart-emacs nil t)))
 ;;;###autoload
 (defalias 'zenit/restart #'restart-emacs)
-
-;;;###autoload
-(defalias 'zenit/new-emacs #'restart-emacs-start-new-emacs)
-
-;;;###autoload
-(defun zenit/restart-and-restore (&optional debug)
-  "Restart Emacs (and the daemon, if active).
-If DEBUG (the prefix arg) is given, start the new instance with
-the --debug switch."
-  (interactive "P")
-  (zenit/quicksave-session)
-  (save-some-buffers nil t)
-  (letf! ((#'save-buffers-kill-emacs #'kill-emacs)
-          (confirm-kill-emacs)
-          (tmpfile (make-temp-file "post-load")))
-    ;; HACK 2023-02-05: `restart-emacs' does not properly escape arguments on
-    ;;   Windows (in `restart-emacs--daemon-on-windows' and
-    ;;   `restart-emacs--start-gui-on-windows'), so don't give it complex
-    ;;   arguments at all. Should be fixed upstream, but restart-emacs seems to
-    ;;   be unmaintained.
-    (with-temp-file tmpfile
-      (print `(progn
-                (add-hook 'window-setup-hook #'zenit-load-session 100)
-                (delete-file ,tmpfile))
-             (current-buffer)))
-    (restart-emacs
-     (append (if debug (list "--debug-init"))
-             (when (boundp 'chemacs-current-emacs-profile)
-               (list "--with-profile" chemacs-current-emacs-profile))
-             (list "-l" tmpfile)))))
 
 (provide 'zenit-lib '(sessions))

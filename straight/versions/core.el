@@ -20,7 +20,6 @@
  ("projectile" . "9325c45e0fd96d5421e75ad901a91ee5353e10ad")
  ("project" . "a0ebb2e9cfda339d8ebda77447c9d822fe313c2d")
  ("rainbow-delimiters" . "f40ece58df8b2f0fb6c8576b527755a552a5e763")
- ("restart-emacs" . "f656ff26f6cf62ae87c8125df82c745b2181deac")
  ("smartparens" . "b629b4e893ba21ba5a381f6c0054bb72f8e96df2")
  ("straight.el" . "25e02065419c8f26ad804f80463362862eb23edd")
  ("undo-tree" . "d8f72bbe7d3c3a2808986febd3bb1a46d4da7f51")

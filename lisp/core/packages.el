@@ -16,7 +16,6 @@
 (package! hide-mode-line :lockfile core)
 (package! highlight-numbers :lockfile core)
 (package! rainbow-delimiters :lockfile core)
-(package! restart-emacs :lockfile core)
 
 ;; zenit-editor.el
 (package! better-jumper :lockfile core)

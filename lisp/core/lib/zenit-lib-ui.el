@@ -9,6 +9,10 @@
 ;; `display-line-numbers'
 (defvar display-line-numbers-type)
 
+;; `posframe'
+(declare-function posframe--kill-buffer "ext:posframe" (buffer-or-name))
+(defvar posframe--frame)
+
 ;; `zenit-lib-buffers'
 (declare-function zenit-real-buffer-list "zenit-lib-buffers" (&optional buffer-list))
 

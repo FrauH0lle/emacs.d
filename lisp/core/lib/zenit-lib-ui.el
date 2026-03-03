@@ -70,6 +70,19 @@ In tty Emacs, messages are suppressed completely."
   "Turn off `show-paren-mode' buffer-locally."
   (setq-local show-paren-mode nil))
 
+;;;###autoload
+(defun zenit-kill-childframes-h ()
+  "Delete all childframes (and `posframe' frames)."
+  (dolist (frame (frame-list))
+    (when (or (frame-parameter frame 'posframe-buffer)
+              (frame-parameter nil 'parent-frame))
+      (let (delete-frame-functions)
+        (delete-frame frame))))
+  (when (featurep 'posframe)
+    (dolist (buffer (buffer-list))
+      (with-current-buffer buffer
+        (when posframe--frame
+          (posframe--kill-buffer buffer))))))
 
 ;;
 ;;; Commands

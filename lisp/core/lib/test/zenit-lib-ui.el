@@ -36,6 +36,10 @@
   (:doc "`zenit-disable-show-paren-mode-h' is defined")
   (should (fboundp 'zenit-disable-show-paren-mode-h)))
 
+(zenit-deftest zenit-kill-childframes-h
+  (:doc "`zenit-kill-childframes-h' is defined")
+  (should (fboundp 'zenit-kill-childframes-h)))
+
 (zenit-deftest zenit/toggle-line-numbers
   (:doc "`zenit/toggle-line-numbers' is defined")
   (should (fboundp 'zenit/toggle-line-numbers)))

@@ -262,10 +262,7 @@ when there is more than one tab."
       (deactivate-mark)))
 
   ;; Fix #1017: stop session persistence from restoring a broken posframe
-  (after! posframe
-    (add-hook! 'persp-after-load-state-functions
-      (defun +workspaces-delete-all-posframes-h (&rest _)
-        (posframe-delete-all))))
+  (add-hook! 'persp-after-load-state-functions #'zenit-kill-childframes-h)
 
   ;; Don't try to persist dead/remote buffers. They cause errors.
   (add-hook! 'persp-filter-save-buffers-functions

@@ -20,8 +20,6 @@
  ("org" . "8b15a0d0b48a0e3ce09be0d208d74a01743cbbe0")
  ("org-cliplink" . "13e0940b65d22bec34e2de4bc8cba1412a7abfbc")
  ("org-contrib" . "f1f6b6ec812803ff99693255555a82960fb3545a")
- ("orgit" . "bb2a75741289aaf2299bd30f6f6905a1275e0d60")
- ("orgit-forge" . "5a0dbe26012b2e7885895f80283ba8974a1e8b38")
  ("ox-clip" . "d7cdc523d3c09cab97000830c9b57e1a8009bbc5")
  ("toc-org" . "6d3ae0fc47ce79b1ea06cabe21a3c596395409cd"))
 :epsilon

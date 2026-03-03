@@ -1,5 +1,7 @@
 (("code-review" . "303edcfbad8190eccb9a9269dfc58ed26d386ba5")
  ("forge" . "bbecd8947a190894570b8344490a50ebf0efd394")
+ ("orgit" . "bb2a75741289aaf2299bd30f6f6905a1275e0d60")
+ ("orgit-forge" . "5a0dbe26012b2e7885895f80283ba8974a1e8b38")
  ("magit" . "c800f79c2061621fde847f6a53129eca0e8da728")
  ("transient" . "1f7039ef8d548d6fe858084fcbeae7588eba4190")
  ("cond-let" . "8bf87d45e169ebc091103b2aae325aece3aa804d")

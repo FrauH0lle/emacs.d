@@ -21,15 +21,11 @@
 
 (when (modulep! :editor evil)
   (package! evil-org
-    :recipe (:host github :repo "hlissner/evil-org-mode")
+    :recipe (:host github :repo "doomelpa/evil-org-mode")
     :lockfile emacs_org))
 
 (when (modulep! :tools pdf)
   (package! org-pdftools :lockfile emacs_org))
-(when (modulep! :tools magit)
-  (package! orgit :lockfile emacs_org)
-  (when (modulep! :tools magit +forge)
-    (package! orgit-forge :lockfile emacs_org)))
 
 (when (modulep! +dragndrop)
   (package! org-download :lockfile emacs_org))

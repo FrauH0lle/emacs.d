@@ -14,3 +14,8 @@
              :repo "doomelpa/code-review"
              :files ("graphql" "code-review*.el"))
     :lockfile tools_magit))
+
+(when (modulep! :emacs org)
+  (package! orgit :lockfile tools_magit)
+  (when (modulep! +forge)
+    (package! orgit-forge :lockfile tools_magit)))

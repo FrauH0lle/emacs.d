@@ -554,10 +554,10 @@ But before the local one."
   (defun zenit--begin-init-h ()
     "Begin the startup process."
     (when (zenit-context-push 'startup)
-      ;; Remember these variables' initial values, so we can safely reset them at
-      ;; a later time, or consult them without fear of contamination.
+      ;; Remember these variables' initial values, so we can safely reset them
+      ;; at a later time, or consult them without fear of contamination.
       (dolist (var '(exec-path load-path process-environment))
-        (put var 'initial-value (default-toplevel-value var))))))
+        (put var 'initial-value (copy-sequence (default-toplevel-value var)))))))
 
 (add-hook! 'zenit-after-init-hook :depth 105
   (defun zenit--end-init-h ()

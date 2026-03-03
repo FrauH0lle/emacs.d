@@ -1,7 +1,7 @@
 ;; -*- lexical-binding: t; no-byte-compile: t; -*-
 ;; tools/llm/packages.el
 
-(package! gptel :lockfile tools_llm)
+(package! gptel :recipe (:nonrecursive t) :lockfile tools_llm)
 (package! gptel-quick
   :recipe (:host github :repo "karthink/gptel-quick")
   :lockfile tools_llm)

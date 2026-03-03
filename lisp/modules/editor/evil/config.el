@@ -188,6 +188,32 @@ global, so..."
              (funcall fill-region from to justify t to-eop))
       (apply orig-fn args)))
 
+  ;; HACK: Make Emacs registers recognize and treat Evil registers like their
+  ;; own, for consistency's sake.
+  (defadvice! +evil--use-evil-registers-a (fn register)
+    "Merge Evil's registers into Emacs' register list (when Evil is active)."
+    :around #'get-register
+    (if (and (characterp register)  ; prevent `evil-get-register' type error
+             (or (bound-and-true-p evil-mode)
+                 (bound-and-true-p evil-local-mode)))
+        (if (char-equal register ?=)   ; last expression register input
+            evil-last-=-register-input
+          (evil-get-register register t))
+      (funcall fn register)))
+
+  (defadvice! +evil--propagate-registers-a (fn &rest args)
+    "Merge Evil's registers into Emacs' register list (when Evil is active)."
+    :around #'register-swap-out
+    :around #'register-buffer-to-file-query
+    :around #'register-read-with-preview-fancy
+    :around #'list-registers
+    (let ((register-alist
+           (if (or (bound-and-true-p evil-mode)
+                   (bound-and-true-p evil-local-mode))
+               (evil-register-list)
+             register-alist)))
+      (apply fn args)))
+
   ;; Make ESC (from normal mode) the universal escaper. See `zenit-escape-hook'.
   (advice-add #'evil-force-normal-state :after #'+evil-escape-a)
 

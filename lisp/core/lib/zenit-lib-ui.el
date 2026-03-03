@@ -71,7 +71,7 @@ In tty Emacs, messages are suppressed completely."
   (setq-local show-paren-mode nil))
 
 ;;;###autoload
-(defun zenit-kill-childframes-h ()
+(defun zenit-kill-childframes-h (&rest _)
   "Delete all childframes (and `posframe' frames)."
   (dolist (frame (frame-list))
     (when (or (frame-parameter frame 'posframe-buffer)

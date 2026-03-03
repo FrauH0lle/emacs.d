@@ -113,14 +113,9 @@
     :before (list #'consult-recent-file #'consult-buffer)
     (recentf-mode +1))
 
-  (defadvice! +vertico--use-evil-registers-a (fn &rest args)
-    "Use `evil-register-list' if `evil-mode' is active."
-    :around #'consult-register--alist
-    (let ((register-alist
-           (if (bound-and-true-p evil-local-mode)
-               (evil-register-list)
-             register-alist)))
-      (apply fn args)))
+  ;; HACK: Merge Evil's registers into `consult-register' register list.
+  (static-when (modulep! :editor evil)
+    (advice-add #'consult-register--alist :around #'+evil--propagate-registers-a))
 
   ;; Track jump
   (advice-add #'consult--read :around #'zenit-set-jump-a)
@@ -356,19 +351,19 @@ circumventing marginalia's project root cache."
       (setq cand (funcall fun cand)))
     (cl-call-next-method cand prefix suffix index start))
 
-  (defun +vertico-sort-directories-first (files)
+  (defun +vertico-sort-directories-first-fn (files)
     "Sort FILES by alpha and put elements ending with a slash first."
     (setq files (vertico-sort-alpha files))
     (nconc (seq-filter (lambda (x) (string-suffix-p "/" x)) files)
            (seq-remove (lambda (x) (string-suffix-p "/" x)) files)))
 
-  (defun +vertico-highlight-directory (file)
+  (defun +vertico-highlight-directory-fn (file)
     "If FILE ends with a slash, highlight it as a directory."
     (when (string-suffix-p "/" file)
       (add-face-text-property 0 (length file) 'marginalia-file-priv-dir 'append file))
     file)
 
-  (defun +vertico-highlight-enabled-mode (cmd)
+  (defun +vertico-highlight-enabled-mode-fn (cmd)
     "If MODE is enabled, highlight it as font-lock-constant-face."
     (let ((sym (intern cmd)))
       (with-current-buffer (nth 1 (buffer-list))
@@ -381,8 +376,8 @@ circumventing marginalia's project root cache."
       cmd))
 
   (pushnew! (alist-get 'file vertico-multiform-categories)
-            '(+vertico-transform-functions . +vertico-highlight-directory)
+            '(+vertico-transform-functions . +vertico-highlight-directory-fn)
             ;; Sort directories before files
-            '(vertico-sort-function . +vertico-sort-directories-first))
+            '(vertico-sort-function . +vertico-sort-directories-first-fn))
   (pushnew! (alist-get 'execute-extended-command vertico-multiform-commands)
-            '(+vertico-transform-functions . +vertico-highlight-enabled-mode)))
+            '(+vertico-transform-functions . +vertico-highlight-enabled-mode-fn)))

@@ -70,18 +70,24 @@
 ;;; Flymake
 
 (use-package! flymake
-  :when (modulep! +flymake)
   :defer t
   :init
   (static-when (modulep! +flymake)
     (add-hook! '(prog-mode text-mode) #'flymake-mode))
   :config
-  (setq flymake-indicator-type 'margins
-        flymake-margin-indicator-position 'right-margin)
+  (setq flymake-fringe-indicator-position 'right-fringe
+        flymake-wrap-around nil)
   (setq! flymake-margin-indicators-string
          `((error ,(nerd-icons-faicon "nf-fa-remove_sign") compilation-error)
            (warning ,(nerd-icons-faicon "nf-fa-warning") compilation-warning)
-           (note ,(nerd-icons-faicon "nf-fa-circle_info") compilation-info))))
+           (note ,(nerd-icons-faicon "nf-fa-circle_info") compilation-info)))
+
+  ;; Consult the current buffer first, when searching for the next error (rather
+  ;; than looking at other buffers first).
+  (setq-default next-error-find-buffer-function #'next-error-buffer-unnavigated-current)
+
+  ;; Fix `next-error' and `previous-error' in buffers where flymake is active.
+  (setq-hook! 'flymake-mode-hook next-error-function #'flymake-goto-next-error))
 
 
 (use-package! flymake-popon

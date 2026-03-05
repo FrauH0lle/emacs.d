@@ -46,13 +46,13 @@ keyword.")
       use-package-expand-minimally (not noninteractive))
 
 ;; Disable `:ensure', because we don't use package.el.
-(setq use-package-ensure-function
-      (lambda (name &rest _)
-        (message "Ignoring ':ensure t' in '%s' config" name)))
-;; But restore old behavior if `package' is loaded.
-(add-transient-hook! 'package-initialize
-  (when (eq use-package-ensure-function #'ignore)
-    (setq use-package-ensure-function #'use-package-ensure-elpa)))
+(defun +use-package--ignore-ensure-maybe-fn (name &rest args)
+  ;; But restore old behavior if `package' is loaded.
+  (if (bound-and-true-p package--activated)
+      (apply #'use-package-ensure-elpa name args)
+    (zenit-log "Ignoring ':ensure t' in '%s' config" name)
+    (not (memq name zenit-disabled-packages))))
+(setq use-package-ensure-function #'+use-package--ignore-ensure-maybe-fn)
 
 (with-eval-after-load 'use-package-core
   ;; `use-package' adds syntax highlighting for the `use-package' macro, but

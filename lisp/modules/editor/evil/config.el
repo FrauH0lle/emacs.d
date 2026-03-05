@@ -190,15 +190,18 @@ global, so..."
 
   ;; HACK: Make Emacs registers recognize and treat Evil registers like their
   ;; own, for consistency's sake.
+  (defvar +evil--use-evil-registers t)
   (defadvice! +evil--use-evil-registers-a (fn register)
     "Merge Evil's registers into Emacs' register list (when Evil is active)."
     :around #'get-register
     (if (and (characterp register)  ; prevent `evil-get-register' type error
+             +evil--use-evil-registers
              (or (bound-and-true-p evil-mode)
                  (bound-and-true-p evil-local-mode)))
         (if (char-equal register ?=)   ; last expression register input
             evil-last-=-register-input
-          (evil-get-register register t))
+          (let (+evil--use-evil-registers)
+            (evil-get-register register t)))
       (funcall fn register)))
 
   (defadvice! +evil--propagate-registers-a (fn &rest args)
@@ -208,8 +211,9 @@ global, so..."
     :around #'register-read-with-preview-fancy
     :around #'list-registers
     (let ((register-alist
-           (if (or (bound-and-true-p evil-mode)
-                   (bound-and-true-p evil-local-mode))
+           (if (and +evil--use-evil-registers
+                    (or (bound-and-true-p evil-mode)
+                        (bound-and-true-p evil-local-mode)))
                (evil-register-list)
              register-alist)))
       (apply fn args)))

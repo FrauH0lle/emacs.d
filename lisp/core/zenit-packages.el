@@ -581,7 +581,7 @@ initialized and available for them."
   (when (or force-p (not (bound-and-true-p package--initialized)))
     (zenit-log "Initializing package.el")
     (require 'package)
-    (package-initialize))
+    (package-initialize t))
   (when (or force-p (not (fboundp 'straight--reset-caches)))
     (zenit-log "Initializing straight")
     (setq zenit-init-packages-p t

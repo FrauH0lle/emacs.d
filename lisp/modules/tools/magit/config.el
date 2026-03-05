@@ -61,21 +61,37 @@ FUNCTION
         magit-save-repository-buffers nil
         ;; Don't display parent/related refs in commit buffers; they are rarely
         ;; helpful and only add to runtime costs.
-        magit-revision-insert-related-refs nil)
+        magit-revision-insert-related-refs nil
+        ;; If two projects have the same project name (e.g. A/src and B/src will
+        ;; both resolve to the name "src"), Magit will treat them as the same
+        ;; project and destructively hijack each other's magit buffers. This is
+        ;; especially problematic if you use workspaces and have magit open in
+        ;; each, and the two projects happen to have the same name! By unsetting
+        ;; `magit-uniquify-buffer-names', magit uses the project's full path as
+        ;; its name, preventing such naming collisions.
+        magit-uniquify-buffer-names nil
+        ;; Magit calls (and resolves) `magit-git-executable' frequently enough
+        ;; that a non-absolute path can notably slow it down, especially on
+        ;; MacOS and Windows, so I resolve it once, the first time it's needed.
+        magit-git-executable (or (executable-find magit-git-executable) "git"))
   (add-hook 'magit-process-mode-hook #'goto-address-mode)
 
   ;; Since the project likely now contains new files, purge the projectile cache
   ;; so `projectile-find-file' et all don't produce an stale file list
+  (defvar +magit--last-hash nil)
   (add-hook! 'magit-refresh-buffer-hook
     (defun +magit-invalidate-projectile-cache-h ()
       ;; Only invalidate the hot cache and nothing else (everything else is
       ;; expensive busy work, and we don't want to slow down magit's
       ;; refreshing).
-      (let (projectile-require-project-root
+      (let ((hash (buffer-hash))
+            projectile-require-project-root
             projectile-enable-caching
             projectile-verbose)
-        (letf! ((#'recentf-cleanup #'ignore))
-          (projectile-invalidate-cache nil)))))
+        (unless (equal +magit--last-hash hash)
+          (letf! ((#'recentf-cleanup #'ignore))
+            (projectile-invalidate-cache nil))
+          (setq-local +magit--last-hash hash)))))
   ;; Use a more efficient strategy to auto-revert buffers whose git state has
   ;; changed: refresh the visible buffers immediately...
   (add-hook 'magit-post-refresh-hook #'+magit-mark-stale-buffers-h)
@@ -134,12 +150,12 @@ FUNCTION
   (transient-append-suffix 'magit-pull "-r"
     '("-a" "Autostash" "--autostash"))
 
-  ;; so magit buffers can be switched to (except for process buffers)
-  (defun +magit-buffer-p (buf)
-    (with-current-buffer buf
-      (and (derived-mode-p 'magit-mode)
-           (not (eq major-mode 'magit-process-mode)))))
-  (add-to-list 'zenit-real-buffer-functions #'+magit-buffer-p nil #'eq)
+  ;; So magit buffers can be switched to (except for process buffers)
+  (add-hook! 'zenit-real-buffer-functions
+    (defun +magit-buffer-p (buf)
+      (let ((mode (buffer-local-value 'major-mode buf)))
+        (and (provided-mode-derived-p mode 'magit-mode)
+             (not (eq mode 'magit-process-mode))))))
 
   ;; Clean up after magit by killing leftover magit buffers and reverting
   ;; affected buffers (or at least marking them as need-to-be-reverted).
@@ -149,16 +165,19 @@ FUNCTION
   ;; Close transient with ESC
   (define-key transient-map [escape] #'transient-quit-one)
 
+  (defun +magit-enlargen-fringe-h ()
+    "Make fringe larger in magit."
+    (and (display-graphic-p)
+         (derived-mode-p 'magit-section-mode)
+         +magit-fringe-size
+         (let ((left  (or (car-safe +magit-fringe-size) +magit-fringe-size))
+               (right (or (cdr-safe +magit-fringe-size) +magit-fringe-size)))
+           (unless (and (= left  (or left-fringe-width 0))
+                        (= right (or right-fringe-width 0)))
+             (set-window-fringes nil left right)))))
   (add-hook! 'magit-section-mode-hook
     (add-hook! 'window-configuration-change-hook :local
-      (defun +magit-enlargen-fringe-h ()
-        "Make fringe larger in magit."
-        (and (display-graphic-p)
-             (derived-mode-p 'magit-section-mode)
-             +magit-fringe-size
-             (let ((left  (or (car-safe +magit-fringe-size) +magit-fringe-size))
-                   (right (or (cdr-safe +magit-fringe-size) +magit-fringe-size)))
-               (set-window-fringes nil left right))))))
+               #'+magit-enlargen-fringe-h))
 
   (add-hook! 'magit-diff-visit-file-hook
     (defun +magit-reveal-point-if-invisible-h ()

@@ -36,11 +36,11 @@ in `zenit-local-conf-dir' take precedence.")
   ;; Custom elements
   ;; Include templates in templates by name
   (defun +tempel-include (elt)
-    (when (eq (car-safe elt) 'i)
-      (if-let* ((template (alist-get (cadr elt) (tempel--templates))))
-          (cons 'l template)
-        (message "Template %s not found" (cadr elt))
-        nil)))
+    (pcase elt
+      (`(i ,inc)
+       (cons 'l (or (cl-loop for x in (alist-get inc (tempel--templates)) until (keywordp x)
+                             collect x)
+                    (user-error "Template %s not found" inc))))))
   (add-to-list 'tempel-user-elements #'+tempel-include)
 
   ;; REVIEW 2024-06-13: Maybe there is a better way to do this less frequently.

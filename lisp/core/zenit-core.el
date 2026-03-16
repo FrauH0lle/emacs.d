@@ -581,7 +581,7 @@ But before the local one."
 
 (unless noninteractive
   ;; This is the absolute latest a hook can run in Emacs' startup process.
-  (define-advice command-line-1 (:after (&rest _) run-after-init-hook)
+  (define-advice command-line-1 (:after (&rest _) run-after-init-hook 100)
     (zenit-run-hooks 'zenit-after-init-hook))
   (eval-when-compile
     (declare-function command-line-1@run-after-init-hook nil)))

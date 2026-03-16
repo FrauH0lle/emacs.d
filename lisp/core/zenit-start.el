@@ -18,6 +18,9 @@
 ;; `subr-x'
 (declare-function string-remove-suffix "subr-x" (suffix string))
 
+;; `zenit-lib-buffers'
+(defvar zenit-fallback-buffer-name)
+
 
 ;;
 ;;; Custom hooks
@@ -289,9 +292,12 @@ If RETURN-P, return the message as a string instead of displaying it."
 (when (zenit-context-push 'emacs)
   (add-hook 'zenit-after-init-hook #'zenit-load-packages-incrementally-h 100)
   (add-hook 'zenit-after-init-hook #'zenit-display-benchmark-h 110)
-  (zenit-run-hook-on 'zenit-first-buffer-hook '(find-file-hook zenit-switch-buffer-hook))
   (zenit-run-hook-on 'zenit-first-file-hook   '(find-file-hook dired-initial-position-hook))
   (zenit-run-hook-on 'zenit-first-input-hook  '(pre-command-hook))
+  (zenit-run-hook-on 'zenit-first-buffer-hook '(find-file-hook zenit-switch-buffer-hook)
+                     (lambda ()
+                       (not (member (buffer-name)
+                                    `("*scratch*" ,zenit-fallback-buffer-name)))))
 
   ;; If the user's already opened something (e.g. with command-line arguments),
   ;; then we should assume nothing about the user's intentions and simply treat

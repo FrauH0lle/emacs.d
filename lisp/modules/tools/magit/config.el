@@ -51,7 +51,7 @@ FUNCTION
         transient-values-file  (concat zenit-data-dir "transient/values")
         transient-history-file (concat zenit-data-dir "transient/history"))
   :config
-  (set-debug-variable! 'magit-refresh-verbose)
+  (set-debug-var! 'magit-refresh-verbose)
 
   (setq transient-default-level 5
         magit-diff-refine-hunk t ; show granular diffs in selected hunk

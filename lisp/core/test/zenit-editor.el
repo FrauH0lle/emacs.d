@@ -81,11 +81,3 @@
   (progn
     (should (fboundp 'zenit-cache-hashed-backup-file-name-a))
     (should (advice-member-p 'zenit-cache-hashed-backup-file-name-a #'backup-buffer))))
-
-(zenit-deftest zenit-auto-revert-buffer-h
-  (:doc "`zenit-auto-revert-buffer-h' is defined")
-  (should (fboundp 'zenit-auto-revert-buffer-h)))
-
-(zenit-deftest zenit-auto-revert-buffers-h
-  (:doc "`zenit-auto-revert-buffers-h' is defined")
-  (should (fboundp 'zenit-auto-revert-buffers-h)))

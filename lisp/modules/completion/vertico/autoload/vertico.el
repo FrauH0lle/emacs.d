@@ -1,9 +1,8 @@
 ;; completion/vertico/autoload/vertico.el -*- lexical-binding: t; -*-
 
-;; To prevent "Defining as dynamic an already lexical var" from
-;; +vertico/embark-preview
-;;;###autoload
+(defvar consult-ripgrep-args)
 (defvar embark-quit-after-action)
+(defvar embark-after-export-hook)
 
 ;;;###autoload
 (cl-defun +vertico-file-search (&key query in all-files (recursive t) prompt args)
@@ -36,28 +35,33 @@
          (prompt (if (stringp prompt) (string-trim prompt) "Search"))
          (query (or query
                     (when (zenit-region-active-p)
-                      (regexp-quote (zenit-thing-at-point-or-region)))))
+                      (regexp-quote (zenit-region)))))
          (consult-async-split-style consult-async-split-style)
-         (consult-async-split-styles-alist consult-async-split-styles-alist))
+         (consult-async-split-styles-alist
+          (copy-sequence consult-async-split-styles-alist)))
     ;; Change the split style if the initial query contains the separator.
     (when query
-      (cl-destructuring-bind (&key type separator initial _function)
+      (cl-destructuring-bind (&key separator initial function)
           (or (alist-get consult-async-split-style consult-async-split-styles-alist)
               (user-error "Splitting style `%s' not found" consult-async-split-style))
-        (pcase type
-          (`separator
-           (replace-regexp-in-string (regexp-quote (char-to-string separator))
-                                     (concat "\\" (char-to-string separator))
-                                     query t t))
-          (`perl
-           (when (string-match-p initial query)
-             (setf (alist-get 'perlalt consult-async-split-styles-alist)
-                   `(:initial ,(or (cl-loop for char in (list "%" "@" "!" "&" "/" ";")
-                                            unless (string-match-p char query)
-                                            return char)
-                                   "%")
-                     :type perl)
-                   consult-async-split-style 'perlalt))))))
+        ;; Perl async split style starts with an #. If the query contains #,
+        ;; then use oneof the alternative delimiters instead.
+        (if (eq consult-async-split-style 'perl)
+            (when (string-match-p (char-to-string initial) query)
+              (setf (alist-get 'perlalt consult-async-split-styles-alist)
+                    `(:initial ,(or (cl-loop for char in (list "%" "@" "!" "&" "/" ";")
+                                             unless (string-match-p char query)
+                                             return char)
+                                    "%")
+                      :seperator ,separator
+                      :function ,function)
+                    consult-async-split-style 'perlalt))
+          ;; If the separator character is present *in* the query, escape them.
+          (when separator
+            (setq query
+                  (replace-regexp-in-string (regexp-quote (char-to-string separator))
+                                            (concat "\\" (char-to-string separator))
+                                            query t t))))))
     (consult--grep prompt #'consult--ripgrep-make-builder directory query)))
 
 ;;;###autoload
@@ -107,7 +111,7 @@ consult-location to occur-edit"
   (require 'embark)
   (require 'wgrep)
   (let* ((edit-command
-          (pcase-let ((`(,type . ,candidates)
+          (pcase-let ((`(,type . _)
                        (run-hook-with-args-until-success 'embark-candidate-collectors)))
             (pcase type
               ('consult-grep #'wgrep-change-to-wgrep-mode)
@@ -122,11 +126,11 @@ consult-location to occur-edit"
   "Previews candidate in vertico buffer, unless it's a consult command"
   (interactive)
   (unless (bound-and-true-p consult--preview-function)
-    (if (fboundp 'embark-dwim)
-        (save-selected-window
-          (let (embark-quit-after-action)
-            (embark-dwim)))
-      (user-error "Embark not installed, aborting..."))))
+    (unless (require 'embark nil t)
+      (user-error "Embark not installed, aborting..."))
+    (save-selected-window
+      (let (embark-quit-after-action)
+        (embark-dwim)))))
 
 ;;;###autoload
 (defun +vertico/enter-or-preview ()

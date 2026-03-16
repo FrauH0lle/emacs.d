@@ -314,21 +314,13 @@ circumventing marginalia's project root cache."
                           "\\`\\(?:Dired\\|Find file\\) in \\(.*\\): \\'"
                           prompt)
                          (match-string 1 prompt)))
-                  (and (zenit-project-p)
-                       (zenit-project-root)))))
+                  (zenit-project-root))))
       marginalia--project-root))
 
   (pushnew! marginalia-command-categories
-            '(+default/find-file-under-here . file)
-            '(zenit/find-file-in-emacsd . project-file)
-            '(zenit/find-file-in-other-project . project-file)
-            '(zenit/find-file-in-private-config . file)
-            '(zenit/describe-active-minor-mode . minor-mode)
             '(flycheck-error-list-set-filter . builtin)
-            '(projectile-find-file . project-file)
-            '(projectile-recentf . project-file)
-            '(projectile-switch-to-buffer . buffer)
-            '(projectile-switch-project . project-file)))
+            '(persp-switch-to-buffer . buffer)
+            '(projectile-switch-to-buffer . buffer)))
 
 
 (use-package! wgrep

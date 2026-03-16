@@ -378,17 +378,20 @@ replace `run-hooks'."
                 (caddr e)))
        (signal 'zenit-hook-error (cons hook (cdr e)))))))
 
-(defun zenit-run-hook-on (hook-var trigger-hooks)
+(defun zenit-run-hook-on (hook-var trigger-hooks &optional predicate)
   "Configure HOOK-VAR to be invoked exactly once by TRIGGER-HOOKS.
 
-HOOK-VAR is invoked exactly once when any of the TRIGGER-HOOKS
-are invoked *after* Emacs has initialized (to reduce false
-positives). Once HOOK-VAR is triggered, it is reset to nil.
+HOOK-VAR is invoked exactly once when any of the TRIGGER-HOOKS are
+invoked *after* Emacs has initialized (to reduce false positives). Once
+HOOK-VAR is triggered, it is reset to nil.
 
 HOOK-VAR is a quoted hook.
 
-TRIGGER-HOOK is a list of quoted hooks and/or sharp-quoted
-functions."
+TRIGGER-HOOK is a list of quoted hooks and/or sharp-quoted functions.
+
+PREDICATE is an optional function that must return non-nil for HOOK-VAR
+to be triggered. If nil (the default), no additional condition is
+checked."
   (dolist (hook trigger-hooks)
     (let ((fn (make-symbol (format "chain-%s-to-%s-h" hook-var hook)))
           running?)
@@ -404,7 +407,9 @@ functions."
                            ;; internally). In these cases we should assume this
                            ;; hook wasn't invoked interactively.
                            (and (boundp hook)
-                                (symbol-value hook))))
+                                (symbol-value hook)))
+                       (or (null predicate)
+                           (funcall predicate)))
               (setq running? t)  ; prevent infinite recursion
               (zenit-run-hooks hook-var)
               (set hook-var nil))))

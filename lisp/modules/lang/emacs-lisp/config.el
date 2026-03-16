@@ -22,6 +22,13 @@ can be more overwhelming than helpful.
 
 See `+emacs-lisp-non-package-mode' for details.")
 
+(defvar +emacs-lisp-working-buffer nil
+  "What buffer to evaluate elisp from.
+
+Use `+emacs-lisp/change-working-buffer' to change this. Only applies to
+`+emacs-lisp-eval-fn', which is the eval handler for `emacs-lisp-mode',
+`lisp-interaction-mode', and `lisp-data-mode', by default.")
+
 (defvar +emacs-lisp-clone-emacs-C-src nil
   "If non-nil, prompt user to clone the Emacs source repository when
 looking up a C function.")
@@ -38,7 +45,7 @@ looking up a C function.")
   :config
   (let ((modes '(emacs-lisp-mode lisp-interaction-mode lisp-data-mode)))
     (set-repl-handler! modes #'+emacs-lisp/open-repl)
-    (set-eval-handler! modes #'+emacs-lisp-eval)
+    (set-eval-handler! modes #'+emacs-lisp-eval-fn)
     (set-lookup-handlers! `(,@modes helpful-mode)
       :definition    #'+emacs-lisp-lookup-definition
       :documentation #'+emacs-lisp-lookup-documentation)

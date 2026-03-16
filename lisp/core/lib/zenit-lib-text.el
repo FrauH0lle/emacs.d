@@ -153,17 +153,28 @@ Uses `evil-visual-end' if available."
     (region-end)))
 
 ;;;###autoload
-(defun zenit-region (&optional as-list)
-  "Return the bounds of the current seelction.
+(defun zenit-region-bounds (&optional as-list)
+  "Return the bounds of the active selection.
 
-If AS-LIST is non-nil, returns (BEG END). Otherwise returns a
-cons cell (BEG . END)."
+If AS-LIST is non-nil, returns (BEG END) instead of (BEG . END). If
+nothing is selected, returns (nil . nil)."
   (let* ((active (zenit-region-active-p))
          (beg (if active (zenit-region-beginning)))
          (end (if active (zenit-region-end))))
     (if as-list
         (list beg end)
       (cons beg end))))
+
+;;;###autoload
+(defun zenit-region (&optional preserve-properties)
+  "Return the contents of the active selection.
+
+Return nil if nothing is selected."
+  (when (zenit-region-active-p)
+    (let* ((bounds (zenit-region-bounds)))
+      (if preserve-properties
+          (buffer-substring-no-properties (car bounds) (cdr bounds))
+        (buffer-substring (car bounds) (cdr bounds))))))
 
 ;;;###autoload
 (defun zenit-thing-at-point-or-region (&optional thing prompt)
@@ -304,48 +315,6 @@ true end of the line. The opposite of `zenit/backward-to-bol-or-indent'."
   (interactive "p")
   (let (kill-ring)
     (ignore-errors (backward-kill-word arg))))
-
-;;;###autoload
-(defun zenit/dumb-indent ()
-  "Inserts a tab character (or spaces x tab-width)."
-  (interactive)
-  (if indent-tabs-mode
-      (insert "\t")
-    (let* ((movement (% (current-column) tab-width))
-           (spaces (if (= 0 movement) tab-width (- tab-width movement))))
-      (insert (make-string spaces ? )))))
-
-;;;###autoload
-(defun zenit/dumb-dedent ()
-  "Dedents the current line."
-  (interactive)
-  (if indent-tabs-mode
-      (call-interactively #'backward-delete-char)
-    (unless (bolp)
-      (save-excursion
-        (when (> (current-column) (current-indentation))
-          (back-to-indentation))
-        (let ((movement (% (current-column) tab-width)))
-          (delete-char
-           (- (if (= 0 movement)
-                  tab-width
-                (- tab-width movement)))))))))
-
-;;;###autoload
-(defun zenit/retab (arg &optional beg end)
-  "Converts tabs-to-spaces or spaces-to-tabs within BEG and
-END (defaults to buffer start and end, to make indentation
-consistent. Which it does depends on the value of
-`indent-tab-mode'.  If ARG (universal argument) is non-nil, retab
-the current buffer using the opposite indentation style."
-  (interactive "P\nr")
-  (unless (and beg end)
-    (setq beg (point-min)
-          end (point-max)))
-  (let ((indent-tabs-mode (if arg (not indent-tabs-mode) indent-tabs-mode)))
-    (if indent-tabs-mode
-        (tabify beg end)
-      (untabify beg end))))
 
 ;;;###autoload
 (defun zenit/delete-trailing-newlines ()

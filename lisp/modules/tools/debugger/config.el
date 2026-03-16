@@ -8,7 +8,7 @@
   :preface
   (setq dape-adapter-dir (file-name-concat zenit-local-conf-dir "debug-adapters/"))
   :config
-  (set-debug-variable! 'dape-debug t)
+  (set-debug-var! 'dape-debug t)
   (setq dape-buffer-window-arrangement 'right
         dape-inlay-hints t
         dape-cwd-function #'+debugger-dape-cwd-function-fn)

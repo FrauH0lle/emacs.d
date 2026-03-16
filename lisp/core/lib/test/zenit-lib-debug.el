@@ -16,9 +16,9 @@
   (:doc "`zenit-debug--variables' is defined")
   (should (boundp 'zenit-debug--variables)))
 
-(zenit-deftest set-debug-variable!
-  (:doc "`set-debug-variable!' is defined")
-  (should (fboundp 'set-debug-variable!)))
+(zenit-deftest set-debug-var!
+  (:doc "`set-debug-var!' is defined")
+  (should (fboundp 'set-debug-var!)))
 
 (zenit-deftest zenit-debug--unbound-variables
   (:doc "`zenit-debug--unbound-variables' is defined")

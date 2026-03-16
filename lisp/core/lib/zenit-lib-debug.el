@@ -71,7 +71,7 @@ variable symbol and CDR is the value to set it to when
 
 ;;;###autoload
 (progn
-  (cl-defun set-debug-variable! (var &optional (debug-val t) (level 1))
+  (cl-defun set-debug-var! (var &optional (debug-val t) (level 1))
     "Set VAR to DEBUG-VAL (or `t') when `zenit-debug-mode' is active at >=LEVEL."
     (setf (alist-get var zenit-debug--variables) (cons debug-val level))))
 

@@ -19,7 +19,7 @@
   (after! org
     ;; A shorter link to attachments
     (+org-define-basic-link "download" (lambda () (or org-download-image-dir org-attach-id-dir "."))
-      :image-data-fun #'+org-image-file-data-fn
+      :preview #'+org-link-preview-attachment-fn
       :requires 'org-download))
   :config
   (unless org-download-image-dir

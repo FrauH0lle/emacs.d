@@ -68,6 +68,9 @@ less than this value")
 (defvar +org-habit-graph-window-ratio 0.3
   "The ratio of the consistency graphs relative to the window width")
 
+(defvar +org-preview-dir (zenit-path zenit-cache-dir "org/previews/")
+  "Where link preview images are cached.")
+
 (defvar +org-startup-with-animated-gifs nil
   "If non-nil, and the cursor is over a gif inline-image preview,
 animate it!")

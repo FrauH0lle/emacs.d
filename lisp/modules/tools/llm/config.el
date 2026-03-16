@@ -184,6 +184,8 @@ Uses hierarchical composition strategy by default to layer:
   ;; Detect project prompt
   (+llm--setup-project-prompt-h)
 
+  (set-debug-var! 'gptel-log-level 'debug)
+
   (setq
    ;; Use `org-mode' for the `gptel' buffer
    gptel-default-mode 'markdown-mode

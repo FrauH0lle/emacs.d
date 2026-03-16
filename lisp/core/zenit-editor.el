@@ -322,11 +322,8 @@ system."
 
 (use-package! autorevert
   ;; revert buffers when their files/state have changed
-  :hook (after-save . zenit-auto-revert-buffers-h)
-  :hook (zenit-switch-buffer . zenit-auto-revert-buffer-h)
-  :hook (zenit-switch-window . zenit-auto-revert-buffer-h)
-  :hook (zenit-switch-frame . zenit-auto-revert-buffers-h)
-  :commands zenit-auto-revert-buffers-h
+  :hook (zenit-first-file . zenit-auto-revert-mode)
+  :commands zenit-auto-revert-mode
   :config
   (setq auto-revert-verbose t ; let us know when it happens
         auto-revert-use-notify nil
@@ -361,7 +358,23 @@ system."
     "Auto revert stale buffers in visible windows, if necessary."
     (dolist (buf (zenit-visible-buffers))
       (with-current-buffer buf
-        (zenit-auto-revert-buffer-h)))))
+        (zenit-auto-revert-buffer-h))))
+
+  (defvar zenit-auto-revert-mode)
+  (eval-when-compile
+    (declare-function zenit-auto-revert-buffer-h nil)
+    (declare-function zenit-auto-revert-buffers-h nil))
+  (define-minor-mode zenit-auto-revert-mode
+    "A more performant alternative to `global-auto-revert-mode'."
+    :global t
+    :group 'zenit
+    (when global-auto-revert-mode
+      (setq zenit-auto-revert-mode nil))
+    (let ((fn (if zenit-auto-revert-mode #'add-hook #'remove-hook)))
+      (funcall fn 'zenit-switch-buffer-hook #'zenit-auto-revert-buffer-h)
+      (funcall fn 'zenit-switch-window-hook #'zenit-auto-revert-buffer-h)
+      (funcall fn 'zenit-switch-frame-hook #'zenit-auto-revert-buffers-h)
+      (funcall fn 'after-save-hook #'zenit-auto-revert-buffers-h))))
 
 
 ;;;###package bookmark

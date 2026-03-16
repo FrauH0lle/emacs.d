@@ -37,6 +37,16 @@ BASE-DIRECTORY (defaults to `default-directory'). FILES are paths
 relative to the project root, unless they begin with a slash."
   `(file-exists-p! ,files (zenit-project-root ,base-directory)))
 
+(defun zenit--project-completing-read (prompt collection &optional category)
+  (completing-read
+   prompt
+   (if category
+       (lambda (str pred action)
+         (if (eq action 'metadata) ; used by embark/marginalia
+             `(metadata (category . ,category))
+           (complete-with-action action collection str pred)))
+     collection)))
+
 ;;
 ;;; Commands
 
@@ -46,7 +56,8 @@ relative to the project root, unless they begin with a slash."
 choosing."
   (interactive
    (list
-    (completing-read "Find file in project: " (projectile-relevant-known-projects))))
+    (zenit--project-completing-read
+     "Find file in project: " (projectile-relevant-known-projects) 'project-file)))
   (unless (file-directory-p project-root)
     (error "Project directory '%s' doesn't exist" project-root))
   (zenit-project-find-file project-root))
@@ -56,7 +67,8 @@ choosing."
   "Preforms `find-file' in a known project of your choosing."
   (interactive
    (list
-    (completing-read "Browse in project: " (projectile-relevant-known-projects))))
+    (zenit--project-completing-read
+     "Browse in project: " (projectile-relevant-known-projects) 'project-file)))
   (unless (file-directory-p project-root)
     (error "Project directory '%s' doesn't exist" project-root))
   (zenit-project-browse project-root))

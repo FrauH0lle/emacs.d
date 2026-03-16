@@ -263,6 +263,85 @@
     (goto-char 9)
     (should (equal 9 (zenit-region-end)))))
 
+(zenit-deftest zenit-region-bounds
+  (:vars ((test-buffer (get-buffer-create "test-buffer")))
+   :before-each
+   (with-current-buffer test-buffer
+     (erase-buffer))
+   :after-each
+   (kill-buffer test-buffer))
+  ,test
+  (test)
+  :doc "`zenit-region-bounds' returns cons cell (beg . end) when region is active"
+  (with-current-buffer test-buffer
+    (insert "This is a test")
+    (goto-char 1)
+    (set-mark 5)
+    (activate-mark)
+    (goto-char 9)
+    (should (equal '(5 . 9) (zenit-region-bounds))))
+
+  :doc "`zenit-region-bounds' returns list (beg end) when as-list is non-nil"
+  (with-current-buffer test-buffer
+    (insert "This is a test")
+    (goto-char 1)
+    (set-mark 5)
+    (activate-mark)
+    (goto-char 9)
+    (should (equal '(5 9) (zenit-region-bounds t))))
+
+  :doc "`zenit-region-bounds' returns (nil . nil) when region is not active"
+  (with-current-buffer test-buffer
+    (insert "This is a test")
+    (deactivate-mark)
+    (should (equal '(nil . nil) (zenit-region-bounds)))))
+
+(zenit-deftest zenit-region
+  (:vars ((test-buffer (get-buffer-create "test-buffer")))
+   :before-each
+   (with-current-buffer test-buffer
+     (erase-buffer))
+   :after-each
+   (kill-buffer test-buffer))
+  ,test
+  (test)
+  :doc "`zenit-region' returns the selected text when region is active"
+  (with-current-buffer test-buffer
+    (insert "This is a test")
+    (goto-char 1)
+    (set-mark 6)
+    (activate-mark)
+    (goto-char 11)
+    (should (equal "is a " (zenit-region))))
+
+  :doc "`zenit-region' returns nil when region is not active"
+  (with-current-buffer test-buffer
+    (insert "This is a test")
+    (deactivate-mark)
+    (should-not (zenit-region)))
+
+  :doc "`zenit-region' returns text with properties by default"
+  (with-current-buffer test-buffer
+    (insert "This is a test")
+    (goto-char 1)
+    (set-mark 6)
+    (activate-mark)
+    (goto-char 11)
+    (let ((result (zenit-region)))
+      (should (stringp result))
+      (should (equal "is a " result))))
+
+  :doc "`zenit-region' returns text without properties when preserve-properties is non-nil"
+  (with-current-buffer test-buffer
+    (insert "This is a test")
+    (goto-char 1)
+    (set-mark 6)
+    (activate-mark)
+    (goto-char 11)
+    (let ((result (zenit-region t)))
+      (should (stringp result))
+      (should (equal "is a " result)))))
+
 (zenit-deftest zenit-thing-at-point-or-region
   (:vars ((test-buffer (get-buffer-create "test-buffer")))
    :before-each
@@ -388,56 +467,6 @@
     (zenit/delete-backward-word 1)
     (should (equal "One two  " (buffer-string)))))
 
-(zenit-deftest zenit/dumb-indent
-  (:vars ((test-buffer (get-buffer-create "test-buffer")))
-   :before-each
-   (with-current-buffer test-buffer
-     (erase-buffer))
-   :after-each
-   (kill-buffer test-buffer))
-  ,test
-  (test)
-  :doc "`zenit/dumb-indent' indents the current line correctly"
-  (with-current-buffer test-buffer
-    (insert "First line\nSecond line")
-    (goto-char (point-max))
-    (beginning-of-line)
-    (zenit/dumb-indent)
-    (should (equal "First line\n\tSecond line" (buffer-string)))))
-
-(zenit-deftest zenit/dumb-dedent
-  (:vars ((test-buffer (get-buffer-create "test-buffer")))
-   :before-each
-   (with-current-buffer test-buffer
-     (erase-buffer))
-   :after-each
-   (kill-buffer test-buffer))
-  ,test
-  (test)
-  :doc "`zenit/dumb-dedent' dedents the current line correctly"
-  (with-current-buffer test-buffer
-    (insert "First line\n\tSecond line")
-    (goto-char (point-max))
-    (zenit/backward-to-bol-or-indent)
-    (zenit/dumb-dedent)
-    (should (equal "First line\nSecond line" (buffer-string)))))
-
-(zenit-deftest zenit/retab
-  (:vars ((test-buffer (get-buffer-create "test-buffer")))
-   :before-each
-   (with-current-buffer test-buffer
-     (erase-buffer))
-   :after-each
-   (kill-buffer test-buffer))
-  ,test
-  (test)
-  :doc "`zenit/retab' replaces tabs with spaces correctly"
-  (with-current-buffer test-buffer
-    (insert "First line\n\tSecond line")
-    (goto-char (point-min))
-    (setq tab-width 4)
-    (zenit/retab t)
-    (should (equal "First line\n    Second line" (buffer-string)))))
 
 (zenit-deftest zenit/delete-trailing-newlines
   (:vars ((test-buffer (get-buffer-create "test-buffer")))

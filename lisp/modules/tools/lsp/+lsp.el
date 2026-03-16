@@ -38,7 +38,7 @@
     (setq lsp-keymap-prefix nil))
 
   :config
-  (set-debug-variable! 'lsp-log-io t 2)
+  (set-debug-var! 'lsp-log-io t 2)
 
   (setq lsp-intelephense-storage-path (concat zenit-data-dir "lsp-intelephense/")
         lsp-vetur-global-snippets-dir

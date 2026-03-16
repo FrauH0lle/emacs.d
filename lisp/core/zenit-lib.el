@@ -1123,30 +1123,44 @@ time."
   "Attaches a self-removing function to HOOK-OR-FUNCTION.
 
 FORMS are evaluated once, when that function/hook is first
-invoked, then never again. The first element can be the optional
-keyword `:after', in which case the self-removing function will
-be appended.
+invoked, then never again.
 
-HOOK-OR-FUNCTION can be a quoted hook or a sharp-quoted
-function (which will be advised)."
+Accepts the following optional keyword arguments before FORMS:
+
+  :append  Append the hook/advice instead of prepending.
+  :after   Append the hook/advice instead of prepending.
+  :local   Make the hook buffer-local (no effect on advised functions).
+  :depth N Set the depth for `add-hook' (no effect on advised
+           functions).
+
+HOOK-OR-FUNCTION can be a quoted hook or a sharp-quoted function (which
+will be advised).
+
+\(fn HOOK-OR-FUNCTION [:append :local [:depth N]] FORMS...)"
   (declare (indent 1) (debug t))
-  (let ((append? (if (eq (car forms) :after) (pop forms)))
-        (fn (gensym "zenit-transient-hook")))
-    `(let ((sym ,hook-or-function))
-       (defun ,fn (&rest _)
-         ,(format "Transient hook for %S" (zenit-unquote hook-or-function))
-         ,@forms
-         (let ((sym ,hook-or-function))
-           (cond ((functionp sym) (advice-remove sym #',fn))
-                 ((symbolp sym)   (remove-hook sym #',fn))))
-         (unintern ',fn nil))
-       ;; Make the byte-compiler happy
-       (eval-when-compile (declare-function ,fn nil))
-       (cond ((functionp sym)
-              (advice-add ,hook-or-function ,(if append? :after :before) #',fn))
-             ((symbolp sym)
-              (put ',fn 'permanent-local-hook t)
-              (add-hook sym #',fn ,append?))))))
+  (let (append-p local-p depth)
+    (while (keywordp (car forms))
+      (pcase (pop forms)
+        (:after  (setq append-p t))
+        (:append (setq append-p t))
+        (:local  (setq local-p t))
+        (:depth  (setq depth (pop forms)))))
+    (let ((fn (gensym "zenit-transient-hook")))
+      `(let ((sym ,hook-or-function))
+         (defun ,fn (&rest _)
+           ,(format "Transient hook for %S" (zenit-unquote hook-or-function))
+           ,@forms
+           (let ((sym ,hook-or-function))
+             (cond ((functionp sym) (advice-remove sym #',fn))
+                   ((symbolp sym)   (remove-hook sym #',fn ,local-p))))
+           (unintern ',fn nil))
+         ;; Make the byte-compiler happy
+         (eval-when-compile (declare-function ,fn nil))
+         (cond ((functionp sym)
+                (advice-add ,hook-or-function ,(if append-p :after :before) #',fn))
+               ((symbolp sym)
+                (put ',fn 'permanent-local-hook t)
+                (add-hook sym #',fn ,(or depth append-p) ,local-p)))))))
 
 (defmacro add-hook! (hooks &rest rest)
   "A convenience macro for adding N functions to M hooks.

@@ -85,10 +85,11 @@ Possible values:
     ("Open private configuration"
      :icon (nerd-icons-octicon "nf-oct-tools" :face '+dashboard-menu-title)
      :when (file-directory-p zenit-local-conf-dir)
-     :action zenit/open-private-config))
-  "An alist of menu buttons used by `+dashboard-widget-shortmenu'. Each
-element is a cons cell (LABEL . PLIST). LABEL is a string to display after the
-icon and before the key string.
+     :action zenit/open-local-config))
+  "An alist of menu buttons used by `+dashboard-widget-shortmenu'.
+
+Each element is a cons cell (LABEL . PLIST). LABEL is a string to
+display after the icon and before the key string.
 
 PLIST can have the following properties:
 
@@ -118,6 +119,9 @@ If any of them return non-nil, dashboard reloading is inhibited.")
 
 (defvar +dashboard--reload-timer nil
   "Variable to store the dashboard buffer reload timer.")
+
+(defvar +dashboard--keys-ready nil
+  "Non-nil once keybindings are available for display on the dashboard.")
 
 
 ;;
@@ -181,32 +185,32 @@ If any of them return non-nil, dashboard reloading is inhibited.")
   [left-margin mouse-1]   #'ignore
   [remap forward-button]  #'+dashboard/forward-button
   [remap backward-button] #'+dashboard/backward-button
-  "n"       #'forward-button
-  "p"       #'backward-button
-  "C-n"     #'forward-button
-  "C-p"     #'backward-button
-  [down]    #'forward-button
-  [up]      #'backward-button
-  [tab]     #'forward-button
-  [backtab] #'backward-button
+  "n"                     #'forward-button
+  "p"                     #'backward-button
+  "C-n"                   #'forward-button
+  "C-p"                   #'backward-button
+  [down]                  #'forward-button
+  [up]                    #'backward-button
+  [tab]                   #'forward-button
+  [backtab]               #'backward-button
 
   ;; Evil remaps
-  [remap evil-next-line]     #'forward-button
-  [remap evil-previous-line] #'backward-button
+  [remap evil-next-line]            #'forward-button
+  [remap evil-previous-line]        #'backward-button
   [remap evil-next-visual-line]     #'forward-button
   [remap evil-previous-visual-line] #'backward-button
-  [remap evil-paste-pop-next] #'forward-button
-  [remap evil-paste-pop]      #'backward-button
-  [remap evil-delete]         #'ignore
-  [remap evil-delete-line]    #'ignore
-  [remap evil-insert]         #'ignore
-  [remap evil-append]         #'ignore
-  [remap evil-replace]        #'ignore
-  [remap evil-enter-replace-state] #'ignore
-  [remap evil-change]         #'ignore
-  [remap evil-change-line]    #'ignore
-  [remap evil-visual-char]    #'ignore
-  [remap evil-visual-line]    #'ignore)
+  [remap evil-paste-pop-next]       #'forward-button
+  [remap evil-paste-pop]            #'backward-button
+  [remap evil-delete]               #'ignore
+  [remap evil-delete-line]          #'ignore
+  [remap evil-insert]               #'ignore
+  [remap evil-append]               #'ignore
+  [remap evil-replace]              #'ignore
+  [remap evil-enter-replace-state]  #'ignore
+  [remap evil-change]               #'ignore
+  [remap evil-change-line]          #'ignore
+  [remap evil-visual-char]          #'ignore
+  [remap evil-visual-line]          #'ignore)
 
 
 ;;
@@ -223,13 +227,27 @@ If any of them return non-nil, dashboard reloading is inhibited.")
       (setq fancy-splash-image
             (expand-file-name +dashboard-banner-file
                               +dashboard-banner-dir)))
+
+    (add-transient-hook!
+        'zenit-first-input-hook :depth -95
+        (let ((original (get 'mode-line-format 'standard-value)))
+          (setq mode-line-format original)))
+    (add-transient-hook!
+        'zenit-first-input-hook :depth 100
+        (setq +dashboard--keys-ready t)
+        (+dashboard-reload))
+
     (+dashboard-reload)
+    ;; We start with an empty mode line and load it later (see above).
+    (setq mode-line-format nil)
+
     (add-hook 'zenit-load-theme-hook #'+dashboard-reload-on-theme-change-h)
     ;; Ensure the dashboard is up-to-date whenever it is switched to or resized.
     (add-hook 'window-size-change-functions #'+dashboard-resize-h)
     (add-hook 'zenit-switch-buffer-hook #'+dashboard-reload-maybe-h)
     (add-hook 'delete-frame-functions #'+dashboard-reload-frame-h)
-    ;; `persp-mode' integration: update `default-directory' when switching perspectives
+    ;; `persp-mode' integration: update `default-directory' when switching
+    ;; perspectives
     (add-hook 'persp-created-functions #'+dashboard--persp-record-project-h)
     (add-hook 'persp-activated-functions #'+dashboard--persp-detect-project-h)
     ;; Fix #2219 where, in GUI daemon frames, the dashboard loses center
@@ -444,16 +462,16 @@ What it is set to is controlled by `+dashboard-pwd-policy'."
   (propertize
    (string-join
     '("___________   _____      _____   _________    _________"
-            "\\_   _____/  /     \\    /  _  \\  \\_   ___ \\  /   _____/"
-            " |    __)_  /  \\ /  \\  /  /_\\  \\ /    \\  \\/  \\_____  \\ "
-            " |        \\/    Y    \\/    |    \\\\     \\____ /        \\"
-            "/_______  /\\____|__  /\\____|__  / \\______  //_______  /"
-            "        \\/         \\/         \\/         \\/         \\/ "
-            ""
-            ""
-            "                         Yay!"
-            ""
-            "")
+      "\\_   _____/  /     \\    /  _  \\  \\_   ___ \\  /   _____/"
+      " |    __)_  /  \\ /  \\  /  /_\\  \\ /    \\  \\/  \\_____  \\ "
+      " |        \\/    Y    \\/    |    \\\\     \\____ /        \\"
+      "/_______  /\\____|__  /\\____|__  / \\______  //_______  /"
+      "        \\/         \\/         \\/         \\/         \\/ "
+      ""
+      ""
+      "                         Yay!"
+      ""
+      "")
     "\n")
    'face '+dashboard-banner))
 
@@ -515,27 +533,28 @@ What it is set to is controlled by `+dashboard-pwd-policy'."
                      (format "%-38s" (buffer-string)))
                    ;; Lookup command keys dynamically
                    (propertize
-                    (or key
-                        (when-let*
-                            ((keymaps
-                              (delq
-                               nil (list (when (bound-and-true-p evil-local-mode)
-                                           (evil-get-auxiliary-keymap +dashboard-mode-map 'normal))
-                                         +dashboard-mode-map)))
-                             (key
-                              (or (when keymaps
-                                    (where-is-internal action keymaps t))
-                                  (where-is-internal action nil t))))
-                          (with-temp-buffer
-                            (save-excursion (insert (key-description key)))
-                            (while (re-search-forward "<\\([^>]+\\)>" nil t)
-                              (let ((str (match-string 1)))
-                                (replace-match
-                                 (upcase (if (< (length str) 3)
-                                             str
-                                           (substring str 0 3))))))
-                            (buffer-string)))
-                        "")
+                    (if (not +dashboard--keys-ready) ""
+                      (or key
+                          (when-let*
+                              ((keymaps
+                                (delq
+                                 nil (list (when (bound-and-true-p evil-local-mode)
+                                             (evil-get-auxiliary-keymap +dashboard-mode-map 'normal))
+                                           +dashboard-mode-map)))
+                               (key
+                                (or (when keymaps
+                                      (where-is-internal action keymaps t))
+                                    (where-is-internal action nil t))))
+                            (with-temp-buffer
+                              (save-excursion (insert (key-description key)))
+                              (while (re-search-forward "<\\([^>]+\\)>" nil t)
+                                (let ((str (match-string 1)))
+                                  (replace-match
+                                   (upcase (if (< (length str) 3)
+                                               str
+                                             (substring str 0 3))))))
+                              (buffer-string)))
+                          ""))
                     'face '+dashboard-menu-desc)))
          (propertize "\n" 'display '(space . (:relative-height 0.01))))))))
 

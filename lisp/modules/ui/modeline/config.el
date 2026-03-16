@@ -1,7 +1,7 @@
 ;; ui/modeline/config.el -*- lexical-binding: t; -*-
 
 (use-package! doom-modeline
-  :hook (zenit-first-buffer . doom-modeline-mode)
+  :hook (zenit-first-input . doom-modeline-mode)
   :hook (doom-modeline-mode . size-indication-mode) ; filesize in modeline
   :hook (doom-modeline-mode . column-number-mode)   ; cursor column in modeline
   :init

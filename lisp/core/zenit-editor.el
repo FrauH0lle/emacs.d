@@ -591,8 +591,9 @@ current buffer. "
   ;; Reduced from the default of 5000 for slightly faster analysis
   (setq dtrt-indent-max-lines 2000)
 
-  ;; always keep tab-width up-to-date
-  (push '(t tab-width) dtrt-indent-hook-generic-mapping-list)
+  ;; Always keep tab-width up-to-date
+  (dolist (var (get 'tab-width 'indent-vars))
+    (cl-callf2 rassq-delete-all var dtrt-indent-hook-generic-mapping-list))
 
   (defvar dtrt-indent-run-after-smie)
   (defadvice! zenit--fix-broken-smie-modes-a (fn &optional arg)

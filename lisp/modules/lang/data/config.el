@@ -10,8 +10,8 @@
   ;; https://github.com/Fuco1/smartparens/issues/397#issuecomment-501059014
   (after! smartparens
     (sp-local-pair 'nxml-mode "<" ">" :post-handlers '(("[d1]" "/"))))
-  (setq-hook! 'nxml-mode-hook tab-width nxml-child-indent)
-  (set-formatter! 'xmllint '("xmllint" "--format" "-") :modes '(nxml-mode)))
+  (set-formatter! 'xmllint '("xmllint" "--format" "-") :modes '(nxml-mode))
+  (set-indent-vars! 'nxml-mode 'nxml-child-indent))
 
 
 ;;;###package csv-mode
@@ -66,8 +66,7 @@
   :mode "Procfile\\'"
   :config
   (static-when (modulep! +lsp)
-    (add-hook 'yaml-mode-local-vars-hook #'lsp! 'append))
-  (setq-hook! 'yaml-mode-hook tab-width yaml-indent-offset))
+    (add-hook 'yaml-mode-local-vars-hook #'lsp! 'append)))
 
 
 (use-package! yaml-ts-mode

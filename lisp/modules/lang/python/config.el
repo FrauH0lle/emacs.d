@@ -98,10 +98,6 @@
     (advice-add #'pythonic-activate :after-while #'+modeline-update-env-in-all-windows-h)
     (advice-add #'pythonic-deactivate :after #'+modeline-clear-env-in-all-windows-h))
 
-  ;; HACK: `python-mode' doesn't update `tab-width' to reflect
-  ;;   `python-indent-offset', causing issues anywhere `tab-width' is respected.
-  (setq-hook! '(python-mode-hook python-ts-mode-hook) tab-width python-indent-offset)
-
   ;; Make the REPL buffer more responsive.
   (setq-hook! 'inferior-python-mode-hook
     comint-scroll-to-bottom-on-input t

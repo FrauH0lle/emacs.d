@@ -185,7 +185,10 @@ FUNCTION
       (if (derived-mode-p 'org-mode)
           (org-reveal '(4))
         (require 'reveal)
-        (reveal-post-command)))))
+        (reveal-post-command))))
+
+  ;; See https://github.com/magit/magit/issues/5320
+  (setq-hook! 'magit-status-mode-hook long-line-threshold nil))
 
 
 (use-package! forge

@@ -110,7 +110,7 @@ themselves) to ensure the buffer is as fast as possible."
                               #'string-match-p))))
        (setq-local zenit-large-file-p size)))
 
-(add-hook! 'find-file-hook
+(add-hook! 'find-file-hook :depth -90
   (defun zenit-optimize-for-large-files-h ()
     "Trigger `so-long-minor-mode' if the file is large."
     (when (and zenit-large-file-p buffer-file-name)

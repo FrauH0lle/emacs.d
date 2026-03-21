@@ -3,7 +3,6 @@
 ;;;###autoload
 (defalias '+zen/toggle #'writeroom-mode)
 
-(defvar +zen--last-wconf nil)
 ;;;###autoload
 (defun +zen/toggle-fullscreen ()
   "Toggle `writeroom-mode' fullscreen and delete all other windows.
@@ -20,8 +19,8 @@ Invoke again to revert to the window configuration before it was activated."
              (if (memq fullscreen-restore '(maximized fullheight fullwidth))
                  fullscreen-restore
                nil)))
-          (set-window-configuration +zen--last-wconf))
-      (setq +zen--last-wconf (current-window-configuration))
+          (set-window-configuration (get '+zen/toggle-fullscreen 'last-wconf)))
+      (put '+zen/toggle-fullscreen 'last-wconf (current-window-configuration))
       (modify-frame-parameters
        nil `((fullscreen . fullboth)
              (fullscreen-restore . ,(frame-parameter nil 'fullscreen)))))

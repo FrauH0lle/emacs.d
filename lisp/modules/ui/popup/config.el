@@ -232,7 +232,7 @@ disabled when that window has been changed or closed."
 
 (set-popup-rules!
   '(("^\\*Completions" :ignore t)
-    ("^\\*Local variables\\*$"
+    ("^\\*Local Variables\\*$"
      :vslot -1 :slot 1 :size +popup-shrink-to-fit)
     ("^\\*\\(?:[Cc]ompil\\(?:ation\\|e-Log\\)\\|Messages\\)"
      :vslot -2 :size 0.33  :autosave t :quit t :ttl nil)

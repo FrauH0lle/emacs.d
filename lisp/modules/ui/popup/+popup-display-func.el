@@ -11,6 +11,52 @@
 
 (defvar +popup--internal)
 
+(defun +popup--find-vslot-split-ref (side vslot)
+  "Return the reference window for creating a new VSLOT on SIDE.
+
+The returned window is passed to
+`window--make-major-side-window-next-to'. Returns nil if no side windows
+exist on SIDE, or if the new vslot goes toward the edge (in which case
+`frame-root-window' is the correct default)."
+  (let (vslot-windows)
+    (walk-windows
+     (lambda (w)
+       (when (eq (window-parameter w 'window-side) side)
+         (let ((wv (or (window-parameter w 'window-vslot) 0)))
+           (unless (assq wv vslot-windows)
+             ;; Find the vslot root: if siblings share the same vslot, the root
+             ;; is the parent (multi-slot vslot level).
+             (let* ((prev (window-prev-sibling w))
+                    (next (window-next-sibling w))
+                    (root (if (or (and prev (eq (window-parameter prev 'window-vslot) wv))
+                                  (and next (eq (window-parameter next 'window-vslot) wv)))
+                              (window-parent w)
+                            w)))
+               (push (cons wv root) vslot-windows))))))
+     'nomini)
+    (when vslot-windows
+      (let (best-lower best-lower-vslot
+            best-higher best-higher-vslot)
+        (dolist (entry vslot-windows)
+          (let ((wv (car entry))
+                (root (cdr entry)))
+            (when (< wv vslot)
+              (when (or (null best-lower-vslot) (> wv best-lower-vslot))
+                (setq best-lower root best-lower-vslot wv)))
+            (when (> wv vslot)
+              (when (or (null best-higher-vslot) (< wv best-higher-vslot))
+                (setq best-higher root best-higher-vslot wv)))))
+        (cond
+         ;; New vslot is higher → toward center. Split from the center-side
+         ;; sibling of the closest lower neighbor.
+         (best-lower
+          (pcase side
+            ((or 'bottom 'right) (window-prev-sibling best-lower))
+            ((or 'top 'left) (window-next-sibling best-lower))))
+         ;; New vslot is lower → toward edge. Return nil so the caller uses
+         ;; `frame-root-window'.
+         (best-higher nil))))))
+
 (el-patch-defun (el-patch-swap display-buffer-in-side-window +popup-display-buffer-stacked-side-window-fn) (buffer alist)
   (el-patch-concat
     "Display BUFFER in a side window of the selected frame.\n"
@@ -135,15 +181,49 @@ indirectly called by the latter.")
         ;; just return nil.
         nil)
        ((not windows)
-        ;; No major side window exists on this side, make one.
+        ;; No major side window exists for this vslot, make one.
         (el-patch-swap
           (window--make-major-side-window buffer side slot alist)
-          (cl-letf (((symbol-function 'window--make-major-side-window-next-to)
-                     (lambda (_side) (frame-root-window (selected-frame)))))
-            (when-let* ((window (window--make-major-side-window buffer side slot alist)))
-              (set-window-parameter window 'window-vslot vslot)
-              (add-to-list 'window-persistent-parameters '(window-vslot . writable))
-              window))))
+          ;; Record existing side window sizes before creating the new one.
+          (let ((saved-sizes
+                 (let (sizes)
+                   (walk-windows
+                    (lambda (w)
+                      (when (eq (window-parameter w 'window-side) side)
+                        (push (cons w (if left-or-right
+                                          (window-total-width w)
+                                        (window-total-height w)))
+                              sizes)))
+                    'nomini)
+                   sizes)))
+            (cl-letf (((symbol-function 'window--make-major-side-window-next-to)
+                       (lambda (_side)
+                         (or (+popup--find-vslot-split-ref side vslot)
+                             (frame-root-window (selected-frame))))))
+              (when-let* ((window (window--make-major-side-window buffer side slot alist)))
+                (set-window-parameter window 'window-vslot vslot)
+                (add-to-list 'window-persistent-parameters '(window-vslot . writable))
+                ;; Fix sizes disturbed by proportional redistribution inside
+                ;; window--make-major-side-window. Protect the new window and
+                ;; all correctly-sized windows with window-preserve-size so that
+                ;; freed space goes to the main area rather than to another side
+                ;; window.
+                (window-preserve-size window left-or-right t)
+                (dolist (entry saved-sizes)
+                  (let* ((w (car entry))
+                         (old-sz (cdr entry))
+                         (cur-sz (if left-or-right
+                                     (window-total-width w)
+                                   (window-total-height w))))
+                    (when (and (window-live-p w) (/= old-sz cur-sz))
+                      (window-preserve-size w left-or-right nil)
+                      (window-resize w (- old-sz cur-sz) left-or-right))))
+                ;; Un-preserve
+                (window-preserve-size window left-or-right nil)
+                (dolist (entry saved-sizes)
+                  (when (window-live-p (car entry))
+                    (window-preserve-size (car entry) left-or-right nil)))
+                window)))))
        (t
         ;; Scan windows on SIDE.
         (catch 'found

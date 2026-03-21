@@ -234,8 +234,10 @@ disabled when that window has been changed or closed."
   '(("^\\*Completions" :ignore t)
     ("^\\*Local Variables\\*$"
      :vslot -1 :slot 1 :size +popup-shrink-to-fit)
-    ("^\\*\\(?:[Cc]ompil\\(?:ation\\|e-Log\\)\\|Messages\\)"
-     :vslot -2 :size 0.33  :autosave t :quit t :ttl nil)
+    ("^\\*compilation"
+     :vslot -2 :size 0.3 :autosave t :quit t :ttl 0)
+    ("^\\*\\(?:[Cc]ompile-Log\\|Messages\\)"
+     :vslot -2 :size 0.33 :autosave t :quit t :ttl nil)
     ("^\\*\\(?:zenit \\|Pp E\\)"  ; transient buffers (no interaction required)
      :vslot -3 :size +popup-shrink-to-fit :autosave t :select ignore :quit t :ttl 0)
     ("^\\*zenit:"  ; editing buffers (interaction required)

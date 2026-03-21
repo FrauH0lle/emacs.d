@@ -11,6 +11,8 @@
 
 (defvar +popup--internal)
 
+(add-to-list 'window-persistent-parameters '(window-vslot . writable))
+
 (defun +popup--find-vslot-split-ref (side vslot)
   "Return the reference window for creating a new VSLOT on SIDE.
 
@@ -28,8 +30,8 @@ exist on SIDE, or if the new vslot goes toward the edge (in which case
              ;; is the parent (multi-slot vslot level).
              (let* ((prev (window-prev-sibling w))
                     (next (window-next-sibling w))
-                    (root (if (or (and prev (eq (window-parameter prev 'window-vslot) wv))
-                                  (and next (eq (window-parameter next 'window-vslot) wv)))
+                    (root (if (or (and prev (eql (window-parameter prev 'window-vslot) wv))
+                                  (and next (eql (window-parameter next 'window-vslot) wv)))
                               (window-parent w)
                             w)))
                (push (cons wv root) vslot-windows))))))
@@ -118,7 +120,7 @@ indirectly called by the latter.")
              (live (get-window-with-predicate
                     (lambda (window)
                       (and (eq (window-parameter window 'window-side) side)
-                           (eq (window-parameter window 'window-vslot) vslot)))
+                           (eql (window-parameter window 'window-vslot) vslot)))
                     nil)))
            ;; As opposed to the `window-side' property, our `window-vslot'
            ;; parameter is set only on a single live window and never on
@@ -139,7 +141,7 @@ indirectly called by the latter.")
            (major (el-patch-swap
                     (window-with-parameter 'window-side side nil t)
                     (and live
-                         (if (or (eq prev-vslot vslot) (eq next-vslot vslot))
+                         (if (or (eql prev-vslot vslot) (eql next-vslot vslot))
                              (window-parent live)
                            live))))
            ;; `major' is the major window on SIDE, `windows' the list of
@@ -202,7 +204,6 @@ indirectly called by the latter.")
                              (frame-root-window (selected-frame))))))
               (when-let* ((window (window--make-major-side-window buffer side slot alist)))
                 (set-window-parameter window 'window-vslot vslot)
-                (add-to-list 'window-persistent-parameters '(window-vslot . writable))
                 ;; Fix sizes disturbed by proportional redistribution inside
                 ;; window--make-major-side-window. Protect the new window and
                 ;; all correctly-sized windows with window-preserve-size so that

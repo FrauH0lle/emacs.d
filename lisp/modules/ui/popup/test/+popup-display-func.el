@@ -207,6 +207,24 @@ such as ((window-width . 20)).  Returns the window on success."
     (should (< (+popup-test--top-edge win-high)
                (+popup-test--top-edge win-low)))))
 
+(zenit-deftest +popup-display-func/top-vslot-stacking-reverse-order
+  (:doc "Top popups: vslot stacking is independent of opening order"
+   :before-each
+   (setq window--sides-inhibit-check t)
+   :after-each
+   (+popup-test--cleanup))
+  (let* ((buf-low  (+popup-test--make-buffer "*test-top-low*"))
+         (buf-high (+popup-test--make-buffer "*test-top-high*"))
+         ;; Open high vslot first, then low
+         (win-high (+popup-test--display buf-high 'top 0 10))
+         (win-low  (+popup-test--display buf-low  'top 0 -10)))
+    (should win-low)
+    (should win-high)
+    (should-not (eq win-low win-high))
+    ;; Higher vslot should still be below (closer to center) regardless of opening order
+    (should (> (+popup-test--top-edge win-high)
+               (+popup-test--top-edge win-low)))))
+
 
 ;;
 ;;; Tests: Top side — vslot stacking
@@ -275,6 +293,24 @@ such as ((window-width . 20)).  Returns the window on success."
     (should-not (eq win-low win-high))
     ;; Higher vslot should still be more to the left
     (should (< (+popup-test--left-edge win-high)
+               (+popup-test--left-edge win-low)))))
+
+(zenit-deftest +popup-display-func/left-vslot-stacking-reverse-order
+  (:doc "Left popups: vslot stacking is independent of opening order"
+   :before-each
+   (setq window--sides-inhibit-check t)
+   :after-each
+   (+popup-test--cleanup))
+  (let* ((buf-low  (+popup-test--make-buffer "*test-left-low*"))
+         (buf-high (+popup-test--make-buffer "*test-left-high*"))
+         ;; Open high vslot first, then low
+         (win-high (+popup-test--display buf-high 'left 0 10))
+         (win-low  (+popup-test--display buf-low  'left 0 -10)))
+    (should win-low)
+    (should win-high)
+    (should-not (eq win-low win-high))
+    ;; Higher vslot should still be more to the right (closer to center)
+    (should (> (+popup-test--left-edge win-high)
                (+popup-test--left-edge win-low)))))
 
 
@@ -370,6 +406,33 @@ such as ((window-width . 20)).  Returns the window on success."
         (should (< (+popup-test--top-edge win-high-new)
                    (+popup-test--top-edge win-low-current)))))))
 
+(zenit-deftest +popup-display-func/top-reopen-preserves-vslot
+  (:doc "Top side: reopening a popup restores its vslot position"
+   :before-each
+   (setq window--sides-inhibit-check t)
+   :after-each
+   (+popup-test--cleanup))
+  (let* ((buf-high (+popup-test--make-buffer "*popup-high*"))
+         (buf-low  (+popup-test--make-buffer "*popup-low*"))
+         ;; Open both
+         (win-low  (+popup-test--display buf-low  'top 0 -10))
+         (win-high (+popup-test--display buf-high 'top 0 10)))
+    (should win-low)
+    (should win-high)
+    ;; Verify initial ordering: high vslot below low vslot (closer to center)
+    (should (> (+popup-test--top-edge win-high)
+               (+popup-test--top-edge win-low)))
+    ;; Close high vslot popup
+    (delete-window win-high)
+    ;; Reopen it
+    (let ((win-high-new (+popup-test--display buf-high 'top 0 10)))
+      (should win-high-new)
+      ;; Should still be below (closer to center)
+      (let ((win-low-current (get-buffer-window buf-low)))
+        (should win-low-current)
+        (should (> (+popup-test--top-edge win-high-new)
+                   (+popup-test--top-edge win-low-current)))))))
+
 (zenit-deftest +popup-display-func/left-reopen-preserves-vslot
   (:doc "Left side: reopening a popup restores its vslot position"
    :before-each
@@ -459,6 +522,42 @@ such as ((window-width . 20)).  Returns the window on success."
     (should (= height (window-total-height win2)))
     (should (= win1-height (window-total-height win1)))))
 
+(zenit-deftest +popup-display-func/top-vslot-preserves-height
+  (:doc "Top popups: second vslot does not resize the first"
+   :before-each
+   (setq window--sides-inhibit-check t)
+   :after-each
+   (+popup-test--cleanup))
+  (let* ((buf1 (+popup-test--make-buffer "*test-size1*"))
+         (buf2 (+popup-test--make-buffer "*test-size2*"))
+         (height 5)
+         (alist `((window-height . ,height)))
+         (win1 (+popup-test--display buf1 'top 0 -10 alist))
+         (win1-height (window-total-height win1))
+         (win2 (+popup-test--display buf2 'top 0 10 alist)))
+    (should win1)
+    (should win2)
+    (should (= height (window-total-height win2)))
+    (should (= win1-height (window-total-height win1)))))
+
+(zenit-deftest +popup-display-func/left-vslot-preserves-width
+  (:doc "Left popups: second vslot does not resize the first"
+   :before-each
+   (setq window--sides-inhibit-check t)
+   :after-each
+   (+popup-test--cleanup))
+  (let* ((buf1 (+popup-test--make-buffer "*test-size1*"))
+         (buf2 (+popup-test--make-buffer "*test-size2*"))
+         (width 15)
+         (alist `((window-width . ,width)))
+         (win1 (+popup-test--display buf1 'left 0 -10 alist))
+         (win1-width (window-total-width win1))
+         (win2 (+popup-test--display buf2 'left 0 10 alist)))
+    (should win1)
+    (should win2)
+    (should (= width (window-total-width win2)))
+    (should (= win1-width (window-total-width win1)))))
+
 (zenit-deftest +popup-display-func/right-reopen-preserves-width
   (:doc "Right popups: reopening a closed vslot does not resize the other"
    :before-each
@@ -513,6 +612,40 @@ such as ((window-width . 20)).  Returns the window on success."
          (buf-below (+popup-test--make-buffer "*test-slot-below*"))
          (win-above (+popup-test--display buf-above 'right -1 0))
          (win-below (+popup-test--display buf-below 'right  1 0)))
+    (should win-above)
+    (should win-below)
+    (should-not (eq win-above win-below))
+    ;; Negative slot should be above (smaller TOP edge)
+    (should (< (+popup-test--top-edge win-above)
+               (+popup-test--top-edge win-below)))))
+
+(zenit-deftest +popup-display-func/top-slot-lateral-order
+  (:doc "Top popups: positive slot is to the right, negative to the left"
+   :before-each
+   (setq window--sides-inhibit-check t)
+   :after-each
+   (+popup-test--cleanup))
+  (let* ((buf-left  (+popup-test--make-buffer "*test-slot-left*"))
+         (buf-right (+popup-test--make-buffer "*test-slot-right*"))
+         (win-left  (+popup-test--display buf-left  'top -1 0))
+         (win-right (+popup-test--display buf-right 'top  1 0)))
+    (should win-left)
+    (should win-right)
+    (should-not (eq win-left win-right))
+    ;; Negative slot should be to the left
+    (should (< (+popup-test--left-edge win-left)
+               (+popup-test--left-edge win-right)))))
+
+(zenit-deftest +popup-display-func/left-slot-vertical-order
+  (:doc "Left popups: positive slot is below, negative is above"
+   :before-each
+   (setq window--sides-inhibit-check t)
+   :after-each
+   (+popup-test--cleanup))
+  (let* ((buf-above (+popup-test--make-buffer "*test-slot-above*"))
+         (buf-below (+popup-test--make-buffer "*test-slot-below*"))
+         (win-above (+popup-test--display buf-above 'left -1 0))
+         (win-below (+popup-test--display buf-below 'left  1 0)))
     (should win-above)
     (should win-below)
     (should-not (eq win-above win-below))
@@ -648,23 +781,72 @@ such as ((window-width . 20)).  Returns the window on success."
          (_win (+popup-test--display buf 'bottom 0 -3)))
     (should (assq 'window-vslot window-persistent-parameters))))
 
-;; (set-popup-rule! "^\\*popup1"
-;;   :side 'right
-;;   :vslot 10
-;;   :modeline t)
 
-;; (set-popup-rule! "^\\*popup2"
-;;   :side 'right
-;;   :vslot -10
-;;   :modeline t)
+;;
+;;; Tests: Default values
 
-;; (pop-to-buffer (get-buffer-create "*popup1*"))  ;; opens on the right 👍
-;; (pop-to-buffer (get-buffer-create "*popup2*"))  ;; opens to the right of popup1 👍
-;; (delete-window (get-buffer-window "*popup1*"))
-;; (pop-to-buffer (get-buffer-create "*popup1*"))  ;; opens to the right of popup2 👎
+(zenit-deftest +popup-display-func/defaults-side-bottom
+  (:doc "Side defaults to bottom when omitted from alist"
+   :before-each
+   (setq window--sides-inhibit-check t)
+   :after-each
+   (+popup-test--cleanup))
+  (let* ((buf (+popup-test--make-buffer "*test-defaults*"))
+         (win (+popup-display-buffer-stacked-side-window-fn
+               buf '((slot . 0) (vslot . 0)))))
+    (should win)
+    (should (eq 'bottom (window-parameter win 'window-side)))))
 
-;;   (let* ((buf-above (+popup-test--make-buffer "*test-slot-above*"))
-;;          (buf-below (+popup-test--make-buffer "*test-slot-below*"))
-;;          (win-above (+popup-test--display buf-above 'right 0 10))
-;;          (win-below (+popup-test--display buf-below 'right 0 -10))))
-;; (+popup-test--cleanup)
+(zenit-deftest +popup-display-func/defaults-slot-zero
+  (:doc "Slot defaults to 0 when omitted from alist"
+   :before-each
+   (setq window--sides-inhibit-check t)
+   :after-each
+   (+popup-test--cleanup))
+  (let* ((buf (+popup-test--make-buffer "*test-defaults*"))
+         (win (+popup-display-buffer-stacked-side-window-fn
+               buf '((side . bottom) (vslot . 0)))))
+    (should win)
+    (should (= 0 (window-parameter win 'window-slot)))))
+
+(zenit-deftest +popup-display-func/defaults-vslot-zero
+  (:doc "Vslot defaults to 0 when omitted from alist"
+   :before-each
+   (setq window--sides-inhibit-check t)
+   :after-each
+   (+popup-test--cleanup))
+  (let* ((buf (+popup-test--make-buffer "*test-defaults*"))
+         (win (+popup-display-buffer-stacked-side-window-fn
+               buf '((side . bottom) (slot . 0)))))
+    (should win)
+    (should (= 0 (window-parameter win 'window-vslot)))))
+
+
+;;
+;;; Tests: Window dedication
+
+(zenit-deftest +popup-display-func/window-dedicated-popup
+  (:doc "Created window is dedicated with the `popup' flag"
+   :before-each
+   (setq window--sides-inhibit-check t)
+   :after-each
+   (+popup-test--cleanup))
+  (let* ((buf (+popup-test--make-buffer "*test-dedicated*"))
+         (win (+popup-test--display buf 'bottom)))
+    (should win)
+    (should (eq 'popup (window-dedicated-p win)))))
+
+
+;;
+;;; Tests: Correct buffer displayed
+
+(zenit-deftest +popup-display-func/buffer-displayed-in-window
+  (:doc "The requested buffer is displayed in the created window"
+   :before-each
+   (setq window--sides-inhibit-check t)
+   :after-each
+   (+popup-test--cleanup))
+  (let* ((buf (+popup-test--make-buffer "*test-buf-display*"))
+         (win (+popup-test--display buf 'right 0 0)))
+    (should win)
+    (should (eq buf (window-buffer win)))))

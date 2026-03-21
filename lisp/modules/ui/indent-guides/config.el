@@ -37,7 +37,7 @@ the mode will not be activated."
    ;; But increase the highlighting of the current depth
    indent-bars-highlight-current-depth (plist-put indent-bars-highlight-current-depth :blend 0.5)
    ;; Do not highlight on empty lines
-   indent-bars-display-on-blank-lines nil)
+   indent-bars-display-on-blank-lines 'least)
 
   (unless (boundp 'enable-theme-functions)
     (add-hook 'zenit-load-theme-hook #'indent-bars-reset-styles))

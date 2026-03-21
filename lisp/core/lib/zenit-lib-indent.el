@@ -63,7 +63,7 @@ with `set-indent-vars!'."
   (defun zenit-set-indent (&optional width)
     "Ensure tab-width reflects the local major mode's indent variable."
     (when-let* ((vars (zenit-indent-vars-for-mode major-mode))
-                (width* (or width (symbol-value (car vars)))))
+                (width* (or width (cl-some #'symbol-value vars))))
       (zenit-log 2 "zenit-set-indent: %S = %S" `(tab-width standard-indent ,@vars) width*)
       (setq-local tab-width width*
                   standard-indent width*)

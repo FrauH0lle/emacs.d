@@ -15,25 +15,16 @@
   (:doc "`zenit-inhibit-indent-detection' is defined")
   (should (boundp 'zenit-inhibit-indent-detection)))
 
-(zenit-deftest zenit-inhibit-large-file-detection
-  (:doc "`zenit-inhibit-large-file-detection' is defined")
-  (should (boundp 'zenit-inhibit-large-file-detection)))
+(zenit-deftest zenit-file-lines-threshold-alist
+  (:doc "`zenit-file-lines-threshold-alist' is defined")
+  (should (boundp 'zenit-file-lines-threshold-alist)))
 
-(zenit-deftest zenit-large-file-size-alist
-  (:doc "`zenit-large-file-size-alist' is defined")
-  (should (boundp 'zenit-large-file-size-alist)))
-
-(zenit-deftest zenit--prepare-for-large-files-a
-  (:doc "`zenit--prepare-for-large-files-a' advises `abort-if-file-too-large'")
+(zenit-deftest zenit-so-long-p
+  (:doc "`zenit-so-long-p' is defined and set as `so-long-predicate'")
   (progn
-    (should (fboundp 'zenit--prepare-for-large-files-a))
-    (should (advice-member-p 'zenit--prepare-for-large-files-a #'abort-if-file-too-large))))
-
-(zenit-deftest zenit-optimize-for-large-files-h
-  (:doc "`zenit-optimize-for-large-files-h' is a member of `find-file-hook'")
-  (progn
-    (should (fboundp 'zenit-optimize-for-large-files-h))
-    (should (member #'zenit-optimize-for-large-files-h find-file-hook))))
+    (require' so-long)
+    (should (fboundp 'zenit-so-long-p))
+    (should (eq so-long-predicate #'zenit-so-long-p))))
 
 (zenit-deftest zenit--symlink-origin
   (:doc "`zenit--symlink-origin' is defined")

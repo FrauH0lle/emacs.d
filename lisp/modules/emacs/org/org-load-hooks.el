@@ -571,9 +571,9 @@ org-mode buffers."
       (if-let* ((buf (org-find-base-buffer-visiting file)))
           buf
         (let ((recentf-exclude '(always))
-              (zenit-inhibit-large-file-detection t)
               (zenit-inhibit-local-var-hooks t)
               (org-inhibit-startup t)
+              so-long-target-modes
               vc-handled-backends
               enable-local-variables
               find-file-hook)

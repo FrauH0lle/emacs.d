@@ -177,9 +177,12 @@ If any of them return non-nil, dashboard reloading is inhibited.")
   (setq-local mode-line-right-align-edge 'right-margin)
   ;; Ensure point is always on a button
   (add-hook 'post-command-hook #'+dashboard-reposition-point-h nil 'local)
-  ;; hl-line produces an ugly cut-off line highlight in the dashboard, so don't
-  ;; activate it there (by pretending it's already active).
-  (setq-local hl-line-mode t))
+  ;; `hl-line' produces an ugly cut-off line highlight in the dashboard, so
+  ;; don't activate it there (by pretending it's already active).
+  (setq-local hl-line-mode t)
+  ;; Local variables are never important in the dashboard, and may cause repeat
+  ;; prompts about unsafe/risky variables.
+  (setq-local enable-local-variables nil))
 
 (define-key! +dashboard-mode-map
   [left-margin mouse-1]   #'ignore

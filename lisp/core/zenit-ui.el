@@ -444,15 +444,17 @@ buffers are visible in other windows, switch to
   (add-hook 'comint-exec-hook #'buffer-disable-undo)
   (defadvice! zenit--comint-enable-undo-a (process _string)
     :after #'comint-output-filter
-    (with-current-buffer (process-buffer process)
-      (when-let* ((start-marker comint-last-output-start))
-        (when (and (< start-marker
-                      (or (if process (process-mark process))
-                          (point-max-marker)))
-                   ;; Account for some of the IELM’s wilderness.
-                   (eq (char-before start-marker) ?\n))
-          (buffer-enable-undo)
-          (setq buffer-undo-list nil)))))
+    ;; Don't affect output-only buffers like `compilation-mode'
+    (unless buffer-read-only
+      (with-current-buffer (process-buffer process)
+        (when-let* ((start-marker comint-last-output-start))
+          (when (and (< start-marker
+                        (or (if process (process-mark process))
+                            (point-max-marker)))
+                     ;; Account for some of the IELM’s wilderness.
+                     (eq (char-before start-marker) ?\n))
+            (buffer-enable-undo)
+            (setq buffer-undo-list nil))))))
 
   ;; Protect prompts from accidental modifications.
   (setq-default comint-prompt-read-only t)
@@ -497,20 +499,34 @@ buffers are visible in other windows, switch to
 
   (add-hook! 'comint-mode-hook
     (defun zenit--comint-init-move-cursor-to-prompt-h ()
-      (add-hook 'pre-command-hook #'zenit--comint-move-cursor-to-prompt-h
-                nil t))))
+      (unless buffer-read-only  ; don't affect output-only buffers like `compilation-mode'
+        (add-hook 'pre-command-hook #'zenit--comint-move-cursor-to-prompt-h
+                  nil t)))))
 
 
 (after! compile
   (setq compilation-always-kill t       ; kill compilation process before starting another
         compilation-ask-about-save nil  ; save all buffers on `compile'
+        compilation-max-output-line-length nil  ; slows down verbose processes
         compilation-scroll-output 'first-error)
   ;; Handle ansi codes in compilation buffer
   (add-hook 'compilation-filter-hook #'ansi-color-compilation-filter)
   ;; Automatically truncate compilation buffers so they don't accumulate too
-  ;; much data and bog down the rest of Emacs.
+  ;; much data and bog down the rest of Emacs. Also rate-limit expensive calls
+  ;; to `comint-truncate-buffer'.
   (autoload 'comint-truncate-buffer "comint" nil t)
-  (add-hook 'compilation-filter-hook #'comint-truncate-buffer))
+  (add-hook! 'compilation-filter-hook
+    (defun +comint-truncate-buffer-h (&optional _string)
+      "Rate-limit `comint-truncate-buffer' in compilation-mode buffers."
+      (if (> (buffer-size)
+             ;; HACK: Approximate this because counting lines is prohibitively
+             ;;   expensive in longer buffers, especially in
+             ;;   `compilation-filter-hook' which fires rapidly.
+             (* 80 comint-buffer-maximum-size))
+          (let ((gc-cons-threshold most-positive-fixnum)
+                (gc-cons-percentage 1.0))
+            (with-silent-modifications
+              (comint-truncate-buffer)))))))
 
 
 (after! ediff

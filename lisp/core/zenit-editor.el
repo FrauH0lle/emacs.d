@@ -67,60 +67,21 @@ styles (and would be a pain to accommodate on a per-file basis).")
 This buffer-local flag should be set by editorconfig if it successfully
 sets indent_style/indent_size.")
 
-(defvar zenit-inhibit-large-file-detection nil
-  "If non-nil, inhibit large/long file detection when opening files.")
+(defvar zenit-file-lines-threshold-alist
+  `(("." . ,(cond ((featurep 'igc) 25000)
+                  ((featurep 'native-compile) 20000)
+                  (15000))))
+  "An alist mapping regexps (like `auto-mode-alist') to line number thresholds.
 
-(defvar zenit-large-file-p nil)
-(put 'zenit-large-file-p 'permanent-local t)
+If a file is opened and discovered to have more lines than this, we
+enable `so-long-minor-mode' to prevent Emacs from hanging, crashing, or
+becoming unusably slow, by disabling non-essential functionality.
 
-(defvar zenit-large-file-size-alist '(("." . 1.0))
-  "An alist mapping regexps (like `auto-mode-alist') to filesize thresholds.
-
-If a file is opened and discovered to be larger than the threshold, we
-perform emergency optimizations to prevent Emacs from hanging, crashing
-or becoming unusably slow.
-
-These thresholds are in MB, and is used by
-`zenit--prepare-for-large-files-a'.")
-
-(defvar zenit-large-file-excluded-modes
-  '(so-long-mode special-mode archive-mode tar-mode jka-compr
-    git-commit-mode image-mode doc-view-mode doc-view-mode-maybe
-    ebrowse-tree-mode pdf-view-mode tags-table-mode)
-  "Major modes that `zenit-optimize-for-large-files-h' will ignore.")
+Used by `zenit-so-long-p'.")
 
 
 ;;
 ;;; File handling
-
-(defadvice! zenit--prepare-for-large-files-a (size _ filename &rest _)
-  "Sets `zenit-large-file-p' if the file is considered large.
-
-Uses `zenit-large-file-size-alist' to determine when a file is
-too large. When `zenit-large-file-p' is set, other plugins can
-detect this and reduce their runtime costs (or disable
-themselves) to ensure the buffer is as fast as possible."
-  :before #'abort-if-file-too-large
-  (and (numberp size)
-       (null zenit-inhibit-large-file-detection)
-       (ignore-errors
-         (> size
-            (* 1024 1024
-               (assoc-default filename zenit-large-file-size-alist
-                              #'string-match-p))))
-       (setq-local zenit-large-file-p size)))
-
-(add-hook! 'find-file-hook :depth -90
-  (defun zenit-optimize-for-large-files-h ()
-    "Trigger `so-long-minor-mode' if the file is large."
-    (when (and zenit-large-file-p buffer-file-name)
-      (if (or zenit-inhibit-large-file-detection
-              (memq major-mode zenit-large-file-excluded-modes))
-          (kill-local-variable 'zenit-large-file-p)
-        (when (fboundp 'so-long-minor-mode) ; in case the user disabled it
-          (so-long-minor-mode +1))
-        (message "Large file detected! Cutting a few corners to improve performance...")))))
-
 
 ;; Usually we do not want to follow symlinks, as it changes `default-directory'
 ;; and the context we working in. Use `zenit/toggle-symlink' to change between
@@ -477,7 +438,7 @@ tidbits."
 
   (defadvice! zenit--inhibit-saveplace-in-long-files-a (fn &rest args)
     :around #'save-place-to-alist
-    (unless zenit-large-file-p
+    (unless (bound-and-true-p so-long-minor-mode)
       (apply fn args)))
 
   (defadvice! zenit--dont-prettify-saveplace-cache-a (fn)
@@ -573,7 +534,7 @@ short-circuiting hooks."
     "Detect and set the appropriate indentation style for the
 current buffer. "
     (unless (or (not after-init-time)
-                zenit-large-file-p
+                (bound-and-true-p so-long-detected-p)
                 zenit-inhibit-indent-detection
                 (eq major-mode 'fundamental-mode)
                 (member (substring (buffer-name) 0 1) '(" " "*"))
@@ -700,13 +661,35 @@ current buffer.")
   (unless (featurep 'native-compile)
     (setq so-long-threshold 5000))
 
-  ;; HACK: so-long triggers in places where we don't want it, like special
-  ;;   buffers (e.g. magit status) or temp buffers.
-  (defadvice! zenit--exclude-special-modes-a (&rest _)
-    :before-while #'so-long-statistics-excessive-p
-    :before-while #'so-long-detected-long-line-p
-    (not (or (zenit-temp-buffer-p (current-buffer))
-             (zenit-special-buffer-p (current-buffer)))))
+  ;; HACK: I exploit so-long to implement a "large file" minor mode that
+  ;;   activates if a file is too large or has lines whose width exceed
+  ;;   `so-long-threshold' (particularly minified files), and disables
+  ;;   non-essential functionality to speed Emacs up.
+  (defun zenit-so-long-p ()
+    "A `so-long-predicate' to determine if the current buffer is too large.
+
+This is determined by the longest line (whether it exceeds
+`so-long-threshold') and whether the line count of the buffer exceeds
+that matching entry in `zenit-file-lines-threshold-alist' (defaulting to
+20k lines)."
+    (unless
+        ;; HACK: Prevent so-long in places where we don't want it, like special
+        ;;   buffers (e.g. magit status) or temp buffers.
+        (or (zenit-temp-buffer-p (current-buffer))
+            (zenit-special-buffer-p (current-buffer) t))
+      (let ((stats (buffer-line-statistics)))
+        (or (> (cadr stats) so-long-threshold)
+            (and buffer-file-name
+                 (when-let* ((maxlines
+                              (assoc-default buffer-file-name zenit-file-lines-threshold-alist
+                                             #'string-match-p)))
+                   (> (car stats) maxlines)))))))
+  (setq so-long-predicate #'zenit-so-long-p
+        so-long-function #'turn-on-so-long-minor-mode
+        so-long-revert-function #'turn-off-so-long-minor-mode)
+
+  (add-to-list 'so-long-target-modes 'conf-mode)
+  (add-to-list 'so-long-target-modes 'text-mode)
 
   ;; Don't disable syntax highlighting and line numbers, or make the buffer
   ;; read-only, in `so-long-minor-mode', so we can have a basic editing

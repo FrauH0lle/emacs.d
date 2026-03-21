@@ -112,6 +112,10 @@ variable.")
        " close(con);"
        " out <- capture.output(suppressWarnings(box.linters::style_box_use_text(text = text, colored = FALSE)));"
        " if (length(out) == 0) cat(buf, sep = '\n') else cat(out, sep = '\n')")))
+  ;; Air
+  (set-formatter!
+    'r-air
+    '("air" "format" "--stdin-file-path") :modes '(ess-r-mode))
 
 
   ;;
@@ -189,6 +193,16 @@ variable.")
 
   ;; LSP
   (static-when (modulep! +lsp)
+    ;; Support Air formattor
+    (after! lsp-mode
+      (lsp-register-client
+       (make-lsp-client
+        :new-connection (lsp-stdio-connection '("air" "language-server"))
+        :major-modes  '(ess-r-mode)
+        :server-id 'lsp-r-air
+        :add-on? t
+        :priority 1)))
+
     (add-hook! 'ess-r-mode-local-vars-hook
       (defun +ess-lsp-init-maybe-h ()
         "Use LSP mode if the buffer is not a remote."

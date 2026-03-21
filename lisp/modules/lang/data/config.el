@@ -52,12 +52,8 @@
   :defer t
   :init
   (set-tree-sitter! 'json-mode 'json-ts-mode
-    '((json :url "https://github.com/tree-sitter/tree-sitter-json"
-            :rev "v0.24.8")))
+    '((json :url "https://github.com/tree-sitter/tree-sitter-json")))
   :config
-  ;; HACK: Rely on `major-mode-remap-defaults'.
-  (cl-callf2 assq-delete-all 'json-ts-mode auto-mode-alist)
-
   (static-when (modulep! +lsp)
     (add-hook 'json-ts-mode-local-vars-hook #'lsp! 'append)))
 
@@ -72,14 +68,11 @@
 (use-package! yaml-ts-mode
   :when (modulep! +tree-sitter)
   :when (fboundp 'yaml-ts-mode) ; 29.1+ only
+  :defer t
   :init
   (set-tree-sitter! 'yaml-mode 'yaml-ts-mode
-                    '((yaml :url "https://github.com/tree-sitter-grammars/tree-sitter-yaml"
-                       :rev "v0.7.0")))
+    '((yaml :url "https://github.com/tree-sitter-grammars/tree-sitter-yaml")))
   :config
-  ;; HACK: Rely on `major-mode-remap-defaults'.
-  (cl-callf2 rassq-delete-all 'yaml-ts-mode auto-mode-alist)
-
   (static-when (modulep! +lsp)
     (add-hook 'yaml-ts-mode-local-vars-hook #'lsp! 'append)))
 

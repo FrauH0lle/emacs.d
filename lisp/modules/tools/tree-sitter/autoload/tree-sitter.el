@@ -38,7 +38,8 @@ mean). Note that COMMIT is ignored pre-Emacs 31."
   (let ((recipes (mapcar #'ensure-list (ensure-list recipes)))
         (modes (ensure-list modes)))
     (when modes
-      ;; Ensure ts-modes register their base modes as parents.
+      ;; Most ts-modes do not register their base modes as parents until Emacs
+      ;; 30/31; this backports that.
       (put ts-mode 'derived-mode-extra-parents modes))
     (dolist (m (or modes (list nil)))
       (when m
@@ -53,10 +54,12 @@ mean). Note that COMMIT is ignored pre-Emacs 31."
           (cl-destructuring-bind (name &key url rev source-dir cc cpp commit) (ensure-list recipe)
             (setf (alist-get name treesit-language-source-alist)
                   (append (list url rev source-dir cc cpp)
-                          ;; COMPAT: 31.1 introduced a COMMIT recipe argument.
-                          ;;   On <=30.x, extra arguments will trigger an arity
-                          ;;   error when installing grammars.
-                          (if (eq (cdr (func-arity 'treesit--install-language-grammar-1))
+                          ;; COMPAT: 31.1 introduced a COMMIT recipe argument. On
+                          ;;   <=30.x, extra arguments will trigger an arity error
+                          ;;   when installing grammars.
+                          (if (eq (cdr (func-arity
+                                        (advice--cd*r
+                                         (advice--symbol-function 'treesit--install-language-grammar-1))))
                                   'many)
                               (list commit))))))))))
 

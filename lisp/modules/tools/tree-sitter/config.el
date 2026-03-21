@@ -4,7 +4,6 @@
 ;;; Packages
 
 (use-package! treesit
-  :when (fboundp 'treesit-available-p)
   :when (treesit-available-p)
   :defer t
   :preface
@@ -42,8 +41,7 @@
     (let ((mode (funcall fn mode)))
       (if-let* ((ts (get mode '+tree-sitter))
                 (fallback-mode (car ts)))
-          (cond ((or (not (fboundp 'treesit-available-p))
-                     (not (treesit-available-p)))
+          (cond ((not (treesit-available-p))
                  (message "Treesit unavailable, falling back to `%S'" fallback-mode)
                  fallback-mode)
                 ((not (fboundp mode))
@@ -94,15 +92,14 @@
                 (fallback-mode))
         mode)))
   :config
-  (cl-pushnew (file-name-concat zenit-data-dir "tree-sitter") treesit-extra-load-path :test #'equal)
-  ;; HACK: treesit lacks any way to dictate where to install grammars.
-  (defadvice! +tree-sitter--install-grammar-to-local-dir-a (fn lang &optional outdir &rest args)
-    "Write grammars to `zenit-data-dir' instead."
-    :around #'treesit-install-language-grammar
-    :around #'treesit--build-grammar
-    (apply fn lang
-           (or outdir (file-name-concat zenit-data-dir "tree-sitter"))
-           args))
+  (let ((data-dir (file-name-concat zenit-data-dir "tree-sitter")))
+    (cl-pushnew data-dir treesit-extra-load-path :test #'equal)
+    ;; HACK: treesit lacks any way to dictate where to install grammars.
+    (defadvice! +tree-sitter--install-grammar-to-local-dir-a (fn lang &optional out-dir &rest args)
+      :around #'treesit-install-language-grammar
+      :around #'treesit--build-grammar
+      (apply fn lang (or out-dir data-dir) args)))
+
 
   ;; Increase the highlighting/christmas tree
   (setq! treesit-font-lock-level 4)

@@ -26,7 +26,7 @@
 (defvar tramp-backup-directory-alist)
 
 ;; `zenit-lib-buffers'
-(declare-function zenit-special-buffer-p "zenit-lib-buffers" (buf))
+(declare-function zenit-special-buffer-p "zenit-lib-buffers" (buf &optional consider-mode-p))
 (declare-function zenit-temp-buffer-p "zenit-lib-buffers" (buf))
 (declare-function zenit-visible-buffers "zenit-lib-buffers" (&optional buffer-list all-frames))
 
@@ -684,6 +684,9 @@ that matching entry in `zenit-file-lines-threshold-alist' (defaulting to
                               (assoc-default buffer-file-name zenit-file-lines-threshold-alist
                                              #'string-match-p)))
                    (> (car stats) maxlines)))))))
+  (eval-when-compile
+    (declare-function zenit-so-long-p nil))
+
   (setq so-long-predicate #'zenit-so-long-p
         so-long-function #'turn-on-so-long-minor-mode
         so-long-revert-function #'turn-off-so-long-minor-mode)

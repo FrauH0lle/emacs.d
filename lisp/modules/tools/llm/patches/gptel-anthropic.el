@@ -103,8 +103,9 @@ information if the stream contains it.  Not my best work, I know."
                         (plist-put tool-call :input nil)
                         (plist-put tool-call :id (plist-get tool-call :id)))
                       tool-use))
-              (plist-put info :output-tokens
-                         (map-nested-elt response '(:usage :output_tokens)))
+              ;; Capture token usage
+              (plist-put info :tokens (gptel--anthropic-update-tokens
+                                       (plist-get response :usage) info))
               (plist-put info :stop-reason
                          (map-nested-elt response '(:delta :stop_reason)))))))
       (error (goto-char pt)))

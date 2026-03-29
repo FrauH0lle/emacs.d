@@ -6,11 +6,11 @@
 
 ;; Unsetting `file-name-handler-alist' offers a reduction of startup time.
 (let (file-name-handler-alist)
+  (setq gc-cons-percentage 1.0)
   ;; Defer garbage collection further back in the startup process.
   (if noninteractive
       ;; 128mb for non-interactive sessions
-      (setq gc-cons-threshold 134217728
-            gc-cons-percentage 1.0)
+      (setq gc-cons-threshold 134217728)
     (setq gc-cons-threshold most-positive-fixnum))
 
 

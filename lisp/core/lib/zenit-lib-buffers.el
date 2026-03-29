@@ -169,8 +169,8 @@ If BUFFER-OR-NAME is omitted or nil, the current buffer is tested."
     (and (buffer-live-p buf)
          (not (zenit-temp-buffer-p buf))
          (or (buffer-local-value 'zenit-real-buffer-p buf)
-             (provided-mode-derived-p (buffer-local-value 'major-mode buf)
-                                      zenit-real-buffer-modes)
+             (apply #'provided-mode-derived-p (buffer-local-value 'major-mode buf)
+                    zenit-real-buffer-modes)
              (run-hook-with-args-until-success 'zenit-real-buffer-functions buf)
              (not (run-hook-with-args-until-success 'zenit-unreal-buffer-functions buf))))))
 

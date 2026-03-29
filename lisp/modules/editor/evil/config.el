@@ -293,7 +293,7 @@ global, so..."
   ;;   buffer-localize `embrace--pairs-list' (which happens right after it calls
   ;;   `embrace--setup-defaults'), otherwise any new, global default pairs we
   ;;   define won't be in scope.
-  (defadvice! +evil--embrace-init-escaped-pairs-a (&rest args)
+  (defadvice! +evil--embrace-init-escaped-pairs-a (&rest _)
     "Add escaped-sequence support to embrace."
     :after #'embrace--setup-defaults
     (embrace-add-pair-regexp ?\\ "\\[[{(]" "\\[]})]" #'+evil--embrace-escaped

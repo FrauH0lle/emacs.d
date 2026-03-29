@@ -11,5 +11,9 @@
 (package! macrostep :lockfile lang_emacs-lisp)
 (package! elisp-def :lockfile lang_emacs-lisp)
 (package! elisp-demos :lockfile lang_emacs-lisp)
+(when (modulep! :checkers syntax -flymake)
+  (package! flycheck-package :lockfile lang_emacs-lisp))
+(when (modulep! :checkers syntax +flymake)
+  (package! package-lint-flymake :lockfile lang_emacs-lisp))
 
 (package! buttercup :lockfile lang_emacs-lisp)

@@ -246,8 +246,6 @@ Removes the leading colon."
   (cl-check-type keyword keyword)
   (substring (symbol-name keyword) 1))
 
-(defalias 'zenit-partial #'apply-partially)
-
 (defun zenit-rpartial (fn &rest args)
   "Return a partial application of FN to right-hand ARGS.
 

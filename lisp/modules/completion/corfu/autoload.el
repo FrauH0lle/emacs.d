@@ -10,17 +10,19 @@
 
 ;;;###autoload
 (defun +corfu/move-to-minibuffer ()
-  "Move the current list of candidates to your choice of minibuffer
-completion UI."
+  "Move the current list of candidates to the of minibuffer completion UI."
   (interactive)
-  (pcase completion-in-region--data
-    (`(,beg ,end ,table ,pred ,extras)
-     (let ((completion-extra-properties extras)
-           completion-cycle-threshold completion-cycling)
-       (cond ((and (modulep! :completion vertico)
-                   (fboundp #'consult-completion-in-region))
-              (consult-completion-in-region beg end table pred))
-             (t (error "No minibuffer completion UI available for moving to!")))))))
+ (unless completion-in-region--data
+    (user-error "No completion active"))
+  (pcase-let ((`(,beg ,end ,table ,pred ,extras)
+               completion-in-region--data))
+    (let ((completion-extra-properties extras)
+          completion-cycle-threshold
+          completion-cycling)
+      (cond ((and (modulep! :completion vertico)
+                  (fboundp #'consult-completion-in-region))
+             (consult-completion-in-region beg end table pred))
+            ((user-error "No minibuffer completion UI available for moving to!"))))))
 
 ;;;###autoload
 (defun +corfu/smart-sep-toggle-escape ()
@@ -39,7 +41,7 @@ completion UI."
   "Like `cape-dabbrev', but only scans current buffer."
   (interactive)
   (require 'cape)
-  (let ((cape-dabbrev-check-other-buffers nil))
+  (let ((cape-dabbrev-buffer-function #'current-buffer))
     (cape-dabbrev t)))
 
 ;;;###autoload
@@ -50,15 +52,15 @@ completion UI."
     (with-current-buffer buf
       (when corfu-mode
         (if corfu-auto
-            (remove-hook 'post-command-hook #'corfu--auto-post-command 'local)
-          (add-hook 'post-command-hook #'corfu--auto-post-command nil 'local)))))
+            (remove-hook 'post-command-hook #'corfu-auto--post-command 'local)
+          (add-hook 'post-command-hook #'corfu-auto--post-command nil 'local)))))
   (when interactive
     (message "Corfu auto-complete %s" (if corfu-auto "disabled" "enabled")))
   (setq corfu-auto (not corfu-auto)))
 
 ;;;###autoload
 (defun +corfu/dabbrev-or-next (&optional arg)
-  "Trigger corfu popup and select the first candidate.
+  "Invoke `cape-dabbrev' but respect `evil-complete-all-buffers'.
 
 Intended to mimic `evil-complete-next', unless the popup is
 already open."
@@ -66,15 +68,17 @@ already open."
   (if corfu--candidates
       (corfu-next arg)
     (require 'cape)
-    (let ((cape-dabbrev-check-other-buffers
-           (bound-and-true-p evil-complete-all-buffers)))
+    (let ((cape-dabbrev-buffer-function
+           (if (bound-and-true-p evil-complete-all-buffers)
+               #'cape-same-mode-buffers
+             #'current-buffer)))
       (cape-dabbrev t)
       (when (> corfu--total 0)
         (corfu--goto (or arg 0))))))
 
 ;;;###autoload
 (defun +corfu/dabbrev-or-last (&optional arg)
-  "Trigger corfu popup and select the first candidate.
+  "Invoke `cape-dabbrev' but respect `evil-complete-all-buffers'.
 
 Intended to mimic `evil-complete-previous', unless the popup is
 already open."
@@ -82,8 +86,10 @@ already open."
   (if corfu--candidates
       (corfu-previous arg)
     (require 'cape)
-    (let ((cape-dabbrev-check-other-buffers
-           (bound-and-true-p evil-complete-all-buffers)))
+    (let ((cape-dabbrev-buffer-function
+           (if (bound-and-true-p evil-complete-all-buffers)
+               #'cape-same-mode-buffers
+             #'current-buffer)))
       (cape-dabbrev t)
       (when (> corfu--total 0)
         (corfu--goto (- corfu--total (or arg 1)))))))

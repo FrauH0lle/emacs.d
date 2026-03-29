@@ -273,7 +273,7 @@ Returns a list of (PREDICATE . STREAM) pairs ready for filtering."
              collect (cons t spec)
              else
              collect (cons (or (eq level t)
-                               (zenit-partial
+                               (apply-partially
                                 car
                                 (get level 'print-level)
                                 (get (car spec) 'print-level)))
@@ -425,7 +425,7 @@ The resulting paragraph will be wrapped to fit within
   "Ensure SEQUENCE is joined with SEPARATOR.
 
 `nil' and empty strings in SEQUENCE are omitted."
-  (mapconcat (zenit-partial #'format "%s")
+  (mapconcat (apply-partially #'format "%s")
              (seq-remove (fn! (or (null %)
                                   (and (stringp %)
                                        (string-empty-p %))))

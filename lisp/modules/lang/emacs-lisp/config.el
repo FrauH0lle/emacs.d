@@ -195,6 +195,18 @@ looking up a C function.")
 ;;
 ;;; Packages
 
+(use-package! flycheck-package
+  :when (modulep! :checkers syntax -flymake)
+  :after flycheck
+  :config (flycheck-package-setup))
+
+
+(use-package! package-lint-flymake
+  :when (modulep! :checkers syntax +flymake)
+  :after flymake
+  :config (package-lint-flymake-setup))
+
+
 (use-package! elisp-demos
   :defer t
   :init

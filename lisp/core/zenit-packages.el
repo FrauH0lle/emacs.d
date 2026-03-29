@@ -536,7 +536,7 @@ Only runs once per session to avoid unnecessary file operations."
 (when (featurep 'native-compile)
   (with-eval-after-load 'comp-run
     ;; HACK Disable native-compilation for some troublesome packages
-    (mapc (zenit-partial #'add-to-list 'native-comp-jit-compilation-deny-list)
+    (mapc (apply-partially #'add-to-list 'native-comp-jit-compilation-deny-list)
           (list "/emacs-jupyter.*\\.el\\'"
                 "/evil-collection-vterm\\.el\\'"
                 "/vterm\\.el\\'"

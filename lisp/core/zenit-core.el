@@ -331,8 +331,8 @@ handling encrypted or compressed files, among other things."
       (define-advice tty-run-terminal-initialization (:override (&rest _) defer)
         (advice-remove #'tty-run-terminal-initialization #'tty-run-terminal-initialization@defer)
         (add-hook 'window-setup-hook
-                  (zenit-partial #'tty-run-terminal-initialization
-                                 (selected-frame) nil t)))
+                  (apply-partially #'tty-run-terminal-initialization
+                                   (selected-frame) nil t)))
       (eval-when-compile
         (declare-function tty-run-terminal-initialization@defer nil)))
 
@@ -566,8 +566,10 @@ But before the local one."
       (setq zenit-init-time (float-time (time-subtract (current-time) before-init-time)))
       ;; If `gc-cons-threshold' hasn't been reset at this point, we reset it by
       ;; force.
-      (when (eq (default-value 'gc-cons-threshold) most-positive-fixnum)
-        (setq-default gc-cons-threshold (* 16 1024 1024))))))
+      (if (= (default-value 'gc-cons-threshold) most-positive-fixnum)
+          (setq-default gc-cons-threshold (* 16 1024 1024)))
+      (if (= (default-value 'gc-cons-percentage) 1.0)
+          (setq-default gc-cons-percentage 0.1)))))
 
 (when (daemonp)
   (message "Starting Emacs in daemon mode...")

@@ -8,24 +8,26 @@
   (defvar zenit-indent-excluded-modes '(special-mode org-mode)
     "Modes not to no-op `zenit-set-indent' in.")
 
-  (defun set-indent-vars! (modes &rest vars)
+  (defun set-indent-vars! (modes vars)
     "Register VARS as the tab-width proxy variables for each of major MODES.
 
-`tab-width' and `standard-indent' will be set to match the values of these
-variables in their respective buffers. Failing that, a best-guess effort will be
-made to find an appropriate variable to use.
+`tab-width' and `standard-indent' will be set to match the values of
+these variables in their respective buffers. Failing that, a best-guess
+effort will be made to find an appropriate variable to use.
 
-if MODES is `t', VARS will be made to match `tab-width' in all major modes.
+If MODES is `t', VARS will be made to match `tab-width' in all major
+modes. Both MODES and VARS can be a single symbol or a list thereof.
 
 Note that it's not necessary to register indent variables if they end in
 MODE-ts-mode-indent-offset, MODE-indent-offset, MODE-indent-level,
-MODE-tab-width, or MODE-basic-offset. It is also not necessary if you have
-`dtrt-indent' installed and a variable association exists in
+MODE-tab-width, or MODE-basic-offset. It is also not necessary if you
+have `dtrt-indent' installed and a variable association exists in
 `dtrt-indent-hook-mapping-list'."
-    (if (eq modes t)
-        (put 'tab-width 'indent-vars vars)
-      (dolist (mode (ensure-list modes))
-        (put mode 'indent-vars vars))))
+    (let ((vars (ensure-list vars)))
+      (if (eq modes t)
+          (put 'tab-width 'indent-vars vars)
+        (dolist (mode (ensure-list modes))
+          (put mode 'indent-vars vars)))))
 
   (defun zenit-indent-var-for-mode (mode)
     "Try to guess MODE's indent offset variable based on heuristics.
@@ -63,7 +65,11 @@ with `set-indent-vars!'."
   (defun zenit-set-indent (&optional width)
     "Ensure tab-width reflects the local major mode's indent variable."
     (when-let* ((vars (zenit-indent-vars-for-mode major-mode))
-                (width* (or width (cl-some #'symbol-value vars))))
+                (width* (or width
+                            (cl-loop for v in vars
+                                     if (boundp v)
+                                     if (symbol-value v)
+                                     return it))))
       (zenit-log 2 "zenit-set-indent: %S = %S" `(tab-width standard-indent ,@vars) width*)
       (setq-local tab-width width*
                   standard-indent width*)

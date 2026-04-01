@@ -25,7 +25,7 @@
 
   :doc "`set-indent-vars!' registers multiple indent variables for a mode"
   (progn
-    (set-indent-vars! test-mode 'test-indent-var1 'test-indent-var2)
+    (set-indent-vars! test-mode '(test-indent-var1 test-indent-var2))
     (should (equal '(test-indent-var1 test-indent-var2) (get test-mode 'indent-vars))))
 
   :doc "`set-indent-vars!' registers indent variables for all modes when modes is t"
@@ -60,7 +60,7 @@
 
   :doc "`zenit-indent-vars-for-mode' returns list from registered indent vars"
   (progn
-    (set-indent-vars! test-mode 'test-indent-var1 'test-indent-var2)
+    (set-indent-vars! test-mode '(test-indent-var1 test-indent-var2))
     (should (equal '(test-indent-var1 test-indent-var2) (zenit-indent-vars-for-mode test-mode)))))
 
 (zenit-deftest zenit-set-indent
@@ -89,7 +89,7 @@
   (with-current-buffer test-buffer
     (setq-local test-indent-var1 2)
     (setq-local test-indent-var2 4)
-    (set-indent-vars! test-mode 'test-indent-var1 'test-indent-var2)
+    (set-indent-vars! test-mode '(test-indent-var1 test-indent-var2))
     (setq major-mode test-mode)
     (zenit-set-indent)
     ;; should use the first variable's value

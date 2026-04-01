@@ -11,7 +11,7 @@
   (after! smartparens
     (sp-local-pair 'nxml-mode "<" ">" :post-handlers '(("[d1]" "/"))))
   (set-formatter! 'xmllint '("xmllint" "--format" "-") :modes '(nxml-mode))
-  (set-indent-vars! 'nxml-mode 'nxml-child-indent 'nxml-attribute-indent))
+  (set-indent-vars! 'nxml-mode '(nxml-child-indent nxml-attribute-indent)))
 
 
 ;;;###package csv-mode

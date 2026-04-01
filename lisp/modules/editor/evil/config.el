@@ -112,7 +112,7 @@ The package should be loaded as early as possible."
             ("^\\*Command Line"   :size 8))))))
 
   ;; Change the cursor color in emacs mode
-  (add-hook! 'zenit-load-theme-hook
+  (add-hook! '(zenit-load-theme-hook zenit-after-modules-config-hook) :depth -100
     (defun +evil-update-cursor-color-h ()
       "Update cursor color."
       (put 'cursor 'evil-normal-color (face-background 'cursor))

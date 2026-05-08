@@ -12,15 +12,27 @@
   (let ((adaptive-wrap-extra-indent (+word-wrap--calc-extra-indent beg)))
     (funcall fn beg end)))
 
+(defun +word-wrap--major-mode-indent-width ()
+  "Return the current buffer's major-mode indentation width."
+  (catch 'width
+    (dolist (var (if (listp +word-wrap--major-mode-indent-var)
+                     +word-wrap--major-mode-indent-var
+                   (list +word-wrap--major-mode-indent-var)))
+      (when (and (symbolp var) (boundp var))
+        (let ((value (symbol-value var)))
+          (when (integerp value)
+            (throw 'width value)))))
+    (if (integerp tab-width) tab-width 0)))
+
 (defun +word-wrap--calc-extra-indent (p)
   "Calculate extra word-wrap indentation at point."
   (if (not (or +word-wrap--major-mode-is-text
                (sp-point-in-string-or-comment p)))
       (pcase +word-wrap-extra-indent
         ('double
-         (* 2 (symbol-value +word-wrap--major-mode-indent-var)))
+         (* 2 (+word-wrap--major-mode-indent-width)))
         ('single
-         (symbol-value +word-wrap--major-mode-indent-var))
+         (+word-wrap--major-mode-indent-width))
         ((and (pred integerp) fixed)
          fixed)
         (_ 0))

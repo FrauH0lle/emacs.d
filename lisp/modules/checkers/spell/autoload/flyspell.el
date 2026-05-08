@@ -89,16 +89,14 @@ current buffer or session. Otherwise, the addition is permanent."
 (defun +spell/next-error ()
   "Jump to next flyspell error."
   (interactive)
-  (call-interactively
-   (if (featurep 'evil)
-       #'evil-next-flyspell-error
-     #'flyspell-goto-next-error)))
+  (if (fboundp #'evil-next-flyspell-error)
+      (evil-next-flyspell-error 1)
+    (flyspell-goto-next-error)))
 
 ;;;###autoload
 (defun +spell/previous-error ()
   "Jump to previous flyspell error."
   (interactive)
-  (call-interactively
-   (if (featurep 'evil)
-       #'evil-prev-flyspell-error
-     (cmd!! #'flyspell-goto-next-error t))))
+  (if (fboundp #'evil-prev-flyspell-error)
+      (evil-prev-flyspell-error 1)
+    (flyspell-goto-next-error t)))

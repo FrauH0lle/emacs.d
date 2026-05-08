@@ -12,6 +12,40 @@
    `(zenit-deftest ,var (:doc ,(format "Test if %s is defined" var))
       (should (boundp ',var)))))
 
+(zenit-deftest zenit-read-backup-cache
+  (:doc "`zenit-read-backup-cache' tolerates malformed cache data")
+  (let* ((zenit-cache-dir (file-name-as-directory (zenit-test-make-temp-file t)))
+         (cache-file (zenit-backup-cache-file)))
+    (unwind-protect
+        (progn
+          (make-directory (file-name-directory cache-file) 'parents)
+          (with-temp-file cache-file
+            (insert "#s(hash-table test equal data (\"a\" \"b\" ...))"))
+          (should-not (zenit-read-backup-cache 'noerror))
+          (should-error (zenit-read-backup-cache)))
+      (delete-directory zenit-cache-dir t))))
+
+(zenit-deftest zenit-write-backup-cache
+  (:doc "`zenit-write-backup-cache' writes complete hash table data")
+  (let* ((zenit-cache-dir (file-name-as-directory (zenit-test-make-temp-file t)))
+         (cache-file (zenit-backup-cache-file))
+         (cache (make-hash-table :test 'equal))
+         (print-length 2))
+    (unwind-protect
+        (progn
+          (puthash "a" "one" cache)
+          (puthash "b" "two" cache)
+          (puthash "c" "three" cache)
+          (zenit-write-backup-cache cache)
+          (with-temp-buffer
+            (insert-file-contents cache-file)
+            (should-not (search-forward "..." nil t)))
+          (let ((read-cache (zenit-read-backup-cache)))
+            (should (equal "one" (gethash "a" read-cache)))
+            (should (equal "two" (gethash "b" read-cache)))
+            (should (equal "three" (gethash "c" read-cache)))))
+      (delete-directory zenit-cache-dir t))))
+
 (zenit-deftest +backups--full-version-number
   (:doc "Test version number extraction from filenames")
   (should (equal ,out (+backups--full-version-number ,@in)))

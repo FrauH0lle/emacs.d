@@ -33,6 +33,10 @@
 ;; `zenit-lib-projects'
 (declare-function zenit-project-root "zenit-lib-projects" (&optional dir))
 
+;; `zenit-lib-backups'
+(declare-function zenit-read-backup-cache "zenit-lib-backups" (&optional noerror))
+(declare-function zenit-write-backup-cache "zenit-lib-backups" (cache))
+
 ;; `zenit-lib-ui'
 (declare-function zenit-recenter-a "zenit-lib-ui" (&rest _))
 (declare-function zenit-shut-up-a "zenit-lib-ui" (orig-fn &rest args))
@@ -40,6 +44,7 @@
 ;; `zenit-start'
 (declare-function zenit-load-packages-incrementally "zenit-start" (packages &optional now))
 
+(zenit-require 'zenit-lib 'backups)
 
 (defvar zenit-detect-indentation-excluded-modes
   '(pascal-mode
@@ -203,19 +208,13 @@ system."
   :around #'backup-buffer
   (let ((return (funcall fn)))
     (when (buffer-local-value buffer-backed-up (current-buffer))
-      (let* ((cache-fname (file-name-concat zenit-cache-dir "backup" "cache.el"))
-             (cache (or (when (file-exists-p cache-fname)
-                          (with-temp-buffer
-                            (insert-file-contents cache-fname)
-                            (read (current-buffer))))
+      (let* ((cache (or (zenit-read-backup-cache 'noerror)
                         (make-hash-table :test 'equal)))
              (fname (file-chase-links buffer-file-name))
              (backup-fname (make-backup-file-name-1 fname))
              (sha (string-remove-suffix "~" (file-name-nondirectory backup-fname))))
         (puthash sha (expand-file-name fname) cache)
-        (with-temp-file cache-fname
-          (erase-buffer)
-          (prin1 cache (current-buffer)))))
+        (zenit-write-backup-cache cache)))
     return))
 
 

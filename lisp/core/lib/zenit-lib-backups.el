@@ -23,6 +23,9 @@
 (declare-function hash-table-keys "subr-x" (hash-table))
 (autoload #'hash-table-keys "subr-x")
 
+;; `zenit-core'
+(defvar zenit-cache-dir)
+
 
 ;;
 ;;; Variables
@@ -37,6 +40,43 @@ The default value is `+backups--backup-files'.")
 (defvar +backups--saved-wconf nil
   "Store the window configuration of the before activating
 `zenit-file-backups-mode' or `zenit-view-backup-file-mode'.")
+
+(defun zenit-backup-cache-file ()
+  "Return the path to the backup file name cache."
+  (file-name-concat zenit-cache-dir "backup" "cache.el"))
+
+(defun zenit-read-backup-cache (&optional noerror)
+  "Read and return the backup file name cache.
+If NOERROR is non-nil, return nil when the cache is absent or
+malformed."
+  (let ((cache-file (zenit-backup-cache-file)))
+    (when (file-exists-p cache-file)
+      (condition-case err
+          (with-temp-buffer
+            (insert-file-contents cache-file)
+            (let ((cache (read (current-buffer))))
+              (unless (hash-table-p cache)
+                (error "Backup cache is not a hash table: %S" cache))
+              cache))
+        (error
+         (unless noerror
+           (signal (car err) (cdr err))))))))
+
+(defun zenit-write-backup-cache (cache)
+  "Write CACHE to the backup file name cache."
+  (unless (hash-table-p cache)
+    (error "Backup cache is not a hash table: %S" cache))
+  (let ((cache-file (zenit-backup-cache-file))
+        (print-length nil)
+        (print-level nil)
+        (print-quoted t)
+        (print-escape-newlines t)
+        (print-escape-control-characters t)
+        (print-escape-nonascii t)
+        (print-escape-multibyte t))
+    (make-directory (file-name-directory cache-file) 'parents)
+    (with-temp-file cache-file
+      (prin1 cache (current-buffer)))))
 
 ;;
 ;;; File versions
@@ -491,11 +531,7 @@ nil. Adapted from `set-auto-mode--apply-alist'"
 (defun +backups--collect-orphans ()
   "Return list of orphans.
 The list has the form (ORGIN-FNAME . HASHED-FNAME)."
-  (let* ((cache-fname (file-name-concat zenit-cache-dir "backup" "cache.el"))
-         (cache (when (file-exists-p cache-fname)
-                  (with-temp-buffer
-                    (insert-file-contents cache-fname)
-                    (read (current-buffer))))))
+  (let ((cache (zenit-read-backup-cache 'noerror)))
     (if (not cache)
         (user-error "No backup cache found")
       (let (orphans)
@@ -538,11 +574,7 @@ The list has the form (ORGIN-FNAME . HASHED-FNAME)."
   "Remove orphaned backup files."
   (interactive)
   (when (y-or-n-p "Do you want to delete all orphaned backup files?")
-    (let* ((cache-fname (file-name-concat zenit-cache-dir "backup" "cache.el"))
-           (cache (or (when (file-exists-p cache-fname)
-                        (with-temp-buffer
-                          (insert-file-contents cache-fname)
-                          (read (current-buffer))))
+    (let* ((cache (or (zenit-read-backup-cache 'noerror)
                       (user-error "No backup cache found")))
            (orphans (+backups--collect-orphans)))
       (pcase-dolist (`(,orig-fname . ,key) orphans)
@@ -550,8 +582,6 @@ The list has the form (ORGIN-FNAME . HASHED-FNAME)."
           (dolist (bf backup-files)
             (delete-file bf)))
         (remhash key cache))
-      (with-temp-file cache-fname
-        (erase-buffer)
-        (prin1 cache (current-buffer))))))
+      (zenit-write-backup-cache cache))))
 
 (provide 'zenit-lib '(backups))

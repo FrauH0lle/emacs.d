@@ -90,6 +90,6 @@ visibility of the corresponding subtree.  Otherwise, indent the current line
    (t
     (el-patch-swap
       (indent-for-tab-command)
-      (if (or (bolp) (looking-back "^[ \t]*" 16))
+      (if (or (bolp) (looking-back "^[ \t]*" (line-beginning-position)))
           (indent-for-tab-command)
         (completion-at-point))))))

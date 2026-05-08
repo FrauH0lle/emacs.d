@@ -7,9 +7,6 @@
 (eval-when-compile
   (require 'cl-lib))
 
-;; `ansi-color'
-(defvar ansi-color-for-comint-mode)
-
 ;; `cl-seq'
 (declare-function cl-delete-if-not "cl-seq" (cl-pred cl-list &rest cl-keys))
 (declare-function cl-find-if "cl-seq" (cl-pred cl-list &rest cl-keys))
@@ -434,10 +431,6 @@ buffers are visible in other windows, switch to
 ;;
 ;;; Built-in packages
 
-;;;###package ansi-color
-(setq ansi-color-for-comint-mode t)
-
-
 (after! comint
   ;; Double the default
   (setq-default comint-buffer-maximum-size 2048)
@@ -788,20 +781,7 @@ selected frame."
                 (when (display-multi-font-p frame)
                   (set-face-attribute face frame
                                       :width 'normal :weight 'normal
-                                      :slant 'normal :font font)
-                  ;; Setting :font above bakes in an absolute :height from the
-                  ;; font-spec's :size. Non-default faces should use a relative
-                  ;; :height so they scale with `zenit/increase-font-size'
-                  ;; (which only adjusts `zenit-font' for the default face, then
-                  ;; calls `zenit-init-fonts-h' to propagate). Convert now,
-                  ;; before `custom-push-theme' snapshots the value.
-                  (unless (eq face 'default)
-                    (let ((default-height (face-attribute 'default :height frame)))
-                      (when (and (integerp default-height) (> default-height 0))
-                        (set-face-attribute
-                         face frame :height
-                         (/ (float (face-attribute face :height frame))
-                            default-height))))))
+                                      :slant 'normal :font font))
                 (custom-push-theme
                  'theme-face face 'user 'set
                  (let* ((base-specs (cadr (assq 'user (get face 'theme-face))))

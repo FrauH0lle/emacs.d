@@ -7,8 +7,8 @@
     (cond
      ((eq +evil--flag 'start)
       (evil-ex-make-hl name
-        :face (or face 'evil-ex-lazy-highlight)
-        :update-hook (or update-hook #'evil-ex-pattern-update-ex-info))
+                       :face (or face 'evil-ex-lazy-highlight)
+                       :update-hook (or update-hook #'evil-ex-pattern-update-ex-info))
       (setq +evil--flag 'update))
 
      ((eq +evil--flag 'stop)
@@ -158,38 +158,51 @@ project buffers."
   (zenit/kill-matching-buffers
    pattern (if bang (zenit-project-buffer-list))))
 
+(evil-ex-define-argument-type ex
+  "Handle an ex command"
+  :collection
+  (lambda (string pred action)
+    (let (evil-ex-complete-emacs-commands)
+      (complete-with-action action (evil-ex-completion-table) string pred))))
+
+(evil-define-interactive-code "<ex>"
+  "Ex command argument."
+  :ex-arg ex
+  (list (when evil-called-from-ex-p evil-ex-argument)))
+
 ;;;###autoload (autoload '+evil:help "editor/evil/autoload/ex" nil t)
 (evil-define-command +evil:help (&optional bang query)
   "Look up documentation for QUERY.
 
-If QUERY is in the format of an ex command, it will map it to the
-underlying function and open its documentation.
+If QUERY is a valid ex command, look up the underlying function's
+documentation. Otherwise treat it like a regexp and preform an `apropos'
+search for it. If QUERY is empty, you'll be prompted to select an ex
+command.
 
-If QUERY is empty, this runs the equivalent of 'M-x apropos'."
-  (interactive "<!><a>")
+If BANG, then treat QUERY as a regexp search against the Org headings of
+with `zenit/help-search-headings'."
+  (interactive "<!><ex>")
   (if bang
       (zenit/help-search-headings query)
+    (when (or (null query)
+              (string-empty-p (string-trim query)))
+      (setq query
+            (completing-read
+             "Select evil ex command: "
+             (cl-remove-duplicates evil-ex-commands :key #'cdr :from-end t)  ; omit aliases
+             nil t)))
     (save-match-data
-      (cond ((or (null query) (string-empty-p (string-trim query)))
-             (call-interactively
-              (or (command-remapping #'apropos)
-                  #'apropos)))
-            ((string-match "^ *:\\([^ ]+\\)$" query)
-             (funcall (or (command-remapping #'describe-function)
-                          #'describe-function)
-                      (evil-ex-completed-binding (match-string 1 query))))
-            ((or (string-match "^ *[^a-z0-9-_]$" query)
-                 (condition-case nil
-                     (ignore (string-match-p query ""))
-                   (invalid-regexp t)))
-             (user-error "Invalid query: %S" query))
-            ((< (string-width query) 3)
-             (user-error "Query too short (must be > 2 characters): %S" query))
-            ((message "Searching for %S, this may take a while..." query)
-             (apropos query t))))))
-
-;;;###autoload (autoload '+evil:read "editor/evil/autoload/ex" nil t)
-(evil-define-command +evil:read (count file)
-  "Alternative version of `evil-read' that replaces filename modifiers in FILE."
-  (interactive "P<fsh>")
-  (evil-read count (evil-ex-replace-special-filenames file)))
+      (if-let* ((ex (evil-ex-completed-binding query t)))
+          (funcall (if (fboundp 'helpful-function)
+                       #'helpful-function
+                     #'describe-function)
+                   ex)
+        (cond ((or (string-match "^ *[^a-z0-9-_]$" query)
+                   (condition-case nil
+                       (ignore (string-match-p query ""))
+                     (invalid-regexp t)))
+               (user-error "Invalid query: %S" query))
+              ((< (string-width query) 3)
+               (user-error "Query too short (must be > 2 characters): %S" query))
+              ((message "Searching for %S, this may take a while..." query)
+               (apropos query t)))))))

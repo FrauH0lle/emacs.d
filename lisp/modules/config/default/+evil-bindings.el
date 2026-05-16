@@ -391,7 +391,7 @@
                    :desc "Format buffer/region"                  "f"   #'+format/region-or-buffer
                    :desc "Find implementations"                  "i"   #'+lookup/implementations
                    :desc "Jump to documentation"                 "k"   #'+lookup/documentation
-                   :desc "Send to repl"                          "s"   #'+eval/send-region-to-repl
+                   :desc "Send to repl"                          "s"   #'+eval/buffer-or-region-in-repl
                    ;; :desc "Find type definition"                  "t"   #'+lookup/type-definition
                    (:prefix ("t" . "text")
                             "f" #'copy-as-format

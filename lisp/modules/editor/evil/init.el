@@ -42,7 +42,7 @@
 definition of this variable for an explanation of the
 defaults (in comments). See `evil-collection-mode-list' for a
 list of available options.")
-
+  (defvar evil-collection-repl-submit-state 'insert)
   (defvar evil-collection-setup-minibuffer nil)
 
   ;; We do this ourselves.

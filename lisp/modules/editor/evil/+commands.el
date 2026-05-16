@@ -7,7 +7,6 @@
 ;;
 ;;; Custom commands
 
-(evil-ex-define-cmd "R[ead]"       #'+evil:read)
 (evil-ex-define-cmd "al[ign]"      #'+evil:align)
 (evil-ex-define-cmd "ral[ign]"     #'+evil:align-right)
 (static-when (modulep! :editor multiple-cursors)
@@ -16,7 +15,7 @@
 (evil-ex-define-cmd "na[rrow]"     #'+evil:narrow-buffer)
 (evil-ex-define-cmd "retab"        #'+evil:retab)
 (evil-ex-define-cmd "rev[erse]"    #'+evil:reverse-lines)
-(evil-ex-define-cmd "l[ine]diff"   #'evil-quick-diff)
+(evil-ex-define-cmd "ldiff"        #'evil-quick-diff)
 
 
 ;;
@@ -34,34 +33,18 @@
 
 
 ;;
-;;; Git
-
-(static-when (modulep! :emacs vc)
-  (evil-ex-define-cmd "gbrowse"     #'+vc/browse-at-remote)) ; show file/region in github/gitlab
-(static-when (modulep! :tools magit +forge)
-  (evil-ex-define-cmd "gissues"     #'forge-browse-issues))  ; show github issues
-(static-when (modulep! :tools magit)
-  (evil-ex-define-cmd "git"       #'magit-status)
-  (evil-ex-define-cmd "gstage"    #'magit-stage)
-  (evil-ex-define-cmd "gunstage"  #'magit-unstage)
-  (evil-ex-define-cmd "gblame"    #'magit-blame))
-(static-when (modulep! :ui vc-gutter)
-  (evil-ex-define-cmd "grevert"   #'+vc-gutter/revert-hunk))
-
-
-;;
 ;;; Dealing with buffers
 
-(evil-ex-define-cmd "k[ill]"    #'kill-current-buffer)
-(evil-ex-define-cmd "k[ill]all" #'+evil:kill-all-buffers)
-(evil-ex-define-cmd "k[ill]m"   #'+evil:kill-matching-buffers)
-(evil-ex-define-cmd "k[ill]o"   #'zenit/kill-other-buffers)
-(evil-ex-define-cmd "k[ill]p"   #'zenit/kill-project-buffers)
+(evil-ex-define-cmd "kill"         #'kill-current-buffer)
+(evil-ex-define-cmd "killa[ll]"    #'+evil:kill-all-buffers)
+(evil-ex-define-cmd "killm[atch]"  #'+evil:kill-matching-buffers)
+(evil-ex-define-cmd "killo[ther]"  #'zenit/kill-other-buffers)
+(evil-ex-define-cmd "killb[uried]" #'zenit/kill-buried-buffers)
 (static-when (modulep! :ui popup)
-  (evil-ex-define-cmd "l[ast]"    #'+popup/restore))
-(evil-ex-define-cmd "messages"  #'view-echo-area-messages)
+  (evil-ex-define-cmd "l[ast]"     #'+popup/restore))
+(evil-ex-define-cmd "msg"          #'view-echo-area-messages)
 (static-when (modulep! :ui popup)
-  (evil-ex-define-cmd "pop[up]"   #'+popup/buffer))
+  (evil-ex-define-cmd "pop[up]"    #'+popup/buffer))
 
 
 ;;
@@ -72,8 +55,8 @@
 (evil-ex-define-cmd "pwd"       #'+evil:pwd)
 
 (static-when (modulep! :completion vertico)
-  (evil-ex-define-cmd "pg[rep]"   #'+vertico:project-search)
-  (evil-ex-define-cmd "pg[grep]d" #'+vertico:project-search-from-cwd))
+  (evil-ex-define-cmd "pg[rep]"  #'+vertico:project-search)
+  (evil-ex-define-cmd "pdg[rep]" #'+vertico:project-search-from-cwd))
 
 
 ;;
@@ -103,7 +86,8 @@
   (evil-ex-define-cmd "ss[ave]"     #'zenit/quicksave-session)
   (evil-ex-define-cmd "tabc[lose]"  #'+workspace:delete)
   (evil-ex-define-cmd "tabclear"    #'zenit/kill-all-buffers)
-  (evil-ex-define-cmd "tabl[ast]"   #'+workspace/switch-to-last)
+  (evil-ex-define-cmd "tabf[irst]"  #'+workspace/switch-to-0)
+  (evil-ex-define-cmd "tabl[ast]"   #'+workspace/switch-to-final)
   (evil-ex-define-cmd "tabload"     #'+workspace:load)
   (evil-ex-define-cmd "tabn[ew]"    #'+workspace:new)
   (evil-ex-define-cmd "tabnext"     #'+workspace:switch-next)

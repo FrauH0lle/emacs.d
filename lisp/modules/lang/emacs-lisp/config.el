@@ -88,8 +88,6 @@ looking up a C function.")
              #'outline-minor-mode
              ;; Make parenthesis depth easier to distinguish at a glance
              #'rainbow-delimiters-mode
-             ;; Make quoted symbols easier to distinguish from free variables
-             #'highlight-quoted-mode
              ;; Extend imenu support to custom constructs
              #'+emacs-lisp-extend-imenu-h
              (+imenu-add-items
@@ -158,6 +156,12 @@ looking up a C function.")
                  "n" #'macrostep-next-macro
                  "N" #'macrostep-prev-macro
                  "q" #'macrostep-collapse-all)))
+
+
+;; Make quoted symbols easier to distinguish from free variables
+(use-package! highlight-quoted
+  :hook emacs-lisp-mode
+  :hook lisp-data-mode-local-vars)
 
 
 (use-package! ielm
@@ -347,3 +351,7 @@ bizarre reason."
         "C-c C-f" #'+emacs-lisp/helpful-next
         "l" #'+emacs-lisp/helpful-previous
         "r" #'+emacs-lisp/helpful-next))
+
+
+(use-package! let-completion
+  :hook (emacs-lisp-mode . let-completion-mode))

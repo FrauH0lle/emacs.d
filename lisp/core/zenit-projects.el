@@ -161,17 +161,18 @@ Must end with a slash.")
   ;; HACK Don't rely on VCS-specific commands to generate our file lists. That's
   ;;   7 commands to maintain, versus the more generic, reliable and performant
   ;;   `fd' or `ripgrep'.
-  (defadvice! zenit--only-use-generic-command-a (fn vcs)
+  (defadvice! zenit--only-use-generic-command-a (fn vcs &optional directory)
     "Only use `projectile-generic-command' for indexing project files.
 And if it's a function, evaluate it."
     :around #'projectile-get-ext-command
-    (if (and (functionp projectile-generic-command)
-             (not (file-remote-p default-directory)))
-        (funcall projectile-generic-command vcs)
-      (let ((projectile-git-submodule-command
-             (or projectile-git-submodule-command
-                 (get 'projectile-git-submodule-command 'initial-value))))
-        (funcall fn vcs))))
+    (let ((default-directory (or directory default-directory)))
+      (if (and (functionp projectile-generic-command)
+               (not (file-remote-p default-directory)))
+          (funcall projectile-generic-command vcs)
+        (let ((projectile-git-submodule-command
+               (or projectile-git-submodule-command
+                   (get 'projectile-git-submodule-command 'initial-value))))
+          (funcall fn vcs)))))
 
   ;; HACK: `projectile-generic-command' doesn't typically support a function,
   ;;   but the `zenit--only-use-generic-command-a' advice allows this. I do it

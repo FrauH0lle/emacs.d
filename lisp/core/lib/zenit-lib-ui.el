@@ -14,7 +14,9 @@
 (defvar posframe--frame)
 
 ;; `zenit-lib-buffers'
+(declare-function zenit-buffer-list "zenit-lib-buffers" (&optional frame))
 (declare-function zenit-real-buffer-list "zenit-lib-buffers" (&optional buffer-list))
+(declare-function zenit-real-buffer-p "zenit-lib-buffers" (buffer-or-name))
 
 ;; `zenit-lib-text.el'
 (declare-function zenit-region-beginning "zenit-lib-text")
@@ -42,7 +44,7 @@ resizing will fail."
   "Prompt the user for confirmation when killing Emacs.
 Returns t if it is safe to kill this session. Does not prompt if
 no real buffers are open."
-  (or (not (ignore-errors (zenit-real-buffer-list)))
+  (or (not (cl-some #'zenit-real-buffer-p (zenit-buffer-list)))
       (yes-or-no-p (format "››› %s" (or prompt "Quit Emacs?")))
       (ignore (message "Aborted"))))
 
@@ -91,6 +93,7 @@ In tty Emacs, messages are suppressed completely."
 ;;
 ;;; Commands
 
+(defvar display-line-numbers-type)
 ;;;###autoload
 (defun zenit/toggle-line-numbers ()
   "Toggle line numbers.
@@ -108,7 +111,8 @@ these values mean."
                    (car order)
                  (car (cdr queue)))))
     (setq zenit--line-number-style next)
-    (setq display-line-numbers next)
+    (let ((display-line-numbers-type next))
+      (display-line-numbers-mode +1))
     (message "Switched to %s line numbers"
              (pcase next
                (`t "normal")

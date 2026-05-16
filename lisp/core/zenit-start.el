@@ -104,7 +104,25 @@
       gcmh-high-cons-threshold (* 64 1024 1024))  ; 64mb
 (add-hook 'zenit-first-buffer-hook #'gcmh-mode)
 
-;; Disable UI elements
+
+;;
+;;; Trust & Safety
+
+;; Trust the contents of `zenit-emacs-dir' and `zenit-local-conf-dir', because
+;; the user will likely be working with either/both.
+(when (boundp 'trusted-content)
+  (add-to-list 'trusted-content (file-truename zenit-emacs-dir))
+  (add-to-list 'trusted-content (file-truename zenit-local-conf-dir)))
+
+;; Ensure .dir-locals.el in `zenit-emacs-dir' and `zenit-local-conf-dir' are
+;; always respected
+(add-to-list 'safe-local-variable-directories zenit-emacs-dir)
+(add-to-list 'safe-local-variable-directories zenit-local-conf-dir)
+
+
+;;
+;;; Disable UI elements
+
 (push '(menu-bar-lines . 0)   default-frame-alist)
 (push '(tool-bar-lines . 0)   default-frame-alist)
 (push '(vertical-scroll-bars) default-frame-alist)
@@ -112,7 +130,10 @@
       tool-bar-mode nil
       scroll-bar-mode nil)
 
-;; Encodings
+
+;;
+;;; Encodings
+
 (set-language-environment "UTF-8")
 ;; ...but `set-language-environment' also sets `default-input-method', which is
 ;; a step too opinionated.

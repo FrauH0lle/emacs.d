@@ -6,6 +6,9 @@
 ;; `zenit-lib-fonts'
 (declare-function zenit/reload-font "zenit-lib-fonts" ())
 
+;; `zenit-ui'
+(declare-function zenit--theme-is-colorscheme-p "zenit-ui" (theme))
+
 
 ;;;###autoload
 (defconst zenit-customize-theme-hook nil
@@ -77,22 +80,24 @@ order issues, so you can use zenit-themes' API without worry."
 (defvar zenit-load-theme-hook)
 ;;;###autoload
 (defun zenit/reload-theme ()
-  "Reload the current Emacs theme."
+  "Reload all currently active themes."
   (interactive)
-  (unless zenit-theme
-    (user-error "No theme is active"))
-  (let ((themes (copy-sequence custom-enabled-themes)))
-    (mapc #'disable-theme custom-enabled-themes)
-    (let (zenit-load-theme-hook)
-      (mapc #'enable-theme (reverse themes)))
-    (zenit-run-hooks 'zenit-load-theme-hook)
+  (let* ((themes (copy-sequence custom-enabled-themes))
+         (real-themes (cl-remove-if-not #'zenit--theme-is-colorscheme-p themes)))
+    (mapc #'disable-theme themes)
+    (dolist (th (reverse themes))
+      (if (locate-file (concat (symbol-name th) "-theme.el")
+                       (custom-theme--load-path)
+                       '("" "c"))
+          (load-theme th t)
+        (enable-theme th)))
     (zenit/reload-font)
     (message "%s %s"
              (propertize
               (format "Reloaded %d theme%s:"
-                      (length themes)
-                      (if (cdr themes) "s" ""))
+                      (length real-themes)
+                      (if (cdr real-themes) "s" ""))
               'face 'bold)
-             (mapconcat #'prin1-to-string themes ", "))))
+             (mapconcat #'prin1-to-string real-themes ", "))))
 
 (provide 'zenit-lib '(themes))

@@ -103,6 +103,7 @@ missing-epdfinfo errors whenever storing or exporting links."
     (defvar evil-org-special-o/O '(table-row))
     (defvar evil-org-use-additional-insert t)
     :config
+    (setq org-cycle-emulate-tab nil) ; don't insert TAB in non-insert modes
     (add-hook 'evil-org-mode-hook #'evil-normalize-keymaps)
     (evil-org-set-key-theme)
     (add-hook! 'org-tab-first-hook :append

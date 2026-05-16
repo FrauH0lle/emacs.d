@@ -19,14 +19,7 @@
   :config
   ;; Use button-stlye star replacements, instead of triangular fold indicators
   (setq org-modern-star 'replace)
-  ;; HACK 2025-04-05: If `org-indent-mode' is active, org-modern's default of
-  ;;   hiding leading stars makes sub-headings look too sunken into the left
-  ;;   margin. Those stars are already "hidden" by `org-hide-leading-stars'
-  ;;   anyway, so rely on just that.
-  (add-hook! 'org-modern-mode-hook
-    (defun +org-modern-show-hidden-stars-in-indent-mode-h ()
-      (when (bound-and-true-p org-indent-mode)
-        (setq-local org-modern-hide-stars nil))))
+
   ;; Carry over the default values of `org-todo-keyword-faces', `org-tag-faces',
   ;; and `org-priority-faces' as reasonably as possible, but only if the user
   ;; hasn't already modified them.

@@ -36,9 +36,19 @@ relative to `+dashboard-banner-dir'. If nil, always use the ASCII banner."
   :type 'function
   :group '+dashboard)
 
-(defcustom +dashboard-banner-vertical-padding '(2 . 3)
+(defcustom +dashboard-banner-vertical-padding '(2 . 2)
   "Number of newlines to pad the banner with, above and below,respectively."
   :type '(cons integer integer)
+  :group '+dashboard)
+
+(defcustom +dashboard-anchor '(center . center)
+  "How to vertically and horizontally align dashboard widgets."
+  :type '(cons (choice (const :tag "Top" top)
+                       (const :tag "Bottom" bottom)
+                       (const :tag "Centered" center))
+          (choice (const :tag "Left" left)
+                  (const :tag "Right" right)
+                  (const :tag "Centered" center)))
   :group '+dashboard)
 
 (defcustom +dashboard-pwd-policy 'last-project
@@ -288,7 +298,12 @@ If any of them return non-nil, dashboard reloading is inhibited.")
           (backward-button 1)))
       (ignore-errors
         (goto-char (point-min))
-        (forward-button 1))))
+        (forward-button 1)))
+  ;; Hide the cursor if there are no buttons
+  (unless (button-at (point))
+    (setq-local cursor-type nil
+                ;; We need (list nil) as a workaround for emacs-evil/evil#2016.
+                evil-normal-state-cursor (list nil))))
 
 (defun +dashboard-reload-maybe-h (&rest _)
   "Reload the dashboard or its state.
@@ -336,10 +351,18 @@ whose dimensions may not be fully initialized by the time this is run."
                                            (point)))
             (insert
              (make-string
-              (+ (max 0 (- (/ (window-height (get-buffer-window)) 2)
-                           (round (/ (count-lines (point-min) (point-max))
-                                     2))))
-                 (car +dashboard-banner-vertical-padding))
+              (max
+               0 (pcase (car-safe +dashboard-anchor)
+                   (`top 0)
+                   (`center
+                    (- (/ (window-height (get-buffer-window)) 2)
+                       (round (/ (count-lines (point-min) (point-max))
+                                 2))))
+                   (`bottom
+                    (- (window-height (get-buffer-window))
+                       (count-lines (point-min) (point-max))
+                       1))
+                   (_ 0)))
               ?\n))))))))
 
 (defun +dashboard--persp-detect-project-h (&rest _)
@@ -431,16 +454,26 @@ What it is set to is controlled by `+dashboard-pwd-policy'."
 
 (defun +dashboard-center (str)
   (let* ((width (+dashboard-maxlen str))
-         (prefix (propertize " " 'display `(space . (:align-to (- center ,(/ (float width) 2)))))))
+         (prefix (propertize " " 'display `(space :align-to (- center ,(/ (float width) 2))))))
     (propertize str 'line-prefix prefix 'indent-prefix prefix)))
 
-(defun +dashboard-insert-centered (&rest lines)
-  (let* ((width (+dashboard-maxlen (string-join lines "\n")))
-         (prefix (propertize " " 'display `(space . (:align-to (- center ,(/ (float width) 2)))))))
-    (add-text-properties
-     (point) (progn (mapc (lambda (l) (insert l "\n")) lines)
-                    (point))
-     `(line-prefix ,prefix indent-prefix ,prefix))))
+(defun +dashboard-insert (&rest lines)
+  "Insert LINES into the dashboard buffer.
+
+Applies line-prefix and indent-prefix text properties to respect
+`+dashboard-anchor'."
+  (let ((lines (delq nil lines)))
+    (if-let* ((halign (cdr-safe +dashboard-anchor)))
+        (let* ((width (+dashboard-maxlen (string-join lines "\n")))
+               (prefix `(space :align-to
+                         (- ,halign ,(if (eq halign 'right)
+                                         (+ 2 width)
+                                       (/ width 2))))))
+          (add-text-properties
+           (point) (progn (mapc (lambda (l) (insert l "\n")) lines)
+                          (point))
+           `(line-prefix ,prefix indent-prefix ,prefix)))
+      (insert (string-join lines "\n")))))
 
 (defun +dashboard--pwd ()
   (let ((lastcwd +dashboard--last-cwd)
@@ -486,14 +519,28 @@ What it is set to is controlled by `+dashboard-pwd-policy'."
   (when-let*
       ((banner (and (functionp +dashboard-ascii-banner-fn)
                     (funcall +dashboard-ascii-banner-fn))))
-    (let* ((width (+dashboard-maxlen banner))
-           (text-prefix `(space . (:align-to (- center ,(/ width 2)))))
+    (let* ((halign (cdr +dashboard-anchor))
+           (width (+dashboard-maxlen banner))
+           (text-prefix
+            `(space
+              :align-to (- ,halign
+                           ,(if (eq halign 'right)
+                                (+ 2 width)
+                              (/ width 2)))))
+           (top-pad (or (car-safe +dashboard-banner-vertical-padding) 0))
+           (bot-pad (or (cdr-safe +dashboard-banner-vertical-padding) 0))
            (beg (point)))
+      (when (> top-pad 0)
+        (insert (propertize "\n" 'display `(space :height ,top-pad))))
+
       (insert banner)
       (if-let* (((stringp fancy-splash-image))
                 ((file-readable-p fancy-splash-image))
                 (image (create-image (fancy-splash-image-file)))
-                (image-prefix `(space . (:align-to (- center (0.5 . ,image)))))
+                (image-prefix
+                 `(space :align-to (- ,halign
+                                      ,@(if (eq halign 'right)
+                                            `(,image 1) `((0.5 . ,image))))))
                 (prefix
                  (propertize
                   " " 'display `((when (display-graphic-p) . ,image-prefix)
@@ -502,15 +549,19 @@ What it is set to is controlled by `+dashboard-pwd-policy'."
             (add-text-properties
              beg (point) `(display ,image line-prefix ,prefix wrap-prefix ,prefix))
             (insert "\n"))
-        (add-text-properties beg (point) `(line-prefix ,text-prefix indent-prefix ,text-prefix)))
-      (insert
-       "\n" (propertize " " 'display
-                        `(space
-                          . (:height ,(or (cdr +dashboard-banner-vertical-padding) 0))))))))
+        (add-text-properties
+         beg (point) `(line-prefix ,text-prefix indent-prefix ,text-prefix)))
+
+      ;; If the user's ASCII banner doesn't end in a newline, the last line
+      ;; could be inflated by the following display property.
+      (unless (and (bolp) (eolp)) (insert "\n"))
+
+      (when (> bot-pad 0)
+        (insert (propertize "\n" 'display `(space :height ,bot-pad)))))))
 
 (defun +dashboard-widget-loaded ()
   (when zenit-init-time
-    (+dashboard-insert-centered
+    (+dashboard-insert
      (propertize (zenit-display-benchmark-h 'return)
                  'face '+dashboard-loaded))))
 
@@ -521,7 +572,7 @@ What it is set to is controlled by `+dashboard-pwd-policy'."
       (when (and (fboundp action)
                  (or (null when)
                      (eval when t)))
-        (+dashboard-insert-centered
+        (+dashboard-insert
          (let ((icon (if (stringp icon) icon (eval icon t))))
            (format (format "%s%%s%%10s" (if icon "%3s\t" "%3s"))
                    (or icon "")
@@ -566,7 +617,7 @@ What it is set to is controlled by `+dashboard-pwd-policy'."
          (propertize "\n" 'display '(space . (:relative-height 0.01))))))))
 
 (defun +dashboard-widget-footer ()
-  (+dashboard-insert-centered
+  (+dashboard-insert
    (with-temp-buffer
      (insert (propertize " " 'display '(space . (:relative-height 2.0))) "\n")
      (insert-text-button (or (nerd-icons-codicon "nf-cod-octoface" :face '+dashboard-footer-icon :height 1.3 :v-adjust -0.15)
@@ -574,9 +625,9 @@ What it is set to is controlled by `+dashboard-pwd-policy'."
                          'action (lambda (_) (browse-url "https://github.com/FrauH0lle/emacs.d"))
                          'follow-link t
                          'help-echo "Open Emacs config github page")
-     (insert "\n" )
+     (insert "\n")
      (buffer-string))))
 
 (defun +dashboard-widget-spacer ()
-  (+dashboard-insert-centered
+  (+dashboard-insert
    (propertize "\n" 'display `(space . (:relative-height 0.5)))))

@@ -43,7 +43,7 @@ FUNCTION
 
 (use-package! magit
   :commands magit-file-delete
-  :defer-incrementally (dash f s with-editor package eieio transient git-commit)
+  :defer-incrementally (compat with-editor eieio transient git-commit)
   :init
   (setq magit-auto-revert-mode nil)  ; we do this ourselves further down
   ;; Must be set early to prevent ~/.emacs.d/transient from being created
@@ -142,7 +142,7 @@ FUNCTION
 
   ;; The mode-line isn't useful in these popups and take up valuable screen
   ;; estate, so free it up.
-  (add-hook 'magit-popup-mode-hook #'hide-mode-line-mode)
+  (add-hook 'magit-popup-mode-hook #'mode-line-invisible-mode)
 
   ;; Add additional switches that seem common enough
   (transient-append-suffix 'magit-fetch "-p"

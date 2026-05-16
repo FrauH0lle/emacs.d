@@ -13,9 +13,6 @@
 (declare-function cl-set-difference "cl-seq" (cl-list1 cl-list2 &rest cl-keys))
 (declare-function cl-union "cl-seq" (cl-list1 cl-list2 &rest cl-keys))
 
-;; `hide-mode-line'
-(declare-function hide-mode-line-mode "ext:hide-mode-line" (&optional arg))
-
 ;; `image'
 (defvar image-animate-loop)
 
@@ -696,6 +693,11 @@ markers, so disable it to fix all that visual noise."
     (declare-function +whitespace--in-parent-frame-p nil))
   (add-function :before-while whitespace-enable-predicate #'+whitespace--in-parent-frame-p))
 
+;; Hide the mode line in completion popups and MAN pages because they serve
+;; little purpose there, and is better hidden.
+(add-hook 'completion-list-mode-hook #'mode-line-invisible-mode)
+(add-hook 'Man-mode-hook #'mode-line-invisible-mode)
+
 
 ;;
 ;;; Third party packages
@@ -711,12 +713,6 @@ markers, so disable it to fix all that visual noise."
              nerd-icons-ipsicon
              nerd-icons-pomicon
              nerd-icons-powerline))
-
-;; Hide the mode line in completion popups and MAN pages because they serve
-;; little purpose there, and is better hidden.
-;;;###package hide-mode-line-mode
-(add-hook! '(completion-list-mode-hook Man-mode-hook)
-           #'hide-mode-line-mode)
 
 ;; Many major modes do no highlighting of number literals, so we do it for them
 (use-package! highlight-numbers

@@ -35,7 +35,7 @@
 elsewhere."
       (if (eq major-mode 'magit-status-mode)
           (doom-modeline-set-modeline 'magit)
-        (hide-mode-line-mode))))
+        (mode-line-invisible-mode))))
 
   ;; Prevent flashing modeline
   (advice-add #'doom-modeline-redisplay :override #'ignore)

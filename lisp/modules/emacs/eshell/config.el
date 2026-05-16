@@ -129,7 +129,7 @@ You should use `set-eshell-alias!' to change this.")
       (visual-line-mode +1)
       (set-display-table-slot standard-display-table 0 ?\ )))
 
-  (add-hook 'eshell-mode-hook #'hide-mode-line-mode)
+  (add-hook 'eshell-mode-hook #'mode-line-invisible-mode)
 
   ;; Remove hscroll-margin in shells, otherwise you get jumpiness when the
   ;; cursor comes close to the left/right edges of the window.
@@ -275,7 +275,8 @@ when inhibited to show history matches."
       (if eshell-syntax-highlighting-mode
           (add-hook 'pre-command-hook #'+eshell-syntax-highlight-maybe-h nil t)
         (remove-hook 'pre-command-hook #'+eshell-syntax-highlight-maybe-h t))))
-  (add-hook 'eshell-syntax-highlighting-elisp-buffer-setup-hook #'highlight-quoted-mode))
+  (when (fboundp 'highlight-quoted-mode)
+    (add-hook 'eshell-syntax-highlighting-elisp-buffer-setup-hook #'highlight-quoted-mode)))
 
 
 (use-package! fish-completion

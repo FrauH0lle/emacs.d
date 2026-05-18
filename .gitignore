@@ -64,3 +64,12 @@ straight/*
 # Do not sync local and interactively registered package versions
 straight/versions/local.el
 straight/versions/default.el
+
+# Local mevedel project state. Runtime sessions, hook config, plans, and hints
+# can contain absolute paths and prompt history; only project-local skills are
+# candidates for version control in this repository.
+!/.mevedel/
+.mevedel/*
+!.mevedel/skills
+!.mevedel/hooks.json
+!.mevedel/hooks

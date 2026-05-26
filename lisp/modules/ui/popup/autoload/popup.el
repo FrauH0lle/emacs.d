@@ -110,17 +110,19 @@ ACTION can be \\='remove or \\='add."
 (defun +popup--record-parent (parent-buffer &optional buffer)
   "Record PARENT-BUFFER of BUFFER."
   (let ((buffer (or buffer (current-buffer))))
-    (with-current-buffer buffer
-      (let ((parents (buffer-local-value '+popup--parents parent-buffer))
-            (quit (+popup-buffer-parameter 'quit parent-buffer)))
-        (when (and (+popup-buffer-p buffer)
-                   ;; Prevent self-reference
-                   (not (eq buffer parent-buffer))
-                   ;; Avoid duplicate parents
-                   (not (assq parent-buffer parents))
-                   (not +popup--ignore-parent))
-          (push (cons parent-buffer quit) parents)
-          (setq +popup--parents parents))))))
+    (when (and (buffer-live-p buffer)
+               (buffer-live-p parent-buffer))
+      (with-current-buffer buffer
+        (let ((parents (buffer-local-value '+popup--parents parent-buffer))
+              (quit (+popup-buffer-parameter 'quit parent-buffer)))
+          (when (and (+popup-buffer-p buffer)
+                     ;; Prevent self-reference
+                     (not (eq buffer parent-buffer))
+                     ;; Avoid duplicate parents
+                     (not (assq parent-buffer parents))
+                     (not +popup--ignore-parent))
+            (push (cons parent-buffer quit) parents)
+            (setq +popup--parents parents)))))))
 
 (defun +popup--kill-buffer (buffer ttl)
   "Tries to kill BUFFER, as was requested by a transient timer.

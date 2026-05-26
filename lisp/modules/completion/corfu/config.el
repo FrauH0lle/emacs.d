@@ -115,13 +115,16 @@ This function respects the value of `+corfu-want-minibuffer-completion':
   (defadvice! +corfu--auto-disable-ispell-capf-a (fn &rest args)
     "If ispell isn't properly set up, only complain once per session."
     :around #'ispell-completion-at-point
-    (condition-case-unless-debug e
+    (condition-case e
         (apply fn args)
-      ('error
-       (message "Error: %s" (error-message-string e))
-       (message "Auto-disabling `text-mode-ispell-word-completion'")
-       (setq text-mode-ispell-word-completion nil)
-       (remove-hook 'completion-at-point-functions #'ispell-completion-at-point t)))))
+      (error
+       (if (string-match-p "No plain word-list found" (error-message-string e))
+           (progn
+             (message "Error: %s" (error-message-string e))
+             (message "Auto-disabling `text-mode-ispell-word-completion'")
+             (setq text-mode-ispell-word-completion nil)
+             (remove-hook 'completion-at-point-functions #'ispell-completion-at-point t))
+         (signal (car e) (cdr e)))))))
 
 
 (use-package! corfu-auto

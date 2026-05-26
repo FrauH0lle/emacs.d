@@ -13,14 +13,16 @@
   ,test
   (test)
   :doc "`zenit-quit-p' returns t if no real buffers are open"
-  (letf! ((defun zenit-real-buffer-list () nil))
+  (letf! ((defun zenit-buffer-list () nil))
     (should (zenit-quit-p)))
   :doc "`zenit-quit-p' prompts if real buffers are open"
-  (letf! ((defun zenit-real-buffer-list () t)
+  (letf! ((defun zenit-buffer-list () '("buffer"))
+          (defun zenit-real-buffer-p (b) t)
           (defun yes-or-no-p (&rest _) t))
     (should (zenit-quit-p)))
   :doc "`zenit-quit-p' else aborts"
-  (letf! ((defun zenit-real-buffer-list () t)
+  (letf! ((defun zenit-buffer-list () '("buffer"))
+          (defun zenit-real-buffer-p (b) t)
           (defun yes-or-no-p (&rest _) nil))
     (should-not (quiet!! (zenit-quit-p)))))
 

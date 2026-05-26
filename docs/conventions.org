@@ -70,3 +70,6 @@ looks at the expanded form of the definition (~cl-defun foo (x &key y)~ expands
 to ~(defun foo (x &rest --cl-rest--))~). ~check-declare~ on the other hand does
 not and takes the original arglist. And thus, it will complain and not work
 properly. However, this is acceptable.
+
+* Avoid =:after= keyword
+See https://github.com/jwiegley/use-package/issues/829

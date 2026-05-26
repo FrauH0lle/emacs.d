@@ -197,7 +197,8 @@ You should use `set-eshell-alias!' to change this.")
 
 
 (use-package! eshell-z
-  :after eshell
+  :defer t
+  :init (after! eshell (require 'eshell-z nil t))
   :config
   ;; Use zsh's db if it exists, otherwise, store it in `zenit-cache-dir'
   (unless (file-exists-p eshell-z-freq-dir-hash-table-file-name)
@@ -206,7 +207,8 @@ You should use `set-eshell-alias!' to change this.")
 
 
 (use-package! esh-help
-  :after eshell
+  :defer t
+  :init (after! eshell (require 'esh-help nil t))
   :config
   (setup-esh-help-eldoc)
   ;; HACK: Fixes tom-tan/esh-help#7.
@@ -245,8 +247,9 @@ Return nil if there is none."
         (all-completions "" (pcomplete-completions))))))
 
 (use-package! eshell-did-you-mean
+  :defer t
   ;; Specifically esh-mode, not eshell
-  :after esh-mode
+  :init (after! esh-mode (require 'eshell-did-you-mean nil t))
   :config
   (eshell-did-you-mean-setup))
 

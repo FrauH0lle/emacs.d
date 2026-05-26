@@ -167,7 +167,8 @@ proselint and langtool."
 
 
   (use-package! flyspell-lazy
-    :after flyspell
+    :defer t
+    :init (after! flyspell (require 'flyspell-lazy nil t))
     :config
     (setq flyspell-lazy-idle-seconds 1
           flyspell-lazy-window-idle-seconds 3)

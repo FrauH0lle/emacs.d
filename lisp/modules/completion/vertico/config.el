@@ -222,7 +222,8 @@
 
 (use-package! consult-flycheck
   :when (modulep! :checkers syntax -flymake)
-  :after (consult flycheck))
+  :defer t
+  :init (after! (consult flycheck) (require 'consult-flycheck nil t)))
 
 
 (use-package! embark

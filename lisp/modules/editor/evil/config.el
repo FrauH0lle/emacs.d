@@ -399,7 +399,8 @@ global, so..."
 
 
 (use-package! evil-traces
-  :after evil-ex
+  :defer t
+  :init (after! evil-ex (require 'evil-traces nil t))
   :config
   (pushnew! evil-traces-argument-type-alist
             '(+evil:align . evil-traces-global)

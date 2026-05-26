@@ -218,8 +218,9 @@ FUNCTION
 
 (use-package! code-review
   :when (modulep! +forge)
-  :after magit
+  :defer t
   :init
+  (after! magit (require 'code-review nil t))
   ;; TODO This needs to either a) be cleaned up or better b) better map things
   ;; to fit
   (after! evil-collection-magit
@@ -240,7 +241,8 @@ FUNCTION
 
 
 (use-package! magit-todos
-  :after magit
+  :defer t
+  :init (after! magit (require 'magit-todos nil t))
   :config
   (setq magit-todos-keyword-suffix "\\(?:([^)]+)\\)?:?") ; make colon optional
   (define-key magit-todos-section-map "j" nil))

@@ -4,7 +4,7 @@
 :; [ "$EMACS" = emacs ] && { type emacs >/dev/null 2>&1 || err=1; }
 :; [ -n "$err" ] && { echo "Error: failed to run Emacs with command '$EMACS'"; echo; echo "Are you sure Emacs is installed and in your \$PATH?"; exit 1; } >&2
 :; emacs="$EMACS ${DEBUG:+--debug-init} -q --no-site-file --batch"
-:; $emacs --load "$0" -- "$@" || exit=$?
+:; eval "$emacs --eval \"(setq warning-inhibit-types '((files missing-lexbind-cookie)))\" --load \"$0\"" -- "$@" || exit=$?
 :; exit $exit
 
 ;; The above shebang does the following magic:
@@ -45,7 +45,7 @@
 ;;    loaded, --no-site-file skips loading site files, and --batch runs Emacs in
 ;;    non-interactive mode.
 
-;; 7) :; eval "$emacs --load" "$0" -- "$@" || exit=$?
+;; 7) :; eval "$emacs --eval \"(setq warning-inhibit-types '((files missing-lexbind-cookie)))\" --load \"$0\"" -- "$@" || exit=$?
 ;;
 ;;    This line runs Emacs, loading the script itself ($0) and passing any
 ;;    command-line arguments ("$@"). If the command fails, it stores the exit

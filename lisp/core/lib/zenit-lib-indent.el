@@ -109,12 +109,12 @@ This relies on several heuristics to work. If "
 
 ;;;###autoload
 (defun zenit/retab (arg &optional beg end)
-  "Converts tabs-to-spaces or spaces-to-tabs within BEG and END (defaults to
-buffer start and end, to make indentation consistent. Which it does depends on
-the value of `indent-tab-mode'.
+  "Converts tabs-to-spaces or spaces-to-tabs within BEG and END.
+Defaults to buffer start and end, to make indentation consistent. Which
+it does depends on the value of `indent-tab-mode'.
 
-If ARG (universal argument) is non-nil, retab the current buffer using the
-opposite indentation style."
+If ARG (universal argument) is non-nil, retab the current buffer using
+the opposite indentation style."
   (interactive "P\nr")
   (unless (and beg end)
     (setq beg (point-min)

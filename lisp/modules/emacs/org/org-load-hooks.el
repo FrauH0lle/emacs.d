@@ -560,6 +560,7 @@ an indirect buffer."
           (+org--restart-mode-h))))
 
     (defvar recentf-exclude)
+    (defvar so-long-target-modes)
     (defadvice! +org--optimize-backgrounded-agenda-buffers-a (fn file)
       "Disable `org-mode's startup processes for temporary agenda
 buffers.

@@ -140,7 +140,7 @@ See `+evil/next-preproc-directive' for details."
 ;;
 ;;; Encoding/Decoding
 
-;; NOTE For ]x / [x see :lang web
+;; NOTE: For [x / ]x see :lang web
 ;; - `+web:encode-html-entities'
 ;; - `+web:decode-html-entities'
 
@@ -152,12 +152,16 @@ See `+evil/next-preproc-directive' for details."
       (delete-region beg end)
       (insert (funcall fn text)))))
 
-;;; ]u / [u
+(defun +evil--url-decode (text)
+  "Percent-decode URL-encoded TEXT as UTF-8."
+  (decode-coding-string (url-unhex-string text t) 'utf-8))
+
+;;; [u / ]u
 ;;;###autoload (autoload '+evil:url-encode "editor/evil/autoload/unimpaired" nil t)
 (evil-define-operator +evil:url-encode (_count &optional beg end)
-  "TODO"
+  "URL-encode text selected by the operator."
   (interactive "<c><r>")
-  (+evil--encode beg end #'url-encode-url))
+  (+evil--encode beg end #'+evil--url-decode))
 
 ;;;###autoload (autoload '+evil:url-decode "editor/evil/autoload/unimpaired" nil t)
 (evil-define-operator +evil:url-decode (_count &optional beg end)
@@ -165,7 +169,7 @@ See `+evil/next-preproc-directive' for details."
   (interactive "<c><r>")
   (+evil--encode beg end #'url-unhex-string))
 
-;;; ]y / [y
+;;; [y / ]y
 ;;;###autoload (autoload '+evil:c-string-encode "editor/evil/autoload/unimpaired" nil t)
 (evil-define-operator +evil:c-string-encode (_count &optional beg end)
   "TODO"

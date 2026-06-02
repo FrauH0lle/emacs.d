@@ -16,6 +16,9 @@
 ;; `outline'
 (declare-function outline-up-heading "outline" (arg &optional invisible-ok))
 
+;; `recentf'
+(defvar recentf-autosave-interval)
+
 ;; `smie'
 (declare-function smie-config-guess "smie" ())
 
@@ -374,7 +377,10 @@ system."
 
   ;; The most sensible time to clean up your recent files list is when you quit
   ;; Emacs (unless this is a long-running daemon session).
-  (setq recentf-auto-cleanup (if (daemonp) 300 'never))
+  (setq recentf-auto-cleanup 'never)
+  (when (daemonp)
+    (setq recentf-auto-cleanup 600
+          recentf-autosave-interval 1200))
   ;; Use a negative depth value because we need `recentf-cleanup' to run before
   ;; `recentf-save-list' to be effective, which `recentf-mode' will only add to
   ;; `kill-emacs-hook' once it is enabled.

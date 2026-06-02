@@ -25,7 +25,6 @@
     "C-a"    #'move-beginning-of-line
     "C-r"    #'evil-paste-from-register
     "C-u"    #'evil-delete-back-to-indentation
-    "C-v"    #'yank
     "C-w"    #'zenit/delete-backward-word
     "C-z"    (cmd! (ignore-errors (call-interactively #'undo))))
 
@@ -511,7 +510,7 @@
        :desc "Emoji"                         "e"   #'emojify-insert-emoji
        :desc "Current file name"             "f"   #'+default/insert-file-path
        :desc "Current file path"             "F"   (cmd!! #'+default/insert-file-path t)
-       :desc "Evil ex path"                  "p"   (cmd! (evil-ex "R!echo "))
+       :desc "Evil ex path"                  "p"   (cmd! (evil-ex "r!echo "))
        :desc "From evil register"            "r"   #'evil-show-registers
        :desc "Snippet"                       "s"   #'tempel-insert
        :desc "Unicode"                       "u"   #'insert-char

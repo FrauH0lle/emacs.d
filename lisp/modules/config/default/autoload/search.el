@@ -53,7 +53,7 @@ the initial input and search the whole buffer for it."
                  (consult-line
                   (replace-regexp-in-string
                    " " "\\\\ "
-                   (zenit-pcre-quote
+                   (regexp-quote
                     (buffer-substring-no-properties start end))))
                (call-interactively #'consult-line)))))))
 

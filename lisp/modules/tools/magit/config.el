@@ -144,6 +144,10 @@ FUNCTION
   ;; estate, so free it up.
   (add-hook 'magit-popup-mode-hook #'mode-line-invisible-mode)
 
+  ;; Line numbers add nothing to magit's status/log/diff/refs buffers
+  (add-hook 'magit-popup-mode-hook #'zenit-disable-line-numbers-h)
+  (add-hook 'magit-mode-hook #'zenit-disable-line-numbers-h)
+
   ;; Add additional switches that seem common enough
   (transient-append-suffix 'magit-fetch "-p"
     '("-t" "Fetch all tags" ("-t" "--tags")))

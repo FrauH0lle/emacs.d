@@ -48,6 +48,7 @@
 
 ;; `zenit-lib-ui'
 (declare-function zenit/delete-frame-with-prompt "zenit-lib-ui" ())
+(declare-function zenit-disable-line-numbers-h "zenit-lib-ui" ())
 (declare-function zenit-quit-p "zenit-lib-ui" (&optional prompt))
 
 
@@ -697,6 +698,9 @@ markers, so disable it to fix all that visual noise."
 ;; little purpose there, and is better hidden.
 (add-hook 'completion-list-mode-hook #'mode-line-invisible-mode)
 (add-hook 'Man-mode-hook #'mode-line-invisible-mode)
+
+(add-hook 'completion-list-mode-hook #'zenit-disable-line-numbers-h)
+(add-hook 'Man-mode-hook #'zenit-disable-line-numbers-h)
 
 
 ;;

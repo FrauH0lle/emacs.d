@@ -77,6 +77,16 @@ In tty Emacs, messages are suppressed completely."
   (setq-local show-paren-mode nil))
 
 ;;;###autoload
+(defun zenit-enable-line-numbers-h ()
+  (unless (bound-and-true-p display-line-numbers-mode)
+    (display-line-numbers-mode +1)))
+
+;;;###autoload
+(defun zenit-disable-line-numbers-h ()
+  (when (bound-and-true-p display-line-numbers)
+    (display-line-numbers-mode -1)))
+
+;;;###autoload
 (defun zenit-kill-childframes-h (&rest _)
   "Delete all childframes (and `posframe' frames)."
   (dolist (frame (frame-list))

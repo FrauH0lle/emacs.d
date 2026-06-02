@@ -187,9 +187,9 @@ If any of them return non-nil, dashboard reloading is inhibited.")
   (setq-local mode-line-right-align-edge 'right-margin)
   ;; Ensure point is always on a button
   (add-hook 'post-command-hook #'+dashboard-reposition-point-h nil 'local)
-  ;; `hl-line' produces an ugly cut-off line highlight in the dashboard, so
-  ;; don't activate it there (by pretending it's already active).
-  (setq-local hl-line-mode t)
+  ;; `hl-line' will highlight up to the BOL of the following line, which looks
+  ;; ugly, so exclude the newline at EOL.
+  (setq-local hl-line-range-function (lambda () (cons (pos-bol) (pos-eol))))
   ;; Local variables are never important in the dashboard, and may cause repeat
   ;; prompts about unsafe/risky variables.
   (setq-local enable-local-variables nil))
@@ -574,7 +574,7 @@ Applies line-prefix and indent-prefix text properties to respect
                      (eval when t)))
         (+dashboard-insert
          (let ((icon (if (stringp icon) icon (eval icon t))))
-           (format (format "%s%%s%%10s" (if icon "%3s\t" "%3s"))
+           (format (format " %s%%s%%10s " (if icon "%s\t" "%s"))
                    (or icon "")
                    (with-temp-buffer
                      (insert-text-button

@@ -27,8 +27,8 @@
 ;;;###autoload
 (cl-defun gptel-make-glm-openai
     (name &key curl-args stream key request-params
-          (header (lambda () (when-let* ((key (gptel--get-api-key)))
-                               `(("Authorization" . ,(concat "Bearer " key))))))
+          (header (lambda (_info) (when-let* ((key (gptel--get-api-key)))
+                                    `(("Authorization" . ,(concat "Bearer " key))))))
           (host "api.z.ai")
           (protocol "https")
           (endpoint "/api/paas/v4/chat/completions")
@@ -112,8 +112,8 @@ reasoning_content preserved."
 ;;;###autoload
 (cl-defun gptel-make-glm-anthropic
     (name &key curl-args stream key request-params
-          (header (lambda () (when-let* ((key (gptel--get-api-key)))
-                               `(("Authorization" . ,(concat "Bearer " key))))))
+          (header (lambda (_info) (when-let* ((key (gptel--get-api-key)))
+                                    `(("Authorization" . ,(concat "Bearer " key))))))
           (host "api.z.ai")
           (protocol "https")
           (endpoint "/api/anthropic/v1/messages")

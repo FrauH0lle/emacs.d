@@ -1,0 +1,35 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .mevedel/hooks/zenit_policy.py generated-file-guard",
+            "timeout": 5,
+            "failClosed": true,
+            "description": "Block edits to generated and runtime-local artifacts"
+          },
+          {
+            "type": "command",
+            "command": "python3 .mevedel/hooks/zenit_policy.py package-change-context",
+            "timeout": 5,
+            "description": "Remind agents about refresh/sync/freeze after package changes"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 .mevedel/hooks/zenit_policy.py commit-message-context",
+            "timeout": 5,
+            "description": "Remind agents about Zenit commit message conventions"
+          }
+        ]
+      }
+    ]
+  }
+}

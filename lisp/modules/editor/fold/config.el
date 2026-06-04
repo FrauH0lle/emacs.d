@@ -125,6 +125,6 @@ later."
 
 (use-package! backline
   :defer t
-  :init (after! outline (require 'backline nil t))
+  :init (after! outline (require 'backline))
   :config
   (advice-add #'outline-flag-region :after #'backline-update))

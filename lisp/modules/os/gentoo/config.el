@@ -36,7 +36,7 @@
 (use-package! company-ebuild
   :when (modulep! :completion corfu)
   :defer t
-  :init (after! ebuild-mode (require 'company-ebuild nil t))
+  :init (after! ebuild-mode (require 'company-ebuild))
   :preface
   ;; HACK 2024-07-25: This function is the only one required from `company-mode'
   (defun company-grab-symbol ()

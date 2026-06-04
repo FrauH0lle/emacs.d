@@ -452,14 +452,14 @@ relative to `org-directory', unless it is an absolute path."
   (use-package! ox-hugo
     :when (modulep! +hugo)
     :defer t
-    :init (after! ox (require 'ox-hugo nil t)))
+    :init (after! ox (require 'ox-hugo)))
 
   (use-package! ox-pandoc
     :when (modulep! +pandoc)
     :when (executable-find "pandoc")
     :defer t
     :init
-    (after! ox (require 'ox-pandoc nil t))
+    (after! ox (require 'ox-pandoc))
     (add-to-list 'org-export-backends 'pandoc)
     (setq org-pandoc-options
           '((standalone . t)

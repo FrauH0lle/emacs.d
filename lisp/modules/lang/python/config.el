@@ -180,7 +180,7 @@
 
 (use-package! pyvenv
   :defer t
-  :init (after! python (require 'pyvenv nil t))
+  :init (after! python (require 'pyvenv))
   :init
   (when (modulep! :ui modeline)
     (add-hook 'pyvenv-post-activate-hooks #'+modeline-update-env-in-all-windows-h)
@@ -197,7 +197,7 @@
 (use-package! pyenv-mode
   :when (modulep! +pyenv)
   :defer t
-  :init (after! python (require 'pyenv-mode nil t))
+  :init (after! python (require 'pyenv-mode))
   :config
   (when (executable-find "pyenv")
     (pyenv-mode +1)
@@ -210,7 +210,7 @@
 (use-package! conda
   :when (modulep! +conda)
   :defer t
-  :init (after! python (require 'conda nil t))
+  :init (after! python (require 'conda))
   :config
   ;; Integration with term/eshell
   (conda-env-initialize-interactive-shells)
@@ -226,7 +226,7 @@
   :hook (zenit-first-buffer . poetry-tracking-mode)
   :defer t
   :init
-  (after! python (require 'poetry nil t))
+  (after! python (require 'poetry))
   (setq poetry-tracking-strategy 'switch-buffer))
 
 
@@ -244,7 +244,7 @@
   :when (modulep! +cython)
   :when (modulep! :checkers syntax -flymake)
   :defer t
-  :init (after! cython-mode (require 'flycheck-cython nil t)))
+  :init (after! cython-mode (require 'flycheck-cython)))
 
 
 (use-package! pip-requirements

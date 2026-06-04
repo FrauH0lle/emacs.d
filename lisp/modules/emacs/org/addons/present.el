@@ -22,7 +22,7 @@ freedom to place them wherever you like.")
 
 (use-package! org-re-reveal
   :defer t
-  :init (after! ox (require 'org-re-reveal nil t))
+  :init (after! ox (require 'org-re-reveal))
   :config
   (setq org-re-reveal-root (concat "file://" (expand-file-name "../../" (locate-library "dist/reveal.js" t)))
         org-re-reveal-revealjs-version "4"))

@@ -124,7 +124,7 @@
 
 (use-package mcp
   :defer t
-  :init (after! gptel (require 'mcp nil t))
+  :init (after! gptel (require 'mcp))
   :config
   (require 'gptel-integrations)
   (require 'mcp-hub)
@@ -137,12 +137,12 @@
 
 (use-package! gptel-agent
   :defer t
-  :init (after! gptel (require 'gptel-agent nil t)))
+  :init (after! gptel (require 'gptel-agent)))
 
 
 (use-package! mevedel
   :defer t
-  :init (after! gptel (require 'mevedel nil t))
+  :init (after! gptel (require 'mevedel))
   :config
   (setq! mevedel-empty-tag-query-matches-all nil)
   ;; The extra indentation look awkward here

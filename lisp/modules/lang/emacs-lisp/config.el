@@ -202,14 +202,14 @@ looking up a C function.")
 (use-package! flycheck-package
   :when (modulep! :checkers syntax -flymake)
   :defer t
-  :init (after! flycheck (require 'flycheck-package nil t))
+  :init (after! flycheck (require 'flycheck-package))
   :config (flycheck-package-setup))
 
 
 (use-package! package-lint-flymake
   :when (modulep! :checkers syntax +flymake)
   :defer t
-  :init (after! flymake (require 'package-lint-flymake nil t))
+  :init (after! flymake (require 'package-lint-flymake))
   :config (package-lint-flymake-setup))
 
 

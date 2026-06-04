@@ -400,7 +400,7 @@ global, so..."
 
 (use-package! evil-traces
   :defer t
-  :init (after! evil-ex (require 'evil-traces nil t))
+  :init (after! evil-ex (require 'evil-traces))
   :config
   (pushnew! evil-traces-argument-type-alist
             '(+evil:align . evil-traces-global)

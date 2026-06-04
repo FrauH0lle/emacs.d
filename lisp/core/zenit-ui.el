@@ -549,7 +549,7 @@ buffers are visible in other windows, switch to
 
 (use-package! hl-line
   ;; Highlights the current line
-  :hook (zenit-first-buffer . global-hl-line-mode)
+  :hook (zenit-first-input . global-hl-line-mode)
   :init
   (defvar global-hl-line-modes
     '(prog-mode text-mode conf-mode special-mode

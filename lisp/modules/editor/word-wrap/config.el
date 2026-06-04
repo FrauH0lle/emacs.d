@@ -1,6 +1,6 @@
 ;; editor/word-wrap/config.el -*- lexical-binding: t; -*-
 
-(defvar +word-wrap-extra-indent 'double
+(defvar +word-wrap-extra-indent 0
   "The amount of extra indentation for wrapped code lines.
 
 When \\='double, indent by twice the major-mode indentation.

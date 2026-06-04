@@ -127,6 +127,9 @@ If any of them return non-nil, dashboard reloading is inhibited.")
 (defvar +dashboard--last-cwd nil
   "Variable to store the last current working directory.")
 
+(defvar +dashboard--last-position nil
+  "Variable to store the last position in dashboard buffer.")
+
 (defvar +dashboard--reload-timer nil
   "Variable to store the dashboard buffer reload timer.")
 
@@ -198,6 +201,7 @@ If any of them return non-nil, dashboard reloading is inhibited.")
   [left-margin mouse-1]   #'ignore
   [remap forward-button]  #'+dashboard/forward-button
   [remap backward-button] #'+dashboard/backward-button
+  [remap push-button]     #'+dashboard/push-button
   "n"                     #'forward-button
   "p"                     #'backward-button
   "C-n"                   #'forward-button
@@ -288,22 +292,23 @@ If any of them return non-nil, dashboard reloading is inhibited.")
 
 (defun +dashboard-reposition-point-h ()
   "Trap the point in the buttons."
-  (when (region-active-p)
-    (setq deactivate-mark t)
-    (when (bound-and-true-p evil-local-mode)
-      (evil-change-to-previous-state)))
-  (or (ignore-errors
-        (if (button-at (point))
-            (forward-button 0)
-          (backward-button 1)))
-      (ignore-errors
-        (goto-char (point-min))
-        (forward-button 1)))
-  ;; Hide the cursor if there are no buttons
-  (unless (button-at (point))
-    (setq-local cursor-type nil
-                ;; We need (list nil) as a workaround for emacs-evil/evil#2016.
-                evil-normal-state-cursor (list nil))))
+  (when (eq (current-buffer) (get-buffer +dashboard-name))
+    (when (region-active-p)
+      (setq deactivate-mark t)
+      (when (bound-and-true-p evil-local-mode)
+        (evil-change-to-previous-state)))
+    (cond ((button-at (point))
+           (forward-button 0 nil nil t))
+          ((save-restriction
+             (narrow-to-region (pos-bol) (pos-eol))
+             (forward-button 1 nil nil t)))
+          ((backward-button 1 nil nil t))
+          ((goto-char (point-min))
+           (forward-button 1 nil nil t)))
+    ;; Hide the cursor if there are no buttons
+    (unless (button-at (point))
+      (setq-local cursor-type nil
+                  evil-normal-state-cursor (list nil)))))
 
 (defun +dashboard-reload-maybe-h (&rest _)
   "Reload the dashboard or its state.
@@ -336,8 +341,13 @@ whose dimensions may not be fully initialized by the time this is run."
         window-size-change-functions)
     (when-let* ((windows (get-buffer-window-list (zenit-fallback-buffer) nil t)))
       (dolist (w windows)
-        (unless (= (window-start w) 1)
-          (set-window-start w 0))
+        (unless (= (window-start w)
+                   (or (window-parameter w '+dashboard-last-window-start)
+                       1))
+          (set-window-start w (or (window-parameter w '+dashboard-last-window-start) 0)))
+        (when-let* ((pos (window-parameter w '+dashboard-last-position)))
+          (goto-char pos)
+          (+dashboard-reposition-point-h))
         (cl-destructuring-bind (left right &rest) (window-fringes w)
           (unless (and (= left 0)
                        (= right 0))

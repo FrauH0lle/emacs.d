@@ -571,16 +571,6 @@ But before the local one."
       (if (= (default-value 'gc-cons-percentage) 1.0)
           (setq-default gc-cons-percentage 0.1)))))
 
-(when (daemonp)
-  (message "Starting Emacs in daemon mode...")
-  (unless zenit-inhibit-log
-    (add-hook! 'zenit-after-init-hook :depth 106
-      (unless zenit-inhibit-log
-        (setq zenit-inhibit-log (not (or noninteractive init-file-debug))))
-      (message "Disabling verbose mode. Have fun!"))
-    (add-hook! 'kill-emacs-hook :depth 110
-      (message "Killing Emacs. Have a nice day!"))))
-
 (unless noninteractive
   ;; This is the absolute latest a hook can run in Emacs' startup process.
   (define-advice command-line-1 (:after (&rest _) run-after-init-hook 100)

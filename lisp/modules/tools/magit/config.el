@@ -225,19 +225,12 @@ FUNCTION
   :when (modulep! +forge)
   :defer t
   :init
-  (after! magit (require 'code-review nil t))
-  ;; TODO This needs to either a) be cleaned up or better b) better map things
-  ;; to fit
-  (after! evil-collection-magit
-    (dolist (binding evil-collection-magit-mode-map-bindings)
-      (pcase-let* ((`(,states _ ,evil-binding ,fn) binding))
-        (dolist (state states)
-          (evil-collection-define-key state 'code-review-mode-map evil-binding fn))))
-    (evil-set-initial-state 'code-review-mode evil-default-state))
+  (after! magit (require 'code-review))
   (setq code-review-db-database-file (file-name-concat zenit-data-dir "code-review/code-review-db-file.sqlite")
         code-review-log-file (file-name-concat zenit-data-dir "code-review/code-review-error.log")
         code-review-download-dir (file-name-concat zenit-data-dir "code-review/"))
   :config
+  (set-evil-initial-state! 'code-review-mode 'normal)
   (transient-append-suffix 'magit-merge "d"
     '("y" "Review pull request" +magit/start-code-review))
   (after! forge
@@ -247,7 +240,7 @@ FUNCTION
 
 (use-package! magit-todos
   :defer t
-  :init (after! magit (require 'magit-todos nil t))
+  :init (after! magit (require 'magit-todos))
   :config
   (setq magit-todos-keyword-suffix "\\(?:([^)]+)\\)?:?") ; make colon optional
   (define-key magit-todos-section-map "j" nil))
@@ -260,6 +253,11 @@ FUNCTION
   ;; q is enough; ESC is too easy for to accidentally press, especially when
   ;; traversing modes in magit buffers.
   (evil-define-key* 'normal magit-status-mode-map [escape] nil)
+
+  (after! code-review
+    (map! :map code-review-mode-map
+          :n "r" #'code-review-transient-api
+          :n "RET" #'code-review-comment-add-or-edit))
 
   ;; Fix these keybinds because they are blacklisted
   (map! (:map magit-mode-map
@@ -294,11 +292,9 @@ FUNCTION
       "gj" #'git-rebase-move-line-down
       "gk" #'git-rebase-move-line-up))
 
-  (after! magit-gitflow
-    (evil-define-key* '(normal visual) magit-mode-map
-      "%" #'magit-gitflow-popup)
-    (transient-append-suffix 'magit-dispatch 'magit-worktree
-      '("%" "Gitflow" magit-gitflow-popup))))
+  (after! code-review
+    (pcase-dolist (`(,states _ ,binding ,fn) evil-collection-magit-mode-map-bindings)
+      (evil-collection-define-key states 'code-review-mode-map binding fn))))
 
 
 (use-package! evil-collection-magit-section

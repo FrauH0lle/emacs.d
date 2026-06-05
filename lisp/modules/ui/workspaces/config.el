@@ -258,7 +258,7 @@ when there is more than one tab."
 
   ;; Fix #1973: visual selection surviving workspace changes
   (add-hook! 'persp-before-deactivate-functions
-    (defun +workspaces-disable-mark-after-switch-h (&rest _)
+    (defun +workspaces-deactivate-mark-h (&rest _)
       (deactivate-mark)))
 
   ;; Fix #1017: stop session persistence from restoring a broken posframe

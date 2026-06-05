@@ -167,7 +167,8 @@ Otherwise return t on success, nil otherwise."
             (+popup--inhibit-transient t))
         (persp-delete-other-windows))
       (switch-to-buffer (zenit-fallback-buffer))
-      (setf (persp-window-conf persp) (persp-window-state-get)))
+      (setf (persp-window-conf persp)
+            (persp-window-state-get (selected-frame))))
     ;; Store an initial tab with the correct group for this workspace
     (when +workspace-tabs-mode
       (let ((tabs-alist (persp-parameter 'tab-bar-tabs persp)))
@@ -706,6 +707,29 @@ Format: ((frame . workspace-name) ...)")
   (+workspaces-set-visible-tabs)
   (tab-bar--update-tab-bar-lines (frame-list)))
 
+(defun +workspaces--tab-bar-frame (frame-or-window)
+  "Return the frame for FRAME-OR-WINDOW or the selected frame."
+  (cond ((framep frame-or-window) frame-or-window)
+        ((windowp frame-or-window) (window-frame frame-or-window))
+        (t (selected-frame))))
+
+(defun +workspaces--tab-bar-frame-alist-p (tabs)
+  "Return non-nil if TABS is keyed by frame objects."
+  (and (consp tabs)
+       (framep (caar tabs))))
+
+(defun +workspaces--tab-bar-tabs-for-frame (tabs frame)
+  "Return tab list for FRAME from TABS.
+TABS may be a frame-keyed runtime alist or the readable tab list
+persisted to disk."
+  (if (+workspaces--tab-bar-frame-alist-p tabs)
+      (or (alist-get frame tabs)
+          (cdr (cl-find-if (lambda (entry)
+                             (and (frame-live-p (car entry))
+                                  (cdr entry)))
+                           tabs)))
+    tabs))
+
 ;;;###autoload
 (defun +workspaces-restore-frame-associations-h (&rest _)
   "Restore frame-workspace associations after loading perspectives."
@@ -931,17 +955,22 @@ Added to `tab-bar-tab-post-open-functions'."
   "Save the current workspace's tab bar data per-frame.
 The persp parameter `tab-bar-tabs' is an alist keyed by frame object,
 so each frame's tabs are stored independently."
-  (let* ((frame (or (and (framep frame-or-window) frame-or-window)
-                    (selected-frame)))
+  (let* ((frame (+workspaces--tab-bar-frame frame-or-window))
          (persp (or persp (get-current-persp frame))))
     (when persp
       (let ((tabs-alist (persp-parameter 'tab-bar-tabs persp)))
         ;; Clean up dead frames
-        (setq tabs-alist (cl-remove-if-not (lambda (entry) (frame-live-p (car entry))) tabs-alist))
+        (setq tabs-alist
+              (and (+workspaces--tab-bar-frame-alist-p tabs-alist)
+                   (cl-remove-if-not (lambda (entry) (frame-live-p (car entry)))
+                                     tabs-alist)))
         (setf (alist-get frame tabs-alist) (tab-bar-tabs frame))
         (set-persp-parameter 'tab-bar-tabs tabs-alist persp))
       (let ((closed-alist (persp-parameter 'tab-bar-closed-tabs persp)))
-        (setq closed-alist (cl-remove-if-not (lambda (entry) (frame-live-p (car entry))) closed-alist))
+        (setq closed-alist
+              (and (+workspaces--tab-bar-frame-alist-p closed-alist)
+                   (cl-remove-if-not (lambda (entry) (frame-live-p (car entry)))
+                                     closed-alist)))
         (setf (alist-get frame closed-alist) tab-bar-closed-tabs)
         (set-persp-parameter 'tab-bar-closed-tabs closed-alist persp)))))
 
@@ -951,10 +980,11 @@ so each frame's tabs are stored independently."
 Looks up tabs by frame in the per-frame alist, falling back to creating
 an initial tab when no entry exists for this frame."
   (let* ((ws-name (+workspace-current-name))
-         (frame (or (and (framep frame-or-window) frame-or-window)
-                    (selected-frame)))
+         (frame (+workspaces--tab-bar-frame frame-or-window))
          (persp (or persp (get-current-persp frame)))
-         (tabs (alist-get frame (persp-parameter 'tab-bar-tabs persp))))
+         (tabs (+workspaces--tab-bar-tabs-for-frame
+                (persp-parameter 'tab-bar-tabs persp)
+                frame)))
     (if tabs
         (progn
           ;; Ensure all restored tabs have the correct group property
@@ -968,32 +998,61 @@ an initial tab when no entry exists for this frame."
       (tab-bar-tabs-set
        (list (tab-bar--current-tab-make `((group . ,ws-name)))) frame))
     (setq tab-bar-closed-tabs
-          (alist-get frame (persp-parameter 'tab-bar-closed-tabs persp)))
+          (+workspaces--tab-bar-tabs-for-frame
+           (persp-parameter 'tab-bar-closed-tabs persp)
+           frame))
     (tab-bar--update-tab-bar-lines t)))
 
 ;;;###autoload
-(defun +workspaces-save-tab-bar-data-to-file-h (&rest _)
-  "Save the current workspace's tab bar data to file."
-  (when (get-current-persp)
-    ;; HACK 2025-04-03: Remove fields (for window-configuration) that cannot be
-    ;;   serialized.
-    (set-persp-parameter 'tab-bar-tabs
-                         (frameset-filter-tabs (tab-bar-tabs) nil nil t))))
+(defun +workspaces-save-tab-bar-data-to-file-h (_fname phash _respect-persp-file-parameter)
+  "Save workspace tab bar data to file."
+  (maphash
+   (lambda (_name persp)
+     (when (+workspace-p persp)
+       (let* ((frame (or (car (car (+workspaces--find-workspace-frames
+                                    (persp-name persp))))
+                         (selected-frame)))
+              (current-p (eq (get-current-persp frame) persp))
+              (tabs (or (+workspaces--tab-bar-tabs-for-frame
+                         (persp-parameter 'tab-bar-tabs persp)
+                         frame)
+                        (and current-p (tab-bar-tabs frame))))
+              (closed-tabs (or (+workspaces--tab-bar-tabs-for-frame
+                                (persp-parameter 'tab-bar-closed-tabs persp)
+                                frame)
+                               (and current-p tab-bar-closed-tabs))))
+         ;; HACK 2025-04-03: Remove fields (for window-configuration) that cannot be
+         ;;   serialized.
+         (when tabs
+           (set-persp-parameter 'tab-bar-tabs
+                                (frameset-filter-tabs tabs nil nil t)
+                                persp))
+         (when closed-tabs
+           (set-persp-parameter 'tab-bar-closed-tabs
+                                (frameset-filter-tabs closed-tabs nil nil t)
+                                persp)))))
+   (or phash *persp-hash*)))
 
 ;;;###autoload
 (defun +workspaces-load-tab-bar-data-from-file-h (&rest _)
   "Restores the tab bar data from file."
-  (when-let* ((tabs-alist (persp-parameter 'tab-bar-tabs))
+  (when-let* ((tabs (persp-parameter 'tab-bar-tabs))
               (ws-name (+workspace-current-name)))
-    (setq tabs-alist (cl-remove-if-not (lambda (entry) (frame-live-p (car entry))) tabs-alist))
-    (cl-loop for (frame . tabs) in tabs-alist
-             ;; Ensure all restored tabs have the correct group property
-             do (dolist (tab tabs)
-                  (let ((group (assq 'group tab)))
-                    (if group
-                        (setcdr group ws-name)
-                      (nconc tab `((group . ,ws-name))))))
-             do (tab-bar-tabs-set tabs frame))
+    (if (+workspaces--tab-bar-frame-alist-p tabs)
+        (cl-loop for (frame . frame-tabs) in tabs
+                 when (frame-live-p frame)
+                 do (dolist (tab frame-tabs)
+                      (let ((group (assq 'group tab)))
+                        (if group
+                            (setcdr group ws-name)
+                          (nconc tab `((group . ,ws-name))))))
+                 and do (tab-bar-tabs-set frame-tabs frame))
+      (dolist (tab tabs)
+        (let ((group (assq 'group tab)))
+          (if group
+              (setcdr group ws-name)
+            (nconc tab `((group . ,ws-name))))))
+      (tab-bar-tabs-set tabs (selected-frame)))
     (tab-bar--update-tab-bar-lines t)))
 
 

@@ -211,20 +211,22 @@
         :g "M-7"   #'+workspace/switch-to-6
         :g "M-8"   #'+workspace/switch-to-7
         :g "M-9"   #'+workspace/switch-to-8
-        :g "M-0"   #'+workspace/switch-to-final
-        (:when zenit--system-macos-p
-          :g "s-t"   #'+workspace/new
-          :g "s-T"   #'+workspace/display
-          :n "s-1"   #'+workspace/switch-to-0
-          :n "s-2"   #'+workspace/switch-to-1
-          :n "s-3"   #'+workspace/switch-to-2
-          :n "s-4"   #'+workspace/switch-to-3
-          :n "s-5"   #'+workspace/switch-to-4
-          :n "s-6"   #'+workspace/switch-to-5
-          :n "s-7"   #'+workspace/switch-to-6
-          :n "s-8"   #'+workspace/switch-to-7
-          :n "s-9"   #'+workspace/switch-to-8
-          :n "s-0"   #'+workspace/switch-to-final)))
+        :g "M-0"   #'+workspace/switch-to-final))
+
+;; Disable workspace switching in minibuffer.
+(static-when (modulep! :ui workspaces)
+  (define-key! :keymaps +default-minibuffer-maps
+    "M-1" #'digit-argument
+    "M-2" #'digit-argument
+    "M-3" #'digit-argument
+    "M-4" #'digit-argument
+    "M-5" #'digit-argument
+    "M-6" #'digit-argument
+    "M-7" #'digit-argument
+    "M-8" #'digit-argument
+    "M-9" #'digit-argument
+    "M-0" #'digit-argument))
+
 
 ;;; :editor
 (map! (:when (modulep! :editor format)

@@ -148,6 +148,9 @@
   ;; The extra indentation look awkward here
   (add-to-list '+word-wrap-text-modes 'mevedel-view-mode)
 
+  ;; Disable `undo-tree' in view buffer
+  (add-to-list 'undo-tree-incompatible-major-modes 'mevedel-view-mode)
+
   ;; When `evil' is used, bind RET in normal mode to open the overlay menu
   (static-when (modulep! :editor evil)
     (setq! mevedel-ov-dispatch-key nil)

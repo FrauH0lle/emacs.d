@@ -1,0 +1,1 @@
+- [One zenit-deftest per symbol](testing-deftest-convention.md) - Group all tests for a function or variable in one zenit-deftest.

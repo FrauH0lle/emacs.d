@@ -2,6 +2,8 @@
 ;; ui/popup/test/autoload-popup.el
 
 (require 'zenit-test)
+(eval-when-compile
+  (require 'cl-lib))
 (zenit-require 'zenit-lib 'plist)
 (zenit-require 'zenit-lib 'modules)
 (zenit-modules-initialize)
@@ -392,8 +394,46 @@
   (should (fboundp '+popup--delete-popup)))
 
 (zenit-deftest +popup--delete-window
-  (:doc "`+popup--delete-window' is defined")
-  (should (fboundp '+popup--delete-window)))
+  (:doc "`+popup--delete-window' handles modified popup buffers"
+   :vars*
+   ((file (make-temp-file "zenit-popup-test"))
+    (file-buffer (find-file-noselect file))
+    (non-file-buffer (get-buffer-create "autosave-non-file"))
+    modified-at-kill)
+   :before-each
+   (progn
+     (defvar +popup-defaults '(:ttl 5))
+     (defvar +popup--inhibit-transient nil)
+     (defvar-local +popup-buffer-status nil)
+     (with-current-buffer file-buffer
+       (insert "modified")
+       (setq +popup-buffer-status '(:ttl nil :autosave nil)))
+     (with-current-buffer non-file-buffer
+       (insert "modified")
+       (setq +popup-buffer-status '(:ttl 0 :autosave t)))
+     (set-window-parameter (selected-window) 'tabbed t))
+   :after-each
+   (progn
+     (makunbound '+popup-defaults)
+     (makunbound '+popup--inhibit-transient)
+     (set-window-parameter (selected-window) 'tabbed nil)
+     (dolist (buffer (list file-buffer non-file-buffer))
+       (when (buffer-live-p buffer)
+         (with-current-buffer buffer
+           (set-buffer-modified-p nil))
+         (kill-buffer buffer)))
+     (delete-file file)))
+  (progn
+    (cl-letf (((symbol-function #'+popup-buffer-mode) #'ignore)
+              ((symbol-function #'y-or-n-p) #'ignore))
+      (+popup--delete-window file-buffer))
+    (should (buffer-modified-p file-buffer))
+    (cl-letf (((symbol-function #'+popup-buffer-mode) #'ignore)
+              ((symbol-function #'+popup--kill-buffer)
+               (lambda (buffer _ttl)
+                 (setq modified-at-kill (buffer-modified-p buffer)))))
+      (+popup--delete-window non-file-buffer))
+    (should-not modified-at-kill)))
 
 (zenit-deftest +popup--delete-other-windows
   (:doc "`+popup--delete-other-windows' is defined")
@@ -470,8 +510,40 @@
     (should (alist-get 'test-param (alist-get 'window-parameters params)))))
 
 (zenit-deftest +popup-tab--close-tab-current-window
-  (:doc "`+popup-tab--close-tab-current-window' is defined")
-  (should (fboundp '+popup-tab--close-tab-current-window)))
+  (:doc "`+popup-tab--close-tab-current-window' switches tabs in target window"
+   :vars*
+   ((origin (selected-window))
+    (target (split-window-right))
+    (origin-buffer (get-buffer-create "origin"))
+    (a (get-buffer-create "a"))
+    (b (get-buffer-create "b")))
+   :before-each
+   (progn
+     (defvar +popup-buried-buffers-alist nil)
+     (defvar +popup-group-function nil)
+     (defvar +popup--remember-last nil)
+     (defvar +popup--last nil)
+     (set-window-buffer origin origin-buffer)
+     (set-window-buffer target a)
+     (select-window origin)
+     (+popup-buffer-set-parameter a :tabbed 'right :quit t :ttl nil)
+     (+popup-buffer-set-parameter b :tabbed 'right :quit t :ttl nil)
+     (setq +popup-buried-buffers-alist
+           `((nil (nil . ,a) (nil . ,b))))
+     (set-window-parameter target 'tabbed t))
+   :after-each
+   (progn
+     (makunbound '+popup-buried-buffers-alist)
+     (makunbound '+popup-group-function)
+     (makunbound '+popup--remember-last)
+     (makunbound '+popup--last)
+     (delete-other-windows)
+     (mapc #'kill-buffer (list origin-buffer a b))))
+  (progn
+    (cl-letf (((symbol-function #'+popup--delete-window) #'ignore))
+      (+popup-tab--close-tab-current-window target 'force))
+    (should (eq origin-buffer (window-buffer origin)))
+    (should (eq b (window-buffer target)))))
 
 (zenit-deftest +popup-tab--close-tabs-current-window
   (:doc "`+popup-tab--close-tabs-current-window' is defined")
@@ -606,7 +678,22 @@
     (should (zenit-test-same-items-p '(prog-mode) +popup--reference-modes :test #'equal))
     (should (zenit-test-same-items-p
              `(,(lambda (buf) (equal (buffer-name buf) "c")))
-             +popup--reference-predicates :test #'equal))))
+             +popup--reference-predicates :test #'equal))
+    (let ((a (get-buffer-create "a"))
+          (+popup-reference-buffers '((major-mode . text-mode)))
+          +popup--reference-modes
+          +popup--reference-names
+          +popup--reference-predicates
+          +popup--suppressed-names
+          +popup--suppressed-modes
+          +popup--suppressed-predicates)
+      (unwind-protect
+          (progn
+            (with-current-buffer a
+              (text-mode))
+            (+popup-update-reference-vars)
+            (should (+popup-buffer-p a)))
+        (kill-buffer a)))))
 
 (zenit-deftest +popup-buffer
   (:doc "`+popup-buffer' is defined")
@@ -617,8 +704,28 @@
   (should (fboundp 'with-popup-rules!)))
 
 (zenit-deftest save-popups!
-  (:doc "`save-popups!' is defined")
-  (should (fboundp 'save-popups!)))
+  (:doc "`save-popups!' restores each popup it closed"
+   :vars*
+   ((a (get-buffer-create "a"))
+    (b (get-buffer-create "b"))
+    (win-a (selected-window))
+    (win-b (split-window-right))
+    restored)
+   :before-each
+   (progn
+     (set-window-buffer win-a a)
+     (set-window-buffer win-b b))
+   :after-each
+   (progn
+     (delete-other-windows)
+     (mapc #'kill-buffer (list a b))))
+  (cl-letf (((symbol-function #'+popup-buffer-p) #'ignore)
+            ((symbol-function #'+popup-windows) (lambda () (list win-a win-b)))
+            ((symbol-function #'+popup/close) #'ignore)
+            ((symbol-function #'pop-to-buffer) (lambda (buffer &rest _)
+                                                 (push buffer restored))))
+    (save-popups!))
+  (should (zenit-test-same-items-p (list a b) restored)))
 
 (zenit-deftest +popup-update-popup-alists-h
   (:doc "`+popup-update-popup-alists-h' is defined")

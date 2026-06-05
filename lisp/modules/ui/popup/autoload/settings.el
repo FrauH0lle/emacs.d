@@ -33,8 +33,7 @@ See `set-popup-rule!' for details on available properties.
 
 Returns a display-buffer action list suitable for
 `display-buffer-alist'."
-  (let* ((predicate (if (consp predicate) (car predicate) predicate))
-         (predicate (if (and (symbolp predicate)
+  (let* ((predicate (if (and (symbolp predicate)
                              (string-suffix-p "-mode" (symbol-name predicate)))
                         `(major-mode . ,predicate)
                       predicate)))
@@ -66,7 +65,7 @@ Returns a display-buffer action list suitable for
   "Convert RULE (a `display-buffer-alist' entry) back to a plist.
 This is the reverse of `+popup-make-rule'."
   (let ((predicate (pcase (car rule)
-                     (`(major-mode . ,pred) (car pred))
+                     (`(major-mode . ,pred) pred)
                      (pred pred)))
         (action-fn (cadr rule))
         (rule-tail (cddr rule))

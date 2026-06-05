@@ -279,12 +279,19 @@ Otherwise delete the window using standard window deletion."
                    (with-current-buffer buffer (save-buffer))))
             (defun +popup--destroy-buffer (buffer)
               (with-current-buffer buffer
-                (set-buffer-modified-p nil)
                 (+popup-buffer-mode -1)
                 (unless +popup--inhibit-transient
                   (let ((ttl (+popup-buffer-parameter 'ttl buffer)))
                     (when (eq ttl 't)
                       (setq ttl (plist-get +popup-defaults :ttl)))
+                    (when (and ttl
+                               (let ((autosave (+popup-buffer-parameter 'autosave buffer)))
+                                 (or (eq autosave 'ignore)
+                                     (and (eq autosave t)
+                                          (not (or (buffer-file-name buffer)
+                                                   (if-let* ((base-buffer (buffer-base-buffer buffer)))
+                                                       (buffer-file-name base-buffer))))))))
+                      (set-buffer-modified-p nil))
                     (cond ((null ttl))
                           ((functionp ttl)
                            (funcall ttl buffer))
@@ -297,14 +304,15 @@ Otherwise delete the window using standard window deletion."
                                  (run-at-time ttl nil #'+popup--kill-buffer
                                               buffer ttl)))))))))
       (+popup--autosave-buffer buffer)
-      (let ((ignore-window-parameters t))
-        (if (+popup-window-parameter 'tabbed window)
-            (+popup-tab--close-tab-current-window window 'force)
-          (if-let* ((wconf (window-parameter window 'saved-wconf)))
-              (set-window-configuration wconf)
-            (+popup--delete-popup window))))
+      (when (window-live-p window)
+        (let ((ignore-window-parameters t))
+          (if (+popup-window-parameter 'tabbed window)
+              (+popup-tab--close-tab-current-window window 'force)
+            (if-let* ((wconf (window-parameter window 'saved-wconf)))
+                (set-window-configuration wconf)
+              (+popup--delete-popup window)))))
 
-      (unless (window-live-p window)
+      (unless (and window (window-live-p window))
         (+popup--destroy-buffer buffer)))))
 
 (defun +popup--delete-other-windows (window)
@@ -410,7 +418,8 @@ one exists."
         (tab-line-mode -1)
         ;; If there's a next buffer to switch to
         (if next-buf
-            (when (switch-to-buffer next-buf)
+            (when (with-selected-window window
+                    (switch-to-buffer next-buf))
               ;; HACK 2025-01-05: For whatever reason this is necessary as
               ;;   otherwise the window with the tabs won't stay dedicated.
               (set-window-dedicated-p window 'popup)
@@ -596,7 +605,10 @@ and enables `+popup-buffer-mode'."
                                  (string-suffix-p "-mode" (symbol-name e)))))
                  (cl-pushnew e +popup--suppressed-modes))
                 ((pred functionp)
-                 (cl-pushnew e +popup--suppressed-predicates))))
+                 (cl-pushnew e +popup--suppressed-predicates))
+                (_
+                 (cl-pushnew (apply-partially #'buffer-match-p e)
+                             +popup--suppressed-predicates))))
              ;; Handle regular entries
              ((pred stringp)
               (cl-pushnew entry +popup--reference-names :test #'equal))
@@ -606,7 +618,10 @@ and enables `+popup-buffer-mode'."
                               (string-suffix-p "-mode" (symbol-name entry)))))
               (cl-pushnew entry +popup--reference-modes))
              ((pred functionp)
-              (cl-pushnew entry +popup--reference-predicates)))))
+              (cl-pushnew entry +popup--reference-predicates))
+             (_
+              (cl-pushnew (apply-partially #'buffer-match-p entry)
+                          +popup--reference-predicates)))))
 
 ;;;###autoload
 (defun +popup-buffer (buffer &optional alist)
@@ -691,8 +706,9 @@ versa)."
   `(let* ((in-popup-p (+popup-buffer-p (current-buffer)))
           (popups (+popup-windows))
           (+popup--inhibit-transient t)
-          buffer-list-update-hook
-          +popup--last)
+          (+popup--remember-last nil)
+          (buffer-list-update-hook)
+          (+popup--last (mapcar #'window-buffer popups)))
      (dolist (p popups)
        (+popup/close p 'force))
      (unwind-protect

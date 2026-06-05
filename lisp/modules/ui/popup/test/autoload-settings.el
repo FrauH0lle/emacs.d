@@ -26,7 +26,17 @@
                    (window-parameters (ttl) (quit . t) (select . ignore)
                                       (modeline) (autosave . t) (tabbed)))
                  (+popup-make-rule "^\\*\\(?:[Cc]ompil\\(?:ation\\|e-Log\\)\\|Messages\\)"
-                                   '(:vslot -2 :size 0.33  :autosave t :quit t :ttl nil)))))
+                                   '(:vslot -2 :size 0.33  :autosave t :quit t :ttl nil))))
+  (should (equal '(major-mode . help-mode)
+                 (car (+popup-make-rule '(major-mode . help-mode) nil)))))
+
+(zenit-deftest +popup-make-plist
+  (:doc "`+popup-make-plist' reverses popup display rules")
+  (should (equal '(compilation-mode :actions nil :side bottom :size nil
+                                    :width 40 :height 0.16 :slot nil :vslot nil
+                                    :ttl 5 :quit t :select ignore :modeline nil
+                                    :autosave nil :tabbed nil)
+                 (+popup-make-plist (+popup-make-rule 'compilation-mode nil)))))
 
 (zenit-deftest set-popup-rule!
   (:doc "`set-popup-rule!' defines a popup rule")

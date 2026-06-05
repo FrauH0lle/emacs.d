@@ -63,6 +63,7 @@ type(component): brief description (50-72 chars)
 
    ```
    * file1.ext (functions): Description.
+   
    * file2.ext (functions): Related changes.
    ```
 
@@ -71,6 +72,7 @@ type(component): brief description (50-72 chars)
 
    ```
    * component1.ext: Main change description.
+   
    * component2.ext: Ditto.
    ```
 

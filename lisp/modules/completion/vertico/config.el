@@ -302,22 +302,6 @@
   (map! :map minibuffer-local-map
         :desc "Cycle marginalia views" "M-A" #'marginalia-cycle)
   :config
-  (defadvice! +vertico--marginalia-project-root-a (&rest _)
-    "Use `zenit-project-root' (insert of `project-root') without
-circumventing marginalia's project root cache."
-    :override #'marginalia--project-root
-    (marginalia--in-minibuffer
-      (when (eq marginalia--project-root 'unset)
-        (setq marginalia--project-root
-              (or (let ((prompt (minibuffer-prompt))
-                        case-fold-search)
-                    (and (string-match
-                          "\\`\\(?:Dired\\|Find file\\) in \\(.*\\): \\'"
-                          prompt)
-                         (match-string 1 prompt)))
-                  (zenit-project-root))))
-      marginalia--project-root))
-
   (pushnew! marginalia-command-categories
             '(flycheck-error-list-set-filter . builtin)
             '(persp-switch-to-buffer . buffer)

@@ -120,14 +120,224 @@ seperate buffer."
                 kw)))))))))
 
 (autoload #'zenit-package-list "zenit-packages")
+
+(defun zenit-packages--bump-prefix-action (&optional prefix)
+  "Return the bump action requested by PREFIX."
+  (cond ((null prefix) 'select)
+        ((= (prefix-numeric-value prefix) 16) 'read)
+        (t 'latest)))
+
+(defun zenit-packages--bump-read-commit (package)
+  "Prompt for a raw commit for PACKAGE."
+  (read-from-minibuffer (format "New commit for %s (leave empty to keep current): " package)))
+
+(defun zenit-packages--bump-recipe (package &optional plist)
+  "Return a straight recipe for PACKAGE, using PLIST metadata when available."
+  (or (gethash (symbol-name package) straight--recipe-cache)
+      (let ((rec (or (plist-get plist :recipe)
+                     (plist-get (alist-get package zenit-packages) :recipe))))
+        (if rec
+            (straight-register-package (cons package rec))
+          (straight-register-package package))
+        (gethash (symbol-name package) straight--recipe-cache))))
+
+(defun zenit-packages--bump-lockfiles (plist &optional local-conf)
+  "Return target lockfiles for package PLIST.
+
+If LOCAL-CONF is non-nil, prefer the local profile lockfile when the
+package declares it. Otherwise, omit the local profile lockfile. Packages
+without explicit lockfile metadata use straight's default profile."
+  (let* ((profiles (if (plist-member plist :lockfile)
+                       (or (ensure-list (plist-get plist :lockfile)) '(nil))
+                     '(nil)))
+         (profiles (mapcar (lambda (profile)
+                             (if (memq profile '(nil t)) nil profile))
+                           profiles))
+         (lockfiles (delq nil (mapcar (zenit-rpartial #'alist-get straight-profiles)
+                                      profiles))))
+    (if local-conf
+        (if (member (alist-get 'local straight-profiles) lockfiles)
+            (cl-remove-if-not (lambda (x) (equal x (alist-get 'local straight-profiles)))
+                              lockfiles)
+          lockfiles)
+      (cl-remove-if (lambda (x) (equal x (alist-get 'local straight-profiles)))
+                    lockfiles))))
+
+(defun zenit-packages--bump-delete-temp-repo (dir)
+  "Delete temporary package repo DIR without aborting the caller."
+  (when (file-directory-p dir)
+    (condition-case _err
+        (delete-directory dir 'recursive)
+      (error
+       (sleep-for 0.1)
+       (condition-case retry-err
+           (when (file-directory-p dir)
+             (delete-directory dir 'recursive))
+         (error
+          (message "Warning: couldn't delete temporary package repo %s: %s"
+                   dir (error-message-string retry-err))))))))
+
+(defun zenit-packages--bump-with-fetched-repo (recipe fn)
+  "Fetch RECIPE metadata and call FN with the repo dir and local repo name.
+
+If the package repo is not installed, or is pinned to a detached commit,
+use a temporary shallow clone."
+  (straight-vc-git--destructure recipe
+      (_package local-repo branch remote host protocol repo)
+    (let* ((repo-dir (straight--repos-dir local-repo))
+           (temp-repo-dir (file-name-concat (temporary-file-directory) (make-temp-name local-repo)))
+           (use-temp-repo-p (or (not (file-exists-p repo-dir))
+                                (file-exists-p (file-name-concat repo-dir ".straight-commit")))))
+      (unwind-protect
+          (progn
+            (if (not use-temp-repo-p)
+                (straight-vc-fetch-from-remote recipe)
+              ;; Do a shallow clone, then fetch only commit and tag metadata.
+              (straight-vc-git--clone-internal
+               :depth '(1 single-branch)
+               :remote remote
+               :url (straight-vc-git--encode-url repo host protocol)
+               :repo-dir temp-repo-dir
+               :branch branch)
+              (let ((straight--default-directory temp-repo-dir))
+                (straight--process-run "git" "fetch" "--unshallow" "--filter=tree:0" "--tags")))
+            (funcall fn (if use-temp-repo-p temp-repo-dir repo-dir) local-repo))
+        (when use-temp-repo-p
+          (zenit-packages--bump-delete-temp-repo temp-repo-dir))))))
+
+(defun zenit-packages--bump-git-log-candidates (repo-dir args error-message &optional limit)
+  "Return commit candidates from running git with ARGS in REPO-DIR.
+
+Signal ERROR-MESSAGE with stderr if git fails. If LIMIT is non-nil,
+return at most LIMIT candidates."
+  (straight--process-with-result
+      (let ((straight--default-directory repo-dir))
+        (apply #'straight--process-run "git" args))
+    (if success
+        (let* ((output (string-trim-right (or stdout "")))
+               (lines (split-string output "\n" t))
+               (lines (if limit (seq-take lines limit) lines)))
+          (mapcar (lambda (x) (split-string (string-replace "\"" "" x) "|" t "[ ]+"))
+                  lines))
+      (user-error error-message stderr))))
+
+(defun zenit-packages--bump-latest-commit (recipe)
+  "Return the latest remote commit for RECIPE without fetching it locally."
+  (straight-vc-git--destructure recipe
+      (_package _local-repo branch _remote host protocol repo)
+    (let ((url (straight-vc-git--encode-url repo host protocol))
+          (ref (if branch (format "refs/heads/%s" branch) "HEAD")))
+      (straight--process-with-result
+          (straight--process-run "git" "ls-remote" url ref)
+        (if success
+            (if-let* ((line (car (split-string (string-trim-right (or stdout "")) "\n" t)))
+                      (commit (car (split-string line "[[:space:]]+" t))))
+                commit
+              (user-error "ERROR: Couldn't resolve latest commit from %s %s" url ref))
+          (user-error "ERROR: Couldn't resolve latest commit because: %s" stderr))))))
+
+(defun zenit-packages--bump-select-commit (package local-repo lockfiles recipe)
+  "Prompt for PACKAGE's target commit from recent commits and tags."
+  (zenit-packages--bump-with-fetched-repo
+   recipe
+   (lambda (repo-dir _local-repo)
+     (let* ((candidates (append
+                         ;; Collect the last 50 commits.
+                         (zenit-packages--bump-git-log-candidates
+                          repo-dir
+                          '("log" "FETCH_HEAD" "--oneline" "--format=\"(%as) %h %s | %H\"" "-50")
+                          "ERROR: Couldn't collect commit list because: %s")
+                         ;; Collect the last 20 tags.
+                         (zenit-packages--bump-git-log-candidates
+                          repo-dir
+                          '("log" "FETCH_HEAD" "--no-walk" "--tags" "--oneline" "--format=\"(%as) %h%d %s | %H\"")
+                          "ERROR: Couldn't collect tag list because: %s"
+                          20)))
+            vertico-sort-function
+            (current-commits (cl-loop for lockfile in lockfiles
+                                      for commit = (alist-get local-repo
+                                                             (straight--lockfile-read (straight--versions-file lockfile))
+                                                             nil nil #'equal)
+                                      if commit
+                                      collect (cons lockfile commit)))
+            (choice (completing-read (format "New commit for %s%s(leave empty to keep current):"
+                                             package
+                                             (if (length> current-commits 0)
+                                                 (concat
+                                                  "\nCurrent:\n"
+                                                  (mapconcat (lambda (pair)
+                                                               (format "\t- %s: %s"
+                                                                       (car pair)
+                                                                       (substring (cdr pair) 0 7)))
+                                                             current-commits
+                                                             "\n")
+                                                  "\n")
+                                               " "))
+                                     (zenit-packages--sort-candidates candidates))))
+       (or (car (alist-get choice candidates nil nil #'equal)) "")))))
+
+(defun zenit-packages--bump-resolve-commit (package local-repo lockfiles recipe action)
+  "Resolve PACKAGE's target commit according to ACTION."
+  (pcase action
+    ('latest (zenit-packages--bump-latest-commit recipe))
+    ('read (zenit-packages--bump-read-commit package))
+    (_ (zenit-packages--bump-select-commit package local-repo lockfiles recipe))))
+
+(defun zenit-packages--bump-write-lockfile (local-repo lockfile commit local-conf)
+  "Write LOCAL-REPO's COMMIT into LOCKFILE.
+
+If COMMIT is blank, keep the existing pin. If LOCAL-CONF is non-nil,
+write through `zenit-local-versions-dir'."
+  (+straight--update-all-lockfile-version)
+  (let* ((+straight--lockfile-prefer-local-conf-versions-p local-conf)
+         (lockfile (straight--versions-file lockfile))
+         (pin-list (straight--lockfile-read lockfile))
+         (old-commit (alist-get local-repo pin-list nil nil #'equal))
+         (new-commit (if (or (null commit) (string-blank-p commit)) old-commit commit)))
+    (if (null new-commit)
+        (user-error "No commit specified")
+      (setf (alist-get local-repo pin-list nil nil #'equal) new-commit))
+    (let ((kw (+straight--get-lockfile-version-id)))
+      (unless (file-exists-p lockfile)
+        (make-directory (file-name-directory lockfile) 'parents))
+      (with-temp-file lockfile
+        (insert
+         (format
+          "(%s)\n%s\n"
+          (mapconcat
+           (apply-partially #'format "%S")
+           pin-list
+           "\n ")
+          kw))))))
+
+(defun zenit-packages--bump-package (package &optional commit local-conf action packages)
+  "Bump PACKAGE to COMMIT using ACTION and package metadata from PACKAGES."
+  (cl-block nil
+    (let* ((packages (or packages (zenit-package-list 'all)))
+           (plist (alist-get package packages))
+           (modules (plist-get plist :modules)))
+      (unless modules
+        (cl-return (message "The package %s isn't installed by any module" package)))
+      (when (plist-get plist :built-in)
+        (cl-return (message "The package %s is built-in" package)))
+      (let* ((lockfiles (zenit-packages--bump-lockfiles plist local-conf))
+             (recipe (zenit-packages--bump-recipe package plist)))
+        (straight-vc-git--destructure recipe
+            (_package local-repo _branch _remote _host _protocol _repo)
+          (unless commit
+            (setq commit (zenit-packages--bump-resolve-commit
+                          package local-repo lockfiles recipe (or action 'select))))
+          (dolist (lockfile lockfiles)
+            (zenit-packages--bump-write-lockfile local-repo lockfile commit local-conf)))))))
+
 ;;;###autoload
 (defun zenit/bump-package (package &optional commit local-conf)
   "Bump PACKAGE in all modules that install it.
 
-If COMMIT is nil, it will prompt the user for the new commit in the
-minibuffer. When used with the universal argument, the user can specify
-the commit directly. Otherwise the last 50 commits will used as
-candidates.
+If COMMIT is nil, prompt for the new commit from recent commits and
+tags. With a single universal prefix argument, bump to the latest remote
+commit without prompting. With a double universal prefix argument, prompt
+for a raw commit.
 
 If LOCAL-CONF is non-nil, write lockfiles into
 `zenit-local-versions-dir'."
@@ -136,116 +346,8 @@ If LOCAL-CONF is non-nil, write lockfiles into
                                   (mapcar #'car (zenit-package-list 'all))))))
   (zenit-initialize-packages)
   (zenit-packages--bump-recipe-repos)
-  (cl-block nil
-    (let* ((packages (zenit-package-list 'all))
-           (modules (plist-get (alist-get package packages) :modules))
-           (_built-in-p (when (plist-get (alist-get package packages) :built-in)
-                          (cl-return (message "The package %s is built-in" package))))
-           (lockfiles (delq nil (mapcar (zenit-rpartial #'alist-get straight-profiles) (plist-get (alist-get package packages) :lockfile))))
-           (recipe (gethash (symbol-name package) straight--recipe-cache))
-           (recipe (or recipe
-                       (let ((rec (plist-get (alist-get package zenit-packages) :recipe)))
-                         (if rec
-                             (straight-register-package (cons package rec))
-                           (straight-register-package package))
-                         (gethash (symbol-name package) straight--recipe-cache)))))
-      (straight-vc-git--destructure recipe
-          (package local-repo branch remote host protocol repo)
-        (unless modules
-          (cl-return (message "The package %s isn't installed by any module" package)))
-        (unless commit
-          (setq commit
-                (if current-prefix-arg
-                    (read-from-minibuffer (format "New commit for %s (leave empty to keep current): " package))
-                  (let* ((repo-dir (straight--repos-dir local-repo))
-                         (temp-repo-dir (file-name-concat (temporary-file-directory) (make-temp-name local-repo)))
-                         (use-temp-repo-p (or (not (file-exists-p repo-dir))
-                                              (file-exists-p (file-name-concat (straight--repos-dir local-repo) ".straight-commit")))))
-                    (if (not use-temp-repo-p)
-                        (straight-vc-fetch-from-remote recipe)
-                      ;; Do a shallow clone
-                      (straight-vc-git--clone-internal
-                       :depth '(1 single-branch)
-                       :remote remote
-                       :url (straight-vc-git--encode-url repo host protocol)
-                       :repo-dir temp-repo-dir
-                       :branch branch)
-                      ;; Only fetch the commit metadata
-                      (let ((straight--default-directory temp-repo-dir))
-                        (straight--process-run "git" "fetch" "--unshallow" "--filter=tree:0" "--tags")))
-
-                    (let* ((candidates (prog1
-                                           (append
-                                            ;; Collect the last 50 commits
-                                            (straight--process-with-result
-                                                (let ((straight--default-directory (or (and use-temp-repo-p temp-repo-dir)
-                                                                                       repo-dir)))
-                                                  (straight--process-run
-                                                   "git" "log" "FETCH_HEAD" "--oneline" "--format=\"(%as) %h %s | %H\"" "-50"))
-                                              (if success
-                                                  (let* ((output (string-trim-right (or stdout "")))
-                                                         (lines (split-string output "\n")))
-                                                    (mapcar (lambda (x) (split-string (string-replace "\"" "" x) "|" t "[ ]+")) lines))
-                                                (user-error "ERROR: Couldn't collect commit list because: %s" stderr)))
-                                            ;; Collect the last 20 tags
-                                            (straight--process-with-result
-                                                (let ((straight--default-directory (or (and use-temp-repo-p temp-repo-dir)
-                                                                                       repo-dir)))
-                                                  (straight--process-run
-                                                   "git" "log" "FETCH_HEAD" "--no-walk" "--tags" "--oneline" "--format=\"(%as) %h%d %s | %H\""))
-                                              (if success
-                                                  (let* ((output (string-trim-right (or stdout "")))
-                                                         (lines (split-string output "\n"))
-                                                         (lines (seq-take lines 20)))
-                                                    (mapcar (lambda (x) (split-string (string-replace "\"" "" x) "|" t "[ ]+")) lines))
-                                                (user-error "ERROR: Couldn't collect tag list because: %s" stderr))))
-                                         (delete-directory temp-repo-dir 'recursive)))
-                           vertico-sort-function
-                           (current-commits (cl-loop for lockfile in lockfiles
-                                                     for commit = (alist-get local-repo (straight--lockfile-read (straight--versions-file lockfile)) nil nil #'equal)
-                                                     if commit
-                                                     collect (cons lockfile commit)))
-                           (choice (completing-read (format "New commit for %s%s(leave empty to keep current):"
-                                                            package
-                                                            (if (length> current-commits 0)
-                                                                (concat
-                                                                 "\nCurrent:\n"
-                                                                 (mapconcat (lambda (pair)
-                                                                              (format "\t- %s: %s" (car pair) (substring (cdr pair) 0 7)))
-                                                                            current-commits
-                                                                            "\n")
-                                                                 "\n")
-                                                              " "))
-                                                    (zenit-packages--sort-candidates candidates))))
-                      (or (car (alist-get choice candidates nil nil #'equal)) ""))))))
-
-        (setq lockfiles (if local-conf
-                            (if (member (alist-get 'local straight-profiles) lockfiles)
-                                (cl-remove-if-not (lambda (x) (equal x (alist-get 'local straight-profiles))) lockfiles)
-                              lockfiles)
-                          (cl-remove-if (lambda (x) (equal x (alist-get 'local straight-profiles))) lockfiles)))
-        (dolist (lockfile lockfiles)
-          (+straight--update-all-lockfile-version)
-          (let* ((+straight--lockfile-prefer-local-conf-versions-p local-conf)
-                 (lockfile (straight--versions-file lockfile))
-                 (pin-list (straight--lockfile-read lockfile))
-                 (old-commit (alist-get local-repo pin-list nil nil #'equal))
-                 (new-commit (if (string-blank-p commit) old-commit commit)))
-            (if (null new-commit)
-                (user-error "No commit specified")
-              (setf (alist-get local-repo pin-list nil nil #'equal) new-commit))
-            (let ((kw (+straight--get-lockfile-version-id)))
-              (unless (file-exists-p lockfile)
-                (make-directory (file-name-directory lockfile) 'parents))
-              (with-temp-file lockfile
-                (insert
-                 (format
-                  "(%s)\n%s\n"
-                  (mapconcat
-                   (apply-partially #'format "%S")
-                   pin-list
-                   "\n ")
-                  kw))))))))))
+  (zenit-packages--bump-package
+   package commit local-conf (zenit-packages--bump-prefix-action current-prefix-arg)))
 
 ;;;###autoload
 (defun zenit/bump-local-conf-package (package &optional commit)
@@ -253,15 +355,13 @@ If LOCAL-CONF is non-nil, write lockfiles into
 
 Lockfiles will be written into `zenit-local-versions-dir'.
 
-If COMMIT is nil, it will prompt the user for the new commit in the
-minibuffer. When used with the universal argument, the user can specify
-the commit directly. Otherwise the last 50 commits will used as
-candidates."
+If COMMIT is nil, prompt for the new commit from recent commits and
+tags. With a single universal prefix argument, bump to the latest remote
+commit without prompting. With a double universal prefix argument, prompt
+for a raw commit."
   (interactive
    (list (intern (completing-read "Bump package: "
                                   (mapcar #'car (zenit-package-list 'all))))))
-  (when current-prefix-arg
-    (setq commit (read-from-minibuffer (format "New commit for %s (leave empty to keep current): " package))))
   (zenit/bump-package package commit 'local-conf))
 
 (defun zenit-packages--sort-candidates (candidates)
@@ -280,8 +380,10 @@ Adapted from `vertico-sort-alpha'."
 ;;;###autoload
 (defun zenit/bump-module (category &optional module)
   "Bump packages in CATEGORY MODULE.
-If prefix arg is non-nil, prompt you to choose a specific commit for
-each package."
+
+With a single universal prefix argument, bump each package to its latest
+remote commit without prompting. With a double universal prefix argument,
+prompt for a raw commit for each package."
   (interactive
    (let* ((module (completing-read
                    "Bump module: "
@@ -309,6 +411,58 @@ each package."
             (list (cons category module))
           (cl-remove-if-not (lambda (m) (eq (car m) category))
                             (zenit-module-list 'all)))))
+
+;;;###autoload
+(defun zenit/bump-all-packages (&optional all)
+  "Bump all package lockfiles to the latest remote commits.
+
+By default, only bump packages declared by enabled modules. With any
+prefix argument ALL, include packages declared by all modules, including
+packages that are not currently installed or enabled."
+  (interactive (list current-prefix-arg))
+  (zenit-initialize-packages)
+  (message "Updating package recipe repositories...")
+  (zenit-packages--bump-recipe-repos)
+  (let ((packages (zenit-package-list (and all 'all)))
+        groups
+        seen
+        (bumped 0))
+    (dolist (package packages)
+      (let* ((name (car package))
+             (plist (cdr package))
+             (lockfiles (and (not (plist-get plist :built-in))
+                             (zenit-packages--bump-lockfiles plist))))
+        (when lockfiles
+          (let ((recipe (zenit-packages--bump-recipe name plist)))
+            (straight-vc-git--destructure recipe
+                (_package local-repo _branch _remote _host _protocol _repo)
+              (let ((group (assoc local-repo groups)))
+                (unless group
+                  (setq group (list local-repo recipe nil nil))
+                  (push group groups))
+                (push name (nth 3 group))
+                (dolist (lockfile lockfiles)
+                  (let ((key (cons local-repo lockfile)))
+                    (unless (member key seen)
+                      (push key seen)
+                      (setf (nth 2 group) (cons lockfile (nth 2 group))))))))))))
+    (let ((total (length groups))
+          (current 0))
+      (dolist (group (nreverse groups))
+        (cl-destructuring-bind (_local-repo recipe lockfiles package-names) group
+          (straight-vc-git--destructure recipe
+              (_package local-repo _branch _remote _host _protocol _repo)
+            (cl-incf current)
+            (message "Bumping package %d/%d: %s (%s)"
+                     current
+                     total
+                     (mapconcat #'symbol-name (nreverse package-names) ", ")
+                     local-repo)
+            (let ((commit (zenit-packages--bump-latest-commit recipe)))
+              (dolist (lockfile (nreverse lockfiles))
+                (zenit-packages--bump-write-lockfile local-repo lockfile commit nil)
+                (cl-incf bumped)))))))
+    (message "Bumped %d package lockfile entries" bumped)))
 
 (defun zenit/remove-undeclared-packages ()
   "Remove packages in lockfiles without a `package!' declaration."

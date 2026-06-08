@@ -1,6 +1,6 @@
-(("treesit-fold" . "c85762f4585e93e5e372b39355d357261431e983")
+(("treesit-fold" . "e6b215b8f25f8c58606ab4f850794b61b61111e1")
  ("evil-vimish-fold" . "b6e0e6b91b8cd047e80debef1a536d9d49eef31a")
- ("backline" . "49ff6466633d14850a7d58eaa4c026c7764cd424")
- ("outline-minor-faces" . "2e7a99b07108e6cc34da16e33746c770a2c20f32")
- ("vimish-fold" . "a6501cbfe3db791f9ca17fd986c7202a87f3adb8"))
+ ("backline" . "cc6e54e40bdbb725cdaf0cc95cef8cd48dce413f")
+ ("outline-minor-faces" . "71705d0708459f765403968567a329a76c38cf62")
+ ("vimish-fold" . "f71f374d28a83e5f15612fa64aac1b2e78be2dcd"))
 :epsilon

@@ -4,7 +4,7 @@
  ("emacs-cython-mode" . "3e4790559d3168fe992cf2aa62f01423038cedb5")
  ("pyenv-mode" . "8e5128ff7f722a4d68ddaa22022cb99ef9ddcf9a")
  ("emacs-python-pytest" . "78b5ea1d19c7e365ac00649d13c733954b11f822")
- ("lsp-pyright" . "21b8f487855feb08f7df669b8884fbd5861dca25")
+ ("lsp-pyright" . "187e08caee4e1630a9975f492274c739f325392f")
  ("nose" . "f8528297519eba911696c4e68fa88892de9a7b72")
  ("pip-requirements.el" . "31e0dc62abb2d88fa765e0ea88b919d756cc0e4f")
  ("pipenv.el" . "3af159749824c03f59176aff7f66ddd6a5785a10")

@@ -1,3 +1,3 @@
-(("eros" . "a9a92bdc6be0521a6a06eb464be55ed61946639c")
- ("quickrun" . "71324649862b14610509bfa61a3fa8551cb7a00e"))
+(("eros" . "66ee90baa3162fea028f5101ddcc370f7d1d4fcf")
+ ("quickrun" . "9199e222f95104ee83e115a9d5ac159d86816706"))
 :epsilon

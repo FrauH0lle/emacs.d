@@ -55,6 +55,7 @@ CI runs Emacs 30.2, `bin/emacs-config --yes deploy`, then `bin/emacs-config test
 - Declare packages with `package!` in `packages.el`; use existing `:lockfile` naming patterns.
 - After package declarations or module graph changes, run `bin/emacs-config refresh` before relying on generated autoload/init state.
 - For package revision updates, use `bin/emacs-config sync -u` deliberately and `bin/emacs-config freeze` when the lockfiles should be updated.
+- Keep `transient`, `cond-let`, `magit`, `closql`, `forge`, `ghub`, `orgit`, and `orgit-forge` on tagged releases rather than arbitrary latest commits.
 - Files under `core/lib` are loaded as subfeatures of `zenit-lib`; require them with `zenit-require`, but use the concrete file name in `declare-function` declarations.
 
 ## Testing

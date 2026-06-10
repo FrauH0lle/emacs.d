@@ -872,8 +872,7 @@ for `zenit--theme-is-colorscheme-p'."
   (defun zenit-enable-theme-h (theme)
     "Record themes and trigger `zenit-load-theme-hook'."
     (when (zenit--theme-is-colorscheme-p theme)
-      (ring-insert (with-memoization (get 'zenit-theme 'history) (make-ring 8))
-                   (copy-sequence custom-enabled-themes))
+      (push (copy-sequence custom-enabled-themes) (get 'zenit-theme 'history))
       ;; Functions in `zenit-load-theme-hook' may trigger face recalculations,
       ;; which can be contaminated by buffer-local face remaps (e.g. by
       ;; `mixed-pitch-mode'); this prevents that contamination:

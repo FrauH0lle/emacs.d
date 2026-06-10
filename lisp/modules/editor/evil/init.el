@@ -316,7 +316,8 @@ loaded too early (during startup)."
                     '("gd" "gf" "K"))
                   (static-when (modulep! :tools eval)
                     '("gr" "gR"))
-                  '("[" "]" "gz" "<escape>")))
+                  '("[" "]" "gz" "<escape>"))
+          evil-collection-key-whitelist '("[[" "]]"))
 
     (evil-define-key* 'normal process-menu-mode-map
       "q" #'kill-current-buffer

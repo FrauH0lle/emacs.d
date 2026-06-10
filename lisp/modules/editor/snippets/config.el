@@ -77,7 +77,12 @@ template files."
   (add-hook 'zenit-project-hook #'+snippets-enable-project-modes-h)
 
   ;; Exit snippets on ESC from normal mode
-  (add-hook 'zenit-escape-hook #'tempel-abort)
+  (add-hook! 'zenit-escape-hook
+    (defun +snippets-abort-tempel-h ()
+      "Abort all active `tempel' templates on escape."
+      (if (bound-and-true-p tempel--active)
+          (tempel-abort t)
+        nil)))
 
   ;; REVIEW Maybe this is not needed
   (after! smartparens

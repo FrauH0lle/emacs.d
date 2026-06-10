@@ -2,12 +2,14 @@
 ;; ui/popup/test/autoload-popup.el
 
 (require 'zenit-test)
+(require 'el-patch)
 (eval-when-compile
   (require 'cl-lib))
 (zenit-require 'zenit-lib 'plist)
 (zenit-require 'zenit-lib 'modules)
 (zenit-modules-initialize)
 (zenit-load (zenit-module-locate-path :ui 'popup "autoload/popup.el"))
+(zenit-load (zenit-module-locate-path :ui 'popup "+popup-display-func.el"))
 
 (zenit-deftest +popup--reference-modes
   (:doc "`+popup--reference-modes' is defined")
@@ -390,8 +392,53 @@
     (should-not (eq (selected-window) win1))))
 
 (zenit-deftest +popup--delete-popup
-  (:doc "`+popup--delete-popup' is defined")
-  (should (fboundp '+popup--delete-popup)))
+  (:doc "`+popup--delete-popup' is defined"
+   :before-each
+   (setq window--sides-inhibit-check t)
+   :after-each
+   (delete-other-windows))
+  ,test
+  (test)
+  :doc "`+popup--delete-popup' is defined"
+  (should (fboundp '+popup--delete-popup))
+
+  :doc "`+popup--delete-popup' preserves stacked side window sizes"
+  (dolist (case '((right window-width 15)
+                  (left window-width 15)
+                  (bottom window-height 5)
+                  (top window-height 5)))
+    (delete-other-windows)
+    (let (buf-keep buf-close)
+      (unwind-protect
+          (let* ((side (nth 0 case))
+                 (size-key (nth 1 case))
+                 (size (nth 2 case))
+                 (size-fn (if (eq size-key 'window-width)
+                              #'window-total-width
+                            #'window-total-height))
+                 (alist `((side . ,side)
+                          (slot . 0)
+                          (,size-key . ,size)))
+                 (win-keep (+popup-display-buffer-stacked-side-window-fn
+                            (setq buf-keep
+                                  (get-buffer-create
+                                   (format "*popup-keep-%s*" side)))
+                            `((vslot . 0) ,@alist)))
+                 (win-close (+popup-display-buffer-stacked-side-window-fn
+                             (setq buf-close
+                                   (get-buffer-create
+                                    (format "*popup-close-%s*" side)))
+                             `((vslot . -2) ,@alist)))
+                 (original-size (funcall size-fn win-keep)))
+            (should win-keep)
+            (should win-close)
+            (+popup--delete-popup win-close)
+            (should (window-live-p win-keep))
+            (should (= original-size (funcall size-fn win-keep))))
+        (when (buffer-live-p buf-keep)
+          (kill-buffer buf-keep))
+        (when (buffer-live-p buf-close)
+          (kill-buffer buf-close))))))
 
 (zenit-deftest +popup--delete-window
   (:doc "`+popup--delete-window' handles modified popup buffers"

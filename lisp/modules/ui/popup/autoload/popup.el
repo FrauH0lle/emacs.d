@@ -223,29 +223,69 @@ layout.
 If WIN is in a child frame, delete the frame.
 Otherwise delete the window using standard window deletion."
   (when (window-valid-p win)
-    (cond
-     ;; For windows in child frames, delete the frame
-     ((frame-parent (window-frame win))
-      (delete-frame (window-frame win)))
-     ;; For windows in the main frame
-     ((window-parent win)
-      (let ((side (window-parameter win 'window-side)))
-        ;; Handle atomic windows properly
-        (when (window-parameter win 'window-atom)
-          ;; Save window layout if needed
-          (let ((window-combination-resize t))
-            (set-window-parameter win 'window-atom nil)
-            ;; Give sibling windows a chance to resize properly
-            (balance-windows (window-parent win))))
-        ;; Use consistent window deletion strategy
-        (if side
-            ;; Side windows should use delete-window to maintain side window
-            ;; layout
-            (delete-window win)
-          ;; Regular windows use quit-window to handle buffers properly
-          (quit-window nil win))))
-     ;; Fallback for any other case
-     (t (quit-window nil win)))))
+    (cl-labels
+        ((side-window-sizes (side horizontal exclude)
+           (let (sizes)
+             (walk-windows
+              (lambda (window)
+                (when (and (not (eq window exclude))
+                           (eq (window-parameter window 'window-side) side))
+                  (push (list window
+                              (if horizontal
+                                  (window-total-width window)
+                                (window-total-height window))
+                              (window-parameter window 'window-preserved-size))
+                        sizes)))
+              'nomini
+              (window-frame exclude))
+             sizes))
+         (restore-window-sizes (sizes horizontal)
+           (dolist (entry sizes)
+             (let* ((window (car entry))
+                    (old-size (cadr entry))
+                    (new-size (and (window-live-p window)
+                                   (if horizontal
+                                       (window-total-width window)
+                                     (window-total-height window)))))
+               (when (and new-size (/= old-size new-size))
+                 (window-resize window (- old-size new-size) horizontal))))))
+      (let* ((side (window-parameter win 'window-side))
+             (horizontal (memq side '(left right)))
+             (side-sizes (and side
+                              (side-window-sizes side horizontal win))))
+        (cond
+         ;; For windows in child frames, delete the frame
+         ((frame-parent (window-frame win))
+          (delete-frame (window-frame win)))
+         ;; For windows in the main frame
+         ((window-parent win)
+          ;; Handle atomic windows properly
+          (when (window-parameter win 'window-atom)
+            ;; Save window layout if needed
+            (let ((window-combination-resize t))
+              (set-window-parameter win 'window-atom nil)
+              ;; Give sibling windows a chance to resize properly
+              (balance-windows (window-parent win))))
+          ;; Use consistent window deletion strategy
+          (if side
+              ;; Side windows should use delete-window to maintain side window
+              ;; layout, then restore sibling popup sizes disturbed by Emacs'
+              ;; side-window redistribution.
+              (unwind-protect
+                  (progn
+                    (dolist (entry side-sizes)
+                      (when (window-live-p (car entry))
+                        (window-preserve-size (car entry) horizontal t)))
+                    (delete-window win)
+                    (restore-window-sizes side-sizes horizontal))
+                (dolist (entry side-sizes)
+                  (when (window-live-p (car entry))
+                    (set-window-parameter
+                     (car entry) 'window-preserved-size (nth 2 entry)))))
+            ;; Regular windows use quit-window to handle buffers properly
+            (quit-window nil win)))
+         ;; Fallback for any other case
+         (t (quit-window nil win)))))))
 
 ;;
 ;;;;; `set-window-parameter' replacements
@@ -876,10 +916,12 @@ The last modification is kept."
   (interactive)
   (let ((+popup-default-display-buffer-actions
          '(+popup-display-buffer-stacked-side-window-fn))
-        (display-buffer-alist +popup--display-buffer-alist)
+        (display-buffer-alist (copy-sequence +popup--display-buffer-alist))
         (+popup-reference-buffers +popup--reference-buffers)
         (buffer (current-buffer)))
-    (unless (+popup-buffer-p buffer)
+    (unless (display-buffer-assq-regexp (buffer-name buffer)
+                                        display-buffer-alist
+                                        +popup-default-display-buffer-actions)
       (push (+popup-make-rule "." (plist-put (copy-sequence +popup-defaults) :ttl nil)) display-buffer-alist))
     (bury-buffer)
     ;; If this buffer was not a popup before, make it a user popup

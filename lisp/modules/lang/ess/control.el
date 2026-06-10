@@ -2,5 +2,4 @@
 ;; lang/ess/control.el
 
 (:depends
- ((+lsp :tools lsp)
-  (+tree-sitter :tools tree-sitter)))
+ ((+lsp :tools lsp)))

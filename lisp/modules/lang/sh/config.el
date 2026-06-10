@@ -38,13 +38,6 @@
   (static-when (modulep! +lsp)
     (add-hook 'sh-mode-local-vars-hook #'lsp! 'append))
 
-  (static-when (modulep! +tree-sitter)
-    (after! treesit
-      (cl-pushnew '(bash "https://github.com/tree-sitter/tree-sitter-bash" nil nil nil nil)
-                  treesit-language-source-alist :test #'eq :key #'car))
-    (treesit-ensure-installed 'bash)
-    (add-hook 'sh-mode-local-vars-hook #'tree-sitter! 'append))
-
   (setq-hook! 'sh-mode-hook
     sh-indentation 2
     sh-basic-offset 2)

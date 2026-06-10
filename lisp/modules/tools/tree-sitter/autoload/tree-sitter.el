@@ -1,23 +1,5 @@
 ;; tools/tree-sitter/autoload/tree-sitter.el -*- lexical-binding: t; -*-
 
-;;;###autoload
-(defvar +tree-sitter--major-mode-remaps-alist nil)
-
-;;;###autodef (fset 'tree-sitter! #'ignore)
-(defun tree-sitter! ()
-  "Dispatch to turn on tree sitter.
-
-Used as a hook function which turns on highlighting provided by
-`treesit-langs' selectively."
-  (treesit-hl-toggle (not treesit-hl--enabled))
-  ;; HACK 2025-08-27: `treesit-hl-toggle' will remove `font-lock' settings
-  ;;   from other packages such as `hl-todo'. Because using `treesit-langs'
-  ;;   is supposed to be a temporary solution, we just use a simple hack.
-  (when (bound-and-true-p hl-todo-mode)
-    (hl-todo-mode +1))
-  (when (bound-and-true-p outline-minor-faces-mode)
-    (outline-minor-faces-mode +1)))
-
 ;;;###autodef (fset 'set-tree-sitter! #'ignore)
 (defun set-tree-sitter! (modes ts-mode &optional recipes)
   "Remap major MODES to TS-MODE.

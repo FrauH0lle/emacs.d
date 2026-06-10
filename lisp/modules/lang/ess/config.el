@@ -74,14 +74,6 @@ variable.")
     (add-to-list 'auto-mode-alist '("\\.[jJ][lL]\\'" . ess-julia-mode)))
 
   :config
-  ;; Tree-sitter support
-  (static-when (modulep! +tree-sitter)
-    (after! treesit
-      (cl-pushnew '(r "https://github.com/r-lib/tree-sitter-r" nil nil nil nil)
-                  treesit-language-source-alist :test #'eq :key #'car))
-    (treesit-ensure-installed 'r)
-    (add-hook 'ess-r-mode-local-vars-hook #'tree-sitter! 'append))
-
   (setq ess-offset-continued 'straight
         ess-use-flymake (modulep! :checkers syntax +flymake)
         ess-nuke-trailing-whitespace-p t

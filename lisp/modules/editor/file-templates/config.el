@@ -170,7 +170,12 @@ must be non-read-only, empty, and there must be a rule in
           "C-<end>"   #'tempel-end))
 
   ;; Exit snippets on ESC from normal mode
-  (add-hook 'zenit-escape-hook #'tempel-abort))
+  (add-hook! 'zenit-escape-hook
+    (defun +snippets-abort-tempel-h ()
+      "Abort all active `tempel' templates on escape."
+      (if (bound-and-true-p tempel--active)
+          (tempel-abort t)
+        nil))))
 
 ;;
 (add-hook 'zenit-switch-buffer-hook #'+file-templates-check-h)

@@ -267,6 +267,11 @@ Meant for `kill-buffer-query-functions'."
   (setf (caar profiler-report-cpu-line-format) 80
         (caar profiler-report-memory-line-format) 80))
 
+;; Hide the mode line in completion popups and MAN pages because they serve
+;; little purpose there, and is better hidden.
+(add-hook! '(Man-mode-hook completion-list-mode-hook) #'mode-line-invisible-mode)
+(add-hook! '(Man-mode-hook completion-list-mode-hook) #'zenit-disable-line-numbers-h)
+
 
 ;;
 ;;; Scrolling
@@ -693,14 +698,6 @@ markers, so disable it to fix all that visual noise."
   (eval-when-compile
     (declare-function +whitespace--in-parent-frame-p nil))
   (add-function :before-while whitespace-enable-predicate #'+whitespace--in-parent-frame-p))
-
-;; Hide the mode line in completion popups and MAN pages because they serve
-;; little purpose there, and is better hidden.
-(add-hook 'completion-list-mode-hook #'mode-line-invisible-mode)
-(add-hook 'Man-mode-hook #'mode-line-invisible-mode)
-
-(add-hook 'completion-list-mode-hook #'zenit-disable-line-numbers-h)
-(add-hook 'Man-mode-hook #'zenit-disable-line-numbers-h)
 
 
 ;;

@@ -189,11 +189,14 @@ Autoloads will be generated from autoload cookies in FILES (except those that
 match one of the regexps in EXCLUDE -- a list of strings). If LITERAL is
 non-nil, treat FILES as pre-generated autoload files instead."
   (let ((zenit-loaddefs-temp-file (make-temp-file "zenit-loaddefs"))
-        autoloads)
+        seen autoloads)
     (dolist (file files (nreverse (delq nil autoloads)))
+      (setq file (file-truename file))
       (when (and (not (seq-find (zenit-rpartial #'string-match-p file) exclude))
+                 (not (member file seen))
                  (file-readable-p file))
         (zenit-log "loaddefs:scan: %s" file)
+        (push file seen)
 
         (zenit--with-prepared-file-buffer file (or coding-system-for-read 'utf-8) nil
           (if literal

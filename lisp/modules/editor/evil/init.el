@@ -16,28 +16,12 @@
 
   (defvar +evil-collection-disabled-list
     '(anaconda-mode
-      buff-menu
-      calc
-      comint
       company
       custom
-      eldoc
+      eglot
       elisp-mode
       ert
-      free-keys
-      helm
-      help
-      image
-      indent
-      kmacro
-      kotlin-mode
-      lispy
-      outline
-      replace
-      shortdoc
-      simple
-      slime
-      tab-bar)
+      lispy)
     "A list of `evil-collection' modules to ignore. See the
 definition of this variable for an explanation of the
 defaults (in comments). See `evil-collection-mode-list' for a

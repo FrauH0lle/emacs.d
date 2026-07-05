@@ -117,6 +117,9 @@ consult-location to occur-edit"
               ('consult-grep #'wgrep-change-to-wgrep-mode)
               ('file #'wdired-change-to-wdired-mode)
               ('consult-location #'occur-edit-mode)
+              ('consult-xref (if (fboundp 'xref-change-to-xref-edit-mode)
+                                 #'xref-change-to-xref-edit-mode
+                               (user-error "Writable xref export requires Emacs 31+")))
               (x (user-error "embark category %S doesn't support writable export" x)))))
          (embark-after-export-hook `(,@embark-after-export-hook ,edit-command)))
     (embark-export)))

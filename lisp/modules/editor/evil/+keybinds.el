@@ -103,11 +103,7 @@
         (:after elfeed
          :map elfeed-search-mode-map
          :n "gr" #'elfeed-search-update--force
-         :n "gR" #'elfeed-search-fetch)
-        (:after eglot
-         :map eglot-mode-map
-         :nv "gd" #'+lookup/definition
-         :nv "gD" #'+lookup/references))
+         :n "gR" #'elfeed-search-fetch))
 
       ;; custom evil keybinds
       :nv "zn"    #'+evil:narrow-buffer

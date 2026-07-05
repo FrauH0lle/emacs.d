@@ -288,7 +288,7 @@
     "u" #'zenit/help-package-homepage)
   (setf (alist-get 'package embark-keymap-alist) #'+vertico/embark-zenit-package-map)
   (map! (:map embark-file-map
-         :desc "Open target with sudo"        "s"   #'zenit/sudo-find-file
+         :desc "Open target with sudo"        "S"   #'zenit/sudo-find-file
          (:when (modulep! :tools magit)
            :desc "Open magit-status of target" "g"   #'+vertico/embark-magit-status)
          (:when (modulep! :ui workspaces)

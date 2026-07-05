@@ -272,7 +272,11 @@ global, so..."
     (evilem-make-motion evilem-motion-backward-word-begin #'evil-backward-word-begin :scope 'visible)
     (evilem-make-motion evilem-motion-backward-WORD-begin #'evil-backward-WORD-begin :scope 'visible)
     (evilem-make-motion evilem-motion-backward-word-end #'evil-backward-word-end :scope 'visible)
-    (evilem-make-motion evilem-motion-backward-WORD-end #'evil-backward-WORD-end :scope 'visible)))
+    (evilem-make-motion evilem-motion-backward-WORD-end #'evil-backward-WORD-end :scope 'visible))
+
+  (after! which-key
+    (cl-pushnew `(("g s" . "evilem--?motion-\\(.*\\)") nil . "EM \\1")
+                which-key-replacement-alist)))
 
 
 (use-package! evil-embrace

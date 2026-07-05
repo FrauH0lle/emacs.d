@@ -717,7 +717,10 @@ target for keybinds (e.g. with `define-key' or `map!')."
        (,(if args
              #'funcall-interactively
            #'call-interactively)
-        ,command ,@args))))
+        (let ((command ,command))
+          (or (command-remapping command)
+              command))
+        ,@args))))
 
 
 ;;
@@ -1613,27 +1616,27 @@ finding disabled modules use `zenit-module-locate-path'."
       path)))
 
 (defun zenit-module-locate-path (category &optional module file)
-  "Search `zenit-modules-load-path' to find the path to a module.
+  "Search `zenit-module-load-path' to find the path to a module.
 
 CATEGORY is a keyword (e.g. :lang) and MODULE is a symbol (e.g.
-\\='python). FILE is a string that will be appended to the
-resulting path. If no path exists, this returns nil, otherwise an
+\\='python). FILE is a string that will be appended to the resulting
+path. If said path doesn't exist, this returns nil, otherwise an
 absolute path."
   (let (file-name-handler-alist)
-    (if-let* ((path (zenit-module-expand-path category module file)))
-        (if (or (null file)
-                (file-exists-p path))
-            path)
-      (let* ((category (zenit-keyword-name category))
-             (module (if module (symbol-name module)))
-             (path (file-name-concat category module file)))
-        (if file
-            ;; `locate-file-internal' is a little faster for finding files, but
-            ;; its interface for finding directories is clumsy.
-            (locate-file-internal path zenit-modules-load-path '("" ".elc" ".el"))
-          (cl-loop for default-directory in zenit-modules-load-path
-                   if (file-exists-p path)
-                   return (expand-file-name path)))))))
+    (when-let*
+        ((default-directory
+          (or (when-let* ((path (zenit-module-expand-path category module)))
+                (and (file-directory-p path) path))
+              (cl-loop with category = (zenit-keyword-name category)
+                       with module = (if module (symbol-name module))
+                       with dir = (file-name-concat category module)
+                       for default-directory in zenit-modules-load-path
+                       if (file-directory-p dir)
+                       return (expand-file-name dir)))))
+      (if file
+          (when (file-exists-p file)
+            (expand-file-name file))
+        default-directory))))
 
 (defun zenit-module-locate-paths (module-list file)
   "Return all existing paths to FILE under each module in MODULE-LIST.
@@ -1662,14 +1665,17 @@ enabled."
             ((file-in-directory-p path zenit-local-conf-dir)
              (cons :local-conf nil))))))
 
-(defun zenit-module-load-path (&optional module-dirs)
+(defun zenit-module-load-path (&optional module-dirs initorder?)
   "Return a list of file paths to activated modules.
 
 The list is in no particular order and its file paths are
 absolute. If MODULE-DIRS is non-nil, include all modules (even
-disabled ones) available in those directories."
+disabled ones) available in those directories.
+
+If INITORDER? is non-nil, sort modules by their initdepth, rather than
+their configdepth. See `zenit-module-set' for details."
   (declare (pure t) (side-effect-free t))
-  (cl-loop for (cat . mod) in (zenit-module-list module-dirs)
+  (cl-loop for (cat . mod) in (zenit-module-list module-dirs initorder?)
            collect (zenit-module-locate-path cat mod)))
 
 (defvar zenit--module-dependencies nil

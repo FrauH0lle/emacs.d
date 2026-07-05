@@ -771,13 +771,14 @@ also be a list of module keys."
   (let ((module-list (cond ((null module-list) (zenit-module-list))
                            ((symbolp module-list) (zenit-module-list 'all))
                            (module-list)))
-        (packages-file zenit-module-packages-file)
         zenit-disabled-packages
         zenit-packages)
     (letf! (defun read-packages (key)
              (with-zenit-module-context key
-               (when-let* ((file (zenit-module-locate-path
-                                  (car key) (cdr key) packages-file)))
+               (when-let* ((file (or (zenit-module-expand-path
+                                      (car key) (cdr key) zenit-module-packages-file)
+                                     (zenit-module-locate-path
+                                      (car key) (cdr key) zenit-module-packages-file))))
                  (zenit-packages--read file))))
       (with-zenit-context 'packages
         (let ((user? (assq :local-conf module-list)))

@@ -132,7 +132,7 @@ definitions."
    ;; and any additional files specified in `zenit-autoloads-files`.
    (delete "" (append (zenit-glob zenit-core-dir "lib/*.el")
                       (cl-loop for dir
-                               in (append (zenit-module-load-path zenit-modules-load-path)
+                               in (append (zenit-module-load-path zenit-modules-load-path :all)
                                           (list zenit-local-conf-dir))
                                if (zenit-glob dir "autoload.el") append it
                                if (zenit-glob dir "autoload/*.el") append it)

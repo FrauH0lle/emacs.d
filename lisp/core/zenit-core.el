@@ -562,14 +562,16 @@ But before the local one."
 (add-hook! 'zenit-after-init-hook :depth 105
   (defun zenit--end-init-h ()
     "Set `zenit-init-time'."
-    (when (zenit-context-pop 'startup)
+    (when (zenit-context-p 'startup)
       (setq zenit-init-time (float-time (time-subtract (current-time) before-init-time)))
       ;; If `gc-cons-threshold' hasn't been reset at this point, we reset it by
       ;; force.
       (if (= (default-value 'gc-cons-threshold) most-positive-fixnum)
           (setq-default gc-cons-threshold (* 16 1024 1024)))
       (if (= (default-value 'gc-cons-percentage) 1.0)
-          (setq-default gc-cons-percentage 0.1)))))
+          (setq-default gc-cons-percentage 0.1))
+
+      (zenit-context-pop 'startup))))
 
 (unless noninteractive
   ;; This is the absolute latest a hook can run in Emacs' startup process.

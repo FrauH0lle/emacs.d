@@ -85,7 +85,7 @@
                                    :output-cost 30
                                    :cutoff-date "2025-12"))
                         :request-params '(:reasoning
-                                          (:effort "high"
+                                          (:effort "xhigh"
                                            :summary "auto"))))
 
 

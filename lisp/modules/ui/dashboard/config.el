@@ -20,17 +20,6 @@ while they run."
   :type 'hook
   :group '+dashboard)
 
-(defcustom +dashboard-banner-file "default.png"
-  "The path to the image file to be used in on the dashboard. The path is
-relative to `+dashboard-banner-dir'. If nil, always use the ASCII banner."
-  :type 'string
-  :group '+dashboard)
-
-(defcustom +dashboard-banner-dir (concat (dir!) "/banners/")
-  "Where to look for `+dashboard-banner-file'."
-  :type 'directory
-  :group '+dashboard)
-
 (defcustom +dashboard-ascii-banner-fn #'+dashboard-draw-ascii-banner-fn
   "The function used to generate the ASCII banner on the dashboard."
   :type 'function
@@ -126,9 +115,6 @@ If any of them return non-nil, dashboard reloading is inhibited.")
 
 (defvar +dashboard--last-cwd nil
   "Variable to store the last current working directory.")
-
-(defvar +dashboard--last-position nil
-  "Variable to store the last position in dashboard buffer.")
 
 (defvar +dashboard--reload-timer nil
   "Variable to store the dashboard buffer reload timer.")
@@ -240,10 +226,6 @@ If any of them return non-nil, dashboard reloading is inhibited.")
     ;; else to show.
     (setq zenit-fallback-buffer-name +dashboard-name
           initial-buffer-choice #'zenit-fallback-buffer)
-    (unless fancy-splash-image
-      (setq fancy-splash-image
-            (expand-file-name +dashboard-banner-file
-                              +dashboard-banner-dir)))
 
     (add-transient-hook!
         'zenit-first-input-hook :depth -95
@@ -630,11 +612,15 @@ Applies line-prefix and indent-prefix text properties to respect
   (+dashboard-insert
    (with-temp-buffer
      (insert (propertize " " 'display '(space . (:relative-height 2.0))) "\n")
-     (insert-text-button (or (nerd-icons-codicon "nf-cod-octoface" :face '+dashboard-footer-icon :height 1.3 :v-adjust -0.15)
-                             (propertize "github" 'face '+dashboard-footer))
-                         'action (lambda (_) (browse-url "https://github.com/FrauH0lle/emacs.d"))
-                         'follow-link t
-                         'help-echo "Open Emacs config github page")
+     (insert-text-button
+      (or (nerd-icons-codicon "nf-cod-octoface"
+                              :face '+dashboard-footer-icon
+                              :height 1.3
+                              :v-adjust -0.15)
+          (propertize "github" 'face '+dashboard-footer))
+      'action (lambda (_) (browse-url "https://github.com/FrauH0lle/emacs.d"))
+      'follow-link t
+      'help-echo "Open Emacs config github page")
      (insert "\n")
      (buffer-string))))
 

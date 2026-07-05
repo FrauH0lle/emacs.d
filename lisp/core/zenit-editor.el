@@ -28,6 +28,16 @@
 ;; `tramp'
 (defvar tramp-backup-directory-alist)
 
+;; `transient'
+(declare-function transient-quit-one "transient" ())
+(defvar transient-default-level)
+(defvar transient-display-buffer-action)
+(defvar transient-history-file)
+(defvar transient-levels-file)
+(defvar transient-map)
+(defvar transient-show-during-minibuffer-read)
+(defvar transient-values-file)
+
 ;; `zenit-lib-buffers'
 (declare-function zenit-special-buffer-p "zenit-lib-buffers" (buf &optional consider-mode-p))
 (declare-function zenit-temp-buffer-p "zenit-lib-buffers" (buf))
@@ -726,6 +736,23 @@ that matching entry in `zenit-file-lines-threshold-alist' (defaulting to
               flycheck-mode
               smartparens-mode
               smartparens-strict-mode)))
+
+;;;###package transient
+;; Must be set early to prevent ~/.config/emacs/transient from being created
+(setq transient-levels-file  (concat zenit-data-dir "transient/levels")
+      transient-values-file  (concat zenit-data-dir "transient/values")
+      transient-history-file (concat zenit-data-dir "transient/history"))
+(with-eval-after-load 'transient
+  (setq transient-default-level 5)
+  ;; Pop up transient windows at the bottom of the window where it was invoked.
+  ;; This is more ergonomic for users with large displays or many splits.
+  (setq transient-display-buffer-action
+        '(display-buffer-below-selected
+          (dedicated . t)
+          (inhibit-same-window . t))
+        transient-show-during-minibuffer-read t)
+  ;; Universal ESC behavior for popups.
+  (define-key transient-map [escape] #'transient-quit-one))
 
 
 (use-package! ws-butler

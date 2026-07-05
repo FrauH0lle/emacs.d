@@ -46,15 +46,10 @@ FUNCTION
   :defer-incrementally (compat with-editor eieio transient git-commit)
   :init
   (setq magit-auto-revert-mode nil)  ; we do this ourselves further down
-  ;; Must be set early to prevent ~/.emacs.d/transient from being created
-  (setq transient-levels-file  (concat zenit-data-dir "transient/levels")
-        transient-values-file  (concat zenit-data-dir "transient/values")
-        transient-history-file (concat zenit-data-dir "transient/history"))
   :config
   (set-debug-var! 'magit-refresh-verbose)
 
-  (setq transient-default-level 5
-        magit-diff-refine-hunk t ; show granular diffs in selected hunk
+  (setq magit-diff-refine-hunk t ; show granular diffs in selected hunk
         ;; Don't autosave repo buffers. This is too magical, and saving can
         ;; trigger a bunch of unwanted side-effects, like save hooks and
         ;; formatters. Trust the user to know what they're doing.
@@ -131,15 +126,7 @@ FUNCTION
   (setq magit-display-buffer-function #'+magit-display-buffer-fn
         magit-bury-buffer-function #'magit-mode-quit-window)
 
-  ;; Pop up transient windows at the bottom of the window where it was invoked.
-  ;; This is more ergonomic for users with large displays or many splits.
-  (setq transient-display-buffer-action
-        '(display-buffer-below-selected
-          (dedicated . t)
-          (inhibit-same-window . t))
-        transient-show-during-minibuffer-read t)
-
-  (set-popup-rule! "^\\(?:\\*magit\\|magit:\\| \\*transient\\*\\)" :ignore t)
+  (set-popup-rule! "^\\(?:\\*magit\\|magit:\\)" :ignore t)
 
   ;; The mode-line isn't useful in these popups and take up valuable screen
   ;; estate, so free it up.
@@ -166,9 +153,6 @@ FUNCTION
   ;; affected buffers (or at least marking them as need-to-be-reverted).
   (define-key magit-mode-map "q" #'+magit/quit)
   (define-key magit-mode-map "Q" #'+magit/quit-all)
-
-  ;; Close transient with ESC
-  (define-key transient-map [escape] #'transient-quit-one)
 
   (defun +magit-enlargen-fringe-h ()
     "Make fringe larger in magit."

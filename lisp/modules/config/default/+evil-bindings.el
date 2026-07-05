@@ -453,8 +453,8 @@
       ;;; <leader> g --- git/version control
       (:prefix-map ("g" . "git")
        :desc "Revert file"                 "R"   #'vc-revert
-       :desc "Copy link to remote"         "y"   #'+vc/browse-at-remote-kill
-       :desc "Copy link to homepage"       "Y"   #'+vc/browse-at-remote-kill-homepage
+       :desc "Copy link to remote"         "y"   #'+vc/git-link-kill
+       :desc "Copy link to homepage"       "Y"   #'+vc/git-link-kill-homepage
        (:when (modulep! :ui vc-gutter)
          (:when (modulep! :ui hydra)
            :desc "VCGutter"                "."   #'+vc/gutter-hydra/body)
@@ -484,8 +484,8 @@
           :desc "Find issue"                "i"   #'forge-visit-issue
           :desc "Find pull request"         "p"   #'forge-visit-pullreq)
          (:prefix ("o" . "open in browser")
-          :desc "Browse file or region"     "o"   #'+vc/browse-at-remote
-          :desc "Browse homepage"           "h"   #'+vc/browse-at-remote-homepage
+          :desc "Browse file or region"     "o"   #'+vc/git-link
+          :desc "Browse homepage"           "h"   #'+vc/git-link-homepage
           :desc "Browse remote"             "r"   #'forge-browse-remote
           :desc "Browse commit"             "c"   #'forge-browse-commit
           :desc "Browse an issue"           "i"   #'forge-browse-issue

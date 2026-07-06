@@ -1,6 +1,6 @@
 (("evil" . "3b678a221ee99cc6a95b01d7a3129ce5efc4c3da")
  ("evil-args" . "a8151556f63c9d45d0c44c8a7ef9e5a542f3cdc7")
- ("evil-collection" . "bb82dba962ec22bbfa78027777be61bc353ec49d")
+ ("evil-collection" . "162183159dde328336bf2c92cef66b4151df26cf")
  ("evil-easymotion" . "629c894af63336028a61cc93d6465d10837eb82b")
  ("evil-embrace.el" . "3081d37811b6a3dfaaf01d578c7ab7a746c6064d")
  ("evil-escape" . "819f1ee1cf3f69a1ae920e6004f2c0baeebbe077")

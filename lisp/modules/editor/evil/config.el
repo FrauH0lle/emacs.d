@@ -1,14 +1,22 @@
 ;; editor/evil/config.el -*- lexical-binding: t; -*-
 
 (defvar +evil-want-o/O-to-continue-comments t
-  "If non-nil, the o/O keys will continue comment lines if the
-point is on a line with a linewise comment.")
+  "If non-nil, the o/O keys will continue comment lines if the point is on
+a line with a linewise comment.")
+
+(defvar +evil-want-move-window-to-wrap-around nil
+  "If non-nil, `+evil/window-move-*' commands will wrap around.")
 
 (defvar +evil-preprocessor-regexp "^\\s-*#[a-zA-Z0-9_]"
   "The regexp used by `+evil/next-preproc-directive' and
 `+evil/previous-preproc-directive' on ]# and [#, to jump between
 preprocessor directives. By default, this only recognizes C directives.")
 
+
+;;
+;;; Packages
+
+(defvar evil-want-keybinding nil)
 (defvar evil-want-C-g-bindings t)
 (defvar evil-want-C-i-jump nil)
 (defvar evil-want-C-u-scroll t)  ; moved the universal arg to <leader> u
@@ -243,8 +251,62 @@ global, so..."
     (load! "+commands")))
 
 
-;;
-;;; Packages
+(use-package! evil-collection
+  :after evil
+  :unless noninteractive
+  :unless (zenit-context-p 'reload)
+  ;; :hook (zenit-after-modules-config . evil-collection-init)
+  :preface
+  (defvar +evil-collection-disabled-list
+    '(anaconda-mode
+      company
+      eglot
+      elisp-mode
+      ert
+      lispy)
+    "A list of modules to ignore in `evil-collection-mode-list'.
+
+The defaults disable modules that we have our own keybinds for or that (IMO)
+don't offer any/enough real value to users.")
+  (defvar evil-collection-company-use-tng nil)
+  (defvar evil-collection-setup-minibuffer nil)
+  (defvar evil-collection-want-unimpaired-p nil)  ; we have our own
+  ;; We bind goto-reference on gD and goto-assignments on gA ourselves
+  (defvar evil-collection-want-find-usages-bindings-p nil)
+  ;; Reduces keybind conflicts between outline-mode and org-mode (which is
+  ;; derived from outline-mode).
+  (defvar evil-collection-outline-enable-in-minor-mode-p nil)
+  :config
+  (dolist (sym +evil-collection-disabled-list)
+    (if-let* ((elt (assq sym evil-collection-mode-list)))
+        (cl-callf2 delete elt evil-collection-mode-list)
+      (cl-callf2 delq sym evil-collection-mode-list)))
+
+  (setq evil-collection-binding-overrides
+        `((repl-submit :enabled nil)
+          (repl-newline :enabled nil)
+          (pop-definition :enabled nil)
+          (find-file :enabled nil)
+          ,@(when (modulep! :tools lookup)
+              '((find-definition :enabled nil)
+                (find-usages :enabled nil)
+                (lookup-doc :enabled nil)))
+          ,@(when (modulep! :tools eval)
+              '((goto-repl :enabled nil))))
+        evil-collection-key-blacklist
+        (append (list zenit-leader-key
+                      zenit-localleader-key
+                      zenit-leader-alt-key)
+                evil-collection-key-blacklist
+                '("gz" "<escape>")))
+
+  (defadvice! +evil-collection-disable-blacklist-a (fn)
+    :around #'evil-collection-vterm-toggle-send-escape  ; allow binding to ESC
+    (let (evil-collection-key-blacklist)
+      (funcall-interactively fn)))
+
+  (evil-collection-init))
+
 
 (use-package! evil-easymotion
   :after-call zenit-first-input-hook

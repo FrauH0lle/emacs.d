@@ -589,20 +589,14 @@
 
 (zenit-deftest cmd!!
   (:doc "`cmd!!' expands into interactive lambda")
-  (should (equal '#'(lambda
-                      (arg &rest _)
+  (should (equal '#'(lambda (arg &rest _)
                       (interactive "P")
-                      (let
-                          ((current-prefix-arg
-                            (or nil arg)))
+                      (let ((current-prefix-arg (or nil arg)))
                         (call-interactively
-                         (message "Hello, world!"))))
+                         (let ((command (message "Hello, world!")))
+                           (or (command-remapping command) command)))))
                  (macroexpand '(cmd!! (message "Hello, world!"))))))
-(let ((l '(1 2)))
-  (add-to-list 'l 1)
-  (add-to-list 'l 2)
-  (add-to-list 'l 3 t)
-  l)
+
 (zenit-deftest zenit-splice-into
   (:vars ((test-list '("a" "b" "c" "d" "e"))))
   ,test
@@ -1629,15 +1623,20 @@
     (should (= 2 (length paths)))))
 
 (zenit-deftest zenit-module-load-path
-  (:vars ((zenit-modules (make-hash-table :test #'equal)))
+  (:vars* ((zenit-modules (make-hash-table :test #'equal))
+           (tmp-dir (zenit-test-make-temp-file t))
+           (enabled-path (file-name-concat tmp-dir "test" "enabled")))
    :before-each
    (progn
-     (zenit-module-set :test 'enabled :path "/path/to/enabled")
-     (zenit-module-set :test 'disabled nil)))
+     (make-directory enabled-path t)
+     (zenit-module-set :test 'enabled :path enabled-path)
+     (zenit-module-set :test 'disabled nil))
+   :after-each
+   (delete-directory tmp-dir t))
   ,test
   (test)
   :doc "`zenit-module-load-path' includes enabled modules"
-  (should (member "/path/to/enabled" (zenit-module-load-path)))
+  (should (member enabled-path (zenit-module-load-path)))
 
   :doc "`zenit-module-load-path' excludes disabled modules"
   (should-not (member nil (zenit-module-load-path))))

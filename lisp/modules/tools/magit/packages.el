@@ -8,7 +8,9 @@
 (package! magit-todos :lockfile tools_magit)
 
 (when (modulep! +forge)
+  (package! closql :lockfile tools_magit)
   (package! forge :lockfile tools_magit)
+  (package! ghub :lockfile tools_magit)
   (package! code-review
     :recipe (:host github
              :repo "doomelpa/code-review"

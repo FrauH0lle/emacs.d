@@ -1,5 +1,7 @@
-(("code-review" . "303edcfbad8190eccb9a9269dfc58ed26d386ba5")
+(("closql" . "d382e7427f5d375ffc872851b049e9f9c4a43dfc")
+ ("code-review" . "303edcfbad8190eccb9a9269dfc58ed26d386ba5")
  ("forge" . "a8af709bc15e973804af776bba66b4205540bd73")
+ ("ghub" . "59d0b9b33e780d6cff5131886904ff26033dd2e6")
  ("orgit" . "4a4c03ee40b0e2509b49303e151ee217edaf0da4")
  ("orgit-forge" . "8e4496d7f7f84fab3e36d10883386c02f43a67e7")
  ("magit" . "c800f79c2061621fde847f6a53129eca0e8da728")

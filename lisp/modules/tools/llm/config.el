@@ -6,6 +6,18 @@
 (compile-along! "patches/gptel-anthropic")
 (compile-along! "patches/gptel-openai")
 
+(defvar-local +gptel-codex-session-id nil
+  "Session identifier sent to the Codex backend.")
+
+(defun +gptel--codex-header (info)
+  "Return Codex authentication headers for request INFO."
+  (require 'org-id)
+  (append (gptel--openai-oauth-header info)
+          `(("session-id" .
+             ,(with-current-buffer (plist-get info :buffer)
+                (or +gptel-codex-session-id
+                    (setq +gptel-codex-session-id (org-id-uuid))))))))
+
 
 (use-package! gptel
   :defer t
@@ -30,9 +42,6 @@
   (setq gptel-prompt-prefix-alist nil
         gptel-response-prefix-alist nil)
 
-  ;; REVIEW This is a bug with the OpenAI subscription backend
-  (setq gptel-temperature nil)
-
   ;; Each org heading is its own conversation
   (after! gptel-org
     (setq-default gptel-org-branching-context t))
@@ -47,21 +56,9 @@
     :key 'gptel-api-key
     :request-params '(:thinking (:type "adaptive")))
 
-  (gptel-make-deepseek "DeepSeek-4"
+  (gptel-make-deepseek "DeepSeek"
     :stream t
-    :key 'gptel-api-key
-    :request-params '(:reasoning_effort "max")
-    ;; :models '((deepseek-v4-pro
-    ;;            :capabilities (tool reasoning)
-    ;;            :context-window 1000
-    ;;            :input-cost 0.56
-    ;;            :output-cost 1.68)
-    ;;           (deepseek-v4-flash
-    ;;            :capabilities (tool reasoning)
-    ;;            :context-window 1000
-    ;;            :input-cost 0.56
-    ;;            :output-cost 1.68))
-    )
+    :key 'gptel-api-key)
 
   ;; GLM
   (gptel-make-glm-openai "GLM-coding"
@@ -74,19 +71,36 @@
                       :temperature 0.7))
 
   ;; OpenAI Codex
-  (setq gptel-model 'gpt-5.5
+  (setq gptel-model 'gpt-5.6-sol
         gptel-backend (gptel-make-openai-oauth "Codex"
-                        :models '((gpt-5.5
+                        :header #'+gptel--codex-header
+                        :models '((gpt-5.6-sol
                                    :description "The best model for coding and agentic tasks"
                                    :capabilities (media tool-use json url responses-api)
+                                   :reasoning-effort (member none low medium high xhigh max)
                                    :mime-types ("image/jpeg" "image/png" "image/gif" "image/webp")
-                                   :context-window 272
+                                   :context-window 258
                                    :input-cost 5
                                    :output-cost 30
-                                   :cutoff-date "2025-12"))
-                        :request-params '(:reasoning
-                                          (:effort "xhigh"
-                                           :summary "auto"))))
+                                   :cutoff-date "2026-02")
+                                  (gpt-5.6-terra
+                                   :description "Faster, more cost-efficient version of GPT-5.6"
+                                   :capabilities (media tool-use json url responses-api)
+                                   :reasoning-effort (member none low medium high xhigh max)
+                                   :mime-types ("image/jpeg" "image/png" "image/gif" "image/webp")
+                                   :context-window 258
+                                   :input-cost 5
+                                   :output-cost 30
+                                   :cutoff-date "2026-02")
+                                  (gpt-5.6-luna
+                                   :description "Fastest, cheapest version of GPT-5.6"
+                                   :capabilities (media tool-use json url responses-api)
+                                   :reasoning-effort (member none low medium high xhigh max)
+                                   :mime-types ("image/jpeg" "image/png" "image/gif" "image/webp")
+                                   :context-window 258
+                                   :input-cost 5
+                                   :output-cost 30
+                                   :cutoff-date "2026-02"))))
 
 
   ;; (setq gptel-display-buffer-action nil)  ; if user changes this, popup manager will bow out
@@ -163,5 +177,21 @@
                   "RET"
                   `(menu-item "" mevedel--ov-actions-dispatch
                     :filter ,(lambda (cmd) (when (evil-normal-state-p) cmd))))))
+
+  (setq! mevedel-permission-guardian t
+         mevedel-permission-mode 'edits)
+
+  (mevedel-define-preset GPT-5.6
+    :description "OpenAI GPT team"
+    :parents (mevedel-implement)
+    :model-tiers
+    ((fast :provider "Codex:gpt-5.6-luna" :effort max)
+     (balanced :provider "Codex:gpt-5.6-luna" :effort max)
+     (strong :provider "Codex:gpt-5.6-sol" :effort high))
+    :model-workloads
+    ((planning :provider "Codex:gpt-5.6-sol" :effort high)
+     (goal-guardian :provider "Codex:gpt-5.6-luna" :effort max)
+     (implementation :provider "Codex:gpt-5.6-luna" :effort max)
+     (review :provider "Codex:gpt-5.6-sol" :effort high)))
 
   (mevedel-install))

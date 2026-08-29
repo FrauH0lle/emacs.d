@@ -473,7 +473,7 @@ becomes unpinned (returns nil), allowing it to track the latest version."
                   (local-p (seq-some (lambda (x) (memq x '(nil local))) profiles)))
             ;; Package has local profile - use local version (or nil if not
             ;; present)
-            (when-let ((local-commit (alist-get local-repo local-versions nil nil #'equal)))
+            (when-let* ((local-commit (alist-get local-repo local-versions nil nil #'equal)))
               (push (cons local-repo local-commit) result))
           ;; Package doesn't have local profile - keep original commit
           (push spec result))))
@@ -904,7 +904,7 @@ ARGS same as MELPA-STYLE-RECIPE in `straight-register-package'.
                   do (cl-callf plist-put plist key value))
          ;; Some basic key validation; throws an error on invalid properties
          (condition-case e
-             (when-let (recipe (plist-get plist :recipe))
+             (when-let* ((recipe (plist-get plist :recipe)))
                (cl-destructuring-bind
                    (&key local-repo _files _flavor _build _pre-build _post-build
                          _includes _type _repo _host _branch _protocol _remote

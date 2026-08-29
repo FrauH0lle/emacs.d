@@ -144,7 +144,6 @@ position, and the output buffer.")
   :commands (markdown-ts-mode)
   :defer t
   :init
-  :init
   (set-tree-sitter! 'markdown-mode 'markdown-ts-mode '(markdown markdown-inline))
   :config
   (+markdown-common-config 'markdown-ts-mode))

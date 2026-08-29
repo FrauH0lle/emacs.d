@@ -386,22 +386,19 @@ Returns the formatted and indented string."
                  "\n" "\n\n" (format "%s" (or message "")))))
       ;; HACK: Use `fill-region', but don't count ANSI codes as legitimate
       ;;   characters when calculating per-line `fill-column'.
-      (letf! (defun current-fill-column ()
-               (let ((target (funcall current-fill-column)))
-                 (save-excursion
-                   (goto-char (pos-bol))
-                   (let ((n 0)
-                         (c 0))
-                     (while (and (not (eolp))
-                                 (<= n target))
-                       (save-match-data
-                         (if (looking-at ansi-color-control-seq-regexp)
-                             (let ((len (length (match-string 0))))
-                               (cl-incf c len)
-                               (forward-char len))
-                           (cl-incf n 1)
-                           (forward-char 1))))
-                     (+ target c (length fill-prefix))))))
+      (letf! (defadvice current-fill-column (:filter-return (target))
+               (save-excursion
+                 (goto-char (pos-bol))
+                 (let ((n 0) (c 0))
+                   (while (and (not (eolp)) (<= n target))
+                     (save-match-data
+                       (if (looking-at ansi-color-control-seq-regexp)
+                           (let ((len (length (match-string 0))))
+                             (cl-incf c len)
+                             (forward-char len))
+                         (cl-incf n 1)
+                         (forward-char 1))))
+                   (+ target c (length fill-prefix)))))
         (fill-region (point-min) (point-max) nil t))
       (replace-regexp-in-string
        "\n\n" "\n" (buffer-string)))))

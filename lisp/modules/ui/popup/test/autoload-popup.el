@@ -380,8 +380,21 @@
     (set-window-buffer win2 b)
     (+popup--maybe-select-window win1 (selected-window))
     (should (eq (selected-window) win1))
+    (should (eq a (current-buffer)))
     (+popup--maybe-select-window win2 (selected-window))
     (should (eq (selected-window) win1)))
+  :doc "`+popup--maybe-select-window' preserves a hidden current buffer when restoring the origin"
+  (let* ((origin (selected-window))
+         (popup (split-window))
+         (hidden (generate-new-buffer " *popup-hidden*")))
+    (unwind-protect
+        (progn
+          (set-window-buffer popup b)
+          (with-current-buffer hidden
+            (+popup--maybe-select-window popup origin)
+            (should (eq hidden (current-buffer))))
+          (should (eq origin (selected-window))))
+      (kill-buffer hidden)))
   :doc "`+popup--maybe-select-window' respects `+popup--inhibit-select'"
   (let* ((win1 (split-window))
          (win2 (split-window))

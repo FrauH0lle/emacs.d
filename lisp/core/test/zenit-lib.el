@@ -3,6 +3,9 @@
 
 (require 'zenit-test)
 (require 'zenit-lib)
+;; `byte-compile-current-file' is only special once `bytecomp' is loaded; `dir!'
+;; and `file!' read it via `bound-and-true-p', so a lexical `let' wouldn't stick.
+(require 'bytecomp)
 (zenit-require 'zenit-lib 'files)
 (zenit-require 'zenit-lib 'modules)
 
@@ -82,7 +85,7 @@
           (before-init-time (current-time))
           messages))
 
-  (letf! ((defun message (format &rest args)
+  (letf! ((defun! message (format &rest args)
             (unless inhibit-message
               (push (apply #'format format args) messages))))
     ,call
@@ -110,7 +113,7 @@
           (before-init-time (current-time))
           messages))
 
-  (letf! ((defun message (format &rest args)
+  (letf! ((defun! message (format &rest args)
             (unless inhibit-message
               (push (apply #'format format args) messages))))
     ,call
@@ -452,7 +455,7 @@
    :before-each
    (setq messages nil
          standard-output-string ""))
-  (letf! ((defun message (format &rest args)
+  (letf! ((defun! message (format &rest args)
             (unless inhibit-message
               (push (apply #'format format args) messages))))
     ,test)
@@ -483,7 +486,7 @@
    :before-each
    (setq messages nil
          standard-output-string ""))
-  (letf! ((defun message (format &rest args)
+  (letf! ((defun! message (format &rest args)
             (unless inhibit-message
               (push (apply #'format format args) messages))))
     ,test)
@@ -939,7 +942,7 @@
   ,test
   (test)
   :doc "`compile-along!' expands correctly with a single file"
-  (letf! ((defun macroexp-compiling-p () t))
+  (letf! ((defun! macroexp-compiling-p () t))
     (should (equal
              `(eval-when-compile
                 (async-get
@@ -952,7 +955,7 @@
              (macroexpand-1 `(compile-along! "test-file.el" ,(dir!))))))
 
   :doc "`compile-along!' expands correctly with a directory"
-  (letf! ((defun macroexp-compiling-p () t)
+  (letf! ((defun! macroexp-compiling-p () t)
           (dir (zenit-test-make-temp-file t)))
     (zenit-file-write (file-name-concat dir "test-1.el") "Hello 1")
     (zenit-file-write (file-name-concat dir "test-2.el") "Hello 2")
@@ -1736,7 +1739,7 @@
   (test)
   :doc "`modules!' creates modules and sets path for each one"
   (letf! ((#'print! #'ignore)
-          (defun zenit-module-locate-path (category &optional module file)
+          (defun! zenit-module-locate-path (category &optional module file)
             "/test/path"))
     (modules! :test mod1 mod2 mod3)
     (dolist (key (hash-table-keys zenit-modules))
@@ -1744,7 +1747,7 @@
 
   :doc "`modules!' creates modules and sets path for each one"
   (letf! ((#'print! #'ignore)
-          (defun zenit-module-locate-path (category &optional module file)
+          (defun! zenit-module-locate-path (category &optional module file)
             t))
     (should-error (modules! :test mod1 mod2 mod3))))
 

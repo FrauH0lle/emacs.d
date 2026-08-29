@@ -17,10 +17,9 @@
 ;;;###autoload
 (defun zenit--run-customize-theme-hook (fn)
   "Run FN, but suppress any writes to `custom-file'."
-  (letf! (defun put (symbol prop value)
-           (unless (string-prefix-p "saved-" (symbol-name prop))
-             (funcall put symbol prop value)))
-    (let (custom--inhibit-theme-enable)
+  (letf! (defadvice put (:before-while (_symbol prop _value))
+           (not (string-prefix-p "saved-" (symbol-name prop))))
+    (dlet (custom--inhibit-theme-enable)
       (funcall fn))))
 
 (add-hook! 'zenit-load-theme-hook

@@ -77,9 +77,9 @@ that by remapping `quit-window' to this commmand."
   "Fix links in popup compilation buffers creating a new window each
 time they were followed."
   :around #'compilation-goto-locus
-  (letf! (defun pop-to-buffer (buffer &optional action norecord)
+  (letf! (defadvice pop-to-buffer (:around (orig buffer &optional action norecord))
            (let ((pop-up-windows (not (+popup-buffer-p (current-buffer)))))
-             (funcall pop-to-buffer buffer action norecord)))
+             (funcall orig buffer action norecord)))
     (apply fn args)))
 
 
@@ -277,12 +277,12 @@ requires these gymnastics to tame (i.e. to get the popup manager
 to handle it)."
     :around #'org-goto-location
     (if +popup-mode
-        (letf! (defun internal-temp-output-buffer-show (buffer)
+        (letf! (defadvice internal-temp-output-buffer-show (:around (orig buffer))
                  (let ((temp-buffer-show-function
                         (zenit-rpartial #'+popup-display-buffer-stacked-side-window-fn nil)))
                    (with-current-buffer buffer
                      (+popup-buffer-mode +1))
-                   (funcall internal-temp-output-buffer-show buffer)))
+                   (funcall orig buffer)))
           (apply fn args))
       (apply fn args)))
 
@@ -293,12 +293,12 @@ other windows. Ugh, such an ugly hack."
     :around #'org-fast-tag-selection
     :around #'org-fast-todo-selection
     (if +popup-mode
-        (letf! ((defun read-char-exclusive (&rest args)
+        (letf! ((defadvice read-char-exclusive (:around (orig &rest args))
                   (message nil)
-                  (apply read-char-exclusive args))
-                (defun split-window-vertically (&optional _size)
-                  (funcall split-window-vertically (- 0 window-min-height 1)))
-                (defun org-fit-window-to-buffer (&optional window _max-height _min-height _shrink-only)
+                  (apply orig args))
+                (defadvice split-window-vertically (:around (orig &optional _size))
+                  (funcall orig (- 0 window-min-height 1)))
+                (defun! org-fit-window-to-buffer (&optional window _max-height _min-height _shrink-only)
                   (when-let* ((buf (window-buffer window)))
                     (with-current-buffer buf
                       (+popup-buffer-mode)))
@@ -385,7 +385,7 @@ other windows. Ugh, such an ugly hack."
           which-key-custom-hide-popup-function #'which-key--hide-buffer-side-window
           which-key-custom-show-popup-function
           (lambda (act-popup-dim)
-            (letf! (defun display-buffer-in-side-window (buffer alist)
+            (letf! (defun! display-buffer-in-side-window (buffer alist)
                      (+popup-display-buffer-stacked-side-window-fn
                       buffer (append '((vslot . -9999) (select . t)) alist)))
               ;; HACK Fix #2219 where the which-key popup would get cut off.
@@ -413,7 +413,7 @@ other windows. Ugh, such an ugly hack."
 (defadvice! +popup--ignore-window-parameters-a (fn &rest args)
   "Allow *interactive* window moving commands to traverse popups."
   :around '(windmove-up windmove-down windmove-left windmove-right)
-  (letf! (defun windmove-find-other-window (dir &optional arg window)
+  (letf! (defun! windmove-find-other-window (dir &optional arg window)
            (window-in-direction
             (pcase dir (`up 'above) (`down 'below) (_ dir))
             window (bound-and-true-p +popup-mode) arg windmove-wrap-around t))

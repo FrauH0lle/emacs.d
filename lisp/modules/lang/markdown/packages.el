@@ -7,6 +7,10 @@
 ;; present when you call `markdown-edit-code-block'.
 (package! edit-indirect :lockfile lang_markdown)
 
+(when (and (modulep! +tree-sitter) (treesit-available-p))
+  (package! markdown-ts-mode
+    :built-in 'prefer))
+
 (when (modulep! :editor evil)
   (package! evil-markdown
     :recipe (:host github :repo "Somelauw/evil-markdown")

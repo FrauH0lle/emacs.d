@@ -35,15 +35,7 @@ mean). Note that COMMIT is ignored pre-Emacs 31."
         (dolist (recipe recipes)
           (cl-destructuring-bind (name &key url rev source-dir cc cpp commit) (ensure-list recipe)
             (setf (alist-get name treesit-language-source-alist)
-                  (append (list url rev source-dir cc cpp)
-                          ;; COMPAT: 31.1 introduced a COMMIT recipe argument. On
-                          ;;   <=30.x, extra arguments will trigger an arity error
-                          ;;   when installing grammars.
-                          (if (eq (cdr (func-arity
-                                        (advice--cd*r
-                                         (advice--symbol-function 'treesit--install-language-grammar-1))))
-                                  'many)
-                              (list commit))))))))))
+                  (append (list url rev source-dir cc cpp commit)))))))))
 
 ;;;###autoload
 (defun +tree-sitter-ts-mode-inhibit-side-effects-a (fn &rest args)

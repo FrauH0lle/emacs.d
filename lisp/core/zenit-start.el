@@ -28,19 +28,16 @@
 (defcustom zenit-first-input-hook ()
   "Transient hooks run before the first user input."
   :type 'hook
-  :local 'permanant-local
   :group 'zenit)
 
 (defcustom zenit-first-file-hook ()
   "Transient hooks run before the first interactively opened file."
   :type 'hook
-  :local 'permanant-local
   :group 'zenit)
 
 (defcustom zenit-first-buffer-hook ()
   "Transient hooks run before the first interactively opened buffer."
   :type 'hook
-  :local 'permanant-local
   :group 'zenit)
 
 

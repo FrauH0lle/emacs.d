@@ -136,7 +136,7 @@
   :defer t)
 
 
-(use-package mcp
+(use-package! mcp
   :defer t
   :init (after! gptel (require 'mcp))
   :config
@@ -195,3 +195,13 @@
      (review :provider "Codex:gpt-5.6-sol" :effort high)))
 
   (mevedel-install))
+
+
+(static-when (modulep! :completion vertico)
+  (after! embark
+    (defvar-keymap +mevedel-embark-consult-map
+      :doc "Embark actions for `consult-location' and `consult-grep' targets."
+      :parent embark-general-map
+      "R" #'+mevedel/embark-create-reference)
+    (setf (alist-get 'consult-location embark-keymap-alist) '+mevedel-embark-consult-map
+          (alist-get 'consult-grep embark-keymap-alist) '+mevedel-embark-consult-map)))

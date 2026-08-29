@@ -59,12 +59,17 @@ a symlink. It respects `doom-modeline-icon'."
   (after! doom-modeline
     (defvar-local +doom-modeline--buffer-file-symlink-icon nil)
     (defun +doom-modeline-update-buffer-file-symlink-icon (&rest _)
-      "Update the buffer's symlink status in mode-line."
+      "Update the buffer's symlink status in mode-line.
+
+Remote files are skipped. This runs from the segment, so
+`file-symlink-p' would cost one synchronous TRAMP round trip per
+redisplay."
       (setq +doom-modeline--buffer-file-symlink-icon
-            (when +doom-modeline-buffer-symlink-icon
+            (when (and +doom-modeline-buffer-symlink-icon
+                       (not (file-remote-p (or (buffer-file-name) ""))))
               (ignore-errors
                 (concat
-                 (cond ((or (file-symlink-p (buffer-file-name))
+                 (cond ((or (and (buffer-file-name) (file-symlink-p (buffer-file-name)))
                             zenit--symlink-origin)
                         (let ((icon (doom-modeline-buffer-file-state-icon
                                      "nf-md-file_link" "󱅷" "%1*"

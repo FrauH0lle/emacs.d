@@ -40,16 +40,16 @@ This gives the user a chance to open other project files before the server is
 auto-killed (which is a potentially expensive process). It also prevents the
 server getting expensively restarted when reverting buffers."
     :around #'eglot--managed-mode
-    (letf! (defun eglot-shutdown (server)
+    (letf! (defadvice eglot-shutdown (:around (orig server))
              (if (or (null +lsp-defer-shutdown)
                      (eq +lsp-defer-shutdown 0))
-                 (prog1 (funcall eglot-shutdown server)
+                 (prog1 (funcall orig server)
                    (+lsp-optimization-mode -1))
                (run-at-time
                 (if (numberp +lsp-defer-shutdown) +lsp-defer-shutdown 3)
                 nil (lambda (server)
                       (unless (eglot--managed-buffers server)
-                        (prog1 (funcall eglot-shutdown server)
+                        (prog1 (funcall orig server)
                           (+lsp-optimization-mode -1))))
                 server)))
       (funcall fn server))))

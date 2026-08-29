@@ -21,9 +21,9 @@
 
   :doc "`zenit/bump-package' dispatches prefix args to bump actions"
   (let (calls)
-    (letf! ((defun zenit-initialize-packages (&optional _force-p))
-            (defun zenit-packages--bump-recipe-repos ())
-            (defun zenit-packages--bump-package (&rest args)
+    (letf! ((defun! zenit-initialize-packages (&optional _force-p))
+            (defun! zenit-packages--bump-recipe-repos ())
+            (defun! zenit-packages--bump-package (&rest args)
               (push args calls)))
       (let (current-prefix-arg)
         (zenit/bump-package 'pkg))
@@ -42,13 +42,13 @@
 
   :doc "`zenit/bump-package' resolves prefix actions without extra prompts"
   (let (calls)
-    (letf! ((defun zenit-packages--bump-latest-commit (_recipe)
+    (letf! ((defun! zenit-packages--bump-latest-commit (_recipe)
               (push 'latest calls)
               "latest-commit")
-            (defun zenit-packages--bump-read-commit (_package)
+            (defun! zenit-packages--bump-read-commit (_package)
               (push 'read calls)
               "raw-commit")
-            (defun zenit-packages--bump-select-commit (_package _local-repo _lockfiles _recipe)
+            (defun! zenit-packages--bump-select-commit (_package _local-repo _lockfiles _recipe)
               (push 'select calls)
               "selected-commit"))
       (should (equal "selected-commit"
@@ -61,12 +61,12 @@
 
   :doc "`zenit/bump-package' resolves latest commits with `git ls-remote'"
   (let (process-args fetched)
-    (letf! ((defun straight-vc-git--encode-url (_repo _host _protocol)
+    (letf! ((defun! straight-vc-git--encode-url (_repo _host _protocol)
               "https://example.invalid/repo.git")
-            (defun straight--process-run (&rest args)
+            (defun! straight--process-run (&rest args)
               (setq process-args args)
               '(0 "abcdef123456\trefs/heads/main\n" ""))
-            (defun zenit-packages--bump-with-fetched-repo (&rest _args)
+            (defun! zenit-packages--bump-with-fetched-repo (&rest _args)
               (setq fetched t)))
       (should (equal "abcdef123456"
                      (zenit-packages--bump-latest-commit
@@ -77,18 +77,18 @@
 
   :doc "`zenit/bump-package' uses a temporary clone for missing repos"
   (let (cloned fetched processed deleted called)
-    (letf! ((defun straight--repos-dir (_local-repo) "/missing/repo")
-            (defun file-exists-p (_file) nil)
-            (defun straight-vc-fetch-from-remote (_recipe)
+    (letf! ((defun! straight--repos-dir (_local-repo) "/missing/repo")
+            (defun! file-exists-p (_file) nil)
+            (defun! straight-vc-fetch-from-remote (_recipe)
               (push t fetched))
-            (defun straight-vc-git--encode-url (_repo _host _protocol)
+            (defun! straight-vc-git--encode-url (_repo _host _protocol)
               "https://example.invalid/repo.git")
-            (defun straight-vc-git--clone-internal (&rest args)
+            (defun! straight-vc-git--clone-internal (&rest args)
               (setq cloned args))
-            (defun straight--process-run (&rest args)
+            (defun! straight--process-run (&rest args)
               (push args processed))
-            (defun file-directory-p (_dir) t)
-            (defun delete-directory (dir recursive)
+            (defun! file-directory-p (_dir) t)
+            (defun! delete-directory (dir recursive)
               (push (list dir recursive) deleted)))
       (zenit-packages--bump-with-fetched-repo
        '(:local-repo "repo" :repo "owner/repo" :remote "origin" :branch "main")
@@ -104,11 +104,11 @@
   :doc "`zenit/bump-package' does not abort when temporary clone cleanup fails"
   (let ((attempts 0)
         messages)
-    (letf! ((defun file-directory-p (_dir) t)
-            (defun delete-directory (_dir _recursive)
+    (letf! ((defun! file-directory-p (_dir) t)
+            (defun! delete-directory (_dir _recursive)
               (cl-incf attempts)
               (signal 'file-error '("Removing directory" "Directory not empty" "/tmp/repo")))
-            (defun message (format &rest args)
+            (defun! message (format &rest args)
               (push (apply #'format format args) messages)))
       (zenit-packages--bump-delete-temp-repo "/tmp/repo"))
     (should (= 2 attempts))
@@ -123,7 +123,7 @@
 
   :doc "`zenit/bump-local-conf-package' delegates with local-conf and preserves prefix args"
   (let (calls)
-    (letf! ((defun zenit/bump-package (package commit local-conf)
+    (letf! ((defun! zenit/bump-package (package commit local-conf)
               (push (list package commit local-conf current-prefix-arg) calls)))
       (let ((current-prefix-arg '(4)))
         (zenit/bump-local-conf-package 'pkg))
@@ -142,10 +142,10 @@
 
   :doc "`zenit/bump-module' propagates prefix args to package bumps"
   (let (calls)
-    (letf! ((defun zenit-initialize-packages (&optional _force-p))
-            (defun zenit-package-list (_module-list)
+    (letf! ((defun! zenit-initialize-packages (&optional _force-p))
+            (defun! zenit-package-list (_module-list)
               '((pkg-a) (pkg-b)))
-            (defun zenit/bump-package (package &optional _commit _local-conf)
+            (defun! zenit/bump-package (package &optional _commit _local-conf)
               (push (list package current-prefix-arg) calls)))
       (let ((current-prefix-arg '(4)))
         (zenit/bump-module :category 'module)))
@@ -155,9 +155,9 @@
 
   :doc "`zenit/bump-module' reports empty modules"
   (let (messages)
-    (letf! ((defun zenit-initialize-packages (&optional _force-p))
-            (defun zenit-package-list (_module-list) nil)
-            (defun message (format &rest args)
+    (letf! ((defun! zenit-initialize-packages (&optional _force-p))
+            (defun! zenit-package-list (_module-list) nil)
+            (defun! message (format &rest args)
               (push (apply #'format format args) messages)))
       (zenit/bump-module :category 'module))
     (should (equal '("Module (:category . module) has no packages") messages))))
@@ -170,12 +170,12 @@
 
   :doc "`zenit/bump-all-packages' selects enabled packages by default and all packages with prefix"
   (let (args messages)
-    (letf! ((defun zenit-initialize-packages (&optional _force-p))
-            (defun zenit-packages--bump-recipe-repos ())
-            (defun zenit-package-list (&optional module-list)
+    (letf! ((defun! zenit-initialize-packages (&optional _force-p))
+            (defun! zenit-packages--bump-recipe-repos ())
+            (defun! zenit-package-list (&optional module-list)
               (push module-list args)
               nil)
-            (defun message (format &rest rest)
+            (defun! message (format &rest rest)
               (push (apply #'format format rest) messages)))
       (zenit/bump-all-packages)
       (zenit/bump-all-packages '(4)))
@@ -194,9 +194,9 @@
         latest
         writes
         messages)
-    (letf! ((defun zenit-initialize-packages (&optional _force-p))
-            (defun zenit-packages--bump-recipe-repos ())
-            (defun zenit-package-list (&optional _module-list)
+    (letf! ((defun! zenit-initialize-packages (&optional _force-p))
+            (defun! zenit-packages--bump-recipe-repos ())
+            (defun! zenit-package-list (&optional _module-list)
               '((pkg-a :lockfile (core) :recipe (:local-repo "repo-a") :modules ((:core)))
                 (pkg-alias :lockfile (core) :recipe (:local-repo "repo-a") :modules ((:core)))
                 (pkg-b :lockfile (other) :recipe (:local-repo "repo-b") :modules ((:core)))
@@ -204,14 +204,14 @@
                 (pkg-default-t :lockfile (t) :recipe (:local-repo "repo-default-t") :modules ((:core)))
                 (pkg-built-in :built-in t :lockfile (core) :recipe (:local-repo "repo-built-in") :modules ((:core)))
                 (pkg-untracked :lockfile (ignore) :recipe (:local-repo "repo-untracked") :modules ((:core)))))
-            (defun zenit-packages--bump-recipe (_package plist)
+            (defun! zenit-packages--bump-recipe (_package plist)
               (plist-get plist :recipe))
-            (defun zenit-packages--bump-latest-commit (recipe)
+            (defun! zenit-packages--bump-latest-commit (recipe)
               (push (plist-get recipe :local-repo) latest)
               (format "%s-commit" (plist-get recipe :local-repo)))
-            (defun zenit-packages--bump-write-lockfile (local-repo lockfile commit local-conf)
+            (defun! zenit-packages--bump-write-lockfile (local-repo lockfile commit local-conf)
               (push (list local-repo lockfile commit local-conf) writes))
-            (defun message (format &rest rest)
+            (defun! message (format &rest rest)
               (push (apply #'format format rest) messages)))
       (zenit/bump-all-packages))
     (should (equal '("repo-a" "repo-b" "repo-default" "repo-default-t") (nreverse latest)))

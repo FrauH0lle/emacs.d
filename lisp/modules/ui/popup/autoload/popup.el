@@ -214,7 +214,10 @@ window's `select' parameter."
                     (+popup-buffer-parameter 'select (window-buffer window)))))
       (if (functionp select)
           (funcall select window origin)
-        (select-window (if select window origin))))))
+        (if select
+            (select-window window)
+          (save-current-buffer
+            (select-window origin)))))))
 
 (defun +popup--delete-popup (win)
   "Delete popup window WIN, respecting its window type.

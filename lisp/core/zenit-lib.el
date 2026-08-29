@@ -443,104 +443,85 @@ checked."
     (file-name-directory (macroexpand '(file!)))))
 
 (put 'defun* 'lisp-indent-function 'defun)
+(put 'defun! 'lisp-indent-function 'defun)
 (defmacro letf! (bindings &rest body)
-  "Temporarily rebind function, macros, and advice in BODY.
+  "Temporarily bind functions, macros, and advice in BODY.
 
-Intended as syntax sugar for `cl-letf', `cl-labels',
-`cl-macrolet', and temporary advice (`define-advice').
+Intended as syntax sugar for `cl-flet', `cl-letf', `cl-labels',
+`cl-macrolet', and (temporary) `define-advice'.
 
 BINDINGS is either:
 
-  A list of (PLACE VALUE) bindings as `cl-letf*' would accept.
-  A list of, or a single, `defun', `defun*', `defmacro', or
-  `defadvice' forms.
-
+  A list of (PLACE VALUE) bindings as `cl-letf*' would accept. If PLACE
+    is a sharp-quoted symbol, it is implicitly wrapped
+    in (symbol-function ...).
+  A list of, or a single, `defun', `defun*', `defun!', `defmacro', or
+    `defadvice' forms.
 
 The def* forms accepted are:
 
   (defun NAME (ARGS...) &rest BODY)
-    Defines a temporary function with `cl-letf'
+    Defines a temporary, lexical function with `cl-flet'.
 
   (defun* NAME (ARGS...) &rest BODY)
-    Defines a temporary function with `cl-labels' (allows
+    Defines a temporary, lexical function with `cl-labels' (allows
     recursive definitions).
 
+  (defun! NAME (ARGS...) &rest BODY)
+    Defines a temporary, global function with `cl-letf*'.
+    Will (temporarily) override functions of the same name. Use
+    `defadvice' instead if you want to reference/call the original
+    function.
+
   (defmacro NAME (ARGS...) &rest BODY)
-    Uses `cl-macrolet'.
+    Uses `cl-macrolet' to define lexical macros.
 
   (defadvice FUNCTION WHERE ADVICE)
-    Uses `advice-add' (then `advice-remove' afterwards).
+    Uses `advice-add' to advise FUNCTION over the duration of its
+    execution, then undoes the advice with `advice-remove' afterwards.
+    No relation to the `defadvice' macro.
 
   (defadvice FUNCTION (HOW LAMBDA-LIST &optional NAME DEPTH) &rest BODY)
-    Defines temporary advice with `define-advice'."
-  (declare (indent defun)
-           (debug ((&rest [&or
-                           ;; ((PLACE VALUE))
-                           ;; PLACE can be a symbol or a function (#'PLACE)
-                           ([&or symbolp
-                                 ("function" symbolp)]
-                            form)
-                           ;; (defun ...) or ((defun ...))
-                           [&or [&define "defun" symbolp cl-lambda-list def-body]
-                                (&define "defun" symbolp cl-lambda-list def-body)]
-                           ;; (defun* ...) or ((defun* ...))
-                           [&or [&define "defun*" symbolp cl-lambda-list def-body]
-                                (&define "defun*" symbolp cl-lambda-list def-body)]
-                           ;; (defmacro ...) or ((defmacro ...))
-                           [&or [&define "defmacro" symbolp cl-macro-list def-body]
-                                (&define "defmacro" symbolp cl-macro-list def-body)]
-                           ;; (defadvice ...) or ((defadvice ...))
-                           [&or ["defadvice" [&or [[&or symbolp ("function" symbolp)] keywordp form]
-                                                  [sexp (keywordp sexp [&optional sexp] [&optional integerp]) body]]]
-                                ("defadvice" . [&or ([&or symbolp ("function" symbolp)] keywordp form)
-                                                    (sexp (keywordp sexp [&optional sexp] [&optional integerp]) body)])]])
-                   body)))
+    Defines temporary advice with `define-advice'. No relation to the
+    `defadvice' macro."
+  (declare (indent defun) (debug t))
   (setq body (macroexp-progn body))
-  (when (memq (car bindings) '(defun defun* defmacro defadvice))
+  (when (memq (car bindings) '(defun defun* defun! defmacro defadvice))
     (setq bindings (list bindings)))
   (dolist (binding (reverse bindings) body)
-    (let ((type (car binding))
-          (rest (cdr binding)))
-      (setq
-       body (pcase type
-              (`defmacro `(cl-macrolet ((,@rest)) ,body))
-              (`defadvice
-                  (if (keywordp (cadr rest))
-                      (cl-destructuring-bind (target where fn) rest
-                        `(when-let* ((fn ,fn))
-                           (advice-add ,target ,where fn)
-                           (unwind-protect ,body (advice-remove ,target fn))))
-                    (let* ((fn (pop rest))
-                           (argspec (pop rest)))
-                      (when (< (length argspec) 3)
-                        (setq argspec
-                              (list (nth 0 argspec)
-                                    (nth 1 argspec)
-                                    (or (nth 2 argspec) (gensym (format "%s-a" (symbol-name fn)))))))
-                      ;; `define-advice' generates an advice function name of
-                      ;; the form SYMBOL@NAME which we need to use in the
-                      ;; following.
-                      (let ((name (intern (format "%s@%s" (symbol-name fn) (symbol-name (nth 2 argspec))))))
-                        `(progn
-                           (define-advice ,fn ,argspec ,@rest)
-                           (unwind-protect ,body
-                             (advice-remove #',fn #',name)
-                             ,(if name `(fmakunbound ',name))))))))
-              (`defun
-                  `(cl-letf ((,(car rest) (symbol-function #',(car rest))))
-                     ;; Make the byte-compiler happy
-                     (eval-when-compile
-                       (declare-function ,(car rest) nil))
-                     (ignore ,(car rest))
-                     (cl-letf (((symbol-function #',(car rest))
-                                (lambda! ,(cadr rest) ,@(cddr rest))))
-                       ,body)))
-              (`defun*
-                `(cl-labels ((,@rest)) ,body))
-              (_
-               (when (eq (car-safe type) 'function)
-                 (setq type (list 'symbol-function type)))
-               (list 'cl-letf (list (cons type rest)) body)))))))
+    (setq
+     body (pcase binding
+            (`(defmacro . ,rest) `(cl-macrolet (,rest) ,body))
+            (`(defun    . ,rest) `(cl-flet     (,rest) ,body))
+            (`(defun*   . ,rest) `(cl-labels   (,rest) ,body))
+            (`(defun! ,name . ,rest)
+             `(cl-letf (((symbol-function #',name)
+                         (cl-function (lambda ,@rest))))
+                ,body))
+            (`(defadvice ,target ,first . ,rest)
+             (if (keywordp first)
+                 ;; (defadvice TARGET HOW FUNCTION &rest PROPS)
+                 (let ((sym (gensym "fn")))
+                   `(when-let* ((,sym ,(car rest)))
+                      (advice-add ,target ,first ,sym ,@(cdr rest))
+                      (unwind-protect ,body (advice-remove ,target ,sym))))
+               (when (< (length first) 3)
+                 (setq first
+                       (list (nth 0 first)
+                             (nth 1 first)
+                             (gensym "zenit-letf-"))))
+               (let ((sym (intern (format "%s@%s" target (nth 2 first)))))
+                 `(progn
+                    ;; Make the byte-compiler happy
+                    (eval-when-compile
+                      (declare-function ,sym nil))
+                    (define-advice ,target ,first ,@rest)
+                    (unwind-protect ,body
+                      (advice-remove #',target #',sym)
+                      (fmakunbound ',sym))))))
+            (`((function ,fn) ,value)
+             `(cl-letf (((symbol-function #',fn) ,value)) ,body))
+            (_ `(let (,binding) ,body))))))
 
 (defmacro quiet!! (&rest forms)
   "Run FORMS without generating any output (for real).
@@ -552,12 +533,12 @@ FORMS."
   `(if init-file-debug
        (progn ,@forms)
      (letf! ((standard-output (lambda (&rest _)))
-             (defun message (&rest _))
-             (defun load (file &optional noerror _nomessage nosuffix must-suffix)
-               (funcall load file noerror t nosuffix must-suffix))
-             (defun write-region (start end filename &optional append visit lockname mustbenew)
+             (defadvice message (:override (msg &rest _)) msg)
+             (defadvice load (:around (fn file &optional noerror _nomessage nosuffix must-suffix))
+               (funcall fn file noerror t nosuffix must-suffix))
+             (defadvice write-region (:around (fn start end filename &optional append visit lockname mustbenew))
                (unless visit (setq visit 'no-message))
-               (funcall write-region start end filename append visit lockname mustbenew)))
+               (funcall fn start end filename append visit lockname mustbenew)))
        ,@forms)))
 
 (defmacro quiet! (&rest forms)
@@ -634,10 +615,10 @@ at their respective positions:
 
 If both '%*' and '%1' are found in DATA, an error is raised."
     (cond ((symbolp data)
-           (when-let
-               (pos (cond ((eq data '%*) 0)
+           (when-let*
+               ((pos (cond ((eq data '%*) 0)
                           ((memq data '(% %1)) 1)
-                          ((get 'zenit--fn-crawl data))))
+                          ((get 'zenit--fn-crawl data)))))
              (when (and (= pos 1)
                         (aref args 1)
                         (not (eq data (aref args 1))))

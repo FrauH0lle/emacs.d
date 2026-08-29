@@ -253,14 +253,14 @@
   :doc "`zenit--map-nested' processes nested map without wrapper"
   (letf! ((zenit--map-state '(:prop "state"))
           (zenit--map-forms nil)
-          (defun zenit--map-process (rest) 'processed))
+          (defun! zenit--map-process (rest) 'processed))
     (zenit--map-nested nil '(:nested-forms))
     (should (equal '(processed) zenit--map-forms)))
 
   :doc "`zenit--map-nested' processes nested map with wrapper"
   (letf! ((zenit--map-state '(:prop "state"))
           (zenit--map-forms nil)
-          (defun zenit--map-process (rest) 'processed))
+          (defun! zenit--map-process (rest) 'processed))
     (zenit--map-nested '(wrap) '(:nested-forms))
     (should (equal '((wrap processed)) zenit--map-forms))))
 

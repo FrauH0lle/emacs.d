@@ -146,9 +146,9 @@ Respects `diff-hl-disable-on-remote'."
     :around #'diff-hl-revert-hunk-1
     (letf! ((refine-mode diff-auto-refine-mode)
             (diff-auto-refine-mode t)
-            (defun diff-refine-hunk ()
+            (defadvice diff-refine-hunk (:around (orig))
               (when refine-mode
-                (funcall diff-refine-hunk))
+                (funcall orig))
               (shrink-window-if-larger-than-buffer)))
       (apply fn args)))
 

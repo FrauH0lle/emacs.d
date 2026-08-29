@@ -327,10 +327,9 @@ However, in batch mode, print to stdout instead of stderr."
 ;; explanation.
 (defadvice! +straight--throw-error-on-no-branch-a (fn &rest args)
   :around #'straight--process-log
-  (letf! ((defun shell-quote-argument (&rest args)
-            (unless (car args)
-              (error "Package was not properly cloned due to a connection failure, please try again later"))
-            (apply shell-quote-argument args)))
+  (letf! (defadvice shell-quote-argument (:before (&rest args))
+           (unless (car args)
+             (error "Package was not properly cloned due to a connection failure, please try again later")))
     (apply fn args)))
 
 (defadvice! +straight--regurgitate-empty-string-error-a (fn &rest args)

@@ -787,12 +787,12 @@ If prefix arg is present, refresh the cache."
           (_ (insert "Not installed")))
         (insert "\n")
 
-        (when-let
-            (modules
+        (when-let*
+            ((modules
              (if (gethash (symbol-name package) straight--build-cache)
                  (zenit-package-get package :modules)
                (plist-get (cdr (assq package (zenit-package-list 'all)))
-                          :modules)))
+                          :modules))))
           (package--print-help-section "Modules")
           (insert "Declared by the following Zenit modules:\n")
           (dolist (m modules)

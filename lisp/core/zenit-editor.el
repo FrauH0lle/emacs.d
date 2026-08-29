@@ -368,17 +368,7 @@ system."
                (concat "^" (regexp-quote (or (getenv "XDG_RUNTIME_DIR")
                                              "/run"))))
 
-  ;; Text properties inflate the size of recentf's files, and there is no
-  ;; purpose in persisting them (Must be first in the list!)
-  (add-to-list 'recentf-filename-handlers #'substring-no-properties)
-
-  (add-hook! '(zenit-switch-window-hook write-file-functions)
-    (defun zenit--recentf-touch-buffer-h ()
-      "Bump file in recent file list when it is switched or written to."
-      (when buffer-file-name
-        (recentf-add-file buffer-file-name))
-      ;; Return nil for `write-file-functions'
-      nil))
+  (add-hook 'zenit-switch-window-hook #'recentf-track-opened-file)
 
   (add-hook!'dired-mode-hook
    (defun zenit--recentf-add-dired-directory-h ()
@@ -411,29 +401,26 @@ system."
         savehist-additional-variables
         '(kill-ring                        ; persist clipboard
           register-alist                   ; persist macros
-          mark-ring global-mark-ring       ; persist marks
           search-ring regexp-search-ring)) ; persist searches
 
   (add-hook! 'savehist-save-hook
     (defun zenit-savehist-unpropertize-variables-h ()
-      "Remove text properties from `kill-ring' to reduce savehist cache
-size."
-      (setq kill-ring
-            (mapcar #'substring-no-properties
-                    (cl-remove-if-not #'stringp kill-ring))
-            register-alist
-            (cl-loop for (reg . item) in register-alist
-                     if (stringp item)
-                     collect (cons reg (substring-no-properties item))
-                     else collect (cons reg item)))))
+"Strip text properties from vars to reduce size and serialization errors."
+      (letf! (defun* strip-properties (tree)
+               (cond ((stringp tree) (substring-no-properties tree))
+                     ((consp tree) (cons (strip-properties (car tree))
+                                         (strip-properties (cdr tree))))
+                     (tree)))
+        (dolist (var (append savehist-additional-variables
+                             savehist-minibuffer-history-variables))
+          (when (boundp var)
+            (set var (strip-properties (symbol-value var)))))))
 
-  (add-hook! 'savehist-save-hook
     (defun zenit-savehist-remove-unprintable-registers-h ()
       "Remove unwriteable registers (e.g. containing window
 configurations). Otherwise, `savehist' would discard
 `register-alist' entirely if we don't omit the unwritable
 tidbits."
-
       ;; Save new value in the temp buffer savehist is running
       ;; `savehist-save-hook' in. We don't want to actually remove the
       ;; unserializable registers in the current session!
@@ -578,10 +565,10 @@ indentation, like `nim-mode'. This prevents them from leaving
 Emacs in a broken state."
     :around #'dtrt-indent-mode
     (let ((dtrt-indent-run-after-smie dtrt-indent-run-after-smie))
-      (letf! ((defun symbol-config--guess (beg end)
-                (funcall symbol-config--guess beg (min end 10000)))
-              (defun smie-config-guess ()
-                (condition-case e (funcall smie-config-guess)
+      (letf! ((defadvice symbol-config--guess (:around (fn beg end))
+                (funcall fn beg (min end 10000)))
+              (defadvice smie-config-guess (:around (fn))
+                (condition-case e (funcall fn)
                   (error (setq dtrt-indent-run-after-smie t)
                          (message "[WARNING] Indent detection: %s"
                                   (error-message-string e))

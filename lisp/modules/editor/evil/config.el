@@ -187,8 +187,8 @@ global, so..."
   ;; spaces. It doesn't in vim, so it shouldn't in evil.
   (defadvice! +evil--no-squeeze-on-fill-a (orig-fn &rest args)
     :around '(evil-fill evil-fill-and-move)
-    (letf! (defun fill-region (from to &optional justify _nosqueeze to-eop)
-             (funcall fill-region from to justify t to-eop))
+    (letf! (defadvice fill-region (:around (orig from to &optional justify _nosqueeze to-eop))
+             (funcall orig from to justify t to-eop))
       (apply orig-fn args)))
 
   ;; HACK: Make Emacs registers recognize and treat Evil registers like their

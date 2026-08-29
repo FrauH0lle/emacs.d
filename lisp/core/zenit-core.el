@@ -380,10 +380,10 @@ handling encrypted or compressed files, among other things."
           (progn
             (when (setq site-run-file (get 'site-run-file 'initial-value))
               (let ((inhibit-startup-screen inhibit-startup-screen))
-                (letf! ((defun load-file (file)
+                (letf! ((defun! load-file (file)
                           (load file nil (not init-file-debug)))
-                        (defun load (file &optional noerror _nomessage &rest args)
-                          (apply load file noerror (not init-file-debug) args)))
+                        (defadvice load (:around (fn file &optional noerror _nomessage &rest args))
+                          (apply fn file noerror (not init-file-debug) args)))
                   (load site-run-file t))))
             (apply fn args))
         ;; Now it's safe to be verbose.

@@ -561,67 +561,42 @@ buffers are visible in other windows, switch to
       org-agenda-mode dired-mode)
     "What modes to enable `hl-line-mode' in.")
   :config
-  ;; DEPRECATED 2026-01-27: Adjust when 31 is released.
-  (if (boundp 'global-hl-line-buffers)
-      (setq global-hl-line-buffers
-            (lambda (b)
-              (with-current-buffer b
-                (not (or hl-line-mode
-                         (when global-hl-line-modes
-                           (if (eq (car global-hl-line-modes) 'not)
-                               (derived-mode-p (cdr global-hl-line-modes))
-                             (not (derived-mode-p global-hl-line-modes))))
-                         (zenit-region-active-p)
-                         cursor-face-highlight-mode
-                         (zenit-temp-buffer-p b)
-                         (minibufferp)))))
-            ;; Don't display line highlights in non-focused windows, for
-            ;; performance sake and to reduce UI clutter.
-            global-hl-line-sticky-flag 'window)
-    ;; HACK: `global-hl-line-buffers' wasn't introduced until 31.1, so I
-    ;;   reimplement to `global-hl-line-modes' give us a major mode
-    ;;   white/blacklist via `global-hl-line-modes'.
-    (defun +hl-line--enable-global-mode ()
-      "Switch on `hl-line-mode'."
-      (and (cond (hl-line-mode nil)
-                 ((null global-hl-line-modes) nil)
-                 ((eq global-hl-line-modes t))
-                 ((eq (car global-hl-line-modes) 'not)
-                  (not (derived-mode-p (cdr global-hl-line-modes))))
-                 ((derived-mode-p global-hl-line-modes)))
-           (hl-line-mode +1)))
+  (setq global-hl-line-buffers
+        (lambda (b)
+          (with-current-buffer b
+            (not (or hl-line-mode
+                     (when global-hl-line-modes
+                       (if (eq (car global-hl-line-modes) 'not)
+                           (derived-mode-p (cdr global-hl-line-modes))
+                         (not (derived-mode-p global-hl-line-modes))))
+                     (zenit-region-active-p)
+                     cursor-face-highlight-mode
+                     (zenit-temp-buffer-p b)
+                     (minibufferp)))))
+        ;; Don't display line highlights in non-focused windows, for
+        ;; performance sake and to reduce UI clutter.
+        global-hl-line-sticky-flag 'window)
 
-    (define-globalized-minor-mode global-hl-line-mode hl-line-mode
-      +hl-line--enable-global-mode
-      :group 'hl-line)
-    (eval-when-compile
-      (declare-function +hl-line--enable-global-mode nil)
-      (declare-function hl-line-mode-set-explicitly nil)
-      (declare-function global-hl-line-mode-cmhh nil)
-      (declare-function global-hl-line-mode-check-buffers nil)
-      (declare-function global-hl-line-mode-enable-in-buffer nil)
-      (declare-function global-hl-line-mode-enable-in-buffers nil))
+  ;; Temporarily disable `hl-line-mode' when selection is active, since it
+  ;; doesn't serve much purpose when the selection is so much more visible.
+  (defvar zenit--hl-line-mode nil)
 
-    ;; Temporarily disable `hl-line-mode' when selection is active, since it
-    ;; doesn't serve much purpose when the selection is so much more visible.
-    (defvar zenit--hl-line-mode nil)
+  (add-hook! 'activate-mark-hook
+    (defun zenit-disable-hl-line-h ()
+      (when hl-line-mode
+        (hl-line-mode -1)
+        (setq-local zenit--hl-line-mode t))))
 
-    (add-hook! 'activate-mark-hook
-      (defun zenit-disable-hl-line-h ()
-        (when hl-line-mode
-          (hl-line-mode -1)
-          (setq-local zenit--hl-line-mode t))))
+  (add-hook! 'deactivate-mark-hook
+    (defun zenit-enable-hl-line-maybe-h ()
+      (when zenit--hl-line-mode
+        (hl-line-mode +1)
+        (kill-local-variable 'zenit--hl-line-mode))))
 
-    (add-hook! 'deactivate-mark-hook
-      (defun zenit-enable-hl-line-maybe-h ()
-        (when zenit--hl-line-mode
-          (hl-line-mode +1)
-          (kill-local-variable 'zenit--hl-line-mode))))
-
-    (add-hook! 'hl-line-mode-hook
-      (defun zenit-truly-disable-hl-line-h ()
-        (unless hl-line-mode
-          (setq-local zenit--hl-line-mode nil))))))
+  (add-hook! 'hl-line-mode-hook
+    (defun zenit-truly-disable-hl-line-h ()
+      (unless hl-line-mode
+        (setq-local zenit--hl-line-mode nil)))))
 
 
 (use-package! winner

@@ -438,8 +438,8 @@ user's custom.el instead."
 ;; By default, Emacs stores `authinfo' in $HOME and in plain-text. This file
 ;; stores usernames, passwords, and other treasures for the aspiring malicious
 ;; third party.
-(setq auth-sources (list (file-name-concat zenit-data-dir "authinfo.gpg")
-                         "~/.authinfo.gpg"))
+(setq auth-sources (list "~/.authinfo.gpg"
+                         (file-name-concat zenit-data-dir "authinfo.gpg")))
 
 ;; Native compilation support (see http://akrl.sdf.org/gccemacs.html)
 (when (boundp 'native-comp-eln-load-path)

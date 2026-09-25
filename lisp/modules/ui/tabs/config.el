@@ -23,7 +23,10 @@ It has effect when `tab-bar-tab-hints' is non-nil."
 
   (el-patch-defun tab-bar-tab-group-format-default (tab i &optional current-p)
     (propertize
-     (concat (if (and tab-bar-tab-hints (not current-p)) (format (el-patch-swap "%d " "  #%d: ") i) "")
+     (concat (if (and tab-bar-tab-hints
+                      (not current-p)
+                      (not tab-bar-show-inactive-group-tabs))
+                 (format (el-patch-swap "%d " " #%d: ") i) "")
              (funcall tab-bar-tab-group-function tab))
      'face (if current-p 'tab-bar-tab-group-current 'tab-bar-tab-group-inactive))))
 

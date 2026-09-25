@@ -24,13 +24,14 @@ string."
    ;; don't even try to match parens at all, so that's not relevant.
    (el-patch-remove
      ((and (bound-and-true-p outline-search-function)
-         (not (eq outline-search-function 'elisp-outline-search)))
-    #'ignore))
+           (not (eq outline-search-function 'elisp-outline-search)))
+      #'ignore))
    (font-lock-keywords-only regexp)
    ((lambda (limit)
       (and (el-patch-swap
              (re-search-forward regexp limit t)
-             (if outline-search-function
+             (if (and (bound-and-true-p outline-search-function)
+                      (not (eq outline-search-function 'elisp-outline-search)))
                  (funcall outline-search-function limit)
                (re-search-forward regexp limit t)))
            (not (nth 3 (syntax-ppss (match-beginning 0)))))))))

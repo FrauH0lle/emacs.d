@@ -27,7 +27,8 @@ display a message."
   (cl-assert (null comp-no-spawn))
   (if (or comp-files-queue
           (> (comp--async-runnings) 0))
-      (unless (>= (comp--async-runnings) (comp--effective-async-max-jobs))
+      (unless (or (>= (comp--async-runnings) (comp--effective-async-max-jobs))
+                  (native--compile-skip-on-battery-p))
         (cl-loop
          for (source-file . load) = (pop comp-files-queue)
          while source-file
@@ -95,6 +96,7 @@ display a message."
                                    (mapcar #'prin1-to-string expr)))
                    (_ (progn
                         (with-temp-file temp-file
+                          (insert ";;; -*- lexical-binding: t -*-\n")
                           (mapc #'insert expr-strings))
                         (comp-log "\n")
                         (mapc #'comp-log expr-strings)))
@@ -133,6 +135,7 @@ display a message."
                                                       (eq load1 'late))))
                                (comp--run-async-workers))
                              :noquery (not native-comp-async-query-on-exit))))
+              (set-process-thread process nil)
               (puthash source-file process comp-async-compilations))
          when (>= (comp--async-runnings) (comp--effective-async-max-jobs))
          do (cl-return)))

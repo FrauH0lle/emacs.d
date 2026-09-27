@@ -74,7 +74,16 @@
   (setq gptel-model 'gpt-5.6-sol
         gptel-backend (gptel-make-openai-oauth "Codex"
                         :header #'+gptel--codex-header
-                        :models '((gpt-5.6-sol
+                        :models '((gpt-6-astra
+                                   :description "The very best model for coding and agentic tasks"
+                                   :capabilities (media tool-use json url responses-api)
+                                   :reasoning-effort (member low medium high xhigh max)
+                                   :mime-types ("image/jpeg" "image/png" "image/gif" "image/webp")
+                                   :context-window 258
+                                   :input-cost 5
+                                   :output-cost 30
+                                   :cutoff-date "2026-02")
+                                  (gpt-5.6-sol
                                    :description "The best model for coding and agentic tasks"
                                    :capabilities (media tool-use json url responses-api)
                                    :reasoning-effort (member none low medium high xhigh max)
@@ -147,11 +156,6 @@
          `(("context7" . (:command "npx" :args ("-y" "@upstash/context7-mcp@latest")))))
 
   (mcp-hub-start-all-server))
-
-
-(use-package! gptel-agent
-  :defer t
-  :init (after! gptel (require 'gptel-agent)))
 
 
 (use-package! mevedel

@@ -1,5 +1,7 @@
 ;; tools/tree-sitter/config.el -*- lexical-binding: t; -*-
 
+(defvar +tree-sitter--commit-field? nil)
+
 ;;
 ;;; Packages
 
@@ -9,28 +11,11 @@
   :preface
   (setq treesit-enabled-modes t)
 
-  ;; HACK: The *-ts-mode major modes are inconsistent about how they treat
-  ;;   missing language grammars (some error out, some respect
-  ;;   `treesit-auto-install-grammar', some fall back to `fundamental-mode').
-  ;;   I'd like to address this poor UX using `major-mode-remap-alist' entries
-  ;;   created by `set-tree-sitter!' (which will fall back to the non-treesit
-  ;;   modes), but most *-ts-mode's clobber `auto-mode-alist' and/or
-  ;;   `interpreter-mode-alist' each time the major mode is activated, so those
-  ;;   must be undone too so they don't overwrite user config.
-  (save-match-data
-    (dolist (sym '(auto-mode-alist interpreter-mode-alist))
-      (set
-       sym (cl-loop for (src . fn) in (symbol-value sym)
-                    unless (and (functionp fn)
-                                (string-match "-ts-mode\\(?:-maybe\\)?$" (symbol-name fn)))
-                    collect (cons src fn)))))
+  ;; Increase the highlighting/christmas tree
+  (setq treesit-font-lock-level 4)
 
-  ;; HACK: These *-ts-modes change `auto-mode-alist' and/or
-  ;;   `interpreter-mode-alist' every time they are activated, running the risk
-  ;;   of overwriting user config.
-  (dolist (mode '(csharp-ts-mode
-                  python-ts-mode))
-    (advice-add mode :around #'+tree-sitter-ts-mode-inhibit-side-effects-a))
+  ;; So we can prevent double-prompting later.
+  (put 'treesit-auto-install-grammar 'permanent-local t)
 
   ;; HACK: Intercept all ts-mode major mode remappings so grammars can be
   ;;   dynamically checked and `treesit-auto-install-grammar' can be
@@ -39,11 +24,12 @@
   (defadvice! +tree-sitter--maybe-remap-major-mode-a (fn mode)
     :around #'major-mode-remap
     (let ((mode (funcall fn mode)))
-      (if-let* ((ts (get mode '+tree-sitter))
+      (if-let* ((ts (get mode '+tree-sitter)) ; registered by `set-tree-sitter!'
                 (fallback-mode (car ts)))
-          (cond ((not (treesit-available-p))
+          (cond ((get mode '+tree-sitter-mode))
+                ((not (eval-when-compile (treesit-available-p)))
                  (message "Treesit unavailable, falling back to `%S'" fallback-mode)
-                 fallback-mode)
+                 (put mode '+tree-sitter-mode fallback-mode))
                 ((not (fboundp mode))
                  (message "Couldn't find `%S', falling back to `%S'" mode fallback-mode)
                  fallback-mode)
@@ -58,12 +44,14 @@
                             (warning-suppress-types
                              (if zenit-debug-mode
                                  warning-suppress-types
-                               (cons '(treesit) warning-suppress-types))))
+                               (cons '(treesit) warning-suppress-types)))
+                            ;; For ts-modes that aren't registered with
+                            ;; `set-tree-sitter!' and try to clobber these
+                            ;; alists at load time.
+                            auto-mode-alist
+                            interpreter-mode-alist)
                         (or (not (autoloadp fn))
-                            ;; ts-modes usually change these alists at autoload
-                            ;; *and* load time.
-                            (let (auto-mode-alist interpreter-mode-alist)
-                              (autoload-do-load fn mode))))
+                            (autoload-do-load fn mode)))
                       ;; Only prompt once, and log other times.
                       (or (null (cdr ts))  ; no grammars, no problem!
                           ;; If the base/fallback mode doesn't exist, let's
@@ -74,63 +62,167 @@
                           ;; Ensure grammars are present (and prompt to install
                           ;; them if needed).
                           (if-let* ((grammars
-                                     (cl-remove-if (zenit-rpartial #'treesit-ready-p 'message)
-                                                   (cdr ts))))
+                                     (cl-loop for g in (cdr ts)
+                                              unless (treesit-ready-p g 'message)
+                                              collect g)))
                               (if (or (eq treesit-auto-install-grammar 'always)
                                       (if (eq treesit-auto-install-grammar 'ask)
-                                          (y-or-n-p
-                                           (format "Missing tree-sitter grammars: %s\nInstall now?"
-                                                   (mapconcat #'symbol-name grammars ", ")))))
-                                  (mapc #'treesit-install-language-grammar grammars)
+                                          (and (not non-essential)
+                                               (y-or-n-p
+                                                (format "Missing tree-sitter grammars: %s\nInstall now?"
+                                                        (mapconcat #'symbol-name grammars ", "))))))
+                                  (always
+                                   (cl-loop for grammar in grammars
+                                            do (treesit-install-language-grammar grammar)
+                                            finally do (setq-local treesit-auto-install-grammar t)))
                                 (message "Treesit grammars missing (%s), falling back to `%s'..."
                                          (mapconcat #'symbol-name grammars ", ")
                                          fallback-mode)
                                 nil)
                             t)))
-                 (put mode '+tree-sitter-ensured t)
-                 mode)
+                 (put mode '+tree-sitter-mode mode))
                 (fallback-mode))
         mode)))
   :config
   (let ((data-dir (file-name-concat zenit-data-dir "tree-sitter")))
     (cl-pushnew data-dir treesit-extra-load-path :test #'equal)
+    (make-directory data-dir t)
     ;; HACK: treesit lacks any way to dictate where to install grammars.
     (defadvice! +tree-sitter--install-grammar-to-local-dir-a (fn lang &optional out-dir &rest args)
       :around #'treesit-install-language-grammar
       :around #'treesit--build-grammar
       (apply fn lang (or out-dir data-dir) args)))
 
+  (setq +tree-sitter--commit-field?
+        (eq (cdr (func-arity
+                  (advice--cd*r
+                   (advice--symbol-function 'treesit--install-language-grammar-1))))
+            'many))
 
-  ;; Increase the highlighting/christmas tree
-  (setq! treesit-font-lock-level 4)
+  (cl-defun +tree-sitter-source (name &key url rev source-dir cc cpp commit)
+    (cons name
+          (append (list url rev source-dir cc cpp)
+                  ;; COMPAT: 31.1 introduced a COMMIT recipe argument.  On
+                  ;;   <=30.x, extra arguments will trigger an arity error when
+                  ;;   installing grammars.
+                  (if +tree-sitter--commit-field?
+                      (list commit)))))
 
-  ;; TODO: Move most of these out to modules
-  (dolist (map '((awk "https://github.com/Beaglefoot/tree-sitter-awk" nil nil nil nil)
-                 (bibtex "https://github.com/latex-lsp/tree-sitter-bibtex" nil nil nil nil)
-                 (blueprint "https://github.com/huanie/tree-sitter-blueprint" nil nil nil nil)
-                 (commonlisp "https://github.com/tree-sitter-grammars/tree-sitter-commonlisp" nil nil nil nil)
-                 (latex "https://github.com/latex-lsp/tree-sitter-latex" nil nil nil nil)
-                 (make "https://github.com/tree-sitter-grammars/tree-sitter-make" nil nil nil nil)
-                 (nu "https://github.com/nushell/tree-sitter-nu" nil nil nil nil)
-                 (org "https://github.com/milisims/tree-sitter-org" nil nil nil nil)
-                 (perl "https://github.com/ganezdragon/tree-sitter-perl" nil nil nil nil)
-                 (proto "https://github.com/mitchellh/tree-sitter-proto" nil nil nil nil)
-                 (sql "https://github.com/DerekStride/tree-sitter-sql" "gh-pages" nil nil nil)
-                 (surface "https://github.com/connorlay/tree-sitter-surface" nil nil nil nil)
-                 (typst "https://github.com/uben0/tree-sitter-typst" "master" "src" nil nil)
-                 (verilog "https://github.com/gmlarumbe/tree-sitter-verilog" nil nil nil nil)
-                 (vhdl "https://github.com/alemuller/tree-sitter-vhdl" nil nil nil nil)
-                 (vue "https://github.com/tree-sitter-grammars/tree-sitter-vue" nil nil nil nil)
-                 (wast "https://github.com/wasm-lsp/tree-sitter-wasm" nil "wast/src" nil nil)
-                 (wat "https://github.com/wasm-lsp/tree-sitter-wasm" nil "wat/src" nil nil)
-                 (wgsl "https://github.com/mehmetoguzderin/tree-sitter-wgsl" nil nil nil nil)))
-    (cl-pushnew map treesit-language-source-alist :test #'eq :key #'car)))
+  (dolist (map `(;; Module-less (or major-mode-less) grammars
+                 (awk :url "https://github.com/Beaglefoot/tree-sitter-awk")
+                 (bibtex :url "https://github.com/latex-lsp/tree-sitter-bibtex")
+                 (blueprint :url "https://github.com/huanie/tree-sitter-blueprint")
+                 (cl-format :url "https://codeberg.org/zshaftel/tree-sitter-cl-syntax"
+                            :source-dir "grammars/format/src")
+                 (common-lisp :url "https://codeberg.org/zshaftel/tree-sitter-cl-syntax"
+                              :source-dir "grammars/cl/src")
+                 (latex :url "https://github.com/latex-lsp/tree-sitter-latex") ; see latex-lsp/tree-sitter-latex#172
+                 (make :url "https://github.com/tree-sitter-grammars/tree-sitter-make")
+                 (nu :url "https://github.com/nushell/tree-sitter-nu")
+                 (org :url "https://github.com/milisims/tree-sitter-org")
+                 (perl :url "https://github.com/ganezdragon/tree-sitter-perl")
+                 (proto :url "https://github.com/mitchellh/tree-sitter-proto")
+                 (r :url "https://github.com/r-lib/tree-sitter-r")
+                 (sql :url "https://github.com/DerekStride/tree-sitter-sql" :rev "gh-pages")
+                 (surface :url "https://github.com/connorlay/tree-sitter-surface")
+                 (toml :url "https://github.com/tree-sitter-grammars/tree-sitter-toml"
+                       :rev "v0.7.0")
+                 (typst :url "https://github.com/uben0/tree-sitter-typst"
+                        :rev "master"
+                        :source-dir "src")
+                 (systemverilog :url "https://github.com/gmlarumbe/tree-sitter-systemverilog")
+                 (vhdl :url "https://github.com/alemuller/tree-sitter-vhdl")
+                 (vue :url "https://github.com/tree-sitter-grammars/tree-sitter-vue")
+                 (wast :url "https://github.com/wasm-lsp/tree-sitter-wasm"
+                       :source-dir "wast/src")
+                 (wat :url "https://github.com/wasm-lsp/tree-sitter-wasm"
+                      :source-dir "wat/src")
+                 (wgsl :url "https://github.com/mehmetoguzderin/tree-sitter-wgsl")
 
-(use-package! treesit-langs
-  :defer t
-  :config
-  ;; The setup is handled by Emacs itself
-  (advice-add #'treesit-lang--setup :override #'ignore))
+                 ;; Grammars with modules
+                 (ada :url "https://github.com/briot/tree-sitter-ada")
+                 (c :url "https://github.com/tree-sitter/tree-sitter-c"
+                    :rev "v0.24.1")
+                 (cpp :url "https://github.com/tree-sitter/tree-sitter-cpp")
+                 (cmake :url "https://github.com/uyha/tree-sitter-cmake")
+                 (c-sharp :url "https://github.com/tree-sitter/tree-sitter-c-sharp"
+                          :rev "v0.23.1")
+                 (clojure :url "https://github.com/sogaiu/tree-sitter-clojure.git"
+                          :rev "unstable-20250526")
+                 (cuda :url "https://github.com/tree-sitter-grammars/tree-sitter-cuda")
+                 (css :url "https://github.com/tree-sitter/tree-sitter-css"
+                      :rev "v0.23.2")
+                 (dart :url "https://github.com/UserNobody14/tree-sitter-dart")
+                 (dockerfile :url "https://github.com/camdencheek/tree-sitter-dockerfile")
+                 (doxygen :url "https://github.com/tree-sitter-grammars/tree-sitter-doxygen")
+                 (elixir :url "https://github.com/elixir-lang/tree-sitter-elixir")
+                 (erlang :url "https://github.com/WhatsApp/tree-sitter-erlang")
+                 (fsharp :url "https://github.com/ionide/tree-sitter-fsharp"
+                         :rev "v0.2.0")
+                 (gdscript :url "https://github.com/PrestonKnopp/tree-sitter-gdscript.git"
+                           :rev,"v6.1.0")
+                 (glsl :url "https://github.com/tree-sitter-grammars/tree-sitter-glsl")
+                 (graphql :url "https://github.com/bkegley/tree-sitter-graphql")
+                 (go :url "https://github.com/tree-sitter/tree-sitter-go"
+                     :rev "v0.25.0")
+                 (gomod :url "https://github.com/camdencheek/tree-sitter-go-mod")
+                 (gowork :url "https://github.com/omertuc/tree-sitter-go-work")
+                 (gpr :url "https://github.com/brownts/tree-sitter-gpr")
+                 (haskell :url "https://github.com/tree-sitter/tree-sitter-haskell")
+                 (heex :url "https://github.com/phoenixframework/tree-sitter-heex")
+                 (html :url "https://github.com/tree-sitter/tree-sitter-html"
+                       :rev "v0.23.2")
+                 (janet-simple :url "https://github.com/sogaiu/tree-sitter-janet-simple"
+                               :cc ,(if (featurep :system 'windows) "gcc.exe"))
+                 (java :url "https://github.com/tree-sitter/tree-sitter-java")
+                 (javascript :url "https://github.com/tree-sitter/tree-sitter-javascript"
+                             :rev "v0.25.0")
+                 (jsdoc :url "https://github.com/tree-sitter/tree-sitter-jsdoc"
+                        :rev "v0.23.2")
+                 (json :url "https://github.com/tree-sitter/tree-sitter-json")
+                 (julia :url "https://github.com/tree-sitter/tree-sitter-julia")
+                 (kotlin :url "https://github.com/fwcd/tree-sitter-kotlin")
+                 (lua :url "https://github.com/tree-sitter-grammars/tree-sitter-lua"
+                      :rev "v0.3.0")
+                 (markdown :url "https://github.com/tree-sitter-grammars/tree-sitter-markdown"
+                           :rev "v0.5.3"
+                           :source-dir "tree-sitter-markdown/src")
+                 (markdown-inline :url "https://github.com/tree-sitter-grammars/tree-sitter-markdown"
+                                  :rev "v0.5.3"
+                                  :source-dir "tree-sitter-markdown-inline/src")
+                 (nix :url "https://github.com/nix-community/tree-sitter-nix")
+                 (odin :url "https://github.com/tree-sitter-grammars/tree-sitter-odin"
+                       :rev "v1.3.0")
+                 (openscad :url "https://github.com/openscad/tree-sitter-openscad"
+                           :rev "v0.7.1")
+                 (php :url "https://github.com/tree-sitter/tree-sitter-php"
+                      :rev "v0.23.11"
+                      :source-dir "php/src")
+                 (phpdoc :url "https://github.com/claytonrcarter/tree-sitter-phpdoc")
+                 (python :url "https://github.com/tree-sitter/tree-sitter-python"
+                         :rev "v0.25.0")
+                 (regex :url "https://github.com/tree-sitter/tree-sitter-regex"
+                        :rev "v0.24.3")
+                 (ruby :url "https://github.com/tree-sitter/tree-sitter-ruby")
+                 (rust :url "https://github.com/tree-sitter/tree-sitter-rust"
+                       :rev "v0.24.2")
+                 (scala :url "https://github.com/tree-sitter/tree-sitter-scala")
+                 (sml :url "https://github.com/MatthewFluet/tree-sitter-sml")
+                 (swift :url "https://github.com/alex-pinkus/tree-sitter-swift"
+                        :rev "0.7.1-with-generated-files")
+                 (typescript :url "https://github.com/tree-sitter/tree-sitter-typescript"
+                             :source-dir "typescript/src")
+                 (tsx :url "https://github.com/tree-sitter/tree-sitter-typescript"
+                      :source-dir "tsx/src")
+                 (qmljs :url "https://github.com/yuja/tree-sitter-qmljs")
+                 (yaml :url "https://github.com/tree-sitter-grammars/tree-sitter-yaml"
+                       :rev "v0.7.2")
+                 (zig :url "https://github.com/tree-sitter-grammars/tree-sitter-zig")))
+    (cl-pushnew (apply #'+tree-sitter-source map)
+                treesit-language-source-alist
+                :key #'car
+                :test #'eq)))
+
 
 (use-package! evil-textobj-tree-sitter
   :when (modulep! :editor evil)

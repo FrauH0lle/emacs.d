@@ -1,34 +1,9 @@
 ;; tools/llm/config.el -*- lexical-binding: t; -*-
 
-;; PATCH 2026-02-11: `gptel'
-(el-patch-feature gptel)
-(compile-along! "patches/gptel")
-(compile-along! "patches/gptel-anthropic")
-(compile-along! "patches/gptel-openai")
-
-(defvar-local +gptel-codex-session-id nil
-  "Session identifier sent to the Codex backend.")
-
-(defun +gptel--codex-header (info)
-  "Return Codex authentication headers for request INFO."
-  (require 'org-id)
-  (append (gptel--openai-oauth-header info)
-          `(("session-id" .
-             ,(with-current-buffer (plist-get info :buffer)
-                (or +gptel-codex-session-id
-                    (setq +gptel-codex-session-id (org-id-uuid))))))))
-
-
 (use-package! gptel
   :defer t
   :hook (gptel-mode . gptel-highlight-mode)
   :config
-  ;; (load! "patches/gptel")
-  ;; (after! gptel-anthropic
-  ;;   (load! "patches/gptel-anthropic"))
-  ;; (after! gptel-openai
-  ;;   (load! "patches/gptel-openai"))
-
   (set-debug-var! 'gptel-log-level 'debug)
 
   (setq
@@ -49,68 +24,6 @@
   ;; Add `major-mode' -> language mapping
   (static-when (modulep! :lang ess)
     (add-to-list 'gptel--mode-description-alist '(ess-r-mode . "R")))
-
-  ;; CLaude
-  (gptel-make-anthropic "Claude"
-    :stream t
-    :key 'gptel-api-key
-    :request-params '(:thinking (:type "adaptive")))
-
-  (gptel-make-deepseek "DeepSeek"
-    :stream t
-    :key 'gptel-api-key)
-
-  ;; GLM
-  (gptel-make-glm-openai "GLM-coding"
-    :stream t
-    :key 'gptel-api-key
-    :request-params '(:thinking
-                      (:type "enabled"
-                       :clear_thinking :json-false)
-                      :max_tokens 16384
-                      :temperature 0.7))
-
-  ;; OpenAI Codex
-  (setq gptel-model 'gpt-5.6-sol
-        gptel-backend (gptel-make-openai-oauth "Codex"
-                        :header #'+gptel--codex-header
-                        :models '((gpt-6-astra
-                                   :description "The very best model for coding and agentic tasks"
-                                   :capabilities (media tool-use json url responses-api)
-                                   :reasoning-effort (member low medium high xhigh max)
-                                   :mime-types ("image/jpeg" "image/png" "image/gif" "image/webp")
-                                   :context-window 258
-                                   :input-cost 5
-                                   :output-cost 30
-                                   :cutoff-date "2026-02")
-                                  (gpt-5.6-sol
-                                   :description "The best model for coding and agentic tasks"
-                                   :capabilities (media tool-use json url responses-api)
-                                   :reasoning-effort (member none low medium high xhigh max)
-                                   :mime-types ("image/jpeg" "image/png" "image/gif" "image/webp")
-                                   :context-window 258
-                                   :input-cost 5
-                                   :output-cost 30
-                                   :cutoff-date "2026-02")
-                                  (gpt-5.6-terra
-                                   :description "Faster, more cost-efficient version of GPT-5.6"
-                                   :capabilities (media tool-use json url responses-api)
-                                   :reasoning-effort (member none low medium high xhigh max)
-                                   :mime-types ("image/jpeg" "image/png" "image/gif" "image/webp")
-                                   :context-window 258
-                                   :input-cost 5
-                                   :output-cost 30
-                                   :cutoff-date "2026-02")
-                                  (gpt-5.6-luna
-                                   :description "Fastest, cheapest version of GPT-5.6"
-                                   :capabilities (media tool-use json url responses-api)
-                                   :reasoning-effort (member none low medium high xhigh max)
-                                   :mime-types ("image/jpeg" "image/png" "image/gif" "image/webp")
-                                   :context-window 258
-                                   :input-cost 5
-                                   :output-cost 30
-                                   :cutoff-date "2026-02"))))
-
 
   ;; (setq gptel-display-buffer-action nil)  ; if user changes this, popup manager will bow out
   ;; (set-popup-rule!
@@ -162,7 +75,11 @@
   :defer t
   :init (after! gptel (require 'mevedel))
   :config
-  (setq! mevedel-empty-tag-query-matches-all nil)
+  (setq! mevedel-empty-tag-query-matches-all nil
+         mevedel-permission-reviewer 'auto
+         mevedel-permission-mode 'edits
+         mevedel-claude-code-directory (file-name-concat zenit-data-dir "mevedel" "claude-code"))
+
   ;; The extra indentation look awkward here
   (add-to-list '+word-wrap-text-modes 'mevedel-view-mode)
 
@@ -182,23 +99,7 @@
                   `(menu-item "" mevedel--ov-actions-dispatch
                     :filter ,(lambda (cmd) (when (evil-normal-state-p) cmd))))))
 
-  (setq! mevedel-permission-guardian t
-         mevedel-permission-mode 'edits)
-
-  (mevedel-define-preset GPT-5.6
-    :description "OpenAI GPT team"
-    :parents (mevedel-implement)
-    :model-tiers
-    ((fast :provider "Codex:gpt-5.6-luna" :effort max)
-     (balanced :provider "Codex:gpt-5.6-luna" :effort max)
-     (strong :provider "Codex:gpt-5.6-sol" :effort high))
-    :model-workloads
-    ((planning :provider "Codex:gpt-5.6-sol" :effort high)
-     (goal-guardian :provider "Codex:gpt-5.6-luna" :effort max)
-     (implementation :provider "Codex:gpt-5.6-luna" :effort max)
-     (review :provider "Codex:gpt-5.6-sol" :effort high)))
-
-  (mevedel-install))
+    (mevedel-install))
 
 
 (static-when (modulep! :completion vertico)

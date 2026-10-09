@@ -26,8 +26,7 @@
     (remove-hook 'rustic-mode-hook #'flymake-mode-off))
   :init
   (static-when (modulep! +tree-sitter)
-    (set-tree-sitter! 'rust-mode 'rustic-mode
-      `((rust :url "https://github.com/tree-sitter/tree-sitter-rust"))))
+    (set-tree-sitter! 'rust-mode 'rustic-mode))
 
   ;; HACK Certainly, `rustic-babel' does this, but the package (and many other
   ;;   rustic packages) must be loaded in order for them to take effect. To lazy

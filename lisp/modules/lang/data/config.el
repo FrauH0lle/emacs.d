@@ -51,8 +51,7 @@
   :when (fboundp 'json-ts-mode)
   :defer t
   :init
-  (set-tree-sitter! 'json-mode 'json-ts-mode
-    '((json :url "https://github.com/tree-sitter/tree-sitter-json")))
+  (set-tree-sitter! 'json-mode 'json-ts-mode)
   :config
   (static-when (modulep! +lsp)
     (add-hook 'json-ts-mode-local-vars-hook #'lsp! 'append)))
@@ -70,8 +69,7 @@
   :when (fboundp 'yaml-ts-mode) ; 29.1+ only
   :defer t
   :init
-  (set-tree-sitter! 'yaml-mode 'yaml-ts-mode
-    '((yaml :url "https://github.com/tree-sitter-grammars/tree-sitter-yaml")))
+  (set-tree-sitter! 'yaml-mode 'yaml-ts-mode)
   :config
   (static-when (modulep! +lsp)
     (add-hook 'yaml-ts-mode-local-vars-hook #'lsp! 'append)))
@@ -82,5 +80,4 @@
   :when (fboundp 'toml-ts-mode)
   :defer t
   :init
-  (set-tree-sitter! 'conf-toml-mode 'toml-ts-mode
-    '((toml :url "https://github.com/tree-sitter/tree-sitter-toml"))))
+  (set-tree-sitter! 'conf-toml-mode 'toml-ts-mode))

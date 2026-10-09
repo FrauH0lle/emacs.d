@@ -21,8 +21,7 @@
         python-indent-guess-indent-offset-verbose nil)
 
   (static-when (modulep! +tree-sitter)
-    (set-tree-sitter! 'python-mode 'python-ts-mode
-      '((python :url "https://github.com/tree-sitter/tree-sitter-python"))))
+    (set-tree-sitter! 'python-mode 'python-ts-mode))
 
   :config
   (static-when (modulep! +lsp)

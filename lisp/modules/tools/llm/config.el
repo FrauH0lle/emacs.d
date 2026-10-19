@@ -66,9 +66,7 @@
   (require 'mcp-hub)
 
   (setq! mcp-hub-servers
-         `(("context7" . (:command "npx" :args ("-y" "@upstash/context7-mcp@latest")))))
-
-  (mcp-hub-start-all-server))
+         `(("context7" . (:command "npx" :args ("-y" "@upstash/context7-mcp@latest"))))))
 
 
 (use-package! mevedel
@@ -78,7 +76,9 @@
   (setq! mevedel-empty-tag-query-matches-all nil
          mevedel-permission-reviewer 'auto
          mevedel-permission-mode 'edits
-         mevedel-claude-code-directory (file-name-concat zenit-data-dir "mevedel" "claude-code"))
+         mevedel-memory-consolidation-mode 'auto
+         mevedel-claude-code-directory (file-name-concat zenit-data-dir "mevedel" "claude-code")
+         mevedel-sleep-inhibit t)
 
   ;; The extra indentation look awkward here
   (add-to-list '+word-wrap-text-modes 'mevedel-view-mode)

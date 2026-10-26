@@ -83,6 +83,12 @@
   ;; The extra indentation look awkward here
   (add-to-list '+word-wrap-text-modes 'mevedel-view-mode)
 
+  ;; mevedel shows its status strip in the tab line.  Emacs formats the mode line inside
+  ;; every pixel-position query, and the view makes many of them while a
+  ;; request runs: doom-modeline added ~1 ms and ~95 KB to each.  Use the
+  ;; local-vars hook, which runs after doom-modeline installs its mode line.
+  (setq-hook! 'mevedel-view-mode-local-vars-hook mode-line-format nil)
+
   ;; Disable `undo-tree' in view buffer
   (add-to-list 'undo-tree-incompatible-major-modes 'mevedel-view-mode)
 

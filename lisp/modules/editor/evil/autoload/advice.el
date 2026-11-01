@@ -8,6 +8,63 @@ interactively."
     (call-interactively #'zenit/escape)))
 
 ;;;###autoload
+(defun +evil--mouse-drag-region-a (fn start-event)
+  "Keep single clicks handled by FN out of Visual state.
+Ignore focus events and motion below `double-click-fuzz' while tracking
+START-EVENT. Compare mouse coordinates, not text positions: redisplay can
+move text underneath a stationary pointer. Preserve real drags and
+multiple-click selections."
+  (let* ((start (event-start start-event))
+         (window (posn-window start))
+         (xy (posn-x-y start)))
+    (if (or (/= (event-click-count start-event) 1)
+            (not (window-live-p window))
+            (not (and (numberp (car-safe xy)) (numberp (cdr-safe xy)))))
+        (funcall fn start-event)
+      (let ((read-key-fn (symbol-function 'read-key))
+            ;; Terminal coordinates use characters, but fuzz uses eighths.
+            (units (if (display-graphic-p (window-frame window)) 1 8))
+            dragged)
+        (cl-letf (((symbol-function 'read-key)
+                   (lambda (&rest args)
+                     (let (event)
+                       (while
+                           (progn
+                             (setq event (apply read-key-fn args))
+                             (when (and (not dragged) (mouse-event-p event))
+                               (let* ((end (event-end event))
+                                      (end-xy (posn-x-y end)))
+                                 (setq dragged
+                                       (or (not (eq window (posn-window end)))
+                                           (not (and (numberp (car-safe end-xy))
+                                                     (numberp (cdr-safe end-xy))))
+                                           (>= (* units (abs (- (car end-xy) (car xy))))
+                                               double-click-fuzz)
+                                           (>= (* units (abs (- (cdr end-xy) (cdr xy))))
+                                               double-click-fuzz)))))
+                             ;; Evil otherwise enters Visual even for these
+                             ;; events, then treats redisplay as a text drag.
+                             (or (memq (car-safe event) '(switch-frame select-window))
+                                 (and (mouse-movement-p event) (not dragged))))
+                         nil)
+                       ;; Native input can label a stationary release a drag
+                       ;; solely because redisplay changed its text position.
+                       (if (and (not dragged)
+                                (memq 'drag (event-modifiers event)))
+                           (list (event-convert-list
+                                  (append (remq 'drag (event-modifiers event))
+                                          (list (event-basic-type event))))
+                                 (event-end event))
+                         event)))))
+          (prog1 (funcall fn start-event)
+            (when (and (not dragged) (eq window (selected-window)))
+              (when (and (evil-visual-state-p) (eq evil-visual-selection 'char))
+                (evil-exit-visual-state))
+              ;; set-mark queues Evil's delayed Visual activation. Clear the
+              ;; mark even when the tracker returned in Normal state.
+              (deactivate-mark t))))))))
+
+;;;###autoload
 (defun +evil-replace-filename-modifiers-a (file-name)
   "Take a path and resolve any vim-like filename modifiers in it.
 This adds support for most vim file modifiers, as well as:

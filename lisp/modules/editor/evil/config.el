@@ -107,6 +107,9 @@ The package should be loaded as early as possible."
   ;; It also clobbers clipboard managers (see emacs-evil/evil#336).
   (setq evil-visual-update-x-selection-p nil)
 
+  ;; Honor Emacs's physical drag threshold for Evil mouse selections.
+  (advice-add #'evil-mouse-drag-region :around #'+evil--mouse-drag-region-a)
+
   ;; Start help-with-tutorial in emacs state
   (advice-add #'help-with-tutorial :after (lambda (&rest _) (evil-emacs-state +1)))
 

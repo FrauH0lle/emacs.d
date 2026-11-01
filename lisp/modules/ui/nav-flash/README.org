@@ -11,6 +11,12 @@ Makes it easier to follow the cursor after certain movements and operations.
 - [[https://protesilaos.com/emacs/pulsar][Pulsar]]
 
 * Configuration
+Frame/window focus flashes wait until command processing, mouse tracking and
+queued mouse-up events finish, then flash at the final selected point. Ordinary
+mouse clicks still respect the command exclusions below; focus flashes retain
+mode, minibuffer and repeated-position exclusions. Keyboard navigation and
+Pulsar's edit/region flashes are unchanged.
+
 #+begin_src elisp
 (defvar +nav-flash-exclude-commands
   '(mouse-set-point mouse-drag-region evil-mouse-drag-region +org/dwim-at-point

@@ -51,6 +51,13 @@ Will be stored in `persp-save-dir'.")
         persp-auto-resume-time -1 ; Don't auto-load on startup
         persp-auto-save-opt (if noninteractive 0 1)) ; auto-save on kill
 
+  ;; Native minibuffer child frames are not recognized by persp-mode's
+  ;; posframe filter. They must never replace a workspace's window layout.
+  (add-hook 'after-make-frame-functions #'+workspaces-ignore-child-frame-h)
+  (add-hook 'persp-restore-window-conf-filter-functions
+            #'+workspaces-ignore-child-frame-h)
+  (mapc #'+workspaces-ignore-child-frame-h (frame-list))
+
 
   ;;;; Create main workspace
   ;; The default perspective persp-mode creates is special and doesn't represent

@@ -1,1 +1,2 @@
 - [One zenit-deftest per symbol](testing-deftest-convention.md) - Group all tests for a function or variable in one zenit-deftest.
+- [Validate ERT execution, not just CLI exit status](test-runner-result-validation.md) - Check test-load errors and actual ERT counts before reporting a successful test run.

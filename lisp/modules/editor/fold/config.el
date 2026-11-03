@@ -118,8 +118,19 @@ later."
 ;; PATCH 2025-02-10: `outline-minor-faces'
 (el-patch-feature outline-minor-faces)
 (compile-along! "patches")
+
+(defun +fold-outline-minor-faces-h ()
+  "Enable outline faces unless the major mode supplies its own."
+  ;; `markdown-ts-mode' enables `outline-minor-mode' before setting up
+  ;; tree-sitter font-lock.  Adding outline keywords here initializes font-lock
+  ;; too early, leaving its generic fontifier in place instead of Markdown's.
+  ;; Markdown already supplies heading faces, so it needs no extra keywords.
+  (unless (derived-mode-p 'markdown-ts-mode)
+    (outline-minor-faces-mode)))
+
 (use-package! outline-minor-faces
-  :hook (outline-minor-mode . outline-minor-faces-mode)
+  :commands outline-minor-faces-mode
+  :init (add-hook 'outline-minor-mode-hook #'+fold-outline-minor-faces-h)
   :config
   (load! "patches"))
 

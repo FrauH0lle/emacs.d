@@ -1,5 +1,10 @@
 ;; ui/workspaces/autoload/workspaces.el -*- lexical-binding: t; -*-
 
+;; Keep these bindings dynamic even before persp-mode has been loaded.
+(defvar persp-autokill-buffer-on-remove)
+(defvar persp-auto-save-opt)
+(defvar persp-init-frame-behaviour)
+
 (defvar +workspace--last nil)
 (defvar +workspace--index 0)
 
@@ -49,7 +54,7 @@
 ;;; Getters
 
 ;;;###autoload
-(defalias #'+workspace-current #'get-current-persp
+(defalias #'+workspace-current #'persp-get-current
   "Return the currently active workspace.")
 
 ;;;###autoload
@@ -65,7 +70,7 @@ error if NAME doesn't exist."
 ;;;###autoload
 (defun +workspace-current-name ()
   "Get the name of the current workspace."
-  (safe-persp-name (+workspace-current)))
+  (persp-name (+workspace-current)))
 
 ;;;###autoload
 (defun +workspace-list-names ()
@@ -173,7 +178,7 @@ Otherwise return t on success, nil otherwise."
     (when +workspace-tabs-mode
       (let ((tabs-alist (persp-parameter 'tab-bar-tabs persp)))
         (setf (alist-get (selected-frame) tabs-alist) (list (tab-bar--current-tab-make `((group . ,name)))))
-        (set-persp-parameter 'tab-bar-tabs tabs-alist persp)))
+        (persp-set-parameter 'tab-bar-tabs tabs-alist persp)))
     (+workspaces--add-ws-to-frame name)
     persp))
 
@@ -195,7 +200,7 @@ Returns old name on success, nil otherwise."
             (let ((group (assq 'group tab)))
               (when (and group (equal (cdr group) name))
                 (setcdr group new-name)))))
-        (set-persp-parameter 'tab-bar-tabs tabs-alist))
+        (persp-set-parameter 'tab-bar-tabs tabs-alist))
       ;; Update group property on live tabs if renaming the current workspace
       (when (equal (+workspace-current-name) new-name)
         (dolist (tab (tab-bar-tabs))
@@ -305,7 +310,7 @@ switch to the last recent tab in the origin frame."
       (persp-activate (+workspace-get workspace) new-frame)
       (select-frame-set-input-focus new-frame))
 
-    (setq +workspace--last (safe-persp-name (frame-parameter old-frame 'persp)))
+    (setq +workspace--last (persp-name (frame-parameter old-frame 'persp)))
     (+workspaces--update-tab-bar)))
 
 
@@ -377,7 +382,7 @@ If called with C-u, prompts you for the name of the workspace to delete."
       (let ((workspaces (+workspace-list-names)))
         (if (not (member name workspaces))
             (+workspace-message (format "'%s' workspace doesn't exist" name) 'warn)
-          (cond ((remq (selected-frame) (persp-frames-with-persp (get-frame-persp)))
+          (cond ((remq (selected-frame) (persp-frames-with-persp (persp-of-frame)))
                  (user-error "Can't close workspace, it's visible in another frame"))
                 ((not (equal (+workspace-current-name) name))
                  (+workspace-kill name))
@@ -720,7 +725,7 @@ Format: ((frame . workspace-name) ...)")
   "Exclude child FRAME from workspace window-state persistence.
 Return non-nil for a live child frame, marking it with `persp-ignore-wconf'
 so persp-mode also skips it when choosing a frame to save. Used both after
-frame creation and in `persp-restore-window-conf-filter-functions'."
+frame creation and in `persp-save-restore-window-conf-filter-functions'."
   (when (and (frame-live-p frame) (frame-parent frame))
     (set-frame-parameter frame 'persp-ignore-wconf t)
     t))
@@ -887,7 +892,7 @@ displays the last selected buffer."
           ;; HACK 2025-05-20: ... and remove it from the new perspective via a
           ;;   transient hook.
           (add-transient-hook! 'zenit-switch-frame-hook
-            (persp-remove-buffer initial-buffer (get-current-persp frame)))
+            (persp-remove-buffer initial-buffer (persp-get-current frame)))
           (+workspaces--associate-frame frame)
           (+workspaces--update-tab-bar))
         (run-at-time 0.1 nil #'+workspace/display)))))
@@ -912,7 +917,7 @@ This be hooked to `projectile-after-switch-project-hook'."
     (when persp-mode
       (if (and (not (null +workspaces-on-switch-project-behavior))
                (or (eq +workspaces-on-switch-project-behavior t)
-                   (+workspace--protected-p (safe-persp-name (get-current-persp)))
+                   (+workspace--protected-p (persp-name (persp-get-current)))
                    ;; NOTE 2025-04-03: Because we associate immediately buffers
                    ;;   to the first workspace, we need to filter here for real
                    ;;   buffers. Otherwise, the condition is never nil.
@@ -939,7 +944,7 @@ This be hooked to `projectile-after-switch-project-hook'."
                  (ws (or ws
                          (+workspace-get pname t)
                          (+workspace-new pname))))
-            (set-persp-parameter ws-param proot ws)
+            (persp-set-parameter ws-param proot ws)
             (+workspace-switch pname)
             (with-current-buffer (zenit-fallback-buffer)
               (setq-local default-directory proot)
@@ -975,7 +980,7 @@ Added to `tab-bar-tab-post-open-functions'."
 The persp parameter `tab-bar-tabs' is an alist keyed by frame object,
 so each frame's tabs are stored independently."
   (let* ((frame (+workspaces--tab-bar-frame frame-or-window))
-         (persp (or persp (get-current-persp frame))))
+         (persp (or persp (persp-get-current frame))))
     (when (and persp (not (frame-parent frame)))
       (let ((tabs-alist (persp-parameter 'tab-bar-tabs persp)))
         ;; Drop dead frames and temporary UI frames saved by older versions.
@@ -986,7 +991,7 @@ so each frame's tabs are stored independently."
                                             (not (frame-parent (car entry)))))
                                      tabs-alist)))
         (setf (alist-get frame tabs-alist) (tab-bar-tabs frame))
-        (set-persp-parameter 'tab-bar-tabs tabs-alist persp))
+        (persp-set-parameter 'tab-bar-tabs tabs-alist persp))
       (let ((closed-alist (persp-parameter 'tab-bar-closed-tabs persp)))
         (setq closed-alist
               (and (+workspaces--tab-bar-frame-alist-p closed-alist)
@@ -995,7 +1000,7 @@ so each frame's tabs are stored independently."
                                             (not (frame-parent (car entry)))))
                                      closed-alist)))
         (setf (alist-get frame closed-alist) tab-bar-closed-tabs)
-        (set-persp-parameter 'tab-bar-closed-tabs closed-alist persp)))))
+        (persp-set-parameter 'tab-bar-closed-tabs closed-alist persp)))))
 
 ;;;###autoload
 (defun +workspaces-load-tab-bar-data-h (_type frame-or-window persp)
@@ -1004,7 +1009,7 @@ Looks up tabs by frame in the per-frame alist, falling back to creating
 an initial tab when no entry exists for this frame."
   (let* ((ws-name (+workspace-current-name))
          (frame (+workspaces--tab-bar-frame frame-or-window))
-         (persp (or persp (get-current-persp frame)))
+         (persp (or persp (persp-get-current frame)))
          (tabs (+workspaces--tab-bar-tabs-for-frame
                 (persp-parameter 'tab-bar-tabs persp)
                 frame)))
@@ -1036,7 +1041,7 @@ an initial tab when no entry exists for this frame."
        (let* ((frame (or (car (car (+workspaces--find-workspace-frames
                                     (persp-name persp))))
                          (selected-frame)))
-              (current-p (eq (get-current-persp frame) persp))
+              (current-p (eq (persp-get-current frame) persp))
               (tabs (or (+workspaces--tab-bar-tabs-for-frame
                          (persp-parameter 'tab-bar-tabs persp)
                          frame)
@@ -1048,11 +1053,11 @@ an initial tab when no entry exists for this frame."
          ;; HACK 2025-04-03: Remove fields (for window-configuration) that cannot be
          ;;   serialized.
          (when tabs
-           (set-persp-parameter 'tab-bar-tabs
+           (persp-set-parameter 'tab-bar-tabs
                                 (frameset-filter-tabs tabs nil nil t)
                                 persp))
          (when closed-tabs
-           (set-persp-parameter 'tab-bar-closed-tabs
+           (persp-set-parameter 'tab-bar-closed-tabs
                                 (frameset-filter-tabs closed-tabs nil nil t)
                                 persp)))))
    (or phash *persp-hash*)))

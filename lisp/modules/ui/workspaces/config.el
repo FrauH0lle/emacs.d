@@ -24,6 +24,16 @@ Will be stored in `persp-save-dir'.")
 
 (defvar +workspace--old-uniquify-style nil)
 
+(defun +workspaces-add-default-buffers (&rest _)
+  "Add default buffers to the current perspective without prompting."
+  (when-let* ((persp (persp-get-current)))
+    (dolist (regexp '("^\\*Messages" "^\\*Warnings"))
+      ;; A nil buffer list makes this helper prompt, even with :noask t.
+      (when-let* ((buffers (persp-buffer-list-restricted (selected-frame) 1)))
+        (persp-do-buffer-list-by-regexp
+         :regexp regexp :func 'persp-add-buffer :rest-args (list persp nil)
+         :blist buffers :noask t)))))
+
 
 ;;
 ;;; Packages
@@ -41,7 +51,6 @@ Will be stored in `persp-save-dir'.")
 
   (setq persp-autokill-buffer-on-remove 'kill-weak
         persp-reset-windows-on-nil-window-conf nil
-        persp-nil-hidden t
         persp-auto-save-fname "autosave"
         persp-save-dir (concat zenit-data-dir "workspaces/")
         persp-set-last-persp-for-new-frames t
@@ -50,11 +59,12 @@ Will be stored in `persp-save-dir'.")
         persp-remove-buffers-from-nil-persp-behaviour nil
         persp-auto-resume-time -1 ; Don't auto-load on startup
         persp-auto-save-opt (if noninteractive 0 1)) ; auto-save on kill
+  (setf (persp-hidden persp-nil-persp) t)
 
   ;; Native minibuffer child frames are not recognized by persp-mode's
   ;; posframe filter. They must never replace a workspace's window layout.
   (add-hook 'after-make-frame-functions #'+workspaces-ignore-child-frame-h)
-  (add-hook 'persp-restore-window-conf-filter-functions
+  (add-hook 'persp-save-restore-window-conf-filter-functions
             #'+workspaces-ignore-child-frame-h)
   (mapc #'+workspaces-ignore-child-frame-h (frame-list))
 
@@ -67,7 +77,7 @@ Will be stored in `persp-save-dir'.")
     (defun +workspaces-ensure-no-nil-workspaces-h (&rest _)
       (when persp-mode
         (dolist (frame (frame-list))
-          (when (string= (safe-persp-name (get-current-persp frame)) persp-nil-name)
+          (when (string= (persp-name (persp-get-current frame)) persp-nil-name)
             ;; Take extra steps to ensure no frame ends up in the nil perspective
             (persp-frame-switch (or (car-safe (cl-remove-if
                                                (lambda (x) (string= x persp-nil-name))
@@ -127,8 +137,8 @@ Will be stored in `persp-save-dir'.")
   (add-hook! 'persp-before-deactivate-functions
     (defun +workspaces-save-winner-data-h (&rest _)
       (when (and (bound-and-true-p winner-mode)
-                 (get-current-persp))
-        (set-persp-parameter
+                 (persp-get-current))
+        (persp-set-parameter
          'winner-ring (list winner-currents
                             winner-ring-alist
                             winner-pending-undo-ring)))))
@@ -146,15 +156,7 @@ Will be stored in `persp-save-dir'.")
 
   ;;;; Registering buffers to perspectives
 
-  (add-hook! 'persp-activated-functions
-    (defun +workspaces-add-default-buffers (&rest _)
-      "Add default buffers to perspective."
-      (let ((persp (get-current-persp)))
-        (when persp
-          (dolist (regexp '("^\\*Messages" "^\\*Warnings"))
-            (persp-do-buffer-list-by-regexp
-             :regexp regexp :func 'persp-add-buffer :rest-args (list persp nil)
-             :blist (persp-buffer-list-restricted (selected-frame) 1) :noask t))))))
+  (add-hook 'persp-activated-functions #'+workspaces-add-default-buffers)
 
   (add-hook! 'zenit-switch-buffer-hook
     (defun +workspaces-add-current-buffer-h ()
@@ -164,7 +166,7 @@ Will be stored in `persp-save-dir'.")
            (or (buffer-base-buffer (current-buffer))
                (current-buffer))
            persp-add-buffer-on-after-change-major-mode-filter-functions)
-          (persp-add-buffer (current-buffer) (get-current-persp) nil nil))))
+          (persp-add-buffer (current-buffer) (persp-get-current) nil nil))))
 
   ;; REVIEW 2025-04-07: We might revert that
   ;; (add-hook 'persp-add-buffer-on-after-change-major-mode-filter-functions
@@ -305,7 +307,7 @@ when there is more than one tab."
    :mode 'magit-status-mode :tag-symbol 'def-magit-status-buffer
    :save-vars '(default-directory)
    :load-function (lambda (savelist &rest _)
-                    (cl-destructuring-bind (buffer-name vars &rest _rest) (cdr savelist)
+                    (let ((vars (caddr savelist)))
                       (magit-status (alist-get 'default-directory vars)))))
 
   ;;;; tab-bar
@@ -342,5 +344,5 @@ when there is more than one tab."
                                                                   (width (alist-get 'width params)))
                                                              `((height . ,height)
                                                                (width . ,width))))))))
-                (set-persp-parameter 'workspace-frames ws-frames persp))
+                (persp-set-parameter 'workspace-frames ws-frames persp))
               (puthash pname persp phash))))))))

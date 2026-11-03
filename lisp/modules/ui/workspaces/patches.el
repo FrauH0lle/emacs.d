@@ -17,27 +17,31 @@
     (let (old-persp type)
       (cl-typecase frame-or-window
         (frame
-         (setq old-persp (get-frame-persp frame-or-window)
+         (setq old-persp (persp-of-frame frame-or-window)
                type 'frame))
         (window
-         (setq old-persp (get-window-persp frame-or-window)
+         (setq old-persp (persp-of-window frame-or-window)
                type 'window)))
       (when  (or new-frame-p
                  (not (eq old-persp persp)))
-        (unless new-frame-p
-          (persp--deactivate frame-or-window persp))
         (cl-case type
           (frame
-           (setq persp-last-persp-name (safe-persp-name persp))
-           (set-frame-persp persp frame-or-window)
-           (when persp-init-frame-behaviour
-             (persp-restore-window-conf frame-or-window persp new-frame-p))
-           (run-hook-with-args 'persp-activated-functions 'frame frame-or-window persp))
+           (when (persp-frame-good-p frame-or-window)
+             (unless new-frame-p
+               (persp--deactivate frame-or-window persp))
+             (setq persp-last-persp-name (persp-name persp))
+             (persp-set-for-frame persp frame-or-window)
+             (when persp-init-frame-behaviour
+               (persp-restore-window-conf frame-or-window persp new-frame-p))
+             (persp-update-frame-lighter frame-or-window)
+             (run-hook-with-args 'persp-activated-functions 'frame frame-or-window persp)))
           (window
-           (set-window-persp persp frame-or-window)
+           (persp--deactivate frame-or-window persp)
+           (persp-set-for-window persp frame-or-window)
            (let ((cbuf (window-buffer frame-or-window)))
              (unless (persp-contain-buffer-p cbuf persp)
                (persp-set-another-buffer-for-window cbuf frame-or-window persp)))
+           (persp-update-frame-lighter (window-frame frame-or-window))
            (run-hook-with-args 'persp-activated-functions 'window frame-or-window persp))))))
   (el-patch-add
     (let ((buf (and (window-live-p (selected-window))

@@ -9,6 +9,20 @@
 (zenit-modules-initialize)
 (zenit-load (zenit-module-locate-path :ui 'workspaces "autoload/workspaces.el"))
 
+(zenit-deftest +workspace-current
+  ()
+  (should (eq (indirect-function 'persp-get-current)
+              (indirect-function '+workspace-current))))
+
+(zenit-deftest +workspace-current-name
+  ()
+  (let ((persp-nil-persp (persp--make :name "nil-workspace")))
+    (cl-letf (((symbol-function '+workspace-current) (lambda () ,persp)))
+      (should (equal ,name (+workspace-current-name)))))
+  (persp name)
+  (persp--make :name "test") "test"
+  nil "nil-workspace")
+
 (zenit-deftest +workspace-switch
   ()
   (let* ((frame (selected-frame))
@@ -75,20 +89,20 @@
 (zenit-deftest +workspaces-ignore-child-frame-h
   ()
   (let* ((frame (selected-frame))
-         (persp (make-persp :name "test" :window-conf 'original-layout))
+         (persp (persp--make :name "test" :window-conf 'original-layout))
          (parent frame)
          ignored
          (captured nil)
-         (persp-restore-window-conf-filter-functions
+         (persp-save-restore-window-conf-filter-functions
           (cons #'+workspaces-ignore-child-frame-h
-                persp-restore-window-conf-filter-functions)))
+                persp-save-restore-window-conf-filter-functions)))
     (cl-letf (((symbol-function 'frame-parent) (lambda (_) parent))
               ((symbol-function 'set-frame-parameter)
                (lambda (target parameter value)
                  (should (eq frame target))
                  (should (eq 'persp-ignore-wconf parameter))
                  (setq ignored value)))
-              ((symbol-function 'get-frame-persp) (lambda (_) persp))
+              ((symbol-function 'persp-of-frame) (lambda (_) persp))
               ((symbol-function 'persp-window-state-get)
                (lambda (&rest _) (setq captured t) 'new-layout))
               ((symbol-function 'persp-window-state-put)
@@ -132,19 +146,19 @@
                  (and (eq frame target)
                       (eq 'persp-ignore-wconf parameter)
                       ignored))))
-      (should (eq 'normal-frame (find-other-frame-with-persp persp nil t))))))
+      (should (eq 'normal-frame (persp-find-other-frame-with-persp persp nil t))))))
 
 (zenit-deftest +workspaces-save-tab-bar-data-h
   ()
   (let* ((frame (selected-frame))
-         (persp (make-persp :name "test"))
+         (persp (persp--make :name "test"))
          (parent frame)
          (tabs '((current-tab (name . "current"))))
          (original-tabs '((current-tab (name . "original"))))
          (tab-bar-closed-tabs '(current-closed))
          captured)
-    (set-persp-parameter 'tab-bar-tabs (list (cons frame original-tabs)) persp)
-    (set-persp-parameter 'tab-bar-closed-tabs 'original-closed persp)
+    (persp-set-parameter 'tab-bar-tabs (list (cons frame original-tabs)) persp)
+    (persp-set-parameter 'tab-bar-closed-tabs 'original-closed persp)
     (cl-letf (((symbol-function 'frame-parent) (lambda (_) parent))
               ((symbol-function 'tab-bar-tabs)
                (lambda (_) (setq captured t) tabs)))
@@ -173,13 +187,13 @@
 (zenit-deftest +workspaces-load-tab-bar-data-h
   ()
   (let* ((frame (selected-frame))
-         (persp (make-persp :name "test"))
+         (persp (persp--make :name "test"))
          (parent frame)
          (tabs (list (list 'current-tab '(name . "saved"))))
          (tab-bar-closed-tabs '(original-closed))
          restored updated)
-    (set-persp-parameter 'tab-bar-tabs (list (cons frame tabs)) persp)
-    (set-persp-parameter 'tab-bar-closed-tabs
+    (persp-set-parameter 'tab-bar-tabs (list (cons frame tabs)) persp)
+    (persp-set-parameter 'tab-bar-closed-tabs
                          (list (cons frame '(saved-closed))) persp)
     (cl-letf (((symbol-function 'frame-parent) (lambda (_) parent))
               ((symbol-function '+workspace-current-name) (lambda () "test"))

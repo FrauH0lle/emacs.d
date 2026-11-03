@@ -1,2 +1,2 @@
-(("persp-mode.el" . "fab4bf76927445d2e431f06e74572acba81f47d5"))
+(("persp-mode.el" . "703f3b5ad502cfe5b027586611421900bed1fb40"))
 :epsilon

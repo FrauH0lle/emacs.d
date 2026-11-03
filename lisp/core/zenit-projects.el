@@ -56,6 +56,7 @@ Must end with a slash.")
 
 
 (use-package! projectile
+  :functions projectile-find-tag
   :commands (projectile-project-root
              projectile-project-name
              projectile-project-p
@@ -131,9 +132,10 @@ Must end with a slash.")
       (advice-remove 'projectile-ensure-project #'zenit--projectile-update-known-projects-a)))
 
   ;; Support the more generic .project files as an alternative to .projectile
-  (defadvice! zenit--projectile-dirconfig-file-a ()
+  (defadvice! zenit--projectile-dirconfig-file-a (&optional proot)
+    "Return PROOT's dirconfig file, falling back to .project."
     :override #'projectile-dirconfig-file
-    (let ((proot (projectile-project-root)))
+    (let ((proot (or proot (projectile-project-root))))
       (cond ((file-exists-p! (or projectile-dirconfig-file ".project") proot))
             ((expand-file-name ".project" proot)))))
 

@@ -528,6 +528,24 @@ Only runs once per session to avoid unnecessary file operations."
             (write-region nil nil lockfile nil 'silent)))))
     (setq +straight--lockfile-version-updated-p t)))
 
+(defadvice! +straight--recover-unversioned-dependencies-a (package)
+  "Recover dependencies discarded because PACKAGE has no version header."
+  :after #'straight--compute-dependency-info
+  ;; Straight commit 0d5c4d99 passes a missing version to
+  ;; `replace-regexp-in-string', discarding the dependency metadata.
+  (unless (nth 1 (gethash package straight--build-cache))
+    (with-temp-buffer
+      (insert-file-contents-literally
+       (straight--build-file package (concat package ".el")))
+      (unless (straight--read-package-header "\\(Package-\\)?Version")
+        (straight--insert
+         1 package
+         (list :version nil
+               :dependencies
+               (straight--process-dependencies
+                (straight--read-package-header "Package-Requires" t)))
+         straight--build-cache)))))
+
 
 ;;
 ;;; native-comp
@@ -798,13 +816,16 @@ also be a list of module keys."
 
 (defun zenit--process-pkg-dependencies (package)
   "Collect and register all dependencies for PACKAGE."
-  (let ((dependencies
-         (cons package
-               (cl-remove-duplicates
-                (cl-loop for dep in (straight--get-dependencies package)
-                         collect dep into deps
-                         finally return (append deps (apply 'append (mapcar 'straight--get-dependencies deps))))
-                :test #'equal))))
+  ;; Straight returns (NAME . MINIMUM-VERSION) pairs. Only names belong in
+  ;; package registration, build paths, and autoload loading.
+  (let* ((direct-deps (mapcar #'car (straight--get-dependencies package)))
+         (dependencies
+          (cons package
+                (cl-remove-duplicates
+                 (append direct-deps
+                         (cl-loop for dep in direct-deps
+                                  append (mapcar #'car (straight--get-dependencies dep))))
+                 :test #'equal))))
 
     (dolist (pkg-name dependencies)
       (unless (equal pkg-name package)

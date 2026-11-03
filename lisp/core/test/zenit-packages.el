@@ -136,8 +136,42 @@
   (should (fboundp 'zenit-package-list)))
 
 (zenit-deftest zenit--process-pkg-dependencies
-  (:doc "`zenit--process-pkg-dependencies' is defined")
-  (should (fboundp 'zenit--process-pkg-dependencies)))
+  ()
+  (let ((straight--build-cache (make-hash-table :test #'equal))
+        (load-path load-path)
+        registered
+        loaded)
+    (dolist (entry ,cache)
+      (puthash (car entry)
+               (list nil (list :version "1.0" :dependencies (cdr entry)))
+               straight--build-cache))
+    (cl-letf (((symbol-function 'straight-register-package)
+               (lambda (package)
+                 (should (eq '_pkg-dependency straight-current-profile))
+                 (push package registered)))
+              ((symbol-function 'straight--build-dir)
+               (lambda (package) (concat "/test-build/" package "/")))
+              ((symbol-function 'straight--load-package-autoloads)
+               (lambda (package) (push package loaded))))
+      (zenit--process-pkg-dependencies "test-root"))
+    (should (equal ,expected (sort loaded #'string<)))
+    (should (equal (mapcar #'intern (remove "test-root" ,expected))
+                   (sort registered #'string<)))
+    (dolist (package ,expected)
+      (should (member (concat "/test-build/" package) load-path))))
+  (cache expected)
+
+  :doc "Packages without dependencies still load their own autoloads"
+  '(("test-root")) '("test-root")
+
+  :doc "Versioned Emacs dependencies are registered by name"
+  '(("test-root" ("emacs" . "25.1"))) '("emacs" "test-root")
+
+  :doc "Direct and transitive dependencies deduplicate by name, not version"
+  '(("test-root" ("test-a" . "1.2") ("test-b" . nil))
+    ("test-a" ("test-shared" . "2.0"))
+    ("test-b" ("test-shared" . "3.0")))
+  '("test-a" "test-b" "test-root" "test-shared"))
 
 (zenit-deftest package!
   (:doc "`package!' is defined")

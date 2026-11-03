@@ -153,7 +153,8 @@ autoloads are always met."
          (letf! (defun* walk-packages (pkglist)
                   (cond ((null pkglist) nil)
                         ((stringp pkglist)
-                         (walk-packages (nth 1 (gethash pkglist straight--build-cache)))
+                         (walk-packages
+                          (mapcar #'car (straight--get-dependencies pkglist)))
                          (cl-pushnew pkglist packages :test #'equal))
                         ((listp pkglist)
                          (mapc #'walk-packages (reverse pkglist)))))

@@ -4,6 +4,7 @@
 (require 'zenit-test)
 (zenit-require 'zenit-lib 'ui)
 (require 'zenit-lib)
+(require 'display-line-numbers)
 
 (zenit-deftest zenit-resize-window
   (:doc "`zenit-resize-window' is defined")
@@ -37,6 +38,36 @@
 (zenit-deftest zenit-disable-show-paren-mode-h
   (:doc "`zenit-disable-show-paren-mode-h' is defined")
   (should (fboundp 'zenit-disable-show-paren-mode-h)))
+
+(zenit-deftest zenit-disable-line-numbers-h ()
+  ,test
+  (test)
+  :doc "Disabling inherited nil establishes a buffer-local override"
+  (let ((display-line-numbers nil))
+    (with-temp-buffer
+      (should-not (local-variable-p 'display-line-numbers))
+      (zenit-disable-line-numbers-h)
+      (should (local-variable-p 'display-line-numbers))
+      (should-not display-line-numbers)
+      (should-not display-line-numbers-mode)
+      (zenit-disable-line-numbers-h)
+      (should (local-variable-p 'display-line-numbers))
+      (should-not display-line-numbers)))
+  :doc "Disabling active line numbers turns off the minor mode"
+  (let ((display-line-numbers-type 'relative))
+    (with-temp-buffer
+      (display-line-numbers-mode +1)
+      (zenit-disable-line-numbers-h)
+      (should (local-variable-p 'display-line-numbers))
+      (should-not display-line-numbers)
+      (should-not display-line-numbers-mode)))
+  :doc "Disabling an enabled mode with hidden numbers clears the mode"
+  (with-temp-buffer
+    (display-line-numbers-mode +1)
+    (setq-local display-line-numbers nil)
+    (zenit-disable-line-numbers-h)
+    (should-not display-line-numbers)
+    (should-not display-line-numbers-mode)))
 
 (zenit-deftest zenit-kill-childframes-h
   (:doc "`zenit-kill-childframes-h' is defined")

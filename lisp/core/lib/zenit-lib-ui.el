@@ -83,8 +83,10 @@ In tty Emacs, messages are suppressed completely."
 
 ;;;###autoload
 (defun zenit-disable-line-numbers-h ()
-  (when (bound-and-true-p display-line-numbers)
-    (display-line-numbers-mode -1)))
+  "Turn off line numbers buffer-locally, even if already hidden."
+  ;; Establish an explicit local nil even when the default is already nil.
+  ;; Inheriting nil can leave Magit flickering on cursor movement.
+  (display-line-numbers-mode -1))
 
 ;;;###autoload
 (defun zenit-kill-childframes-h (&rest _)

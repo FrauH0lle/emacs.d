@@ -1,0 +1,119 @@
+;; lang/javascript/config.el -*- lexical-binding: t; -*-
+
+(after! projectile
+  (add-to-list 'projectile-project-root-files "package.json")
+  (add-to-list 'projectile-globally-ignored-directories "node_modules")
+  (add-to-list 'projectile-globally-ignored-directories "flow-typed"))
+
+
+;;
+;;; Major modes
+
+(defun +javascript-common-config (mode)
+  (unless (eq mode 'nodejs-repl-mode)
+    (set-repl-handler! mode #'+javascript/open-repl
+      :send-region #'nodejs-repl-send-region
+      :send-buffer #'nodejs-repl-send-buffer)
+    (set-ligatures! mode
+      ;; Functional
+      :def "function"
+      :lambda "() =>"
+      :composition "compose"
+      ;; Types
+      :null "null"
+      :true "true" :false "false"
+      ;; Flow
+      :not "!"
+      :and "&&" :or "||"
+      :for "for"
+      :return "return"
+      ;; Other
+      :yield "import")
+
+    (static-when (modulep! +lsp)
+      (add-hook (intern (format "%s-local-vars-hook" mode)) #'lsp! 'append)))
+
+  (if (not (memq mode '(typescript-mode typescript-ts-mode)))
+      (set-docsets! mode "JavaScript"
+        "AngularJS" "Backbone" "BackboneJS" "Bootstrap" "D3JS" "EmberJS" "Express"
+        "ExtJS" "JQuery" "JQuery_Mobile" "JQuery_UI" "KnockoutJS" "Lo-Dash"
+        "MarionetteJS" "MomentJS" "NodeJS" "PrototypeJS" "React" "RequireJS"
+        "SailsJS" "UnderscoreJS" "VueJS" "ZeptoJS")
+    (set-docsets! mode :add "TypeScript" "AngularTS")
+    (set-electric! mode :chars '(?\} ?\)) :words '("||" "&&"))))
+
+
+(use-package! js
+  :mode ("\\.[mc]?js\\'" . js-mode)
+  :mode ("\\.es6\\'" . js-mode)
+  :mode ("\\.pac\\'" . js-mode)
+  :init
+  (static-when (modulep! +tree-sitter)  ; 29.1+ only
+    (set-tree-sitter! 'js-mode 'js-ts-mode '(javascript jsdoc)))
+  :config
+  (+javascript-common-config 'js-mode)
+  (static-when (modulep! +tree-sitter)
+    (+javascript-common-config 'js-ts-mode))
+
+  (setq js-chain-indent t))
+
+
+(use-package! typescript-mode
+  :unless (modulep! +tree-sitter)
+  :mode "\\.[cm]?ts\\'"
+  :config
+  (+javascript-common-config 'typescript-mode))
+
+
+(use-package! typescript-ts-mode  ; 29.1+ only
+  :static-when (modulep! +tree-sitter)
+  :mode "\\.[cm]?ts\\'"
+  :mode ("\\.[tj]sx\\'" . tsx-ts-mode)
+  :init
+  (set-tree-sitter! 'typescript-mode 'typescript-ts-mode 'typescript)
+  (set-tree-sitter! nil 'tsx-ts-mode 'tsx)
+  :config
+  (+javascript-common-config 'typescript-ts-mode)
+  (+javascript-common-config 'tsx-ts-mode))
+
+
+;;
+;;; Extensions
+
+;; Parse node stack traces in the compilation buffer
+(after! compilation
+  (add-to-list 'compilation-error-regexp-alist 'node)
+  (add-to-list 'compilation-error-regexp-alist-alist
+               '(node "^[[:blank:]]*at \\(.*(\\|\\)\\(.+?\\):\\([[:digit:]]+\\):\\([[:digit:]]+\\)"
+                 2 3 4)))
+
+
+(use-package! nodejs-repl
+  :defer t
+  :init
+  :config
+  (+javascript-common-config 'nodejs-repl-mode)
+  (set-electric! 'nodejs-repl-mode :chars '(?\} ?\) ?. ?:)))
+
+
+;;
+;;; Projects
+
+(def-project-mode! +javascript-npm-mode
+  :modes '(html-mode
+           css-mode
+           web-mode
+           markdown-mode
+           js-mode  ; includes js2-mode and rjsx-mode
+           js-ts-mode
+           json-mode
+           json-ts-mode
+           typescript-mode
+           typescript-ts-mode
+           tsx-ts-mode
+           solidity-mode)
+  :when (locate-dominating-file default-directory "package.json")
+  :add-hooks '(+javascript-add-npm-path-h))
+
+(def-project-mode! +javascript-gulp-mode
+  :when (locate-dominating-file default-directory "gulpfile.js"))

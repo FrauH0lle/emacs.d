@@ -1,2 +1,2 @@
-(("hl-todo" . "527d545b8c2f36243194cbe4a8d0e6ac9d50e6a7"))
+(("hl-todo" . "d25aa5a2e78f70331de2b3455d8ef85bd945356b"))
 :epsilon

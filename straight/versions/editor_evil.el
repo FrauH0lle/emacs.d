@@ -1,6 +1,6 @@
-(("evil" . "3b678a221ee99cc6a95b01d7a3129ce5efc4c3da")
+(("evil" . "6a3e1ddd04ac504a016590940d0af2a3361b9efd")
  ("evil-args" . "a8151556f63c9d45d0c44c8a7ef9e5a542f3cdc7")
- ("evil-collection" . "162183159dde328336bf2c92cef66b4151df26cf")
+ ("evil-collection" . "3948a7890960d389dffa637203a6760df68b1c1c")
  ("evil-easymotion" . "629c894af63336028a61cc93d6465d10837eb82b")
  ("evil-embrace.el" . "3081d37811b6a3dfaaf01d578c7ab7a746c6064d")
  ("evil-escape" . "819f1ee1cf3f69a1ae920e6004f2c0baeebbe077")
@@ -14,6 +14,6 @@
  ("evil-surround" . "e6548372e8359ee55e67d73ca418314086011f1a")
  ("evil-textobj-anyblock" . "29280cd71a05429364cdceef2ff595ae8afade4d")
  ("evil-traces" . "82e8a7b4213aed140f6eb5f2cc33a09bb5587166")
- ("evil-visualstar" . "06c053d8f7381f91c53311b1234872ca96ced752")
+ ("evil-visualstar" . "2b804e317700896116e88ae751df4a36ac8c3934")
  ("exato" . "aee7af7b7a0e7551478f453d1de7d5b9cb2e06c4"))
 :epsilon

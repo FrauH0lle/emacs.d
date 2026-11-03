@@ -105,7 +105,10 @@
                   `(menu-item "" mevedel--ov-actions-dispatch
                     :filter ,(lambda (cmd) (when (evil-normal-state-p) cmd))))))
 
-    (mevedel-install))
+  (mevedel-install)
+
+  (static-when (modulep! :editor evil)
+    (mevedel-evil-setup)))
 
 
 (static-when (modulep! :completion vertico)

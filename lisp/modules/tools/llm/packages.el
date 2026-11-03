@@ -26,6 +26,11 @@
                     "shared-editing/FONT-LICENSE"
                     "shared-editing/RESVG-LICENSE"
                     "shared-editing/THIRD-PARTY-NOTICES.txt")
+                   ("remote-artifact"
+                    "remote-artifact/package.json"
+                    "remote-artifact/LICENSE")
+                   ("remote-artifact/bin" "remote-artifact/bin/*.mjs")
+                   ("remote-artifact/src" "remote-artifact/src/*.mjs")
                    "docs/*.md"
                    "docs/adr/*.md"
                    "docs/agents/*.md"

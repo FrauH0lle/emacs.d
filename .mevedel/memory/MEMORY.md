@@ -1,2 +1,4 @@
 - [One zenit-deftest per symbol](testing-deftest-convention.md) - Group all tests for a function or variable in one zenit-deftest.
 - [Validate ERT execution, not just CLI exit status](test-runner-result-validation.md) - Check test-load errors and actual ERT counts before reporting a successful test run.
+- [Validate mouse behavior through the command lifecycle](mouse-command-lifecycle-validation.md) - Mouse regressions need replay and post-command processing; text-position changes alone do not prove dragging.
+- [Target the supported pinned Straight API](pinned-straight-api-compatibility.md) - Avoid obsolete-format compatibility for Straight unless older versions are intentionally supported.

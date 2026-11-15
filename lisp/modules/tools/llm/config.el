@@ -96,11 +96,11 @@
   (static-when (modulep! :editor evil)
     (setq! mevedel-ov-dispatch-key nil)
     (dolist (map mevedel--actions-maps)
-      (define-key (symbol-value map)
-                  [return]
+      (keymap-set (symbol-value map)
+                  "<return>"
                   `(menu-item "" mevedel--ov-actions-dispatch
                     :filter ,(lambda (cmd) (when (evil-normal-state-p) cmd))))
-      (define-key (symbol-value map)
+      (keymap-set (symbol-value map)
                   "RET"
                   `(menu-item "" mevedel--ov-actions-dispatch
                     :filter ,(lambda (cmd) (when (evil-normal-state-p) cmd))))))

@@ -128,6 +128,12 @@ The package should be loaded as early as possible."
       "Update cursor color."
       (put 'cursor 'evil-normal-color (face-background 'cursor))
       (put 'cursor 'evil-emacs-color (face-foreground 'warning))))
+  ;; Evil loads lazily on first input, after the theme and
+  ;; `zenit-after-modules-config-hook' have already run, so neither hook fires
+  ;; until the next theme change. Without this, both colors stay nil and
+  ;; `evil-refresh-cursor' clears the frame's cursor color. The colors are
+  ;; cached because `set-cursor-color' rewrites the `cursor' face itself.
+  (+evil-update-cursor-color-h)
 
   (defun +evil-default-cursor-fn ()
     (evil-set-cursor-color (get 'cursor 'evil-normal-color)))

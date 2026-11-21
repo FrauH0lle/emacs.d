@@ -69,53 +69,52 @@
          `(("context7" . (:command "npx" :args ("-y" "@upstash/context7-mcp@latest"))))))
 
 
-(use-package! mevedel
+(use-package! niwa
   :defer t
-  :init (after! gptel (require 'mevedel))
+  :init (after! gptel (require 'niwa))
   :config
-  (setq! mevedel-empty-tag-query-matches-all nil
-         mevedel-permission-reviewer 'auto
-         mevedel-permission-mode 'edits
-         mevedel-memory-consolidation-mode 'auto
-         mevedel-claude-code-directory (file-name-concat zenit-data-dir "mevedel" "claude-code")
-         mevedel-sleep-inhibit t)
+  (setq! niwa-permission-reviewer 'auto
+         niwa-permission-mode 'edits
+         niwa-memory-consolidation-mode 'auto
+         niwa-claude-code-directory (file-name-concat zenit-data-dir "niwa" "claude-code")
+         niwa-sleep-inhibit t)
 
   ;; The extra indentation look awkward here
-  (add-to-list '+word-wrap-text-modes 'mevedel-view-mode)
+  (add-to-list '+word-wrap-text-modes 'niwa-view-mode)
 
-  ;; `mevedel' shows its status strip in the tab line. Emacs formats the mode
+  ;; `niwa' shows its status strip in the tab line. Emacs formats the mode
   ;; line inside every pixel-position query, and the view makes many of them
   ;; while a request runs: `doom-modeline' added ~1 ms and ~95 KB to each. The
   ;; modeline does not add much here so we deactivate it.
-  (setq-hook! 'mevedel-view-mode-local-vars-hook mode-line-format nil)
+  (setq-hook! 'niwa-composer-mode-local-vars-hook mode-line-format nil)
 
   ;; Disable `undo-tree' in view buffer
-  (add-to-list 'undo-tree-incompatible-major-modes 'mevedel-view-mode)
+  (add-to-list 'undo-tree-incompatible-major-modes 'niwa-view-mode)
 
   ;; When `evil' is used, bind RET in normal mode to open the overlay menu
   (static-when (modulep! :editor evil)
-    (setq! mevedel-ov-dispatch-key nil)
-    (dolist (map mevedel--actions-maps)
+    (setq! niwa-ov-dispatch-key nil)
+    (dolist (map niwa--actions-maps)
       (keymap-set (symbol-value map)
                   "<return>"
-                  `(menu-item "" mevedel--ov-actions-dispatch
+                  `(menu-item "" niwa--ov-actions-dispatch
                     :filter ,(lambda (cmd) (when (evil-normal-state-p) cmd))))
       (keymap-set (symbol-value map)
                   "RET"
-                  `(menu-item "" mevedel--ov-actions-dispatch
+                  `(menu-item "" niwa--ov-actions-dispatch
                     :filter ,(lambda (cmd) (when (evil-normal-state-p) cmd))))))
 
-  (mevedel-install)
+  (niwa-install)
 
   (static-when (modulep! :editor evil)
-    (mevedel-evil-setup)))
+    (niwa-evil-setup)))
 
 
 (static-when (modulep! :completion vertico)
   (after! embark
-    (defvar-keymap +mevedel-embark-consult-map
+    (defvar-keymap +niwa-embark-consult-map
       :doc "Embark actions for `consult-location' and `consult-grep' targets."
       :parent embark-general-map
-      "R" #'+mevedel/embark-create-reference)
-    (setf (alist-get 'consult-location embark-keymap-alist) '+mevedel-embark-consult-map
-          (alist-get 'consult-grep embark-keymap-alist) '+mevedel-embark-consult-map)))
+      "R" #'+niwa/embark-create-reference)
+    (setf (alist-get 'consult-location embark-keymap-alist) '+niwa-embark-consult-map
+          (alist-get 'consult-grep embark-keymap-alist) '+niwa-embark-consult-map)))

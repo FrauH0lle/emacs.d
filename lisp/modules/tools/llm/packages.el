@@ -6,12 +6,12 @@
   :recipe (:host github :repo "karthink/gptel-quick")
   :lockfile tools_llm)
 (package! mcp :lockfile tools_llm)
-(package! mevedel
+(package! niwa
   :recipe (:host github
-           :repo "FrauH0lle/mevedel"
+           :repo "FrauH0lle/niwa.el"
            :files ("*.el"
                    ("native" "native/*.c" "native/*.eld")
-                   ("scripts" "scripts/mevedel-mcp-stdio.py")
+                   ("scripts" "scripts/niwa-mcp-stdio.py")
                    "agents"
                    "prompts"
                    "skills"

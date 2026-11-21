@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Small mevedel hook policies for the Zenit Emacs workspace."""
+"""Small niwa hook policies for the Zenit Emacs workspace."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from typing import Any, Iterable
 PROTECTED_EXACT = {
     "init.el",
     "init.elc",
-    ".mevedel/input-history.el",
+    ".niwa/input-history.el",
 }
 
 PROTECTED_PREFIXES = (
@@ -21,7 +21,7 @@ PROTECTED_PREFIXES = (
     "auto-save-list/",
     "straight/build",
     "straight/repos/",
-    ".mevedel/sessions/",
+    ".niwa/sessions/",
 )
 
 PACKAGE_PATH_RE = re.compile(
@@ -77,7 +77,7 @@ def generated_file_guard(event: dict[str, Any]) -> None:
                     "permissionDecision": "deny",
                     "permissionReason": (
                         f"{rel} is generated or runtime-local state in this Zenit workspace. "
-                        "Edit source files, tracked site-lisp files, or approved .mevedel skills/hooks instead."
+                        "Edit source files, tracked site-lisp files, or approved .niwa skills/hooks instead."
                     ),
                 }
             )

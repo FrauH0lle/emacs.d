@@ -6,14 +6,14 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .mevedel/hooks/zenit_policy.py generated-file-guard",
+            "command": "python3 .niwa/hooks/zenit_policy.py generated-file-guard",
             "timeout": 5,
             "failClosed": true,
             "description": "Block edits to generated and runtime-local artifacts"
           },
           {
             "type": "command",
-            "command": "python3 .mevedel/hooks/zenit_policy.py package-change-context",
+            "command": "python3 .niwa/hooks/zenit_policy.py package-change-context",
             "timeout": 5,
             "description": "Remind agents about refresh/sync/freeze after package changes"
           }
@@ -24,7 +24,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .mevedel/hooks/zenit_policy.py commit-message-context",
+            "command": "python3 .niwa/hooks/zenit_policy.py commit-message-context",
             "timeout": 5,
             "description": "Remind agents about Zenit commit message conventions"
           }

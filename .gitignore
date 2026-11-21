@@ -68,15 +68,17 @@ straight/versions/local.el
 straight/versions/default.el
 
 # Local mevedel project state.
-!/.mevedel/
-.mevedel/*
+!/.niwa/
+.niwa/*
 # Project-local
 #   - hooks
-!.mevedel/hooks.json
-!.mevedel/hooks
+!.niwa/hooks.json
+!.niwa/hooks
 #   - memory
-!.mevedel/memory
+!.niwa/memory
 #   - permissions
-!.mevedel/permissions.el
+!.niwa/permissions.el
 #   - skills
-!.mevedel/skills
+!.niwa/skills
+
+/.mevedel.pre-niwa-*/

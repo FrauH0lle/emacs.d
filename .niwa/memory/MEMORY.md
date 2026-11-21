@@ -2,3 +2,4 @@
 - [Validate ERT execution, not just CLI exit status](test-runner-result-validation.md) - Check test-load errors and actual ERT counts before reporting a successful test run.
 - [Validate mouse behavior through the command lifecycle](mouse-command-lifecycle-validation.md) - Mouse regressions need replay and post-command processing; text-position changes alone do not prove dragging.
 - [Target the supported pinned Straight API](pinned-straight-api-compatibility.md) - Avoid obsolete-format compatibility for Straight unless older versions are intentionally supported.
+- [Upstream popup vslot stacking fix](popup-vslot-upstream-reference.md) - Doom issue and fix for comparison when maintaining Zenit's independent popup stacking implementation.

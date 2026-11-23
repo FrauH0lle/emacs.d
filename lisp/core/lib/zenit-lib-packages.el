@@ -146,7 +146,8 @@ seperate buffer."
 
 If LOCAL-CONF is non-nil, prefer the local profile lockfile when the
 package declares it. Otherwise, omit the local profile lockfile. Packages
-without explicit lockfile metadata use straight's default profile."
+without explicit lockfile metadata use straight's default profile.
+Packages declared with the \\='ignore profile have no lockfiles."
   (let* ((profiles (if (plist-member plist :lockfile)
                        (or (ensure-list (plist-get plist :lockfile)) '(nil))
                      '(nil)))
@@ -155,13 +156,16 @@ without explicit lockfile metadata use straight's default profile."
                            profiles))
          (lockfiles (delq nil (mapcar (zenit-rpartial #'alist-get straight-profiles)
                                       profiles))))
-    (if local-conf
+    (cond
+     ((memq 'ignore profiles) nil)
+     (local-conf
         (if (member (alist-get 'local straight-profiles) lockfiles)
             (cl-remove-if-not (lambda (x) (equal x (alist-get 'local straight-profiles)))
                               lockfiles)
-          lockfiles)
+          lockfiles))
+     (t
       (cl-remove-if (lambda (x) (equal x (alist-get 'local straight-profiles)))
-                    lockfiles))))
+                    lockfiles)))))
 
 (defun zenit-packages--bump-delete-temp-repo (dir)
   "Delete temporary package repo DIR without aborting the caller."
@@ -320,6 +324,8 @@ write through `zenit-local-versions-dir'."
         (cl-return (message "The package %s isn't installed by any module" package)))
       (when (plist-get plist :built-in)
         (cl-return (message "The package %s is built-in" package)))
+      (when (memq 'ignore (ensure-list (plist-get plist :lockfile)))
+        (cl-return (message "The package %s is not tracked by any lockfile" package)))
       (let* ((lockfiles (zenit-packages--bump-lockfiles plist local-conf))
              (recipe (zenit-packages--bump-recipe package plist)))
         (straight-vc-git--destructure recipe

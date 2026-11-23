@@ -4,6 +4,7 @@
 (require 'zenit-test)
 (require 'zenit-packages)
 (require 'straight)
+(zenit-require 'zenit-lib 'files)
 
 (zenit-deftest zenit-init-packages-p
   (:doc "`zenit-init-packages-p' is defined")
@@ -28,6 +29,67 @@
 (zenit-deftest +straight--fixup-profiles
   (:doc "`+straight--fixup-profiles' is defined")
   (should (fboundp '+straight--fixup-profiles)))
+
+(zenit-deftest +straight--fixup-profiles/ignore
+  (:doc "`+straight--fixup-profiles' drops every other profile of an ignored package")
+  (let ((straight--recipe-cache (make-hash-table :test #'equal))
+        (straight--profile-cache (make-hash-table :test #'equal))
+        (straight-recipe-repositories nil))
+    (puthash "ignored" '(tools ignore local) straight--profile-cache)
+    (puthash "pinned" '(tools local) straight--profile-cache)
+    (+straight--fixup-profiles)
+    (should (equal '(ignore) (gethash "ignored" straight--profile-cache)))
+    (should (equal '(tools local) (gethash "pinned" straight--profile-cache)))))
+
+(zenit-deftest +straight--lockfile-read-all--prefer-local-versions-a
+  (:doc "`+straight--lockfile-read-all--prefer-local-versions-a' never pins ignored packages")
+  (let ((straight--repo-cache (make-hash-table :test #'equal))
+        (straight--profile-cache (make-hash-table :test #'equal))
+        (straight-profiles '((tools . "tools.el") (local . "local.el")))
+        (zenit-local-versions-dir (make-temp-name
+                                   (expand-file-name "zenit-test-versions-" temporary-file-directory))))
+    (puthash "ignored-repo" '(:package "ignored") straight--repo-cache)
+    (puthash "pinned-repo" '(:package "pinned") straight--repo-cache)
+    (puthash "local-repo" '(:package "local") straight--repo-cache)
+    (puthash "ignored" '(ignore) straight--profile-cache)
+    (puthash "pinned" '(tools) straight--profile-cache)
+    (puthash "local" '(local) straight--profile-cache)
+    (should (equal '(("pinned-repo" . "b") ("unknown-repo" . "d"))
+                   (+straight--lockfile-read-all--prefer-local-versions-a
+                    '(("ignored-repo" . "a") ("pinned-repo" . "b")
+                      ("local-repo" . "c") ("unknown-repo" . "d")))))))
+
+(zenit-deftest zenit-packages--lockfile-profile
+  (:doc "`zenit-packages--lockfile-profile' honours ignore in local-conf")
+  (progn
+    (should (eq 'ignore (zenit-packages--lockfile-profile 'ignore t)))
+    (should (eq 'ignore (zenit-packages--lockfile-profile ''ignore t)))
+    (should (eq 'ignore (zenit-packages--lockfile-profile ''ignore nil)))
+    (should (eq 'local (zenit-packages--lockfile-profile 'tools t)))
+    (should (eq 'local (zenit-packages--lockfile-profile nil t)))
+    (should (eq 'tools (zenit-packages--lockfile-profile 'tools nil)))
+    (should (eq t (zenit-packages--lockfile-profile t nil)))
+    (should-not (zenit-packages--lockfile-profile nil nil))))
+
+(zenit-deftest zenit-packages--read/local-conf-lockfile
+  (:doc "`zenit-packages--read' keeps ignore for local-conf declarations")
+  (let* ((zenit-local-conf-dir (file-name-as-directory (make-temp-file "zenit-test-conf-" t)))
+         (file (expand-file-name "packages.el" zenit-local-conf-dir))
+         zenit-packages)
+    (unwind-protect
+        (progn
+          (with-temp-file file
+            (insert "(package! ignored :lockfile ignore)\n"
+                    "(package! quoted :lockfile 'ignore)\n"
+                    "(package! pinned :lockfile tools)\n"
+                    "(package! bare)\n"))
+          (letf! ((defun! zenit-module-context-key () '(:local-conf)))
+            (zenit-packages--read file))
+          (should (equal '(ignore) (plist-get (alist-get 'ignored zenit-packages) :lockfile)))
+          (should (equal '(ignore) (plist-get (alist-get 'quoted zenit-packages) :lockfile)))
+          (should (equal '(local) (plist-get (alist-get 'pinned zenit-packages) :lockfile)))
+          (should (equal '(local) (plist-get (alist-get 'bare zenit-packages) :lockfile))))
+      (delete-directory zenit-local-conf-dir t))))
 
 (zenit-deftest +straight--auto-options
   (:doc "`+straight--auto-options' is defined")
@@ -176,6 +238,56 @@
 (zenit-deftest package!
   (:doc "`package!' is defined")
   (should (fboundp 'package!)))
+
+(zenit-deftest package!/lockfile-profile
+  (:doc "`package!' binds the profile derived from :lockfile and the declaring file")
+  (let ((straight-profiles nil)
+        zenit-disabled-packages)
+    (cl-flet ((profile (file form)
+                (let ((zenit-include--current-file file))
+                  (cadr (assq 'straight-current-profile
+                              (cadr (macroexpand-1 form)))))))
+      ;; A file that doesn't exist, so a deployed (symlinked) packages.el in
+      ;; `zenit-local-conf-dir' can't change how the path is classified.
+      (let ((local-file (expand-file-name "zenit-test-packages.el" zenit-local-conf-dir))
+            (module-file (expand-file-name "tools/x/packages.el" zenit-modules-dir)))
+        (should (equal ''ignore (profile local-file '(package! pkg :lockfile ignore))))
+        (should (equal ''ignore (profile local-file '(package! pkg :lockfile 'ignore))))
+        (should (equal ''local (profile local-file '(package! pkg :lockfile tools))))
+        (should (equal ''local (profile local-file '(package! pkg))))
+        (should (equal ''ignore (profile module-file '(package! pkg :lockfile ignore))))
+        (should (equal ''tools (profile module-file '(package! pkg :lockfile tools))))
+        (should (equal ''nil (profile module-file '(package! pkg :lockfile t))))
+        ;; Only real lockfiles become straight profiles.
+        (should (equal '((tools . "tools.el")) straight-profiles))))))
+
+(zenit-deftest package!/ignore-recipe-override
+  (:doc "`package!' lets an ignored declaration's recipe win over a module's")
+  (let ((straight-profiles '((tools . "tools.el") (core . "core.el")
+                             (nil . "default.el") (local . "local.el")))
+        (straight-recipe-overrides nil)
+        (straight--recipe-cache (make-hash-table :test #'equal))
+        (zenit-packages nil)
+        zenit-disabled-packages)
+    (letf! ((defun! zenit-context-p (_context) t)
+            (defun! zenit--process-pkg-dependencies (_package))
+            (defun! straight-register-package (_recipe)))
+      (cl-flet ((declare (file form)
+                  (let ((zenit-include--current-file file))
+                    (eval (macroexpand-1 form) t))))
+        (let ((local-file (expand-file-name "zenit-test-packages.el" zenit-local-conf-dir))
+              (module-file (expand-file-name "tools/x/packages.el" zenit-modules-dir))
+              (other-file (expand-file-name "tools/y/packages.el" zenit-modules-dir)))
+          ;; Same order as `zenit-read-packages': local, modules, local again.
+          (declare local-file '(package! pkg :recipe (:repo "local") :lockfile ignore))
+          (declare module-file '(package! pkg :recipe (:repo "module") :lockfile tools))
+          (should (equal '(pkg :repo "local") (straight--get-overridden-recipe 'pkg)))
+          (declare local-file '(package! pkg :recipe (:repo "local") :lockfile ignore))
+          (should (equal '(pkg :repo "local") (straight--get-overridden-recipe 'pkg)))
+          ;; An ignored module declaration still beats another module's.
+          (declare other-file '(package! other :recipe (:repo "other") :lockfile ignore))
+          (declare module-file '(package! other :recipe (:repo "module") :lockfile tools))
+          (should (equal '(other :repo "other") (straight--get-overridden-recipe 'other))))))))
 
 (zenit-deftest disable-packages!
   (:doc "`disable-packages!' is defined")

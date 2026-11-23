@@ -132,7 +132,12 @@ This involves
      are no interactively registered packages after init.
 
   4. Remove the \\='_pkg-dependency profile from packages which are also
-     registered to proper profiles."
+     registered to proper profiles.
+
+  5. If a package is registered under the \\='ignore profile, drop all
+     its other profiles. A declaration with `:lockfile ignore' opts the
+     package out of every lockfile, including those of other modules
+     that declare it."
   ;; Build a map of repositories to their packages.
   (let ((repo-package-map (make-hash-table :test #'equal)))
     (maphash
@@ -169,6 +174,10 @@ This involves
                  ;; Remove nil entries if there are other profiles.
                  (when (and (remq nil new-profiles) (> (length new-profiles) 1))
                    (setq new-profiles (remq nil new-profiles)))
+
+                 ;; An explicit 'ignore wins over every other profile.
+                 (when (memq 'ignore new-profiles)
+                   (setq new-profiles '(ignore)))
 
                  ;; Update the profile cache.
                  (puthash package new-profiles straight--profile-cache)))
@@ -453,7 +462,8 @@ Writing behavior (controlled by `+straight--lockfile-prefer-local-conf-versions-
 
 If a package has \\='local or nil as a profile, prefer the version from
 the local lockfile. If the package isn't in the local lockfile, it
-becomes unpinned (returns nil), allowing it to track the latest version."
+becomes unpinned (returns nil), allowing it to track the latest version.
+A package with the \\='ignore profile is never pinned."
   :filter-return #'straight--lockfile-read-all
   ;; Read local versions once, outside the loop
   (let ((local-versions
@@ -469,12 +479,17 @@ becomes unpinned (returns nil), allowing it to track the latest version."
         ;; Look up package info
         (if-let* ((repo-info (gethash local-repo straight--repo-cache))
                   (package (plist-get repo-info :package))
-                  (profiles (gethash package straight--profile-cache))
-                  (local-p (seq-some (lambda (x) (memq x '(nil local))) profiles)))
-            ;; Package has local profile - use local version (or nil if not
-            ;; present)
-            (when-let* ((local-commit (alist-get local-repo local-versions nil nil #'equal)))
-              (push (cons local-repo local-commit) result))
+                  (profiles (gethash package straight--profile-cache)))
+            (cond
+             ;; Package is untracked - drop its pin
+             ((memq 'ignore profiles))
+             ;; Package has local profile - use local version (or nil if not
+             ;; present)
+             ((seq-some (lambda (x) (memq x '(nil local))) profiles)
+              (when-let* ((local-commit (alist-get local-repo local-versions nil nil #'equal)))
+                (push (cons local-repo local-commit) result)))
+             ;; Package doesn't have local profile - keep original commit
+             (t (push spec result)))
           ;; Package doesn't have local profile - keep original commit
           (push spec result))))
     (nreverse result)))
@@ -754,9 +769,9 @@ context-specific signals."
                   (goto-char (match-beginning 0))
                   (cl-destructuring-bind (_ name . plist)
                       (read (current-buffer))
-                    (when-let* ((lockfile (or (when (eq (car (zenit-module-from-path file)) :local-conf)
-                                                'local)
-                                              (plist-get plist :lockfile))))
+                    (when-let* ((lockfile (zenit-packages--lockfile-profile
+                                           (plist-get plist :lockfile)
+                                           (eq (car (zenit-module-from-path file)) :local-conf))))
                       (setq plist (plist-put plist :lockfile (ensure-list lockfile))))
                     ;; Record what module this declaration was found in
                     (setq plist (plist-put plist :modules (list (zenit-module-context-key))))
@@ -814,6 +829,19 @@ also be a list of module keys."
 ;;
 ;;; Package macros
 
+(eval-and-compile
+  (defun zenit-packages--lockfile-profile (lockfile local-conf)
+    "Return the straight profile for a `package!' LOCKFILE argument.
+
+LOCKFILE is the argument as written, quoted or not. If LOCAL-CONF is
+non-nil, the declaration lives in `zenit-local-conf-dir': it uses the
+\\='local profile unless LOCKFILE is \\='ignore. Otherwise return
+LOCKFILE unquoted; nil and t both mean straight's default profile."
+    (let ((lockfile (zenit-unquote lockfile)))
+      (cond ((eq lockfile 'ignore) 'ignore)
+            (local-conf 'local)
+            (t lockfile)))))
+
 (defun zenit--process-pkg-dependencies (package)
   "Collect and register all dependencies for PACKAGE."
   ;; Straight returns (NAME . MINIMUM-VERSION) pairs. Only names belong in
@@ -860,7 +888,10 @@ ARGS same as MELPA-STYLE-RECIPE in `straight-register-package'.
    in `straight-profiles' and let bind
    `straight-current-profile'to LOCKFILE. If nil or t, default
    profile will be used. If set to \\='ignore, no profile will be
-   used and the package will not be tracked.
+   used and the package will not be tracked: it is never pinned,
+   frozen or bumped, even if another module declares it with a
+   lockfile. Declarations in `zenit-local-conf-dir' always use the
+   \\='local profile, except for \\='ignore.
 
  :env ALIST
    Parameters and envvars to set while the package is building. If these
@@ -890,16 +921,24 @@ ARGS same as MELPA-STYLE-RECIPE in `straight-register-package'.
     (setq ignore t))
 
   (unless ignore
+    (setq lockfile (zenit-unquote lockfile))
     ;; Add profile to `straight-profiles' if lockfile should not be ignored
     (unless (memq lockfile '(ignore nil t))
-      (pushnew! straight-profiles `(,(zenit-unquote lockfile) . ,(format "%s.el" (zenit-unquote lockfile)))))
+      (pushnew! straight-profiles `(,lockfile . ,(format "%s.el" lockfile))))
     ;; Set `straight-current-profile' according to lockfile
-    (let ((lockfile-profile (if (eq (car (zenit-module-from-path (protect-macros! (file!)))) :local-conf)
-                                'local
-                              (pcase lockfile
-                                ((or `nil `t) nil)
-                                (`ignore 'ignore)
-                                (_ lockfile)))))
+    (let* ((local-conf-p (eq (car (zenit-module-from-path (protect-macros! (file!))))
+                             :local-conf))
+           (lockfile-profile
+            (let ((profile (zenit-packages--lockfile-profile lockfile local-conf-p)))
+              (unless (eq profile t) profile)))
+           ;; `straight--get-overridden-recipe' only consults profiles in
+           ;; `straight-profiles', and 'ignore is deliberately not one of them.
+           ;; Store an ignored package's recipe in the slot that wins instead:
+           ;; 'local beats every other profile, the default profile beats those
+           ;; of modules.
+           (override-profile (if (eq lockfile-profile 'ignore)
+                                 (and local-conf-p 'local)
+                               lockfile-profile)))
       (when lockfile
         (cl-callf plist-put args :lockfile `(quote ,lockfile-profile)))
       `(let* ((straight-current-profile ',(zenit-unquote lockfile-profile))
@@ -951,7 +990,8 @@ ARGS same as MELPA-STYLE-RECIPE in `straight-register-package'.
               `(progn
                  (when (gethash (symbol-name ',name) straight--recipe-cache)
                    (remhash (symbol-name ',name) straight--recipe-cache))
-                 (straight-override-recipe '(,name ,@recipe))
+                 (let ((straight-current-profile ',override-profile))
+                   (straight-override-recipe '(,name ,@recipe)))
                  (straight-register-package '(,name ,@recipe)))
             `(straight-register-package ',name))
          (cl-pushnew straight-current-profile

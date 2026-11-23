@@ -113,7 +113,28 @@
       (zenit-packages--bump-delete-temp-repo "/tmp/repo"))
     (should (= 2 attempts))
     (should (string-match-p "couldn't delete temporary package repo"
-                            (car messages)))))
+                            (car messages))))
+
+  :doc "`zenit/bump-package' skips packages that a declaration ignores"
+  (let (messages resolved)
+    (letf! ((defun! zenit-packages--bump-resolve-commit (&rest _args)
+              (setq resolved t))
+            (defun! message (format &rest args)
+              (push (apply #'format format args) messages)))
+      (zenit-packages--bump-package
+       'pkg nil nil 'select
+       '((pkg :lockfile (tools ignore) :recipe (:local-repo "repo") :modules ((:core))))))
+    (should-not resolved)
+    (should (equal '("The package pkg is not tracked by any lockfile") messages)))
+
+  :doc "`zenit-packages--bump-lockfiles' returns no lockfiles for ignored packages"
+  (let ((straight-profiles '((nil . "default.el")
+                             (tools . "tools.el")
+                             (local . "local.el"))))
+    (should (equal '("tools.el")
+                   (zenit-packages--bump-lockfiles '(:lockfile (tools local)))))
+    (should-not (zenit-packages--bump-lockfiles '(:lockfile (tools ignore))))
+    (should-not (zenit-packages--bump-lockfiles '(:lockfile (tools ignore)) 'local-conf))))
 
 (zenit-deftest zenit/bump-local-conf-package ()
   ,test
@@ -203,7 +224,9 @@
                 (pkg-default :recipe (:local-repo "repo-default") :modules ((:core)))
                 (pkg-default-t :lockfile (t) :recipe (:local-repo "repo-default-t") :modules ((:core)))
                 (pkg-built-in :built-in t :lockfile (core) :recipe (:local-repo "repo-built-in") :modules ((:core)))
-                (pkg-untracked :lockfile (ignore) :recipe (:local-repo "repo-untracked") :modules ((:core)))))
+                (pkg-untracked :lockfile (ignore) :recipe (:local-repo "repo-untracked") :modules ((:core)))
+                ;; A module pins it, but a local declaration ignores it.
+                (pkg-locally-ignored :lockfile (core ignore) :recipe (:local-repo "~/src/repo") :modules ((:core)))))
             (defun! zenit-packages--bump-recipe (_package plist)
               (plist-get plist :recipe))
             (defun! zenit-packages--bump-latest-commit (recipe)

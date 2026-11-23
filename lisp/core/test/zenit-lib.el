@@ -1672,6 +1672,13 @@
   (let ((zenit-local-conf-dir tmp-zenit-local-conf-dir))
     (should (equal '(:local-conf) (zenit-module-from-path (file-name-concat tmp-zenit-local-conf-dir "init.el")))))
 
+  :doc "`zenit-module-from-path' classifies a symlink by where it is, not its target"
+  (let ((zenit-local-conf-dir tmp-zenit-local-conf-dir)
+        (link (file-name-concat tmp-zenit-local-conf-dir "packages.el")))
+    ;; Like a dotfiles deployment: the target lives outside the directory.
+    (make-symbolic-link (file-name-concat tmp-zenit-core-dir "init.el") link)
+    (should (equal '(:local-conf) (zenit-module-from-path link))))
+
   :doc "`zenit-module-from-path' respects enabled-only flag"
   (should-not (zenit-module-from-path "/modules/lang/disabled/config.el" t)))
 

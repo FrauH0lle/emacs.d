@@ -1631,9 +1631,17 @@ MODULE-LIST is a list of cons cells (GROUP . NAME). See
 (defun zenit-module-from-path (path &optional enabled-only)
   "Return a cons cell (CATEGORY . MODULE) derived from PATH (a file path).
 If ENABLED-ONLY, return nil if the containing module isn't
-enabled."
+enabled.
+
+PATH belongs to `zenit-core-dir' or `zenit-local-conf-dir' if it is
+located there, even when it is a symlink to a file elsewhere, as when
+the local configuration is deployed from a dotfiles repository."
   (let* ((file-name-handler-alist nil)
-         (path (expand-file-name path)))
+         (path (expand-file-name path))
+         (in-dir-p (lambda (dir)
+                     (or (string-prefix-p (file-name-as-directory (expand-file-name dir))
+                                          path)
+                         (file-in-directory-p path dir)))))
     (save-match-data
       (cond ((string-match "/modules/\\([^/]+\\)/\\([^/]+\\)\\(?:/.*\\)?$" path)
              (when-let* ((category (zenit-keyword-intern (match-string 1 path)))
@@ -1641,9 +1649,9 @@ enabled."
                (and (or (null enabled-only)
                         (zenit-module-p category module))
                     (cons category module))))
-            ((file-in-directory-p path zenit-core-dir)
+            ((funcall in-dir-p zenit-core-dir)
              (cons :core nil))
-            ((file-in-directory-p path zenit-local-conf-dir)
+            ((funcall in-dir-p zenit-local-conf-dir)
              (cons :local-conf nil))))))
 
 (defun zenit-module-load-path (&optional module-dirs initorder?)

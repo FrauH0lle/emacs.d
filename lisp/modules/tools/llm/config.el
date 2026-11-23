@@ -91,6 +91,12 @@
   ;; Disable `undo-tree' in view buffer
   (add-to-list 'undo-tree-incompatible-major-modes 'niwa-view-mode)
 
+  ;; Chat windows are dedicated, so zenit's `kill-current-buffer' advice would
+  ;; only delete the window (niwa then buries the chat). Let the kill go through.
+  (defadvice! +niwa--kill-chat-buffer-a (&rest _)
+    :before-while #'zenit--switch-to-fallback-buffer-maybe-a
+    (not (window-parameter nil 'niwa-view-pair--role)))
+
   ;; When `evil' is used, bind RET in normal mode to open the overlay menu
   (static-when (modulep! :editor evil)
     (setq! niwa-ov-dispatch-key nil)
